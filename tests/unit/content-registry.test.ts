@@ -63,6 +63,20 @@ describe("ContentRegistry", () => {
     expect(encounters.has(start.encounterId!)).toBe(true);
   });
 
+  it("resolves every campaign node's encounterId/encounterPool entries to real encounters", () => {
+    for (const node of campaign.nodes) {
+      const ids = node.encounterPool ?? (node.encounterId ? [node.encounterId] : []);
+      for (const id of ids) {
+        expect(encounters.has(id), `campaign node "${node.nodeId}" references missing encounter "${id}"`).toBe(true);
+      }
+    }
+  });
+
+  it("gives at least one campaign node real per-visit encounter variety via encounterPool (PRD §8.6/§20.2)", () => {
+    const poolNodes = campaign.nodes.filter((n) => n.encounterPool && n.encounterPool.length > 1);
+    expect(poolNodes.length).toBeGreaterThanOrEqual(1);
+  });
+
   it("chains every campaign node to a real next node, ending in the boss", () => {
     for (const node of campaign.nodes) {
       for (const nextId of node.next) {

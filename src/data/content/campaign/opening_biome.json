@@ -3,7 +3,7 @@
   "nodes": [
     { "nodeId": "opening_1", "type": "battle", "encounterId": "opening_biome_slime_01", "next": ["mid_1"] },
     { "nodeId": "mid_1", "type": "battle", "encounterId": "mid_biome_1_drifter_01", "next": ["mid_2"] },
-    { "nodeId": "mid_2", "type": "elite", "encounterId": "mid_biome_2_luchadores_01", "next": ["mid_3"] },
+    { "nodeId": "mid_2", "type": "elite", "encounterPool": ["mid_biome_2_luchadores_01", "mid_biome_2_luchadores_02"], "next": ["mid_3"] },
     { "nodeId": "mid_3", "type": "elite", "encounterId": "mid_biome_3_elite_01", "next": ["boss_1"] },
     { "nodeId": "boss_1", "type": "boss", "encounterId": "boss_conductor_01", "next": [] }
   ]

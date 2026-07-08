@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { GameContext } from "../state/GameContext";
 import { campaign, getEncounter, getCampaignNode } from "../data/ContentRegistry";
 import type { CampaignNode } from "../data/schemas/CampaignNode";
+import { resolveEncounterId } from "../systems/progression/CampaignSelection";
 import { BASE_WIDTH } from "../config/GameConfig";
 import { TextMenu } from "../ui/components/TextMenu";
 
@@ -41,13 +42,20 @@ export class MapScene extends Phaser.Scene {
       const cleared = profile.campaignProgress.clearedNodeIds.includes(node.nodeId);
       const isUnlocked = unlocked.has(node.nodeId);
       const status = cleared ? " (cleared)" : isUnlocked ? "" : " (locked)";
-      const label = `[${node.type.toUpperCase()}] ${node.encounterId ? getEncounter(node.encounterId).encounterId : node.nodeId}${status}`;
+      const hasEncounter = Boolean(node.encounterId || node.encounterPool);
+      const nameLabel = node.encounterPool
+        ? `${node.nodeId} (${node.encounterPool.length} variants)`
+        : node.encounterId
+          ? getEncounter(node.encounterId).encounterId
+          : node.nodeId;
+      const label = `[${node.type.toUpperCase()}] ${nameLabel}${status}`;
       return {
         label,
-        disabled: !node.encounterId || !isUnlocked,
+        disabled: !hasEncounter || !isUnlocked,
         onSelect: () => {
-          if (!node.encounterId) return;
-          GameContext.pendingEncounterId = node.encounterId;
+          const encounterId = resolveEncounterId(node);
+          if (!encounterId) return;
+          GameContext.pendingEncounterId = encounterId;
           GameContext.pendingNodeId = node.nodeId;
           this.scene.start("BattleScene");
         },

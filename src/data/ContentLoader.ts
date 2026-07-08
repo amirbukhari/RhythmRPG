@@ -117,7 +117,12 @@ export function loadCampaign(data: unknown): CampaignDefinition {
   for (const node of campaign.nodes) {
     if (typeof node.nodeId !== "string" || !node.nodeId) return fail("each node needs a non-empty nodeId");
     if (!["battle", "elite", "camp", "boss"].includes(node.type)) return fail(`node "${node.nodeId}" has an invalid type`);
-    if (node.type !== "camp" && !node.encounterId) return fail(`node "${node.nodeId}" of type "${node.type}" needs an encounterId`);
+    if (node.encounterPool !== undefined && (!Array.isArray(node.encounterPool) || node.encounterPool.length === 0 || node.encounterPool.some((id) => typeof id !== "string" || !id))) {
+      return fail(`node "${node.nodeId}" has an invalid encounterPool -- must be a non-empty array of non-empty strings`);
+    }
+    if (node.type !== "camp" && !node.encounterId && !node.encounterPool) {
+      return fail(`node "${node.nodeId}" of type "${node.type}" needs an encounterId or encounterPool`);
+    }
     for (const nextId of node.next) {
       if (!ids.has(nextId)) return fail(`node "${node.nodeId}" points to unknown next node "${nextId}"`);
     }
