@@ -1,9 +1,16 @@
 import Phaser from "phaser";
+import heroPlaceholderUrl from "../../assets/sprites/heroes/placeholder/Amir CrouchWait.png";
 
 /** Loads the asset manifest and verifies browser support. See PRD §10.6. */
 export class BootScene extends Phaser.Scene {
   constructor() {
     super("BootScene");
+  }
+
+  preload(): void {
+    // The only real (if placeholder-quality, PRD §11.4/§20.2) art asset in
+    // the repo -- loaded once here so every scene's texture manager has it.
+    this.load.image("hero_placeholder", heroPlaceholderUrl);
   }
 
   create(): void {

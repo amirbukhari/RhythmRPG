@@ -12,9 +12,23 @@ import { applyRelics } from "../systems/progression/Relics";
 import { judge, type JudgmentTier } from "../systems/combat/JudgmentSystem";
 import { BASE_WIDTH } from "../config/GameConfig";
 import type { Beatmap } from "../data/schemas/Beatmap";
+import type { HeroRole } from "../data/schemas/Ability";
 
 /** How long past a step's target time we wait before auto-recording a miss. */
 const AUTO_MISS_GRACE_SECONDS = 0.35;
+
+/**
+ * Only one character's placeholder art exists (PRD §11.4/§20.2) -- the same
+ * sprite stands in for all four heroes, tinted per role for visual
+ * distinction, until real per-hero art exists. Displayed at the PRD §11.1
+ * spec size (48x48) even though the art content itself is placeholder.
+ */
+const ROLE_TINTS: Record<HeroRole, number> = {
+  warrior: 0xff6666,
+  tank: 0x6699ff,
+  mage: 0xcc88ff,
+  healer: 0x77ff99,
+};
 
 type InputStage = "command" | "select-target" | "count-in" | "awaiting-input" | "ended";
 
@@ -39,6 +53,9 @@ export class BattleScene extends Phaser.Scene {
   private pendingAbilityId: string | null = null;
   private targetableEnemyIds: string[] = [];
 
+  private heroSprites: Phaser.GameObjects.Image[] = [];
+  private heroSpriteBaseScale = 1; // setDisplaySize()'s resulting scale; setScale() for the active-hero highlight must multiply this, not replace it
+  private enemyShapes: Phaser.GameObjects.Arc[] = [];
   private hpText!: Phaser.GameObjects.Text;
   private enemyText!: Phaser.GameObjects.Text;
   private beatText!: Phaser.GameObjects.Text;
@@ -99,6 +116,23 @@ export class BattleScene extends Phaser.Scene {
       .text(BASE_WIDTH / 2, 110, "", { fontFamily: "monospace", fontSize: "8px", color: "#ffe066", align: "center", wordWrap: { width: BASE_WIDTH - 16 } })
       .setOrigin(0.5, 0);
     this.logText = this.add.text(8, 150, "", { fontFamily: "monospace", fontSize: "7px", color: "#888888" });
+
+    // Placeholder party portraits in the otherwise-empty top-right region
+    // (the text panels are all left/center-aligned) -- see ROLE_TINTS.
+    const spriteSize = 28; // smaller than the PRD §11.1 48x48 spec to fit this text-first layout until a real art pass
+    this.heroSprites = this.combat.heroes.map((hero, i) => {
+      const x = BASE_WIDTH - 8 - spriteSize * 4 + i * spriteSize + spriteSize / 2;
+      const sprite = this.add.image(x, 8 + spriteSize / 2, "hero_placeholder");
+      sprite.setDisplaySize(spriteSize - 2, spriteSize - 2);
+      sprite.setTint(ROLE_TINTS[hero.role]);
+      return sprite;
+    });
+    this.heroSpriteBaseScale = this.heroSprites[0]?.scaleX ?? 1;
+
+    this.enemyShapes = this.combat.enemies.map((_, i) => {
+      const x = BASE_WIDTH - 8 - this.combat.enemies.length * 20 + i * 20 + 10;
+      return this.add.circle(x, 46, 8, 0xff4444);
+    });
 
     await this.clock.start(this.effectiveBpm);
     this.phaseStartSeconds = this.clock.currentTime;
@@ -301,11 +335,25 @@ export class BattleScene extends Phaser.Scene {
     });
     lines.push(`Groove: ${this.combat.groove}/100 (streak ${this.combat.grooveStreak})`);
     this.hpText.setText(lines.join("\n"));
+
+    this.combat.heroes.forEach((hero, i) => {
+      const sprite = this.heroSprites[i];
+      if (!sprite) return;
+      sprite.setAlpha(hero.hp <= 0 ? 0.25 : 1);
+      const isActive = hero.heroId === this.activeHeroId && this.stage !== "ended";
+      sprite.setScale(this.heroSpriteBaseScale * (isActive ? 1.15 : 1));
+    });
   }
 
   private renderEnemies(): void {
     const lines = this.combat.enemies.map((e) => `${e.name} HP ${e.hp}/${e.maxHp}  Intent: ${e.currentIntent?.telegraph ?? "-"}`);
     this.enemyText.setText(lines.join("\n"));
+
+    this.combat.enemies.forEach((enemy, i) => {
+      const shape = this.enemyShapes[i];
+      if (!shape) return;
+      shape.setAlpha(enemy.hp <= 0 ? 0.15 : 1);
+    });
   }
 
   private renderBeat(): void {
