@@ -1,0 +1,9 @@
+{
+  "abilityId": "healer_mend_cadence",
+  "role": "healer",
+  "focusCost": 0,
+  "phraseLengthBars": 1,
+  "inputPattern": ["tap"],
+  "timingTemplate": ["1.1"],
+  "effects": [{ "type": "heal", "value": 20 }]
+}

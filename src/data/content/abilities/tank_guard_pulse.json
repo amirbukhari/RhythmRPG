@@ -1,0 +1,9 @@
+{
+  "abilityId": "tank_guard_pulse",
+  "role": "tank",
+  "focusCost": 0,
+  "phraseLengthBars": 1,
+  "inputPattern": ["hold"],
+  "timingTemplate": ["1.1"],
+  "effects": [{ "type": "guard", "value": 0.5, "durationRounds": 1 }]
+}

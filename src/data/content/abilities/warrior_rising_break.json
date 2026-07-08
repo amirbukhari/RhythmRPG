@@ -1,0 +1,12 @@
+{
+  "abilityId": "warrior_rising_break",
+  "role": "warrior",
+  "focusCost": 1,
+  "phraseLengthBars": 1,
+  "inputPattern": ["tap", "hold"],
+  "timingTemplate": ["1.1", "1.3"],
+  "effects": [
+    { "type": "damage", "value": 18 },
+    { "type": "debuff", "stat": "defense", "value": -0.1, "durationRounds": 1 }
+  ]
+}

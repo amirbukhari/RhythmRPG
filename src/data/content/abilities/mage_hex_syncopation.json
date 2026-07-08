@@ -1,0 +1,9 @@
+{
+  "abilityId": "mage_hex_syncopation",
+  "role": "mage",
+  "focusCost": 1,
+  "phraseLengthBars": 1,
+  "inputPattern": ["tap", "tap"],
+  "timingTemplate": ["1.2", "1.4"],
+  "effects": [{ "type": "debuff", "stat": "accuracy", "value": -0.15, "durationRounds": 2 }]
+}

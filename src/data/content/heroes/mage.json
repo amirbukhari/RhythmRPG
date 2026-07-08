@@ -1,0 +1,8 @@
+{
+  "heroId": "mage",
+  "role": "mage",
+  "name": "Mage",
+  "maxHp": 90,
+  "maxFocus": 6,
+  "abilityIds": ["mage_arc_flash", "mage_hex_syncopation", "mage_static_field"]
+}

@@ -1,0 +1,11 @@
+{
+  "encounterId": "opening_biome_slime_01",
+  "trackId": "opening_biome_01",
+  "enemyWave": ["slime"],
+  "accentProfile": null,
+  "victoryRewards": {
+    "xp": 50,
+    "currency": 20,
+    "relicChoices": ["focus_loop"]
+  }
+}

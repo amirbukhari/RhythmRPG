@@ -1,0 +1,12 @@
+{
+  "abilityId": "healer_purify_hymn",
+  "role": "healer",
+  "focusCost": 1,
+  "phraseLengthBars": 1,
+  "inputPattern": ["tap", "tap"],
+  "timingTemplate": ["1.1", "1.3"],
+  "effects": [
+    { "type": "heal", "value": 10 },
+    { "type": "buff", "stat": "resist", "value": 0.2, "durationRounds": 2 }
+  ]
+}

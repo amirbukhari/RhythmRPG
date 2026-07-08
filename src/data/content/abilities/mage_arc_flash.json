@@ -1,0 +1,9 @@
+{
+  "abilityId": "mage_arc_flash",
+  "role": "mage",
+  "focusCost": 0,
+  "phraseLengthBars": 1,
+  "inputPattern": ["tap"],
+  "timingTemplate": ["1.2"],
+  "effects": [{ "type": "damage", "value": 14 }]
+}

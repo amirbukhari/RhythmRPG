@@ -1,0 +1,12 @@
+{
+  "abilityId": "tank_taunt_stomp",
+  "role": "tank",
+  "focusCost": 1,
+  "phraseLengthBars": 1,
+  "inputPattern": ["tap"],
+  "timingTemplate": ["1.1"],
+  "effects": [
+    { "type": "interrupt" },
+    { "type": "debuff", "stat": "targetFocus", "value": -1, "durationRounds": 1 }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "heroId": "healer",
+  "role": "healer",
+  "name": "Healer",
+  "maxHp": 100,
+  "maxFocus": 6,
+  "abilityIds": ["healer_mend_cadence", "healer_purify_hymn", "healer_sightread"]
+}

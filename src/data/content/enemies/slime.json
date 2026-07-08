@@ -1,0 +1,8 @@
+{
+  "enemyId": "slime",
+  "name": "Slime",
+  "maxHp": 60,
+  "intents": [
+    { "telegraph": "slime_lunge", "effect": { "type": "damage", "value": 8, "target": "randomHero" } }
+  ]
+}

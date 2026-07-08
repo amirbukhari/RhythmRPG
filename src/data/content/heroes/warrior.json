@@ -1,0 +1,8 @@
+{
+  "heroId": "warrior",
+  "role": "warrior",
+  "name": "Warrior",
+  "maxHp": 120,
+  "maxFocus": 5,
+  "abilityIds": ["warrior_slash_chain", "warrior_rising_break", "warrior_finisher"]
+}

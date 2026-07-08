@@ -1,0 +1,8 @@
+{
+  "heroId": "tank",
+  "role": "tank",
+  "name": "Tank",
+  "maxHp": 150,
+  "maxFocus": 5,
+  "abilityIds": ["tank_guard_pulse", "tank_taunt_stomp", "tank_iron_wall"]
+}
