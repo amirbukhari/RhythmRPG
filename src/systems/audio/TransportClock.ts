@@ -35,9 +35,13 @@ export class TransportClock {
     return Tone.getTransport().schedule(callback, time);
   }
 
-  /** interval e.g. "4n" for quarter notes. Returns an id usable with clearSchedule. */
-  scheduleRepeat(callback: (time: number) => void, interval: string): number {
-    return Tone.getTransport().scheduleRepeat(callback, interval);
+  /**
+   * interval accepts Tone time notation ("4n") or a plain number of seconds.
+   * startTime offsets the first firing (and every subsequent period).
+   * Returns an id usable with clearSchedule.
+   */
+  scheduleRepeat(callback: (time: number) => void, interval: number | string, startTime: number | string = 0): number {
+    return Tone.getTransport().scheduleRepeat(callback, interval, startTime);
   }
 
   clearSchedule(id: number): void {

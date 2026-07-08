@@ -3,6 +3,7 @@ import { GameContext } from "../state/GameContext";
 import { getEncounter, getBeatmap, getHeroClass, getAbility } from "../data/ContentRegistry";
 import { createCombat, queueHeroAction, resolveHeroPerformance, type CombatState } from "../systems/combat/CombatController";
 import { TransportClock } from "../systems/audio/TransportClock";
+import { BeatmapSonifier } from "../systems/audio/BeatmapSonifier";
 import { nextBarBoundary, timingTemplateToSeconds } from "../systems/combat/PhraseTiming";
 import { judge, type JudgmentTier } from "../systems/combat/JudgmentSystem";
 import { BASE_WIDTH } from "../config/GameConfig";
@@ -19,6 +20,7 @@ type InputStage = "command" | "count-in" | "awaiting-input" | "ended";
  */
 export class BattleScene extends Phaser.Scene {
   private clock = new TransportClock();
+  private sonifier!: BeatmapSonifier;
   private combat!: CombatState;
   private beatsPerBar = 4;
   private effectiveBpm = 120;
@@ -73,9 +75,15 @@ export class BattleScene extends Phaser.Scene {
     this.logText = this.add.text(8, 150, "", { fontFamily: "monospace", fontSize: "7px", color: "#888888" });
 
     await this.clock.start(this.effectiveBpm);
+    this.sonifier = new BeatmapSonifier(this.clock);
+    this.sonifier.setVolume(settings.volumeMusic);
+    this.sonifier.start(beatmap, this.effectiveBpm);
     this.input.keyboard?.on("keydown", (event: KeyboardEvent) => this.onKeyDown(event));
 
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.clock.stop());
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.sonifier.dispose();
+      this.clock.stop();
+    });
 
     this.appendLog();
     this.enterCommandStage();
