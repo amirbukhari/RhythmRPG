@@ -1,17 +1,20 @@
 import Phaser from "phaser";
 import { GameContext } from "../state/GameContext";
-import { getEncounter, getBeatmap, getHeroClass, getAbility } from "../data/ContentRegistry";
+import { getEncounter, getBeatmap, getHeroClass, getAbility, getBossPhaseConfig, getCampaignNode } from "../data/ContentRegistry";
+import type { BossPhase } from "../data/schemas/BossPhaseConfig";
 import { createCombat, queueHeroAction, resolveHeroPerformance, type CombatState } from "../systems/combat/CombatController";
 import { TransportClock } from "../systems/audio/TransportClock";
 import { BeatmapSonifier } from "../systems/audio/BeatmapSonifier";
-import { nextBarBoundary, timingTemplateToSeconds } from "../systems/combat/PhraseTiming";
+import { timingTemplateToSeconds } from "../systems/combat/PhraseTiming";
+import { positionAtSeconds, nextBarBoundarySeconds, meterAtBar } from "../systems/combat/MeterSequence";
 import { judge, type JudgmentTier } from "../systems/combat/JudgmentSystem";
 import { BASE_WIDTH } from "../config/GameConfig";
+import type { Beatmap } from "../data/schemas/Beatmap";
 
 /** How long past a step's target time we wait before auto-recording a miss. */
 const AUTO_MISS_GRACE_SECONDS = 0.35;
 
-type InputStage = "command" | "count-in" | "awaiting-input" | "ended";
+type InputStage = "command" | "select-target" | "count-in" | "awaiting-input" | "ended";
 
 /**
  * All combat logic and UI. See PRD §8.2-§8.7.
@@ -22,7 +25,7 @@ export class BattleScene extends Phaser.Scene {
   private clock = new TransportClock();
   private sonifier!: BeatmapSonifier;
   private combat!: CombatState;
-  private beatsPerBar = 4;
+  private beatmap!: Beatmap;
   private effectiveBpm = 120;
   private calibrationOffsetSeconds = 0;
 
@@ -32,6 +35,7 @@ export class BattleScene extends Phaser.Scene {
   private capturedTiers: JudgmentTier[] = [];
   private stepIndex = 0;
   private pendingAbilityId: string | null = null;
+  private targetableEnemyIds: string[] = [];
 
   private hpText!: Phaser.GameObjects.Text;
   private enemyText!: Phaser.GameObjects.Text;
@@ -40,6 +44,19 @@ export class BattleScene extends Phaser.Scene {
   private logText!: Phaser.GameObjects.Text;
   private tapKey = " ";
   private captionsEnabled = true;
+  private isBossFight = false;
+  private lastRenderedBeatsPerBar: number | null = null;
+  private lastRenderedDen: number | null = null;
+
+  // Boss multi-phase support (PRD §8.7). phaseStartSeconds is the absolute
+  // transport time treated as the *current* beatmap's own bar-1-beat-1 --
+  // all meter/position math is relative to it, so a phase change partway
+  // through a fight doesn't require the new beatmap to somehow start at
+  // transport zero.
+  private bossPhases: BossPhase[] = [];
+  private currentPhaseIndex = 0;
+  private phaseStartSeconds = 0;
+  private phaseTransitionScheduled = false;
 
   constructor() {
     super("BattleScene");
@@ -58,7 +75,10 @@ export class BattleScene extends Phaser.Scene {
 
     const settings = GameContext.activeProfile.settings;
     this.combat = createCombat(heroes, encounter, { practiceMode: settings.practiceMode });
-    this.beatsPerBar = beatmap.meterSequence[0]?.num ?? 4;
+    this.beatmap = beatmap;
+    this.isBossFight = encounter.encounterId.startsWith("boss_");
+    this.bossPhases = getBossPhaseConfig(encounter.encounterId)?.phases ?? [];
+    this.currentPhaseIndex = 0;
     this.effectiveBpm = beatmap.bpm * settings.gameSpeed;
     this.calibrationOffsetSeconds = GameContext.activeProfile.calibrationOffsetMs / 1000;
     this.tapKey = settings.keyBindings.tap ?? " ";
@@ -75,9 +95,10 @@ export class BattleScene extends Phaser.Scene {
     this.logText = this.add.text(8, 150, "", { fontFamily: "monospace", fontSize: "7px", color: "#888888" });
 
     await this.clock.start(this.effectiveBpm);
+    this.phaseStartSeconds = this.clock.currentTime;
     this.sonifier = new BeatmapSonifier(this.clock);
     this.sonifier.setVolume(settings.volumeMusic);
-    this.sonifier.start(beatmap, this.effectiveBpm);
+    this.sonifier.start(beatmap, this.effectiveBpm, this.phaseStartSeconds);
     this.input.keyboard?.on("keydown", (event: KeyboardEvent) => this.onKeyDown(event));
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -98,6 +119,11 @@ export class BattleScene extends Phaser.Scene {
     if (this.stage === "awaiting-input") {
       this.checkForAutoMiss();
     }
+  }
+
+  /** Transport time relative to the current phase's own bar-1-beat-1. */
+  private get elapsedInPhase(): number {
+    return this.clock.currentTime - this.phaseStartSeconds;
   }
 
   private get activeHeroId(): string | undefined {
@@ -122,24 +148,60 @@ export class BattleScene extends Phaser.Scene {
       const index = ["1", "2", "3"].indexOf(event.key);
       if (index === -1 || index >= this.activeAbilityIds.length) return;
       this.selectAbility(this.activeAbilityIds[index]);
+    } else if (this.stage === "select-target") {
+      const index = ["1", "2", "3", "4", "5"].indexOf(event.key);
+      if (index === -1 || index >= this.targetableEnemyIds.length) return;
+      this.beginPerformance(this.pendingAbilityId!, this.targetableEnemyIds[index]);
     } else if (this.stage === "awaiting-input") {
       if (event.key === this.tapKey) this.captureInput();
     }
   }
 
+  /** Ability effects that need an enemy target -- if more than one enemy is alive, the player must pick one. */
+  private abilityNeedsEnemyTarget(abilityId: string): boolean {
+    return getAbility(abilityId).effects.some((e) => e.type === "damage" || e.type === "debuff" || e.type === "interrupt");
+  }
+
   private selectAbility(abilityId: string): void {
     const heroId = this.activeHeroId;
     if (!heroId) return;
+
+    const aliveEnemies = this.combat.enemies.filter((e) => e.hp > 0);
+    if (aliveEnemies.length > 1 && this.abilityNeedsEnemyTarget(abilityId)) {
+      this.pendingAbilityId = abilityId;
+      this.targetableEnemyIds = aliveEnemies.map((e) => e.instanceId);
+      this.stage = "select-target";
+      const labels = aliveEnemies.map((e, i) => `${i + 1}: ${e.name} (${e.hp}/${e.maxHp} HP)`).join("  ");
+      this.promptText.setText(`${heroId.toUpperCase()}: choose a target\n${labels}`);
+      return;
+    }
+
+    this.beginPerformance(abilityId);
+  }
+
+  private beginPerformance(abilityId: string, targetEnemyId?: string): void {
+    const heroId = this.activeHeroId;
+    if (!heroId) return;
     try {
-      queueHeroAction(this.combat, heroId, abilityId);
+      queueHeroAction(this.combat, heroId, abilityId, targetEnemyId ? { targetEnemyId } : {});
     } catch (err) {
       this.promptText.setText(String((err as Error).message));
+      this.stage = "command";
       return;
     }
     const ability = getAbility(abilityId);
     GameContext.analytics.track("ability_used", { abilityId, heroId });
-    const phraseStart = nextBarBoundary(this.clock.currentTime, this.effectiveBpm, this.beatsPerBar);
-    this.timingTargets = timingTemplateToSeconds(ability.timingTemplate, phraseStart, this.effectiveBpm, this.beatsPerBar);
+    // Count-in and meter lookup are computed relative to the current
+    // phase's own origin, then converted back to absolute transport time
+    // for the actual judgment targets (see elapsedInPhase docblock).
+    const relativePhraseStart = nextBarBoundarySeconds(this.beatmap.meterSequence, this.elapsedInPhase, this.effectiveBpm);
+    const phraseStart = this.phaseStartSeconds + relativePhraseStart;
+    // A 1-2 bar phrase is interpreted in whatever meter is in effect at its
+    // own start bar -- correct for PRD §8.7's boss, where meter changes
+    // every few bars but a phrase itself doesn't straddle one mid-flight.
+    const phraseStartBar = positionAtSeconds(this.beatmap.meterSequence, relativePhraseStart, this.effectiveBpm).bar;
+    const phraseBeatsPerBar = meterAtBar(this.beatmap.meterSequence, phraseStartBar).num;
+    this.timingTargets = timingTemplateToSeconds(ability.timingTemplate, phraseStart, this.effectiveBpm, phraseBeatsPerBar);
     this.capturedTiers = [];
     this.stepIndex = 0;
     this.pendingAbilityId = abilityId;
@@ -209,12 +271,71 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private renderBeat(): void {
-    const secondsPerBeat = 60 / this.effectiveBpm;
-    const barLength = secondsPerBeat * this.beatsPerBar;
-    const t = Math.max(0, this.clock.currentTime);
-    const bar = Math.floor(t / barLength) + 1;
-    const beat = Math.floor((t % barLength) / secondsPerBeat) + 1;
-    this.beatText.setText(`Round ${this.combat.round}   Bar ${bar}  Beat ${beat}/${this.beatsPerBar}`);
+    const pos = positionAtSeconds(this.beatmap.meterSequence, this.elapsedInPhase, this.effectiveBpm);
+    const meterChanged = pos.beatsPerBar !== this.lastRenderedBeatsPerBar || pos.den !== this.lastRenderedDen;
+    if (meterChanged) {
+      // A caption for any in-beatmap meter change (mid_biome_1's 3/4->6/8,
+      // or a boss phase's own internal alternation) -- distinct from a full
+      // phase transition (a different beatmap entirely), which announces
+      // itself in performPhaseTransition.
+      if (this.lastRenderedBeatsPerBar !== null) {
+        this.combat.log.push({ round: this.combat.round, message: `Meter shifts to ${pos.beatsPerBar}/${pos.den}.` });
+        this.appendLog();
+      }
+      this.lastRenderedBeatsPerBar = pos.beatsPerBar;
+      this.lastRenderedDen = pos.den;
+    }
+    this.beatText.setText(`Round ${this.combat.round}   Bar ${pos.bar}  Beat ${pos.beat}/${pos.beatsPerBar}  (${pos.beatsPerBar}/${pos.den})`);
+
+    if (this.isBossFight) this.checkBossPhaseTransition();
+  }
+
+  /**
+   * PRD §8.7: the boss's meter changes are driven by its HP fraction
+   * crossing each phase's authored threshold. The actual beatmap swap is
+   * quantized to the next bar boundary (release gate #3: "on bar boundary
+   * without drift"), not applied instantly mid-bar.
+   */
+  private checkBossPhaseTransition(): void {
+    if (this.phaseTransitionScheduled) return;
+    const nextPhaseIndex = this.currentPhaseIndex + 1;
+    if (nextPhaseIndex >= this.bossPhases.length) return;
+
+    const boss = this.combat.enemies[0];
+    if (!boss || boss.maxHp <= 0) return;
+    const hpFraction = boss.hp / boss.maxHp;
+    if (hpFraction > this.bossPhases[nextPhaseIndex].hpThreshold) return;
+
+    this.phaseTransitionScheduled = true;
+    const relativeBoundary = nextBarBoundarySeconds(this.beatmap.meterSequence, this.elapsedInPhase, this.effectiveBpm);
+    const transitionTime = this.phaseStartSeconds + relativeBoundary;
+    // NOTE: unlike BeatmapSonifier's triggerAttackRelease(note, dur, time),
+    // the `time` Tone.Transport.schedule() passes into its callback is
+    // AudioContext time, not Transport-position seconds -- it must NOT be
+    // used as phaseStartSeconds, which is compared against
+    // TransportClock.currentTime (Transport.seconds) everywhere else.
+    // Mixing the two clocks was a real bug caught live: it silently broke
+    // the second boss phase transition. transitionTime (computed in
+    // Transport-seconds) is what performPhaseTransition needs here.
+    this.clock.scheduleAt(transitionTime, () => this.performPhaseTransition(nextPhaseIndex, transitionTime));
+  }
+
+  private performPhaseTransition(phaseIndex: number, startAtSeconds: number): void {
+    const phase = this.bossPhases[phaseIndex];
+    const newBeatmap = getBeatmap(phase.trackId);
+    const gameSpeed = GameContext.activeProfile?.settings.gameSpeed ?? 1;
+
+    this.currentPhaseIndex = phaseIndex;
+    this.beatmap = newBeatmap;
+    this.effectiveBpm = newBeatmap.bpm * gameSpeed;
+    this.phaseStartSeconds = startAtSeconds;
+    this.phaseTransitionScheduled = false;
+
+    this.sonifier.start(newBeatmap, this.effectiveBpm, startAtSeconds);
+
+    GameContext.analytics.track("boss_phase_reached", { phase: phaseIndex + 1, trackId: phase.trackId });
+    this.combat.log.push({ round: this.combat.round, message: `The Conductor enters phase ${phaseIndex + 1}.` });
+    this.appendLog();
   }
 
   private endBattle(): void {
@@ -224,14 +345,22 @@ export class BattleScene extends Phaser.Scene {
 
     const profile = GameContext.activeProfile!;
     const encounterId = GameContext.pendingEncounterId!;
+    const nodeId = GameContext.pendingNodeId;
     const encounter = getEncounter(encounterId);
     const victory = this.combat.outcome === "victory";
 
     if (victory) {
       profile.campaignProgress.xp += encounter.victoryRewards.xp;
       profile.campaignProgress.currency += encounter.victoryRewards.currency;
-      if (!profile.campaignProgress.clearedNodeIds.includes(encounterId)) {
-        profile.campaignProgress.clearedNodeIds.push(encounterId);
+      // clearedNodeIds tracks campaign nodes, not encounters -- they're
+      // different id spaces (a node references an encounter, not the other
+      // way around), so this must key off nodeId, not encounterId.
+      if (nodeId) {
+        if (!profile.campaignProgress.clearedNodeIds.includes(nodeId)) {
+          profile.campaignProgress.clearedNodeIds.push(nodeId);
+        }
+        const node = getCampaignNode(nodeId);
+        if (node.next.length > 0) profile.campaignProgress.currentNodeId = node.next[0];
       }
       GameContext.analytics.track("encounter_cleared", { encounterId });
     } else {
@@ -246,6 +375,7 @@ export class BattleScene extends Phaser.Scene {
       relicChoices: victory ? encounter.victoryRewards.relicChoices ?? [] : [],
     };
     GameContext.pendingEncounterId = null;
+    GameContext.pendingNodeId = null;
 
     void GameContext.persistActiveProfile().then(() => this.scene.start("ResultsScene"));
   }

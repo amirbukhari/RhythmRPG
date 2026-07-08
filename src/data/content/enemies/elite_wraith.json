@@ -1,0 +1,9 @@
+{
+  "enemyId": "elite_wraith",
+  "name": "Elite Wraith",
+  "maxHp": 140,
+  "intents": [
+    { "telegraph": "wraith_offbeat_slash", "effect": { "type": "damage", "value": 14, "target": "randomHero" } },
+    { "telegraph": "wraith_syncopated_curse", "effect": { "type": "debuff", "value": -0.15 } }
+  ]
+}

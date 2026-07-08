@@ -1,17 +1,7 @@
 import * as Tone from "tone";
 import type { Beatmap } from "../../data/schemas/Beatmap";
 import type { TransportClock } from "./TransportClock";
-
-/**
- * Converts a beatmap event's (bar, step) at its subdivision resolution into
- * seconds relative to the pattern's own start (bar 1, step 0 = 0s) -- pure
- * and unit-testable, unlike the synth playback that consumes it.
- */
-export function beatmapEventSeconds(bar: number, step: number, bpm: number, beatsPerBar: number, subdivision: number): number {
-  const secondsPerBar = (60 / bpm) * beatsPerBar;
-  const secondsPerStep = secondsPerBar / subdivision;
-  return (bar - 1) * secondsPerBar + step * secondsPerStep;
-}
+import { eventSeconds, patternLengthSeconds } from "../combat/MeterSequence";
 
 /**
  * Sonifies a beatmap's downbeat and enemyTelegraph events as audible synth
@@ -41,30 +31,39 @@ export class BeatmapSonifier {
   }
 
   /**
-   * Starts looping playback of the beatmap's pattern from the current
-   * transport position. `bpm` is the *effective* (speed-adjusted) tempo the
-   * transport is actually running at -- pass this.effectiveBpm, not
-   * beatmap.bpm directly, or clicks will drift out of sync whenever
-   * accessibility game-speed scaling is active.
+   * Starts looping playback of the beatmap's pattern. `bpm` is the
+   * *effective* (speed-adjusted) tempo the transport is actually running at
+   * -- pass this.effectiveBpm, not beatmap.bpm directly, or clicks will
+   * drift out of sync whenever accessibility game-speed scaling is active.
+   *
+   * `startAtSeconds` is the absolute transport time treated as this
+   * pattern's own bar-1-beat-1 -- required for a mid-battle boss phase
+   * transition (PRD §8.7), where the new phase's beatmap starts playing at
+   * whatever transport time the transition occurs, not at transport zero.
+   * Tone.Transport.scheduleRepeat's startTime is an absolute transport
+   * position, so event offsets must be shifted by this or a phase change
+   * partway through a battle would replay the new pattern from the wrong
+   * point (or in the past, which Tone silently no-ops).
    */
-  start(beatmap: Beatmap, bpm: number): void {
+  start(beatmap: Beatmap, bpm: number, startAtSeconds = 0): void {
     this.stop();
-    const beatsPerBar = beatmap.meterSequence[0]?.num ?? 4;
-    const totalBars = Math.max(...beatmap.meterSequence.map((m) => m.startBar + m.bars - 1), 1);
-    const patternLengthSeconds = beatmapEventSeconds(totalBars + 1, 0, bpm, beatsPerBar, beatmap.subdivision);
+    // Meter-aware: a boss beatmap's bars are not all the same length in
+    // seconds, so this must use the same MeterSequence math BattleScene
+    // uses for judgment, not a flat beatsPerBar assumption.
+    const loopLength = patternLengthSeconds(beatmap.meterSequence, bpm);
 
     for (const event of beatmap.events) {
-      const offset = beatmapEventSeconds(event.bar, event.step, bpm, beatsPerBar, beatmap.subdivision);
+      const offset = startAtSeconds + eventSeconds(beatmap.meterSequence, event.bar, event.step, beatmap.subdivision, bpm);
       if (event.type === "downbeat") {
         // Forward the precise scheduled time Tone passes in -- using "now"
         // implicitly here (by omitting it) is exactly the main-thread-timer
         // imprecision PRD §10.2 exists to avoid, and Tone.js warns about it.
         this.scheduledIds.push(
-          this.clock.scheduleRepeat((time) => this.downbeatSynth.triggerAttackRelease("C3", "32n", time), patternLengthSeconds, offset)
+          this.clock.scheduleRepeat((time) => this.downbeatSynth.triggerAttackRelease("C3", "32n", time), loopLength, offset)
         );
       } else if (event.type === "enemyTelegraph") {
         this.scheduledIds.push(
-          this.clock.scheduleRepeat((time) => this.telegraphSynth.triggerAttackRelease("A4", "16n", time), patternLengthSeconds, offset)
+          this.clock.scheduleRepeat((time) => this.telegraphSynth.triggerAttackRelease("A4", "16n", time), loopLength, offset)
         );
       }
     }

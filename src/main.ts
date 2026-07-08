@@ -9,9 +9,10 @@ import { MapScene } from "./scenes/MapScene";
 import { BattleScene } from "./scenes/BattleScene";
 import { ResultsScene } from "./scenes/ResultsScene";
 import { SettingsOverlay } from "./scenes/SettingsOverlay";
+import { GameContext } from "./state/GameContext";
 
 // Fixed scene stack per PRD §10.6.
-new Phaser.Game({
+const game = new Phaser.Game({
   ...gameConfig,
   scene: [
     BootScene,
@@ -25,3 +26,10 @@ new Phaser.Game({
     SettingsOverlay,
   ],
 });
+
+// Dev-only debug hook: exposes app state for the tests/e2e/ Playwright suite
+// and manual debugging. Stripped from production builds by Vite's dead-code
+// elimination on import.meta.env.DEV -- never present in the shipped game.
+if (import.meta.env.DEV) {
+  (window as unknown as { __meterfallDebug: unknown }).__meterfallDebug = { game, GameContext };
+}

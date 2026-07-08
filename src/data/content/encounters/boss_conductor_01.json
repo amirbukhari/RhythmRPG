@@ -1,0 +1,11 @@
+{
+  "encounterId": "boss_conductor_01",
+  "trackId": "boss_conductor_p1",
+  "enemyWave": ["the_conductor"],
+  "accentProfile": null,
+  "victoryRewards": {
+    "xp": 500,
+    "currency": 250,
+    "relicChoices": ["groove_amp"]
+  }
+}

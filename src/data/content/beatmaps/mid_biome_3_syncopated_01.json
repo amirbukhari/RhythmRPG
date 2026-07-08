@@ -1,0 +1,20 @@
+{
+  "trackId": "mid_biome_3_syncopated_01",
+  "bpm": 110,
+  "meterSequence": [{ "startBar": 1, "bars": 8, "num": 4, "den": 4 }],
+  "subdivision": 16,
+  "events": [
+    { "bar": 1, "step": 0, "type": "downbeat" },
+    { "bar": 2, "step": 0, "type": "downbeat" },
+    { "bar": 2, "step": 10, "type": "enemyTelegraph", "payload": "wraith_offbeat_slash" },
+    { "bar": 3, "step": 0, "type": "downbeat" },
+    { "bar": 4, "step": 0, "type": "downbeat" },
+    { "bar": 4, "step": 14, "type": "enemyTelegraph", "payload": "wraith_syncopated_curse" },
+    { "bar": 5, "step": 0, "type": "downbeat" },
+    { "bar": 6, "step": 0, "type": "downbeat" },
+    { "bar": 6, "step": 10, "type": "enemyTelegraph", "payload": "wraith_offbeat_slash" },
+    { "bar": 7, "step": 0, "type": "downbeat" },
+    { "bar": 8, "step": 0, "type": "downbeat" },
+    { "bar": 8, "step": 14, "type": "enemyTelegraph", "payload": "wraith_syncopated_curse" }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "enemyId": "the_conductor",
+  "name": "The Conductor",
+  "maxHp": 260,
+  "intents": [
+    { "telegraph": "baton_sweep", "effect": { "type": "damage", "value": 12, "target": "randomHero" } },
+    { "telegraph": "tempo_surge", "effect": { "type": "damage", "value": 16, "target": "lowestHpHero" } },
+    { "telegraph": "discord_wave", "effect": { "type": "debuff", "value": -0.2 } }
+  ]
+}

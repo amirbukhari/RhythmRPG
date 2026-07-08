@@ -1,0 +1,9 @@
+{
+  "enemyId": "drifter",
+  "name": "Drifter",
+  "maxHp": 70,
+  "intents": [
+    { "telegraph": "drifter_sway", "effect": { "type": "damage", "value": 7, "target": "randomHero" } },
+    { "telegraph": "drifter_drag", "effect": { "type": "debuff", "value": -0.1 } }
+  ]
+}

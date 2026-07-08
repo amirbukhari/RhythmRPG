@@ -1,0 +1,22 @@
+{
+  "trackId": "mid_biome_2_clave_01",
+  "bpm": 129,
+  "meterSequence": [{ "startBar": 1, "bars": 8, "num": 4, "den": 4 }],
+  "subdivision": 16,
+  "events": [
+    { "bar": 1, "step": 0, "type": "downbeat" },
+    { "bar": 1, "step": 6, "type": "syncopationAccent", "payload": "son_clave_2_3" },
+    { "bar": 2, "step": 0, "type": "downbeat" },
+    { "bar": 2, "step": 10, "type": "syncopationAccent", "payload": "son_clave_2_3" },
+    { "bar": 3, "step": 0, "type": "downbeat" },
+    { "bar": 3, "step": 8, "type": "enemyTelegraph", "payload": "clave_throw" },
+    { "bar": 4, "step": 0, "type": "downbeat" },
+    { "bar": 5, "step": 0, "type": "downbeat" },
+    { "bar": 5, "step": 6, "type": "syncopationAccent", "payload": "son_clave_2_3" },
+    { "bar": 6, "step": 0, "type": "downbeat" },
+    { "bar": 6, "step": 10, "type": "syncopationAccent", "payload": "son_clave_2_3" },
+    { "bar": 7, "step": 0, "type": "downbeat" },
+    { "bar": 7, "step": 8, "type": "enemyTelegraph", "payload": "clave_counter" },
+    { "bar": 8, "step": 0, "type": "downbeat" }
+  ]
+}

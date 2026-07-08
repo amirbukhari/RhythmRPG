@@ -22,6 +22,8 @@ class GameContextImpl {
   activeProfile: SaveProfile | null = null;
   /** Set by MapScene before starting BattleScene; read once, then cleared. */
   pendingEncounterId: string | null = null;
+  /** The campaign node backing pendingEncounterId -- distinct from it, since node ids and encounter ids are different id spaces. */
+  pendingNodeId: string | null = null;
   /** Set by BattleScene before starting ResultsScene; read once, then cleared. */
   lastBattleResult: BattleResult | null = null;
 

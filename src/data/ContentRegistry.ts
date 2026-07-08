@@ -1,12 +1,13 @@
 /// <reference types="vite/client" />
 
-import { loadAbility, loadBeatmap, loadEncounter, loadEnemy, loadHeroClass, loadCampaign } from "./ContentLoader";
+import { loadAbility, loadBeatmap, loadEncounter, loadEnemy, loadHeroClass, loadCampaign, loadBossPhaseConfig } from "./ContentLoader";
 import type { Ability } from "./schemas/Ability";
 import type { Beatmap } from "./schemas/Beatmap";
 import type { Encounter } from "./schemas/Encounter";
 import type { Enemy } from "./schemas/Enemy";
 import type { HeroClass } from "./schemas/HeroClass";
 import type { CampaignDefinition } from "./schemas/CampaignNode";
+import type { BossPhaseConfig } from "./schemas/BossPhaseConfig";
 import campaignData from "./content/campaign/opening_biome.json";
 
 const abilityModules = import.meta.glob("./content/abilities/*.json", { eager: true }) as Record<string, { default: unknown }>;
@@ -14,6 +15,7 @@ const beatmapModules = import.meta.glob("./content/beatmaps/*.json", { eager: tr
 const encounterModules = import.meta.glob("./content/encounters/*.json", { eager: true }) as Record<string, { default: unknown }>;
 const enemyModules = import.meta.glob("./content/enemies/*.json", { eager: true }) as Record<string, { default: unknown }>;
 const heroClassModules = import.meta.glob("./content/heroes/*.json", { eager: true }) as Record<string, { default: unknown }>;
+const bossPhaseModules = import.meta.glob("./content/bossPhases/*.json", { eager: true }) as Record<string, { default: unknown }>;
 
 function indexBy<T>(
   modules: Record<string, { default: unknown }>,
@@ -34,6 +36,7 @@ export const encounters = indexBy(encounterModules, loadEncounter, (e) => e.enco
 export const enemies = indexBy(enemyModules, loadEnemy, (e) => e.enemyId);
 export const heroClasses = indexBy(heroClassModules, loadHeroClass, (h) => h.heroId);
 export const campaign: CampaignDefinition = loadCampaign(campaignData);
+export const bossPhaseConfigs = indexBy(bossPhaseModules, loadBossPhaseConfig, (c) => c.encounterId);
 
 function getOrThrow<T>(map: Map<string, T>, kind: string, id: string): T {
   const item = map.get(id);
@@ -60,4 +63,8 @@ export function getCampaignNode(nodeId: string) {
 
 export function abilitiesForRole(role: Ability["role"]): Ability[] {
   return [...abilities.values()].filter((a) => a.role === role);
+}
+
+export function getBossPhaseConfig(encounterId: string): BossPhaseConfig | undefined {
+  return bossPhaseConfigs.get(encounterId);
 }

@@ -1,0 +1,8 @@
+{
+  "enemyId": "luchador_mask",
+  "name": "Luchador Mask",
+  "maxHp": 65,
+  "intents": [
+    { "telegraph": "clave_counter", "effect": { "type": "damage", "value": 11, "target": "lowestHpHero" } }
+  ]
+}

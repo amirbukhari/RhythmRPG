@@ -10,6 +10,7 @@ import type { Encounter } from "./schemas/Encounter";
 import type { Enemy } from "./schemas/Enemy";
 import type { HeroClass } from "./schemas/HeroClass";
 import type { CampaignDefinition } from "./schemas/CampaignNode";
+import type { BossPhaseConfig } from "./schemas/BossPhaseConfig";
 
 // PRD §10.5: no encounter timing may be hardcoded in scene logic — everything
 // gameplay-relevant is loaded through here and validated against the
@@ -122,4 +123,26 @@ export function loadCampaign(data: unknown): CampaignDefinition {
     }
   }
   return campaign as CampaignDefinition;
+}
+
+// BossPhaseConfig also has no formal JSON Schema -- same rationale.
+export function loadBossPhaseConfig(data: unknown): BossPhaseConfig {
+  const config = data as Partial<BossPhaseConfig> | null | undefined;
+  const id = config?.encounterId ?? "?";
+  const fail = (message: string): never => {
+    throw new ContentValidationError("bossPhaseConfig", id, message);
+  };
+  if (!config || typeof config !== "object") return fail("not an object");
+  if (typeof config.encounterId !== "string" || !config.encounterId) return fail("encounterId must be a non-empty string");
+  if (!Array.isArray(config.phases) || config.phases.length === 0) return fail("phases must be a non-empty array");
+  let previousThreshold = Infinity;
+  for (const phase of config.phases) {
+    if (typeof phase.trackId !== "string" || !phase.trackId) return fail("each phase needs a non-empty trackId");
+    if (typeof phase.hpThreshold !== "number" || phase.hpThreshold < 0 || phase.hpThreshold > 1) {
+      return fail("each phase needs hpThreshold in [0, 1]");
+    }
+    if (phase.hpThreshold >= previousThreshold) return fail("phase hpThresholds must be strictly decreasing");
+    previousThreshold = phase.hpThreshold;
+  }
+  return config as BossPhaseConfig;
 }

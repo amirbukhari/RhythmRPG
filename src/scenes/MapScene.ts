@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { GameContext } from "../state/GameContext";
-import { campaign, getEncounter } from "../data/ContentRegistry";
+import { campaign, getEncounter, getCampaignNode } from "../data/ContentRegistry";
 import { BASE_WIDTH } from "../config/GameConfig";
 import { TextMenu } from "../ui/components/TextMenu";
 
@@ -28,20 +28,38 @@ export class MapScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
+    const unlocked = this.reachableNodeIds(profile.campaignProgress.currentNodeId);
+
     const items = campaign.nodes.map((node) => {
       const cleared = profile.campaignProgress.clearedNodeIds.includes(node.nodeId);
-      const label = `[${node.type.toUpperCase()}] ${node.encounterId ? getEncounter(node.encounterId).encounterId : node.nodeId}${cleared ? " (cleared)" : ""}`;
+      const isUnlocked = unlocked.has(node.nodeId);
+      const status = cleared ? " (cleared)" : isUnlocked ? "" : " (locked)";
+      const label = `[${node.type.toUpperCase()}] ${node.encounterId ? getEncounter(node.encounterId).encounterId : node.nodeId}${status}`;
       return {
         label,
+        disabled: !node.encounterId || !isUnlocked,
         onSelect: () => {
           if (!node.encounterId) return;
           GameContext.pendingEncounterId = node.encounterId;
+          GameContext.pendingNodeId = node.nodeId;
           this.scene.start("BattleScene");
         },
       };
     });
-    items.push({ label: "Settings", onSelect: () => this.scene.launch("SettingsOverlay", { returnTo: "MapScene" }) });
+    items.push({ label: "Settings", disabled: false, onSelect: () => this.scene.launch("SettingsOverlay", { returnTo: "MapScene" }) });
 
     new TextMenu(this, 30, 60, items);
+  }
+
+  /** Every node from campaign start up to and including currentNodeId, following the linear `next` chain. */
+  private reachableNodeIds(currentNodeId: string): Set<string> {
+    const visited = new Set<string>();
+    let node = getCampaignNode(campaign.startNodeId);
+    while (true) {
+      visited.add(node.nodeId);
+      if (node.nodeId === currentNodeId || node.next.length === 0) break;
+      node = getCampaignNode(node.next[0]);
+    }
+    return visited;
   }
 }
