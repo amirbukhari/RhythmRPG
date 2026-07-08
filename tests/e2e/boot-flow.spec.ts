@@ -1,6 +1,12 @@
 import { test, expect } from "@playwright/test";
 import { bootToMap, isSceneActive, passAudioGate, waitForScene } from "./helpers";
 
+// Not imported from src/config/GameConfig: that module imports the `phaser`
+// package, which assumes a browser/DOM environment and throws when loaded
+// directly by Playwright's Node-based test loader (confirmed live).
+const BASE_WIDTH = 320;
+const BASE_HEIGHT = 180;
+
 test.describe("boot flow", () => {
   test("boots through audio gate, save creation, and calibration to the campaign map with no console errors", async ({ page }) => {
     const pageErrors: string[] = [];
@@ -34,5 +40,22 @@ test.describe("boot flow", () => {
 
     expect(loaded?.calibrationDone).toBe(true);
     expect(typeof loaded?.calibrationOffsetMs).toBe("number");
+  });
+
+  test("completes calibration with pointer taps, not just keyboard (real bug: calibration had no pointer input path at all)", async ({ page }) => {
+    await page.goto("/");
+    await passAudioGate(page);
+    await page.keyboard.press("Enter"); // Start/Continue -> SaveScene
+    await waitForScene(page, "SaveScene");
+    await page.keyboard.press("Enter"); // + New Save -> CalibrationScene
+    await waitForScene(page, "CalibrationScene");
+
+    for (let i = 0; i < 8; i++) {
+      await page.mouse.click(BASE_WIDTH / 2, BASE_HEIGHT / 2);
+      await page.waitForTimeout(600); // real calibration BPM is 100 -> 600ms/beat
+    }
+
+    await waitForScene(page, "MapScene");
+    expect(await isSceneActive(page, "MapScene")).toBe(true);
   });
 });

@@ -50,6 +50,13 @@ export class CalibrationScene extends Phaser.Scene {
     this.input.keyboard?.on("keydown", (event: KeyboardEvent) => {
       if (event.key === this.tapKey) this.registerTap();
     });
+    // Real bug found via live play: this scene is the very first mandatory,
+    // unskippable input the player must give, and it accepted keyboard-only
+    // taps while every other interactive screen (AudioGateScene, TextMenu)
+    // accepts pointer input too. A player who clicks/taps instead of
+    // pressing a physical key -- e.g. on a touch device, or just by habit --
+    // got completely stuck here with no feedback and no way to proceed.
+    this.input.on("pointerdown", () => this.registerTap());
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.cleanup());
   }

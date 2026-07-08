@@ -17,7 +17,7 @@ export class AudioGateScene extends Phaser.Scene {
 
   create(): void {
     this.add
-      .text(BASE_WIDTH / 2, BASE_HEIGHT / 2, "PRESS ANY KEY TO START AUDIO", {
+      .text(BASE_WIDTH / 2, BASE_HEIGHT / 2, "PRESS ANY KEY OR CLICK TO CONTINUE", {
         fontFamily: "monospace",
         fontSize: "10px",
         color: "#ffffff",
