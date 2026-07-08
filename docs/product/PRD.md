@@ -6,7 +6,7 @@
 |---|---|
 | Document title | Project Meterfall — Browser Rhythm RPG PRD |
 | Codename | Project Meterfall |
-| Status | Draft v1.1 — pending stakeholder sign-off |
+| Status | Draft v1.2 — pending stakeholder sign-off |
 | Owner | Amir Bukhari |
 | Author | Amir Bukhari (compiled from concept notes and deep research) |
 | Created | 2026-07-08 |
@@ -22,6 +22,7 @@
 | 0.1 | 2026-07-08 | Amir Bukhari | Initial deep research synthesis from concept notes |
 | 1.0 | 2026-07-08 | Amir Bukhari | Restructured into enterprise PRD format; added KPIs, risk register, RACI, roadmap, schemas |
 | 1.1 | 2026-07-08 | Amir Bukhari | Added §11.2 gbmusic tooling note and §11.4 current asset inventory (placeholder sprites, reference audio, example chiptune output) |
+| 1.2 | 2026-07-08 | Amir Bukhari | Resolved §11.4 action item: confirmed the placeholder hero character and demo-track-via-gbmusic chiptune direction carry forward as the production basis, not disposable reference; updated §11.1/§11.2 accordingly |
 
 ---
 
@@ -321,11 +322,13 @@ All save data lives in **IndexedDB**: player settings, calibration offsets, camp
 | Animation rate | 8–12 fps authored; engine interpolation reserved for camera/UI only |
 | Palette policy | One global master palette + per-biome accent extension |
 
+**Carried-forward basis:** the placeholder "Amir" hero spritesheets and animation GIFs (§11.4) are the visual and animation-timing basis for the hero character going forward — final hero art is a redraw/rework of this character to the resolution, sprite-size, and palette spec above, not a replacement with a different design. The art bible (`docs/design/`) should be written as a spec-conformant extension of this reference, not from a blank slate.
+
 ### 11.2 Music and audio content spec
 
 Each battle track ships with: full mix preview, runtime stems (drums, bass, harmony, lead, FX), tempo map, meter map, bar markers, an authoring-only click reference (never shipped to players), and a battle SFX pack. Music is authored externally in a DAW and exported as bar-aligned stems.
 
-**Tooling note:** [`tools/gbmusic/`](../../tools/gbmusic/README.md) converts a mixed reference track into a Game Boy (LSDJ) chiptune project — stem-separating into vocals/bass/drums/other and mapping them onto the Game Boy's four hardware channels (pulse/pulse/wave/noise). This is a prototyping aid for exploring an authentic 8-bit sound direction against real hardware constraints, not a replacement for the DAW-authored stem pipeline above; output is a hand-tunable LSDJ draft, not a shippable asset.
+**Carried-forward basis:** the demo audio master (§11.4) and its Game Boy chiptune derivative are the music-direction basis, not disposable reference. [`tools/gbmusic/`](../../tools/gbmusic/README.md) — which stem-separates a mixed track into vocals/bass/drums/other and maps them onto the Game Boy's four hardware channels (pulse/pulse/wave/noise) — is the intended production path for turning this track (and future biome tracks in the same direction) into authentic Game Boy chiptune material: run the pipeline, then hand-tune the resulting `.lsdsng` in LSDJ, then render/record real Game Boy audio as the shippable stem set per the spec above. The DAW-authored-stems requirement still stands for tracks that don't originate from this pipeline; this is the path for tracks that do.
 
 ### 11.3 UX rules
 
@@ -333,16 +336,16 @@ The battle UI must always show: current measure and beat, phrase lane for the ac
 
 ### 11.4 Current asset inventory (as of 2026-07-08)
 
-The repository already contains pre-PRD reference material and one pipeline output. None of it satisfies §11.1/§11.2 spec and none of it counts toward the vertical-slice exit condition (§15) — it is listed here so the status is explicit rather than assumed.
+**Decision: this material carries forward** as the style/direction basis for production (confirmed 2026-07-08) — it is not disposable placeholder to be discarded once "real" production starts. None of it meets §11.1/§11.2 delivery spec yet in its current form, and none of it counts toward the vertical-slice exit condition (§15) as-is, but it is the thing final assets are derived from, not replaced by.
 
 | Asset | Location | Status |
 |---|---|---|
-| 7 placeholder hero spritesheets ("Amir" run/crouch/dash/stand animations) | `assets/sprites/heroes/placeholder/` | Reference only. Predates the art bible; does not conform to the 48×48 combat-sprite / master-palette spec in §11.1. Useful for animation-timing reference, not usable as a final hero sprite. |
-| 2 animation reference GIFs (crouch, dash-to-run) | `assets/reference/animation-gifs/` | Reference only. Same source as the placeholder spritesheets above; superseded once real hero art is authored. |
-| Demo audio master ("AmirsMaster...WithBabyVocals.mp3", ~22 min, kept local/gitignored — see `assets/reference/README.md`) | `assets/reference/audio-demo/` | Personal reference track, not a battle-track composition. Useful only as a tone/mood reference for the composer brief in §11.2; does not meet the stem/tempo-map/meter-map delivery spec. |
-| Example `.lsdsng` chiptune draft (30–60s clip of the demo track, run through `tools/gbmusic/`) | `tools/gbmusic/output/amirs_master_clip_30-60s.lsdsng` | Proof-of-concept output of the pipeline in §11.2's tooling note. Machine-transcribed and untuned (see pipeline limitations in `tools/gbmusic/README.md`); requires manual LSDJ editing before it could inform sound direction, and is not a candidate shippable stem. |
+| 7 placeholder hero spritesheets ("Amir" run/crouch/dash/stand animations) | `assets/sprites/heroes/placeholder/` | Carries forward as the hero's visual/animation basis. Does not yet conform to the 48×48 combat-sprite / master-palette spec in §11.1 — needs redrawing to spec, not replacing with a different character. |
+| 2 animation reference GIFs (crouch, dash-to-run) | `assets/reference/animation-gifs/` | Carries forward as animation-timing reference for the same character; superseded by the spritesheets above wherever they overlap. |
+| Demo audio master ("AmirsMaster...WithBabyVocals.mp3", ~22 min, kept local/gitignored — see `assets/reference/README.md`) | `assets/reference/audio-demo/` | Carries forward as the music-direction basis. Not itself a battle-track deliverable (too long, not stem/tempo/meter-mapped) — it's the source material the `tools/gbmusic/` pipeline turns into Game Boy chiptune battle tracks (§11.2). |
+| Example `.lsdsng` chiptune draft (30–60s clip of the demo track, run through `tools/gbmusic/`) | `tools/gbmusic/output/amirs_master_clip_30-60s.lsdsng` | Carries forward as the first working proof of the music-direction pipeline. Machine-transcribed and untuned (see limitations in `tools/gbmusic/README.md`) — needs hand-tuning in LSDJ before it's a candidate shippable stem, but it is the direction, not a discardable prototype. |
 
-Action item for pre-production exit (§15): the art bible and music direction docs (`docs/design/`, currently stubs) should explicitly state whether any of the above material carries forward as style reference, or is fully superseded once real art/audio production starts.
+Action item for pre-production exit (§15): the art bible and music direction docs (`docs/design/`, currently stubs) should be written as spec-conformant extensions of this carried-forward material — i.e., document how the "Amir" character and the chiptune-via-`gbmusic` approach get taken to shippable quality, not propose alternatives to them.
 
 ---
 
