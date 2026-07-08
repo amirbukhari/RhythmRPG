@@ -1,0 +1,6 @@
+{
+  "startNodeId": "opening_1",
+  "nodes": [
+    { "nodeId": "opening_1", "type": "battle", "encounterId": "opening_biome_slime_01", "next": [] }
+  ]
+}

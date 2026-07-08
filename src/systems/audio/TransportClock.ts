@@ -10,7 +10,20 @@ export class TransportClock {
   async start(bpm: number): Promise<void> {
     await Tone.start();
     Tone.getTransport().bpm.value = bpm;
-    Tone.getTransport().start();
+    if (Tone.getTransport().state !== "started") {
+      Tone.getTransport().start();
+    }
+  }
+
+  setBpm(bpm: number): void {
+    Tone.getTransport().bpm.value = bpm;
+  }
+
+  reset(): void {
+    const transport = Tone.getTransport();
+    transport.stop();
+    transport.position = 0;
+    transport.cancel(0);
   }
 
   /** Current transport position in seconds, hardware-clock derived. */
@@ -20,6 +33,15 @@ export class TransportClock {
 
   scheduleAt(time: number, callback: (time: number) => void): number {
     return Tone.getTransport().schedule(callback, time);
+  }
+
+  /** interval e.g. "4n" for quarter notes. Returns an id usable with clearSchedule. */
+  scheduleRepeat(callback: (time: number) => void, interval: string): number {
+    return Tone.getTransport().scheduleRepeat(callback, interval);
+  }
+
+  clearSchedule(id: number): void {
+    Tone.getTransport().clear(id);
   }
 
   stop(): void {

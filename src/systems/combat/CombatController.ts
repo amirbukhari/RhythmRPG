@@ -186,8 +186,18 @@ function pickDefaultHealTarget(state: CombatState): HeroState | undefined {
   return aliveHeroes(state).slice().sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
 }
 
-function applyAbilityEffect(state: CombatState, effect: AbilityEffect, potency: number, pending: PendingAction): void {
+function applyAbilityEffect(state: CombatState, effect: AbilityEffect, potency: number, hasMiss: boolean, pending: PendingAction): void {
   const actingHero = state.heroes.find((h) => h.heroId === pending.heroId)!;
+
+  // Damage/heal scale continuously with potency (partial credit for a mixed
+  // performance), but a single missed step fully fails a status-application
+  // effect -- otherwise timing wouldn't matter at all for guard/buff/debuff/
+  // interrupt/forecast abilities, undermining "accuracy determines potency"
+  // (PRD §8.3) for the exact abilities where hitting the beat is the point.
+  if (hasMiss && effect.type !== "damage" && effect.type !== "heal") {
+    log(state, `${pending.heroId}'s ${pending.ability.abilityId} fizzles (missed timing).`);
+    return;
+  }
 
   switch (effect.type) {
     case "damage": {
@@ -290,7 +300,7 @@ export function resolveHeroPerformance(state: CombatState, tiers: JudgmentTier[]
   state.grooveStreak = hasMiss ? 0 : state.grooveStreak + tiers.length;
 
   for (const effect of pending.ability.effects) {
-    applyAbilityEffect(state, effect, potency, pending);
+    applyAbilityEffect(state, effect, potency, hasMiss, pending);
   }
 
   state.heroTurnQueue = state.heroTurnQueue.filter((id) => id !== pending.heroId);

@@ -1,15 +1,39 @@
+import type { AccessibilitySettings } from "../accessibility/AccessibilitySettings";
+import { DEFAULT_ACCESSIBILITY_SETTINGS } from "../accessibility/AccessibilitySettings";
+
+export interface CampaignProgress {
+  currentNodeId: string;
+  clearedNodeIds: string[];
+  xp: number;
+  currency: number;
+}
+
 /**
  * IndexedDB-backed local save profile. See PRD §10.7 — never use localStorage
  * for save data.
  */
 export interface SaveProfile {
   slotId: string;
-  settings: Record<string, unknown>;
+  settings: AccessibilitySettings;
   calibrationOffsetMs: number;
-  campaignProgress: Record<string, unknown>;
+  calibrationDone: boolean;
+  campaignProgress: CampaignProgress;
   unlockedSkills: string[];
   relicInventory: string[];
   analyticsConsent: boolean;
+}
+
+export function createDefaultSaveProfile(slotId: string, startNodeId: string): SaveProfile {
+  return {
+    slotId,
+    settings: { ...DEFAULT_ACCESSIBILITY_SETTINGS },
+    calibrationOffsetMs: 0,
+    calibrationDone: false,
+    campaignProgress: { currentNodeId: startNodeId, clearedNodeIds: [], xp: 0, currency: 0 },
+    unlockedSkills: [],
+    relicInventory: [],
+    analyticsConsent: false,
+  };
 }
 
 const DB_NAME = "meterfall-saves";
@@ -56,6 +80,16 @@ export class SaveManager {
       tx.objectStore(STORE_NAME).delete(slotId);
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  async listSlots(): Promise<string[]> {
+    const db = await this.dbPromise;
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readonly");
+      const request = tx.objectStore(STORE_NAME).getAllKeys();
+      request.onsuccess = () => resolve(request.result as string[]);
+      request.onerror = () => reject(request.error);
     });
   }
 }

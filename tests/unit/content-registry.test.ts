@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { abilities, abilitiesForRole, beatmaps, encounters, enemies, getEncounter } from "../../src/data/ContentRegistry";
+import { abilities, abilitiesForRole, beatmaps, encounters, enemies, getEncounter, campaign, getCampaignNode } from "../../src/data/ContentRegistry";
 
 describe("ContentRegistry", () => {
   it("loads and validates all shipped ability files", () => {
@@ -40,5 +40,15 @@ describe("ContentRegistry", () => {
     for (const payload of telegraphPayloads) {
       expect(enemyTelegraphs.has(payload as string)).toBe(true);
     }
+  });
+
+  it("loads a valid campaign whose start node exists and references a real encounter", () => {
+    const start = getCampaignNode(campaign.startNodeId);
+    expect(start.type).toBe("battle");
+    expect(encounters.has(start.encounterId!)).toBe(true);
+  });
+
+  it("throws a clear error for an unknown campaign node", () => {
+    expect(() => getCampaignNode("does_not_exist")).toThrow(/Unknown campaign node/);
   });
 });

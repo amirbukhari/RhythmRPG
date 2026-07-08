@@ -105,6 +105,20 @@ describe("CombatController", () => {
     expect(dealt).toBe(4); // slime_lunge deals 8 raw, halved by 50% guard
   });
 
+  it("fizzles a status-effect ability entirely if any step is missed (bug found via live E2E test)", () => {
+    queueHeroAction(state, "tank", "tank_guard_pulse");
+    resolveHeroPerformance(state, ["miss"]);
+    const tank = state.heroes.find((h) => h.heroId === "tank")!;
+    expect(tank.statusEffects).toHaveLength(0);
+  });
+
+  it("still fizzles a status effect on a partial miss within a multi-step ability", () => {
+    state.heroes.find((h) => h.heroId === "tank")!.focus = 2; // iron_wall costs 2
+    queueHeroAction(state, "tank", "tank_iron_wall");
+    resolveHeroPerformance(state, ["perfect", "miss"]);
+    expect(state.heroes.find((h) => h.heroId === "tank")!.statusEffects).toHaveLength(0);
+  });
+
   it("cancels the enemy's current intent when interrupted", () => {
     state.heroes.find((h) => h.heroId === "tank")!.focus = 1; // taunt_stomp costs 1
     queueHeroAction(state, "tank", "tank_taunt_stomp");

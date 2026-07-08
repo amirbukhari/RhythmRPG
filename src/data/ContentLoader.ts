@@ -9,6 +9,7 @@ import type { Ability } from "./schemas/Ability";
 import type { Encounter } from "./schemas/Encounter";
 import type { Enemy } from "./schemas/Enemy";
 import type { HeroClass } from "./schemas/HeroClass";
+import type { CampaignDefinition } from "./schemas/CampaignNode";
 
 // PRD §10.5: no encounter timing may be hardcoded in scene logic — everything
 // gameplay-relevant is loaded through here and validated against the
@@ -99,4 +100,26 @@ export function loadHeroClass(data: unknown): HeroClass {
   if (typeof heroClass.maxFocus !== "number" || heroClass.maxFocus <= 0) return fail("maxFocus must be a positive number");
   if (!Array.isArray(heroClass.abilityIds) || heroClass.abilityIds.length === 0) return fail("abilityIds must be a non-empty array");
   return heroClass as HeroClass;
+}
+
+// CampaignDefinition also has no formal JSON Schema -- same rationale.
+export function loadCampaign(data: unknown): CampaignDefinition {
+  const campaign = data as Partial<CampaignDefinition> | null | undefined;
+  const fail = (message: string): never => {
+    throw new ContentValidationError("campaign", campaign?.startNodeId ?? "?", message);
+  };
+  if (!campaign || typeof campaign !== "object") return fail("not an object");
+  if (typeof campaign.startNodeId !== "string" || !campaign.startNodeId) return fail("startNodeId must be a non-empty string");
+  if (!Array.isArray(campaign.nodes) || campaign.nodes.length === 0) return fail("nodes must be a non-empty array");
+  const ids = new Set(campaign.nodes.map((n) => n.nodeId));
+  if (!ids.has(campaign.startNodeId)) return fail(`startNodeId "${campaign.startNodeId}" is not in nodes`);
+  for (const node of campaign.nodes) {
+    if (typeof node.nodeId !== "string" || !node.nodeId) return fail("each node needs a non-empty nodeId");
+    if (!["battle", "elite", "camp", "boss"].includes(node.type)) return fail(`node "${node.nodeId}" has an invalid type`);
+    if (node.type !== "camp" && !node.encounterId) return fail(`node "${node.nodeId}" of type "${node.type}" needs an encounterId`);
+    for (const nextId of node.next) {
+      if (!ids.has(nextId)) return fail(`node "${node.nodeId}" points to unknown next node "${nextId}"`);
+    }
+  }
+  return campaign as CampaignDefinition;
 }

@@ -1,11 +1,13 @@
 /// <reference types="vite/client" />
 
-import { loadAbility, loadBeatmap, loadEncounter, loadEnemy, loadHeroClass } from "./ContentLoader";
+import { loadAbility, loadBeatmap, loadEncounter, loadEnemy, loadHeroClass, loadCampaign } from "./ContentLoader";
 import type { Ability } from "./schemas/Ability";
 import type { Beatmap } from "./schemas/Beatmap";
 import type { Encounter } from "./schemas/Encounter";
 import type { Enemy } from "./schemas/Enemy";
 import type { HeroClass } from "./schemas/HeroClass";
+import type { CampaignDefinition } from "./schemas/CampaignNode";
+import campaignData from "./content/campaign/opening_biome.json";
 
 const abilityModules = import.meta.glob("./content/abilities/*.json", { eager: true }) as Record<string, { default: unknown }>;
 const beatmapModules = import.meta.glob("./content/beatmaps/*.json", { eager: true }) as Record<string, { default: unknown }>;
@@ -31,6 +33,7 @@ export const beatmaps = indexBy(beatmapModules, loadBeatmap, (b) => b.trackId);
 export const encounters = indexBy(encounterModules, loadEncounter, (e) => e.encounterId);
 export const enemies = indexBy(enemyModules, loadEnemy, (e) => e.enemyId);
 export const heroClasses = indexBy(heroClassModules, loadHeroClass, (h) => h.heroId);
+export const campaign: CampaignDefinition = loadCampaign(campaignData);
 
 function getOrThrow<T>(map: Map<string, T>, kind: string, id: string): T {
   const item = map.get(id);
@@ -47,6 +50,12 @@ export const getHeroClass = (id: string): HeroClass => getOrThrow(heroClasses, "
 /** The fixed four-role party per PRD §8.4, in warrior/tank/mage/healer order. */
 export function partyRoster(): HeroClass[] {
   return [getHeroClass("warrior"), getHeroClass("tank"), getHeroClass("mage"), getHeroClass("healer")];
+}
+
+export function getCampaignNode(nodeId: string) {
+  const node = campaign.nodes.find((n) => n.nodeId === nodeId);
+  if (!node) throw new Error(`Unknown campaign node: "${nodeId}"`);
+  return node;
 }
 
 export function abilitiesForRole(role: Ability["role"]): Ability[] {
