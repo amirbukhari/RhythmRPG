@@ -6,7 +6,7 @@
 |---|---|
 | Document title | Project Meterfall — Browser Rhythm RPG PRD |
 | Codename | Project Meterfall |
-| Status | Draft v1.4 — pending stakeholder sign-off |
+| Status | Draft v2.0 — engine + vertical-slice groundwork implemented; pending stakeholder sign-off |
 | Owner | Amir Bukhari |
 | Author | Amir Bukhari (compiled from concept notes and deep research) |
 | Created | 2026-07-08 |
@@ -25,6 +25,7 @@
 | 1.2 | 2026-07-08 | Amir Bukhari | Resolved §11.4 action item: confirmed the placeholder hero character and demo-track-via-gbmusic chiptune direction carry forward as the production basis, not disposable reference; updated §11.1/§11.2 accordingly |
 | 1.3 | 2026-07-08 | Amir Bukhari | Resolved music-sourcing question: all v1 battle tracks are sliced from the single demo master (one gbmusic run + hand-tuning pass per stage/boss-phase), not separately composed; updated §11.2 and §11.4 |
 | 1.4 | 2026-07-08 | Amir Bukhari | Made the actual slice-selection decision (algorithmic, ascending complexity per stage) and generated all 7 stage/boss-phase `.lsdsng` drafts; added `docs/design/music-direction.md` and updated §11.2/§11.4 to point to it |
+| 2.0 | 2026-07-08 | Amir Bukhari | Implemented the engine end-to-end against this spec: full scene stack, audio-clock-driven combat, all mandatory accessibility settings, data-driven content pipeline, and an audible battle-timing sonifier, all covered by 67 unit tests and live headless-browser verification. Added §20 Implementation Status documenting what's built vs. genuinely open (content volume, art, real music integration, e2e suite, QA matrix). |
 
 ---
 
@@ -466,3 +467,46 @@ Phases below are sequential from PRD approval; indicative start date assumes sig
   - **Groove** — the shared party ultimate-charge resource, built from accurate streaks.
   - **Sightread** — the healer ability that forecasts upcoming beat/meter information; the implementation of the source concept's "see the music" idea.
   - **Son clave (2–3 / 3–2)** — an Afro-Cuban rhythmic pattern spanning two bars; used here as an accent profile over a base meter, not as a time signature.
+
+---
+
+## 20. Implementation Status (as of 2026-07-08)
+
+This section is a factual snapshot of what exists in the repository against this PRD, kept separate from the spec itself so the spec stays a stable target while this section is expected to go stale and get re-cut periodically. Where this section and earlier sections disagree on what's "done," this section is authoritative for current reality; the numbered sections above remain authoritative for what's *required*.
+
+### 20.1 Built, tested, and verified live
+
+Everything below was checked with `npm run typecheck`, `npm test` (67 unit tests passing), and `npm run build`, and additionally driven end-to-end in headless Chrome (scripted keyboard/pointer input against a running `vite dev` server, with screenshots and console/error inspection) — not just typechecked in isolation.
+
+| Area | Status |
+|---|---|
+| Full scene stack (§10.6) | All 9 scenes are real, not stubs: Boot → AudioGate → MainMenu → Save → Calibration → Map → Battle → Results, plus the SettingsOverlay modal. Verified by playing through the entire loop live. |
+| Audio-clock authority (§10.2) | `TransportClock` wraps `Tone.Transport`; all judgment timing in `BattleScene` is computed from it, never from `setTimeout`/`setInterval`/`requestAnimationFrame`. |
+| Timing model (§8.3) | `JudgmentSystem.judge()` implements the exact four-tier windows, story-mode and assist multipliers; `PhraseTiming` converts a `bar.beat` timing template plus the one-bar count-in into transport seconds. 14 direct unit tests between the two. |
+| Combat engine (§8.2, §8.5) | `CombatController` is a Phaser-free state machine implementing the full turn structure, HP/Focus/Groove/streak resources, and every ability effect type (damage/heal/guard/buff/partyBuff/debuff/interrupt/forecastReveal). 18 unit tests, including two regression tests for a real bug caught live (a full miss was still applying non-damage effects). |
+| Practice mode (§9.3) | Genuinely removes the fail state (party revives at 1 HP) rather than being a cosmetic flag — implemented in `CombatController`, not just stored. |
+| Accessibility settings (§9.3) | Every mandatory day-one setting is functionally wired, not just persisted: game speed actually scales playback tempo (and the audible sonifier stays in sync with it), assisted timing windows actually widen judgment, captions actually toggle the on-screen event log, reduced motion / photosensitivity-safe mode actually change `CalibrationScene`'s flash behavior, tap-key remapping is a real captured rebind used by both `BattleScene` and `CalibrationScene`, and "Recalibrate" re-enters `CalibrationScene`. Two real UI bugs (selection reset on every settings change; a paused scene's menu still reacting to keypresses) were found and fixed via live testing, not caught by unit tests. |
+| Data-driven content pipeline (§10.5) | `ContentRegistry` loads all content via `import.meta.glob` and validates every item against the canonical JSON Schemas through `ContentLoader` (ajv) before a scene ever sees it. 15 unit tests, including cross-reference integrity (encounter → beatmap → enemy telegraphs). |
+| Audible battle timing | `BeatmapSonifier` schedules real Tone.js synth hits for a beatmap's downbeat/telegraph events, looped for the encounter's duration, volume- and game-speed-aware. This is scratch sonification for playtesting feel, not the shipped soundtrack (see §20.2). |
+| Persistence (§10.7) | `SaveManager` (IndexedDB) supports create/load/delete/list; save profiles round-trip correctly (5 unit tests with `fake-indexeddb`). |
+| Analytics (§14) | 11 of the 12 specified events are wired into real gameplay code paths (consent-gated, per `Analytics`). `boss_phase_reached` has no call site yet because no boss encounter exists (§20.2). |
+| Deployment | `.github/workflows/deploy-pages.yml` builds, tests, typechecks, then deploys to GitHub Pages on every push to `master`. |
+
+### 20.2 Explicitly not done — real gaps, not oversights
+
+Enumerated so nobody mistakes "the engine works" for "the game is content-complete." None of these are hidden; each is a concrete, scoped next increment.
+
+1. **Content volume.** Only one encounter exists (`opening_biome_slime_01`, one enemy, one beatmap). The full §8.6 progression (mid biomes 1–3, accent/syncopation teaching) and the three-phase final boss with live meter changes (§8.7) are unauthored. The vertical-slice exit condition in §15 ("one full biome, one boss") is not yet met — what exists is a single playable encounter proving the architecture, not a biome or a boss.
+2. **No visual art in-engine.** `BattleScene` and every other scene are text/shape rendering only. The placeholder "Amir" sprites (§11.4) are not loaded or drawn anywhere; the 320×180 pixel-art pipeline (§11.1, §10.6) is configured (`GameConfig.ts`) but has no actual sprite content exercising it yet.
+3. **Music is placeholder sonification, not the real soundtrack.** `BeatmapSonifier`'s synth blips are a scratch layer for feeling the beat, not shippable audio. The seven `tools/gbmusic/` chiptune drafts (§11.2/§11.4) are not wired into the game at all — they'd need to be rendered from `.lsdsng` to playable audio first (that step was never automated; see `tools/gbmusic/README.md`'s auditioning instructions).
+4. **`tests/e2e/` is empty.** All end-to-end verification this session was manual: ad hoc Puppeteer scripts run against a local dev server, not committed as a repeatable automated suite. Given how much this caught (three real bugs unit tests couldn't see), turning those throwaway scripts into a maintained Playwright/Puppeteer suite under `tests/e2e/` is a high-value next step, not optional polish.
+5. **Enemy/encounter variety.** One enemy type (slime) exists. The luchador/clave-accent enemy family (§8.6) and "The Conductor" final boss (§8.7) are unimplemented.
+6. **Relics and skill unlocks are not mechanically real yet.** `victoryRewards.relicChoices` is displayed on `ResultsScene` but nothing lets a player equip a relic or apply its effect; `SaveProfile.unlockedSkills` exists but nothing ever writes to it, because no boss (the unlock trigger, §8.5) exists yet.
+7. **Targeting is always automatic.** With only one enemy in the game, `CombatController`'s default-target logic (first alive enemy / lowest-HP hero) has never been exercised against a real choice. Multi-enemy encounters will need actual target-selection UI in `BattleScene`, which doesn't exist yet.
+8. **Sightread's forecast is a log line, not a UI lane.** The ability's `forecastReveal` effect logs a message; it doesn't yet draw the "next two measures of telegraph glyphs" UI the PRD (§8.4) describes, which matters more once the final boss's meter changes exist for it to forecast.
+9. **QA matrix (§16) unexecuted.** Verification this session was one headless Chromium instance via automation. The Chrome/Edge/Firefox/Safari desktop matrix, and any real device/hardware pass, have not been run.
+10. **`Enemy`, `HeroClass`, and `CampaignNode` are undocumented-by-PRD internal schemas.** This is a deliberate, documented scope decision (see the rationale comments in `src/data/schemas/`), not scope creep — the PRD's three canonical schemas (beatmap/ability/encounter) intentionally don't cover combat stats or map topology, and something had to for combat to be runnable at all.
+
+### 20.3 Suggested next increment
+
+Per §15's own phasing, the next bounded increment that would satisfy the vertical-slice exit condition is: author one additional biome's worth of encounters (using the `mid_biome_1`/`mid_biome_2_clave` chiptune drafts already in `tools/gbmusic/output/`), author "The Conductor" as a real three-phase boss with hard-authored meter changes in its beatmap, and convert this session's throwaway Puppeteer scripts into a committed `tests/e2e/` suite. Art integration (real sprites replacing text) is a separate, parallel track gated on the art bible (`docs/design/art-bible.md`) still being unwritten.
