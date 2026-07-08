@@ -85,6 +85,29 @@ python3 convert.py \
   --start 30 --duration 30
 ```
 
+## Sourcing all battle tracks from one master
+
+Per PRD §11.2, every v1 battle track is a distinct slice of this same
+~22-minute demo master — not separately composed material. Run the pipeline
+once per stage/boss-phase, picking a different `--start`, and give each
+output a name that identifies the stage it's for, e.g.:
+
+```bash
+python3 convert.py <master.mp3> output/opening_biome.lsdsng     --start   0 --duration 60
+python3 convert.py <master.mp3> output/mid_biome_1.lsdsng       --start  90 --duration 60
+python3 convert.py <master.mp3> output/mid_biome_2_clave.lsdsng --start 240 --duration 45
+python3 convert.py <master.mp3> output/boss_phase_1.lsdsng      --start 480 --duration 40
+python3 convert.py <master.mp3> output/boss_phase_2.lsdsng      --start 520 --duration 40
+python3 convert.py <master.mp3> output/boss_phase_3.lsdsng      --start 560 --duration 40
+```
+
+Which timestamp ranges actually fit each stage's intended feel is a
+music-direction call, not something this tool decides — record the chosen
+mapping in `docs/design/music-direction.md` once picked. Each `.lsdsng`
+still needs its own hand-tuning pass in LSDJ; the final boss's meter changes
+(PRD §8.7) are authored separately in the beatmap JSON regardless of which
+slice underlies them — see PRD §10.5.
+
 ## Auditioning / rendering the result
 
 `.lsdsng` is a project file, not audio — you need LSDJ itself to hear it:
