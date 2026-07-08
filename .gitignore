@@ -3,6 +3,9 @@ dist/
 .DS_Store
 *.log
 .vite/
+test-results/
+playwright-report/
+blob-report/
 
 # Large local-only reference audio, not pushed to keep repo history lean.
 assets/reference/audio-demo/

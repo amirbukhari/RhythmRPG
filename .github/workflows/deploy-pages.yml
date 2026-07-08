@@ -26,6 +26,8 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run typecheck
+      - run: npx playwright install --with-deps chromium firefox
+      - run: npm run test:e2e
       - run: npm run build
         env:
           GITHUB_PAGES: "true"

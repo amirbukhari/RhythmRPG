@@ -14,5 +14,5 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "docs/technical/schemas"]
+  "include": ["src", "tests", "docs/technical/schemas"]
 }
