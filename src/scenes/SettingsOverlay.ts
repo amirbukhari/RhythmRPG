@@ -29,6 +29,19 @@ export class SettingsOverlay extends Phaser.Scene {
   }
 
   create(data: { returnTo: string }): void {
+    // Phaser reuses one persistent Scene instance across stop/relaunch
+    // cycles (create() runs again on the SAME object, it isn't
+    // reconstructed) -- so every field touched after construction must be
+    // reset here, not just declared with an initial value. Without this,
+    // re-opening Settings a second time reused `this.menu` from the first
+    // session, whose underlying Text GameObjects Phaser had already
+    // destroyed on shutdown, and calling setItems() on them threw and left
+    // the scene stuck mid-boot -- softlocking the player, since the
+    // underlying scene's resume() (registered further down) never ran.
+    this.menu = null;
+    this.capturingBinding = false;
+    this.captureHandler = undefined;
+
     this.returnTo = data.returnTo;
     const underlying = this.scene.get(this.returnTo);
     this.scene.pause(this.returnTo);

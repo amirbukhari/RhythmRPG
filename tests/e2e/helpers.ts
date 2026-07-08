@@ -86,6 +86,30 @@ export async function openSettingsFromMap(page: Page): Promise<void> {
   await waitForScene(page, "SettingsOverlay");
 }
 
+/**
+ * Stops SettingsOverlay directly (equivalent to its own "Back" item, which
+ * just calls `this.scene.stop()`) and waits for the underlying scene to
+ * resume. Real bug this guards against: launching SettingsOverlay again
+ * while a previous instance is still open (e.g. a test that never closes
+ * it) stacks a second live instance on top of the first rather than
+ * replacing it, which corrupts the paused/resumed state of the scene
+ * underneath and was observed to eventually crash the browser after enough
+ * accumulated state.
+ *
+ * Must call `.stop()` on the scene's OWN ScenePlugin (`settingsScene.scene`),
+ * not `game.scene.stop(key)` on the global SceneManager -- the same class of
+ * bug already documented on `openSettingsFromMap`'s use of `.launch()`.
+ * Confirmed live: going through the global manager left the underlying
+ * scene's queued `resume()` never processed, hanging every caller forever.
+ */
+export async function closeSettings(page: Page, returnTo: string): Promise<void> {
+  await page.evaluate(() => {
+    const settingsScene = window.__meterfallDebug.game.scene.getScene("SettingsOverlay") as unknown as Phaser.Scene;
+    settingsScene.scene.stop();
+  });
+  await waitForScene(page, returnTo);
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function getBattleSceneState(page: Page): Promise<any> {
   return page.evaluate(() => {

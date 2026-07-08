@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { bootToMap, openSettingsFromMap } from "./helpers";
+import { bootToMap, openSettingsFromMap, closeSettings } from "./helpers";
 
 /**
  * Regression coverage for two real bugs found via manual live testing
@@ -14,7 +14,12 @@ import { bootToMap, openSettingsFromMap } from "./helpers";
  * sleep race masking it either way.
  *
  * One boot for the whole file (serial mode); each test re-launches
- * SettingsOverlay fresh (cheap, not a real boot) so they stay independent.
+ * SettingsOverlay fresh (cheap, not a real boot) so they stay independent --
+ * which requires actually closing it before the next test launches it again
+ * (see closeSettings in helpers.ts). Leaving a previous instance open and
+ * launching a second one on top of it left the underlying scene's
+ * paused/resumed state corrupted and reliably crashed the browser partway
+ * through the next test.
  */
 test.describe.configure({ mode: "serial" });
 
@@ -48,6 +53,8 @@ test.describe("settings", () => {
     expect(settings.gameSpeed).toBe(0.7);
     expect(settings.assistedTimingWindows).toBe(true);
     expect(settings.reducedMotion).toBe(true);
+
+    await closeSettings(page, "MapScene");
   });
 
   test("remapping the tap key persists and is honored in battle", async () => {

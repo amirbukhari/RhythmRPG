@@ -36,6 +36,18 @@ export class TextMenu {
    * changing the selected settings item mid keyboard-navigation.
    */
   private pointerHasMoved = false;
+  /**
+   * Phaser's shared keyboard event queue can be reprocessed by a scene's
+   * KeyboardPlugin more than once for the exact same native event: every
+   * queued keydown synchronously re-triggers a full pass over the queue,
+   * and that pass isn't guaranteed to happen only once per event when
+   * further keydowns arrive before the queue is flushed at end-of-frame
+   * (confirmed live: rapid, unspaced automated keypresses reliably
+   * double- and triple-fired the same physical key). Tracking the exact
+   * native Event objects we've already acted on makes each one idempotent
+   * regardless of how many times Phaser hands it to us.
+   */
+  private handledEvents = new WeakSet<KeyboardEvent>();
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -47,6 +59,8 @@ export class TextMenu {
     this.setItems(items);
 
     this.keyHandler = (event: KeyboardEvent) => {
+      if (this.handledEvents.has(event)) return;
+      this.handledEvents.add(event);
       // Belt-and-suspenders: a paused scene's keyboard listeners can still
       // fire in Phaser, so every menu independently refuses to act unless
       // its own scene is the active one.
