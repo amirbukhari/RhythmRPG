@@ -14,18 +14,24 @@ import {
 
 describe("ContentRegistry", () => {
   it("loads and validates all shipped ability files", () => {
-    expect(abilities.size).toBe(12);
+    expect(abilities.size).toBe(16);
   });
 
-  it("has exactly 3 abilities per role, matching PRD §8.4", () => {
+  it("has the 3 core PRD §8.4 abilities plus 1 tier-2 unlock ability per role", () => {
     for (const role of ["warrior", "tank", "mage", "healer"] as const) {
-      expect(abilitiesForRole(role)).toHaveLength(3);
+      expect(abilitiesForRole(role)).toHaveLength(4);
     }
   });
 
   it("includes the canonical healer_sightread forecast ability", () => {
     const sightread = abilitiesForRole("healer").find((a) => a.abilityId === "healer_sightread");
     expect(sightread?.effects.some((e) => e.type === "forecastReveal")).toBe(true);
+  });
+
+  it("gives every role a tier-2 ability, keyed to match the boss-clear unlock id", () => {
+    for (const role of ["warrior", "tank", "mage", "healer"] as const) {
+      expect(abilities.has(`${role}_tier2`)).toBe(true);
+    }
   });
 
   it("loads the opening biome beatmap and encounter", () => {

@@ -1,0 +1,12 @@
+{
+  "abilityId": "mage_tier2",
+  "role": "mage",
+  "focusCost": 4,
+  "phraseLengthBars": 1,
+  "inputPattern": ["tap", "tap", "tap", "tap"],
+  "timingTemplate": ["1.1", "1.2", "1.3", "1.4"],
+  "effects": [
+    { "type": "damage", "value": 22 },
+    { "type": "debuff", "stat": "accuracy", "value": -0.25, "durationRounds": 2 }
+  ]
+}

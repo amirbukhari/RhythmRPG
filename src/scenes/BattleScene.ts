@@ -179,14 +179,18 @@ export class BattleScene extends Phaser.Scene {
     const heroId = this.activeHeroId;
     if (!heroId) return; // enemy resolution already advanced the round internally
     this.stage = "command";
-    this.activeAbilityIds = getHeroClass(heroId).abilityIds;
+    // Base kit (PRD §8.4) plus the tier-2 unlock ability once the boss that
+    // grants it has been cleared (PRD §8.5) -- see GameContext.activeProfile.unlockedSkills.
+    const tier2Id = `${heroId}_tier2`;
+    const unlocked = GameContext.activeProfile?.unlockedSkills.includes(tier2Id) ?? false;
+    this.activeAbilityIds = [...getHeroClass(heroId).abilityIds, ...(unlocked ? [tier2Id] : [])];
     const labels = this.activeAbilityIds.map((id, i) => `${i + 1}: ${getAbility(id).abilityId} (${getAbility(id).focusCost}f)`).join("  ");
     this.promptText.setText(`${heroId.toUpperCase()}'s turn — choose an ability\n${labels}`);
   }
 
   private onKeyDown(event: KeyboardEvent): void {
     if (this.stage === "command") {
-      const index = ["1", "2", "3"].indexOf(event.key);
+      const index = ["1", "2", "3", "4"].indexOf(event.key);
       if (index === -1 || index >= this.activeAbilityIds.length) return;
       this.selectAbility(this.activeAbilityIds[index]);
     } else if (this.stage === "select-target") {

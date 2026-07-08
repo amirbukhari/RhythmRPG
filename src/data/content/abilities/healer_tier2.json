@@ -1,0 +1,12 @@
+{
+  "abilityId": "healer_tier2",
+  "role": "healer",
+  "focusCost": 4,
+  "phraseLengthBars": 2,
+  "inputPattern": ["tap", "tap", "hold"],
+  "timingTemplate": ["1.1", "1.3", "2.1"],
+  "effects": [
+    { "type": "heal", "value": 35 },
+    { "type": "partyBuff", "stat": "accuracy", "value": 0.15, "durationRounds": 2 }
+  ]
+}

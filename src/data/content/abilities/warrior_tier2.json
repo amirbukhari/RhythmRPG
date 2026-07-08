@@ -1,0 +1,9 @@
+{
+  "abilityId": "warrior_tier2",
+  "role": "warrior",
+  "focusCost": 4,
+  "phraseLengthBars": 2,
+  "inputPattern": ["tap", "tap", "tap", "tap", "tap", "hold"],
+  "timingTemplate": ["1.1", "1.2", "1.3", "1.4", "2.1", "2.3"],
+  "effects": [{ "type": "damage", "value": 50 }]
+}

@@ -194,6 +194,8 @@ Combat is strictly turn-based (not ATB, not real-time):
 
 **Sightread** (healer) is the canonical realization of the source concept's "see the music" idea: it reveals the next two measures of enemy telegraph glyphs, syncopation markers, and upcoming meter changes. Without it, players still see the current phrase lane and barline — there is no scenario where the baseline beat UI is hidden.
 
+**Tier-2 unlock ability.** Resolving §8.5's "each hero unlocks one new skill after each biome boss": each role gets a fourth ability (Warrior: a demanding 6-step two-bar combo for higher damage; Tank: a party-wide guard; Mage: a combined damage+debuff strike; Healer: a large heal plus party accuracy buff), granted once the run's boss node is cleared. This extends the v1 kit table above from 3 to 4 abilities per role — a deliberate decision, not an accident of implementation.
+
 ### 8.5 Resources and progression
 
 - Each hero has HP and Focus; Focus is earned by accurate play and spent on advanced skills.

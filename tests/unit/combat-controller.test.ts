@@ -165,4 +165,13 @@ describe("CombatController", () => {
     resolveHeroPerformance(normal, ["perfect", "perfect", "perfect"]);
     expect(normal.outcome).toBe("defeat");
   });
+
+  it("resolves a tier-2 unlock ability through the real engine (tank_tier2 grants party-wide guard)", () => {
+    state.heroes.find((h) => h.heroId === "tank")!.focus = 3; // tank_tier2 costs 3
+    queueHeroAction(state, "tank", "tank_tier2");
+    resolveHeroPerformance(state, ["perfect", "perfect"]);
+    for (const hero of state.heroes) {
+      expect(hero.statusEffects).toContainEqual(expect.objectContaining({ stat: "guard", value: 0.5, sourceAbilityId: "tank_tier2" }));
+    }
+  });
 });

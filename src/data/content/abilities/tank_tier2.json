@@ -1,0 +1,9 @@
+{
+  "abilityId": "tank_tier2",
+  "role": "tank",
+  "focusCost": 3,
+  "phraseLengthBars": 2,
+  "inputPattern": ["hold", "hold"],
+  "timingTemplate": ["1.1", "2.1"],
+  "effects": [{ "type": "partyBuff", "stat": "guard", "value": 0.5, "durationRounds": 2 }]
+}
