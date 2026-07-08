@@ -48,7 +48,7 @@ def get_or_create_silent_chain(song):
     return chain
 
 
-def convert_midi_to_lsdsng(midi_path, output_path, template_path="drumbeat.lsdsng", forced_mapping=None):
+def convert_midi_to_lsdsng(midi_path, output_path, template_path="drumbeat.lsdsng", forced_mapping=None, project_name=None):
     """
     Converts a MIDI file into an LSDJ project file.
 
@@ -125,7 +125,8 @@ def convert_midi_to_lsdsng(midi_path, output_path, template_path="drumbeat.lsdsn
 
         print(f"Auto-mapped MIDI channels to LSDJ channels: {mapping}")
 
-    proj_name = os.path.basename(midi_path).split('.')[0].upper()[:8]
+    source = project_name if project_name else os.path.basename(midi_path).split('.')[0]
+    proj_name = source.upper()[:8]
     proj.name = proj_name.ljust(8, '\0')
     print(f"Setting project name to: {proj.name}")
 

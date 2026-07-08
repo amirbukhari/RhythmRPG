@@ -6,7 +6,7 @@
 |---|---|
 | Document title | Project Meterfall — Browser Rhythm RPG PRD |
 | Codename | Project Meterfall |
-| Status | Draft v1.3 — pending stakeholder sign-off |
+| Status | Draft v1.4 — pending stakeholder sign-off |
 | Owner | Amir Bukhari |
 | Author | Amir Bukhari (compiled from concept notes and deep research) |
 | Created | 2026-07-08 |
@@ -24,6 +24,7 @@
 | 1.1 | 2026-07-08 | Amir Bukhari | Added §11.2 gbmusic tooling note and §11.4 current asset inventory (placeholder sprites, reference audio, example chiptune output) |
 | 1.2 | 2026-07-08 | Amir Bukhari | Resolved §11.4 action item: confirmed the placeholder hero character and demo-track-via-gbmusic chiptune direction carry forward as the production basis, not disposable reference; updated §11.1/§11.2 accordingly |
 | 1.3 | 2026-07-08 | Amir Bukhari | Resolved music-sourcing question: all v1 battle tracks are sliced from the single demo master (one gbmusic run + hand-tuning pass per stage/boss-phase), not separately composed; updated §11.2 and §11.4 |
+| 1.4 | 2026-07-08 | Amir Bukhari | Made the actual slice-selection decision (algorithmic, ascending complexity per stage) and generated all 7 stage/boss-phase `.lsdsng` drafts; added `docs/design/music-direction.md` and updated §11.2/§11.4 to point to it |
 
 ---
 
@@ -331,7 +332,9 @@ Each battle track ships with: full mix preview, runtime stems (drums, bass, harm
 
 **Carried-forward basis:** the demo audio master (§11.4) and its Game Boy chiptune derivative are the music-direction basis, not disposable reference. [`tools/gbmusic/`](../../tools/gbmusic/README.md) — which stem-separates a mixed track into vocals/bass/drums/other and maps them onto the Game Boy's four hardware channels (pulse/pulse/wave/noise) — is the intended production path for turning this track into authentic Game Boy chiptune material: run the pipeline, then hand-tune the resulting `.lsdsng` in LSDJ, then render/record real Game Boy audio as the shippable stem set per the spec above. The DAW-authored-stems requirement still stands for tracks that don't originate from this pipeline; this is the path for tracks that do.
 
-**Track sourcing decision:** all v1 battle tracks are sliced from this single ~22-minute demo master (`--start`/`--duration` per segment in `tools/gbmusic/convert.py`), not composed as separate new material per biome. Each stage in the §8.6 encounter progression and each final-boss phase (§8.7) gets its own slice, its own independent `gbmusic` run, and its own hand-tuning pass — they are distinct `.lsdsng` projects/renders even though they share one source recording. Meter changes for the final boss are still hand-authored in the beatmap JSON per §10.5/§8.7 regardless of which audio slice underlies them — slicing determines the audio content, not the authored meter/event data layered on top of it. Selecting which timestamp ranges of the master map to which stage is a music-direction task, not a fixed product decision, and should be recorded in `docs/design/music-direction.md` once chosen.
+**Track sourcing decision:** all v1 battle tracks are sliced from this single ~22-minute demo master (`--start`/`--duration` per segment in `tools/gbmusic/convert.py`), not composed as separate new material per biome. Each stage in the §8.6 encounter progression and each final-boss phase (§8.7) gets its own slice, its own independent `gbmusic` run, and its own hand-tuning pass — they are distinct `.lsdsng` projects/renders even though they share one source recording. Meter changes for the final boss are still hand-authored in the beatmap JSON per §10.5/§8.7 regardless of which audio slice underlies them — slicing determines the audio content, not the authored meter/event data layered on top of it.
+
+Which timestamp ranges map to which stage is recorded in [`docs/design/music-direction.md`](../design/music-direction.md): ranges were chosen algorithmically (rhythmic-density/energy scoring, ascending complexity to match the §8.6 difficulty curve), not by ear, so treat the mapping as a starting point pending a human listening pass, not a locked decision. All seven `.lsdsng` drafts exist at `tools/gbmusic/output/{opening_biome,mid_biome_1,mid_biome_2_clave,mid_biome_3_syncopated,boss_phase_1,boss_phase_2,boss_phase_3}.lsdsng`.
 
 ### 11.3 UX rules
 
@@ -347,6 +350,7 @@ The battle UI must always show: current measure and beat, phrase lane for the ac
 | 2 animation reference GIFs (crouch, dash-to-run) | `assets/reference/animation-gifs/` | Carries forward as animation-timing reference for the same character; superseded by the spritesheets above wherever they overlap. |
 | Demo audio master ("AmirsMaster...WithBabyVocals.mp3", ~22 min, kept local/gitignored — see `assets/reference/README.md`) | `assets/reference/audio-demo/` | Carries forward as the sole source track for all v1 battle music. Not itself a battle-track deliverable (too long, not stem/tempo/meter-mapped) — every stage/boss-phase track is a distinct slice of this master run through `tools/gbmusic/` (§11.2), not separately composed material. |
 | Example `.lsdsng` chiptune draft (30–60s clip of the demo track, run through `tools/gbmusic/`) | `tools/gbmusic/output/amirs_master_clip_30-60s.lsdsng` | Carries forward as the first working proof of the music-direction pipeline. Machine-transcribed and untuned (see limitations in `tools/gbmusic/README.md`) — needs hand-tuning in LSDJ before it's a candidate shippable stem, but it is the direction, not a discardable prototype. |
+| 7 stage/boss-phase `.lsdsng` drafts, one per row of the table in `docs/design/music-direction.md` | `tools/gbmusic/output/{opening_biome,mid_biome_1,mid_biome_2_clave,mid_biome_3_syncopated,boss_phase_1,boss_phase_2,boss_phase_3}.lsdsng` | The full v1 battle-track set, sliced and converted per the track-sourcing decision above. Same caveats as the example draft: machine-transcribed, untuned, not yet auditioned by a human, not shippable as-is. |
 
 Action item for pre-production exit (§15): the art bible and music direction docs (`docs/design/`, currently stubs) should be written as spec-conformant extensions of this carried-forward material — i.e., document how the "Amir" character and the chiptune-via-`gbmusic` approach get taken to shippable quality, not propose alternatives to them.
 

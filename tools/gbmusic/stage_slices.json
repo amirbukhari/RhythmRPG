@@ -1,0 +1,37 @@
+{
+  "opening_biome": {
+    "start": 280.0,
+    "duration": 75,
+    "complexity_score": 0.187
+  },
+  "mid_biome_1": {
+    "start": 985.0,
+    "duration": 60,
+    "complexity_score": 0.199
+  },
+  "mid_biome_2_clave": {
+    "start": 715.0,
+    "duration": 55,
+    "complexity_score": 0.211
+  },
+  "mid_biome_3_syncopated": {
+    "start": 485.0,
+    "duration": 55,
+    "complexity_score": 0.215
+  },
+  "boss_phase_1": {
+    "start": 1200.0,
+    "duration": 45,
+    "complexity_score": 0.22
+  },
+  "boss_phase_2": {
+    "start": 180.0,
+    "duration": 45,
+    "complexity_score": 0.227
+  },
+  "boss_phase_3": {
+    "start": 865.0,
+    "duration": 50,
+    "complexity_score": 0.237
+  }
+}

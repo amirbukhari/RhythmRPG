@@ -81,6 +81,7 @@ def main():
         args.output_lsdsng,
         template_path=args.template,
         forced_mapping=CHANNEL_MAPPING,
+        project_name=os.path.splitext(os.path.basename(args.output_lsdsng))[0],
     )
     print(f"\nDone: {args.output_lsdsng}")
     print(meta)
