@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+.vite/
+
+# Large local-only reference audio, not pushed to keep repo history lean.
+assets/reference/audio-demo/

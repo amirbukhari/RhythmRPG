@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://meterfall/schemas/encounter.schema.json",
+  "title": "Encounter",
+  "description": "Authored battle definition binding an enemy wave to a track/beatmap, with an optional rhythmic accent profile (e.g. clave) layered over the beatmap's true meter.",
+  "type": "object",
+  "required": ["encounterId", "trackId", "enemyWave", "victoryRewards"],
+  "additionalProperties": false,
+  "properties": {
+    "encounterId": { "type": "string" },
+    "trackId": { "type": "string", "description": "Foreign key into a beatmap.schema.json document." },
+    "enemyWave": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" }
+    },
+    "accentProfile": {
+      "type": ["string", "null"],
+      "description": "Rhythmic accent pattern (e.g. son_clave_2_3) layered over the beatmap's meterSequence. Never used to represent an actual time signature.",
+      "examples": ["son_clave_2_3", "son_clave_3_2", null]
+    },
+    "victoryRewards": {
+      "type": "object",
+      "required": ["xp", "currency"],
+      "additionalProperties": false,
+      "properties": {
+        "xp": { "type": "integer", "minimum": 0 },
+        "currency": { "type": "integer", "minimum": 0 },
+        "relicChoices": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://meterfall/schemas/ability.schema.json",
+  "title": "Ability",
+  "description": "Authored hero ability: role binding, resource cost, and the input phrase required to execute it.",
+  "type": "object",
+  "required": ["abilityId", "role", "focusCost", "phraseLengthBars", "inputPattern", "timingTemplate", "effects"],
+  "additionalProperties": false,
+  "properties": {
+    "abilityId": { "type": "string" },
+    "role": { "type": "string", "enum": ["warrior", "tank", "mage", "healer"] },
+    "focusCost": { "type": "integer", "minimum": 0 },
+    "phraseLengthBars": { "type": "integer", "minimum": 1, "maximum": 2 },
+    "inputPattern": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["tap", "hold", "release"] },
+      "minItems": 1
+    },
+    "timingTemplate": {
+      "type": "array",
+      "description": "One entry per inputPattern step, formatted as \"bar.beat\" relative to phrase start.",
+      "items": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$" }
+    },
+    "effects": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["damage", "heal", "buff", "debuff", "guard", "interrupt", "forecastReveal", "partyBuff"]
+          },
+          "stat": { "type": "string" },
+          "value": { "type": "number" },
+          "durationRounds": { "type": "integer", "minimum": 0 },
+          "bars": { "type": "integer", "minimum": 1, "description": "Used by forecastReveal to specify how many bars ahead are revealed." }
+        },
+        "additionalProperties": true
+      }
+    }
+  }
+}
