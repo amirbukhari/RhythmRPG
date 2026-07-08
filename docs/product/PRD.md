@@ -6,7 +6,7 @@
 |---|---|
 | Document title | Project Meterfall — Browser Rhythm RPG PRD |
 | Codename | Project Meterfall |
-| Status | Draft v1.0 — pending stakeholder sign-off |
+| Status | Draft v1.1 — pending stakeholder sign-off |
 | Owner | Amir Bukhari |
 | Author | Amir Bukhari (compiled from concept notes and deep research) |
 | Created | 2026-07-08 |
@@ -21,6 +21,7 @@
 |---|---|---|---|
 | 0.1 | 2026-07-08 | Amir Bukhari | Initial deep research synthesis from concept notes |
 | 1.0 | 2026-07-08 | Amir Bukhari | Restructured into enterprise PRD format; added KPIs, risk register, RACI, roadmap, schemas |
+| 1.1 | 2026-07-08 | Amir Bukhari | Added §11.2 gbmusic tooling note and §11.4 current asset inventory (placeholder sprites, reference audio, example chiptune output) |
 
 ---
 
@@ -329,6 +330,19 @@ Each battle track ships with: full mix preview, runtime stems (drums, bass, harm
 ### 11.3 UX rules
 
 The battle UI must always show: current measure and beat, phrase lane for the active action, next-downbeat indicator, enemy intent iconography, and clearly separated HP / Focus / Groove values. Critical information must never rely on color alone.
+
+### 11.4 Current asset inventory (as of 2026-07-08)
+
+The repository already contains pre-PRD reference material and one pipeline output. None of it satisfies §11.1/§11.2 spec and none of it counts toward the vertical-slice exit condition (§15) — it is listed here so the status is explicit rather than assumed.
+
+| Asset | Location | Status |
+|---|---|---|
+| 7 placeholder hero spritesheets ("Amir" run/crouch/dash/stand animations) | `assets/sprites/heroes/placeholder/` | Reference only. Predates the art bible; does not conform to the 48×48 combat-sprite / master-palette spec in §11.1. Useful for animation-timing reference, not usable as a final hero sprite. |
+| 2 animation reference GIFs (crouch, dash-to-run) | `assets/reference/animation-gifs/` | Reference only. Same source as the placeholder spritesheets above; superseded once real hero art is authored. |
+| Demo audio master ("AmirsMaster...WithBabyVocals.mp3", ~22 min, kept local/gitignored — see `assets/reference/README.md`) | `assets/reference/audio-demo/` | Personal reference track, not a battle-track composition. Useful only as a tone/mood reference for the composer brief in §11.2; does not meet the stem/tempo-map/meter-map delivery spec. |
+| Example `.lsdsng` chiptune draft (30–60s clip of the demo track, run through `tools/gbmusic/`) | `tools/gbmusic/output/amirs_master_clip_30-60s.lsdsng` | Proof-of-concept output of the pipeline in §11.2's tooling note. Machine-transcribed and untuned (see pipeline limitations in `tools/gbmusic/README.md`); requires manual LSDJ editing before it could inform sound direction, and is not a candidate shippable stem. |
+
+Action item for pre-production exit (§15): the art bible and music direction docs (`docs/design/`, currently stubs) should explicitly state whether any of the above material carries forward as style reference, or is fully superseded once real art/audio production starts.
 
 ---
 
