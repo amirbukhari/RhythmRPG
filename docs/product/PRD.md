@@ -324,6 +324,8 @@ All save data lives in **IndexedDB**: player settings, calibration offsets, camp
 
 Each battle track ships with: full mix preview, runtime stems (drums, bass, harmony, lead, FX), tempo map, meter map, bar markers, an authoring-only click reference (never shipped to players), and a battle SFX pack. Music is authored externally in a DAW and exported as bar-aligned stems.
 
+**Tooling note:** [`tools/gbmusic/`](../../tools/gbmusic/README.md) converts a mixed reference track into a Game Boy (LSDJ) chiptune project — stem-separating into vocals/bass/drums/other and mapping them onto the Game Boy's four hardware channels (pulse/pulse/wave/noise). This is a prototyping aid for exploring an authentic 8-bit sound direction against real hardware constraints, not a replacement for the DAW-authored stem pipeline above; output is a hand-tunable LSDJ draft, not a shippable asset.
+
 ### 11.3 UX rules
 
 The battle UI must always show: current measure and beat, phrase lane for the active action, next-downbeat indicator, enemy intent iconography, and clearly separated HP / Focus / Groove values. Critical information must never rely on color alone.

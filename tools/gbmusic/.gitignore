@@ -1,0 +1,17 @@
+# LSDJ ROM/SAV files are not redistributable (see README) -- never commit these.
+*.gb
+*.gb.ram
+*.sav
+*.sav.backup
+
+# Generated intermediates
+demucs_out/
+*.wav
+*.mid
+__pycache__/
+*.pyc
+.venv/
+
+# Keep vendored template + any curated example outputs.
+!templates/*.lsdsng
+!output/*.lsdsng

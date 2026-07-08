@@ -1,0 +1,4 @@
+demucs==4.0.1
+basic-pitch[onnx]==0.4.0
+librosa
+mido

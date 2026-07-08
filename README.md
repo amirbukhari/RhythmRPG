@@ -12,6 +12,7 @@ naming status.
 - **[Product Requirements Document](docs/product/PRD.md)** — the source of truth for scope, requirements, architecture, and release gates.
 - [Deep research report](docs/research/deep-research-report.md) — rationale and citations behind the PRD's design decisions.
 - [Data schemas](docs/technical/schemas/) — beatmap, ability, and encounter JSON schemas, mirrored as TypeScript types in `src/data/schemas/`.
+- [gbmusic pipeline](tools/gbmusic/README.md) — converts a mixed audio track into a Game Boy (LSDJ) chiptune project, used to prototype the game's music direction against real Game Boy hardware constraints.
 
 ## Repository structure
 
@@ -45,6 +46,9 @@ assets/
 tests/
   unit/         unit tests (judgment windows, schema validation, save manager)
   e2e/          end-to-end browser tests (audio gate, calibration persistence, boss meter transitions)
+
+tools/
+  gbmusic/      audio -> Game Boy (LSDJ) chiptune conversion pipeline (Python, separate from the game's toolchain)
 ```
 
 ## Getting started
