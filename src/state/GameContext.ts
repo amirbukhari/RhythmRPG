@@ -7,6 +7,7 @@ export interface BattleResult {
   xp: number;
   currency: number;
   relicChoices: string[];
+  unlockedSkills: string[];
 }
 
 /**

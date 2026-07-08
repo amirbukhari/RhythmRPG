@@ -1,10 +1,13 @@
 import Phaser from "phaser";
 import { GameContext } from "../state/GameContext";
+import { RELICS } from "../systems/progression/Relics";
 import { BASE_WIDTH, BASE_HEIGHT } from "../config/GameConfig";
 import { TextMenu } from "../ui/components/TextMenu";
 
 /** XP, relic, and unlock summary after a battle. See PRD §8.5. */
 export class ResultsScene extends Phaser.Scene {
+  private menu: TextMenu | null = null;
+
   constructor() {
     super("ResultsScene");
   }
@@ -20,16 +23,49 @@ export class ResultsScene extends Phaser.Scene {
 
     const headline = result.outcome === "victory" ? "VICTORY" : "DEFEAT";
     const color = result.outcome === "victory" ? "#ffe066" : "#ff5555";
-    this.add.text(BASE_WIDTH / 2, 40, headline, { fontFamily: "monospace", fontSize: "16px", color }).setOrigin(0.5);
+    this.add.text(BASE_WIDTH / 2, 30, headline, { fontFamily: "monospace", fontSize: "16px", color }).setOrigin(0.5);
 
-    const detail =
-      result.outcome === "victory"
-        ? `+${result.xp} XP   +${result.currency} Gold${result.relicChoices.length ? `\nRelic choices: ${result.relicChoices.join(", ")}` : ""}`
-        : "The party was defeated. No rewards this run.";
+    const lines: string[] = [];
+    if (result.outcome === "victory") {
+      lines.push(`+${result.xp} XP   +${result.currency} Gold`);
+      if (result.unlockedSkills.length > 0) {
+        lines.push(`Unlocked: ${result.unlockedSkills.join(", ")}`);
+      }
+    } else {
+      lines.push("The party was defeated. No rewards this run.");
+    }
     this.add
-      .text(BASE_WIDTH / 2, 70, detail, { fontFamily: "monospace", fontSize: "8px", color: "#ffffff", align: "center", wordWrap: { width: BASE_WIDTH - 20 } })
+      .text(BASE_WIDTH / 2, 55, lines.join("\n"), {
+        fontFamily: "monospace",
+        fontSize: "8px",
+        color: "#ffffff",
+        align: "center",
+        wordWrap: { width: BASE_WIDTH - 20 },
+      })
       .setOrigin(0.5, 0);
 
-    new TextMenu(this, BASE_WIDTH / 2 - 30, BASE_HEIGHT - 40, [{ label: "Continue", onSelect: () => this.scene.start("MapScene") }]);
+    this.renderMenu(result.relicChoices);
+  }
+
+  private renderMenu(relicChoices: string[]): void {
+    const items =
+      relicChoices.length > 0
+        ? relicChoices.map((relicId) => ({
+            label: `Take: ${RELICS[relicId]?.name ?? relicId} -- ${RELICS[relicId]?.description ?? ""}`,
+            onSelect: () => this.chooseRelic(relicId),
+          }))
+        : [{ label: "Continue", onSelect: () => this.scene.start("MapScene") }];
+
+    if (this.menu) this.menu.setItems(items);
+    else this.menu = new TextMenu(this, 16, BASE_HEIGHT - 60, items, 14);
+  }
+
+  private chooseRelic(relicId: string): void {
+    const profile = GameContext.activeProfile;
+    if (profile && !profile.relicInventory.includes(relicId)) {
+      profile.relicInventory.push(relicId);
+      void GameContext.persistActiveProfile();
+    }
+    this.renderMenu([]); // collapse to a single "Continue" once a relic is chosen
   }
 }

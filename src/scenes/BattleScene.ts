@@ -8,6 +8,7 @@ import { BeatmapSonifier } from "../systems/audio/BeatmapSonifier";
 import { timingTemplateToSeconds } from "../systems/combat/PhraseTiming";
 import { positionAtSeconds, nextBarBoundarySeconds, meterAtBar } from "../systems/combat/MeterSequence";
 import { upcomingEvents } from "../systems/combat/Forecast";
+import { applyRelics } from "../systems/progression/Relics";
 import { judge, type JudgmentTier } from "../systems/combat/JudgmentSystem";
 import { BASE_WIDTH } from "../config/GameConfig";
 import type { Beatmap } from "../data/schemas/Beatmap";
@@ -78,6 +79,7 @@ export class BattleScene extends Phaser.Scene {
 
     const settings = GameContext.activeProfile.settings;
     this.combat = createCombat(heroes, encounter, { practiceMode: settings.practiceMode });
+    applyRelics(this.combat, GameContext.activeProfile.relicInventory);
     this.beatmap = beatmap;
     this.isBossFight = encounter.encounterId.startsWith("boss_");
     this.bossPhases = getBossPhaseConfig(encounter.encounterId)?.phases ?? [];
@@ -385,6 +387,8 @@ export class BattleScene extends Phaser.Scene {
     const encounter = getEncounter(encounterId);
     const victory = this.combat.outcome === "victory";
 
+    let newlyUnlockedSkills: string[] = [];
+
     if (victory) {
       profile.campaignProgress.xp += encounter.victoryRewards.xp;
       profile.campaignProgress.currency += encounter.victoryRewards.currency;
@@ -397,18 +401,40 @@ export class BattleScene extends Phaser.Scene {
         }
         const node = getCampaignNode(nodeId);
         if (node.next.length > 0) profile.campaignProgress.currentNodeId = node.next[0];
+
+        // PRD §8.5: "each hero unlocks one new skill after each biome boss."
+        // The v1 kit table (PRD §8.4) only authors 3 abilities per role with
+        // no tier-2 ability content yet, so this records the *unlock
+        // trigger and persistence* honestly -- a real, working mechanism --
+        // without inventing unauthorized new ability content to attach it
+        // to. See PRD §20 for the content-authoring follow-up.
+        if (node.type === "boss") {
+          for (const hero of this.combat.heroes) {
+            const skillId = `${hero.classId}_tier2`;
+            if (!profile.unlockedSkills.includes(skillId)) {
+              profile.unlockedSkills.push(skillId);
+              newlyUnlockedSkills.push(skillId);
+            }
+          }
+        }
       }
       GameContext.analytics.track("encounter_cleared", { encounterId });
     } else {
       GameContext.analytics.track("encounter_failed", { encounterId });
     }
 
+    // Don't re-offer a relic the party already has (PRD §8.5: one relic slot per hero).
+    const relicChoices = victory
+      ? (encounter.victoryRewards.relicChoices ?? []).filter((id) => !profile.relicInventory.includes(id))
+      : [];
+
     GameContext.lastBattleResult = {
       outcome: victory ? "victory" : "defeat",
       encounterId,
       xp: victory ? encounter.victoryRewards.xp : 0,
       currency: victory ? encounter.victoryRewards.currency : 0,
-      relicChoices: victory ? encounter.victoryRewards.relicChoices ?? [] : [],
+      relicChoices,
+      unlockedSkills: newlyUnlockedSkills,
     };
     GameContext.pendingEncounterId = null;
     GameContext.pendingNodeId = null;
