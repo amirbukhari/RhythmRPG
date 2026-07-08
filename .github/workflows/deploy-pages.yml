@@ -16,7 +16,13 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # Pinned (not ubuntu-latest): @playwright/test is pinned to 1.44.1 for
+    # local Node 20.5.1 compatibility (see package.json), and that Playwright
+    # version predates official Ubuntu 24.04 support, which is what
+    # ubuntu-latest now resolves to -- `playwright install --with-deps` fails
+    # outright on it. ubuntu-22.04 is a version this Playwright release fully
+    # supports.
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -37,7 +43,7 @@ jobs:
 
   deploy:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
