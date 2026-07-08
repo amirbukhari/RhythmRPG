@@ -29,8 +29,8 @@ not whether scripted input can win a rhythm minigame.
 
 ## What this suite already caught
 
-Three real bugs were found and fixed using this exact technique before the
-suite existed (as ad hoc scripts) — now permanent regression coverage:
+Real bugs found and fixed using this exact technique — now permanent
+regression coverage:
 
 1. `TextMenu` reset keyboard selection to the top item every time its labels
    were rebuilt, so sequential settings toggles silently hit the wrong item
@@ -41,16 +41,36 @@ suite existed (as ad hoc scripts) — now permanent regression coverage:
 3. Mixing Tone.js's AudioContext-time scheduled-callback parameter with
    Transport-position time silently broke the second boss phase transition
    (`boss-phases.spec.ts`).
+4. `TextMenu` could double- or triple-fire a single physical keypress:
+   Phaser's shared keyboard queue gets reprocessed by a scene's
+   `KeyboardPlugin` on every subsequent keydown before the queue flushes at
+   end-of-frame, and Phaser's own consecutive-only dedup guard doesn't cover
+   that case. Only reachable with fast, unspaced input — which is exactly
+   what automated `press()` calls do — fixed with a `WeakSet` of
+   already-handled native `Event` objects (`settings.spec.ts`).
+5. Re-opening `SettingsOverlay` a second time reused a stale menu left over
+   from the first session, whose GameObjects Phaser had already destroyed on
+   shutdown, threw, and permanently soft-locked the player behind a paused
+   map — Phaser reuses one persistent Scene instance across stop/relaunch
+   cycles, so state set after construction has to be explicitly reset in
+   `create()` (`settings.spec.ts`).
+
+Items 4 and 5 were originally misdiagnosed as sandbox-environment flakiness
+(browser crashes, inconsistent failures) before being root-caused as real,
+deterministic product bugs — see git history on this file and on
+`settings.spec.ts` for the investigation. Don't reach for "environment
+flakiness" as an explanation without first confirming a failure is genuinely
+non-deterministic across many runs of the *exact same* input sequence in
+isolation, the way items 4 and 5 turned out not to be.
 
 ## Known environment caveat
 
-Running many sequential headless-WebGL browser sessions causes occasional
-browser crashes / resource exhaustion (`Target page, context or browser has
-been closed`) unrelated to the game's own code — confirmed by extensive
-isolation testing (varying worker count, boot redundancy, dev vs. production
-build, raw Playwright API vs. the test runner). `playwright.config.mjs` pins
-`workers: 1` to minimize this. Chromium is reliably stable serially; when it
-does fail, a re-run typically passes.
+Running many sequential headless-WebGL browser sessions can still cause
+occasional, genuinely non-deterministic browser crashes / resource
+exhaustion (`Target page, context or browser has been closed`) unrelated to
+the game's own code. `playwright.config.mjs` pins `workers: 1` to minimize
+this. Chromium is reliably stable serially; when it does fail, a re-run
+typically passes.
 
 **Firefox is not just flakier — it currently fails outright.** Every Firefox
 spec fails in `beforeAll`/boot (not an intermittent single-test flake) both
