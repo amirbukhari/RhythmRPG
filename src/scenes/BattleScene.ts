@@ -7,6 +7,7 @@ import { TransportClock } from "../systems/audio/TransportClock";
 import { BeatmapSonifier } from "../systems/audio/BeatmapSonifier";
 import { timingTemplateToSeconds } from "../systems/combat/PhraseTiming";
 import { positionAtSeconds, nextBarBoundarySeconds, meterAtBar } from "../systems/combat/MeterSequence";
+import { upcomingEvents } from "../systems/combat/Forecast";
 import { judge, type JudgmentTier } from "../systems/combat/JudgmentSystem";
 import { BASE_WIDTH } from "../config/GameConfig";
 import type { Beatmap } from "../data/schemas/Beatmap";
@@ -42,6 +43,8 @@ export class BattleScene extends Phaser.Scene {
   private beatText!: Phaser.GameObjects.Text;
   private promptText!: Phaser.GameObjects.Text;
   private logText!: Phaser.GameObjects.Text;
+  private forecastText!: Phaser.GameObjects.Text;
+  private forecastExpiresRound: number | null = null;
   private tapKey = " ";
   private captionsEnabled = true;
   private isBossFight = false;
@@ -89,6 +92,7 @@ export class BattleScene extends Phaser.Scene {
     this.hpText = this.add.text(8, 8, "", { fontFamily: "monospace", fontSize: "8px", color: "#ffffff" });
     this.enemyText = this.add.text(8, 60, "", { fontFamily: "monospace", fontSize: "8px", color: "#ff8888" });
     this.beatText = this.add.text(8, 80, "", { fontFamily: "monospace", fontSize: "8px", color: "#88ff88" });
+    this.forecastText = this.add.text(8, 92, "", { fontFamily: "monospace", fontSize: "7px", color: "#66ddff", wordWrap: { width: BASE_WIDTH - 16 } });
     this.promptText = this.add
       .text(BASE_WIDTH / 2, 110, "", { fontFamily: "monospace", fontSize: "8px", color: "#ffe066", align: "center", wordWrap: { width: BASE_WIDTH - 16 } })
       .setOrigin(0.5, 0);
@@ -115,6 +119,7 @@ export class BattleScene extends Phaser.Scene {
     this.renderHeroes();
     this.renderEnemies();
     this.renderBeat();
+    this.renderForecast();
 
     if (this.stage === "awaiting-input") {
       this.checkForAutoMiss();
@@ -236,10 +241,41 @@ export class BattleScene extends Phaser.Scene {
       const hasMiss = this.capturedTiers.includes("miss");
       if (this.pendingAbilityId === "healer_sightread" && !hasMiss) {
         GameContext.analytics.track("sightread_used");
+        this.revealForecast();
       }
       resolveHeroPerformance(this.combat, this.capturedTiers);
       this.appendLog();
       this.enterCommandStage();
+    }
+  }
+
+  /**
+   * The actual implementation of healer_sightread's forecastReveal effect
+   * (PRD §8.4): a real upcoming-events lane, not just a log line. Stays
+   * visible for the same duration as the ability's partyBuff effect.
+   */
+  private revealForecast(): void {
+    const ability = getAbility("healer_sightread");
+    const forecastEffect = ability.effects.find((e) => e.type === "forecastReveal");
+    const bars = forecastEffect?.bars ?? 2;
+    const buffDuration = ability.effects.find((e) => e.type === "partyBuff")?.durationRounds ?? 2;
+
+    const currentBar = positionAtSeconds(this.beatmap.meterSequence, this.elapsedInPhase, this.effectiveBpm).bar;
+    const events = upcomingEvents(this.beatmap, currentBar, bars);
+
+    if (events.length === 0) {
+      this.forecastText.setText(`SIGHTREAD: next ${bars} bars look clear.`);
+    } else {
+      const summary = events.map((e) => `bar ${e.bar} ${e.type}${e.payload ? `:${e.payload}` : ""}`).join(", ");
+      this.forecastText.setText(`SIGHTREAD (next ${bars} bars): ${summary}`);
+    }
+    this.forecastExpiresRound = this.combat.round + buffDuration;
+  }
+
+  private renderForecast(): void {
+    if (this.forecastExpiresRound !== null && this.combat.round > this.forecastExpiresRound) {
+      this.forecastText.setText("");
+      this.forecastExpiresRound = null;
     }
   }
 
