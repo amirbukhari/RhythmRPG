@@ -5,9 +5,12 @@ action is executed as a timed phrase against an authored musical track, with a
 final boss built around live time-signature changes.
 
 **Play it live:** https://amirbukhari.github.io/RhythmRPG/ (auto-deployed from
-`master`). One playable encounter exists today (opening biome, one enemy) —
-see [§20 of the PRD](docs/product/PRD.md#20-implementation-status-as-of-2026-07-08)
-for exactly what's built vs. still open.
+`master`). The full vertical slice is playable today: a 5-node campaign —
+opening biome → 3 mid-biome encounters (including a multi-enemy clave-accent
+fight) → a real 3-phase final boss with live meter changes — see
+[§20 of the PRD](docs/product/PRD.md#20-implementation-status-as-of-2026-07-08)
+for exactly what's built vs. still open (art and real music are the two big
+remaining pieces).
 
 Codename only — see [Open Questions](docs/product/PRD.md#18-open-questions) for
 naming status.
@@ -31,22 +34,25 @@ docs/
   qa/           test plan, accessibility checklist, release-gate sign-off (not yet written)
 
 src/
-  main.ts       Phaser app entry point, fixed scene stack
+  main.ts       Phaser app entry point, fixed scene stack, dev-only debug hook (window.__meterfallDebug)
   config/       engine/canvas configuration
   scenes/       all 9 scenes are real (not stubs) -- Boot/AudioGate/MainMenu/Save/
                 Calibration/Map/Battle/Results/SettingsOverlay
   state/        GameContext -- cross-scene singleton (save profile, analytics, handoffs)
   systems/
     audio/         TransportClock (Tone.Transport wrapper), Calibration math, BeatmapSonifier
-    combat/        CombatController, JudgmentSystem, PhraseTiming (all unit tested, Phaser-free)
+    combat/        CombatController, JudgmentSystem, PhraseTiming, MeterSequence (live meter
+                   changes), Forecast (Sightread) -- all unit tested, Phaser-free
     persistence/   IndexedDB SaveManager
     accessibility/ day-one accessibility settings model, functionally wired throughout
     analytics/     consent-gated event tracking (PRD §14)
+    progression/   Relics -- real mechanical effects applied at battle start
   data/
-    schemas/      TypeScript types for all schemas, including three internal ones
-                   (Enemy/HeroClass/CampaignNode) the PRD's three canonical schemas don't cover
-    content/      authored abilities (12), one beatmap, one encounter, one enemy,
-                   four hero classes, one campaign node -- real but minimal, see PRD §20.2
+    schemas/      TypeScript types for all schemas, including four internal ones
+                   (Enemy/HeroClass/CampaignNode/BossPhaseConfig) the PRD's three canonical
+                   schemas don't cover
+    content/      12 abilities, 7 beatmaps, 5 encounters, 7 enemies, 4 hero classes,
+                   a 5-node campaign, and a 3-phase boss config -- see PRD §20.1
   ui/           TextMenu -- shared keyboard+pointer menu component used by every menu scene
 
 assets/
@@ -56,11 +62,11 @@ assets/
   reference/    pre-PRD reference material that carries forward as production basis (PRD §11.4)
 
 tests/
-  unit/         67 tests: JudgmentSystem, PhraseTiming, CombatController, ContentLoader/
-                Registry, SaveManager, Analytics, Calibration, BeatmapSonifier
-  e2e/          empty -- all E2E verification so far was ad hoc, uncommitted Puppeteer
-                scripts against a local dev server (PRD §20.2 names this as the
-                highest-value next testing investment)
+  unit/         94 tests: JudgmentSystem, PhraseTiming, MeterSequence, Forecast, CombatController,
+                Relics, ContentLoader/Registry, SaveManager, Analytics, Calibration
+  e2e/          11 committed Playwright specs (Chromium + Firefox) -- boot/calibration/reload,
+                battle mechanics, the boss's 3-phase mechanic, settings regressions.
+                See tests/e2e/README.md for a documented sandbox-specific flakiness caveat.
 
 tools/
   gbmusic/      audio -> Game Boy (LSDJ) chiptune conversion pipeline (Python, separate from the game's toolchain)
@@ -72,20 +78,23 @@ tools/
 npm install
 npm run dev        # starts Vite dev server
 npm run typecheck  # tsc --noEmit
-npm test           # vitest run -- 67 unit tests
-npm run build       # production build to dist/
+npm test           # vitest run -- 94 unit tests
+npm run test:e2e   # playwright test -- 11 e2e specs (Chromium + Firefox)
+npm run build      # production build to dist/
 ```
 
 Play through: audio-unlock gate → main menu → create a save → AV calibration
-(tap along to the pulse) → campaign map → the one authored battle (keyboard:
-1/2/3 picks an ability for the active hero, Space hits the beat) → results.
-Settings are reachable from the main menu or map screen and are fully
-functional, not placeholders.
+(tap along to the pulse) → campaign map → 5 chained encounters ending in a real
+3-phase boss (keyboard: 1/2/3 picks an ability, arrow keys + 1/2/3 pick a
+target when more than one enemy is alive, Space hits the beat) → results, with
+real relic and skill-unlock rewards. Settings are reachable from the main menu
+or map screen and are fully functional, not placeholders.
 
 ## Non-negotiable architecture rule
 
 All gameplay timing judgment must be derived from `TransportClock`
 (`src/systems/audio/TransportClock.ts`, wrapping `Tone.Transport`) — never from
 `setTimeout`, `setInterval`, or `requestAnimationFrame`. See PRD §10.2. This is
-enforced in practice today: `BattleScene`'s judgment and `BeatmapSonifier`'s
-audible playback both read from the same transport clock.
+enforced in practice today: `BattleScene`'s judgment, the boss's live meter
+changes (`MeterSequence`), and `BeatmapSonifier`'s audible playback all read
+from the same transport clock.
