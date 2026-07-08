@@ -148,4 +148,21 @@ describe("CombatController", () => {
     resolveHeroPerformance(state, ["perfect", "perfect", "perfect"]);
     expect(state.log.length).toBeGreaterThan(0);
   });
+
+  it("practice mode revives the party at 1 HP instead of ending in defeat", () => {
+    const practice = createCombat([getHeroClass("warrior")], getEncounter("opening_biome_slime_01"), { practiceMode: true });
+    practice.heroes[0].hp = 1; // slime_lunge deals 8, which would otherwise be lethal
+    queueHeroAction(practice, "warrior", "warrior_slash_chain");
+    resolveHeroPerformance(practice, ["perfect", "perfect", "perfect"]);
+    expect(practice.outcome).toBe("ongoing");
+    expect(practice.heroes[0].hp).toBe(1);
+  });
+
+  it("without practice mode, the same lethal hit ends the encounter in defeat", () => {
+    const normal = createCombat([getHeroClass("warrior")], getEncounter("opening_biome_slime_01"));
+    normal.heroes[0].hp = 1;
+    queueHeroAction(normal, "warrior", "warrior_slash_chain");
+    resolveHeroPerformance(normal, ["perfect", "perfect", "perfect"]);
+    expect(normal.outcome).toBe("defeat");
+  });
 });

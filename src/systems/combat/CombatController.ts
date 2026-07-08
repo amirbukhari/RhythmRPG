@@ -68,6 +68,8 @@ export interface CombatState {
   groove: number;
   grooveStreak: number;
   log: CombatLogEntry[];
+  /** PRD §9.3: practice mode must have no fail state. */
+  practiceMode: boolean;
 }
 
 const GROOVE_MAX = 100;
@@ -108,7 +110,7 @@ function rollAllIntents(state: CombatState): void {
   }
 }
 
-export function createCombat(heroClasses: HeroClass[], encounter: Encounter): CombatState {
+export function createCombat(heroClasses: HeroClass[], encounter: Encounter, options: { practiceMode?: boolean } = {}): CombatState {
   const heroes: HeroState[] = heroClasses.map((hc) => ({
     heroId: hc.heroId,
     classId: hc.heroId,
@@ -145,6 +147,7 @@ export function createCombat(heroClasses: HeroClass[], encounter: Encounter): Co
     groove: 0,
     grooveStreak: 0,
     log: [{ round: 1, message: `Encounter "${encounter.encounterId}" started.` }],
+    practiceMode: options.practiceMode ?? false,
   };
 
   rollAllIntents(state);
@@ -355,9 +358,16 @@ function advanceRound(state: CombatState): void {
     return;
   }
   if (aliveHeroes(state).length === 0) {
-    state.outcome = "defeat";
-    log(state, "Defeat.");
-    return;
+    if (state.practiceMode) {
+      // PRD §9.3: practice mode has no fail state -- revive at 1 HP and
+      // keep going instead of ending the encounter.
+      for (const hero of state.heroes) hero.hp = 1;
+      log(state, "Practice mode: party revived at 1 HP.");
+    } else {
+      state.outcome = "defeat";
+      log(state, "Defeat.");
+      return;
+    }
   }
 
   state.round += 1;

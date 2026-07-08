@@ -1,4 +1,16 @@
 import Phaser from "phaser";
+import { GameContext } from "../state/GameContext";
+import { DEFAULT_ACCESSIBILITY_SETTINGS, type AccessibilitySettings } from "../systems/accessibility/AccessibilitySettings";
+import { BASE_WIDTH, BASE_HEIGHT } from "../config/GameConfig";
+import { TextMenu, type TextMenuItem } from "../ui/components/TextMenu";
+
+const SPEED_STEPS: AccessibilitySettings["gameSpeed"][] = [0.7, 0.85, 1.0];
+const VOLUME_STEPS = [0, 0.25, 0.5, 0.75, 1.0];
+
+function nextInCycle<T>(steps: T[], current: T): T {
+  const index = steps.indexOf(current);
+  return steps[(index + 1) % steps.length];
+}
 
 /**
  * Always-available settings modal: remapping, volume sliders, captions,
@@ -6,11 +18,122 @@ import Phaser from "phaser";
  * windows, practice mode toggle. Mandatory day-one per PRD §9.3.
  */
 export class SettingsOverlay extends Phaser.Scene {
+  private returnTo!: string;
+  private settings!: AccessibilitySettings;
+  private menu: TextMenu | null = null;
+  private capturingBinding = false;
+  private captureHandler?: (event: KeyboardEvent) => void;
+
   constructor() {
     super("SettingsOverlay");
   }
 
-  create(): void {
-    // TODO: render accessibility + AV settings, persist via SaveManager/AccessibilitySettings.
+  create(data: { returnTo: string }): void {
+    this.returnTo = data.returnTo;
+    const underlying = this.scene.get(this.returnTo);
+    this.scene.pause(this.returnTo);
+    // Pausing a scene stops its update/render loop but NOT its input
+    // listeners -- confirmed live, this was letting the paused scene's own
+    // TextMenu react to the same keypresses as this overlay's menu
+    // (cascading double/triple-handling of every keystroke). input.enabled
+    // alone only gates the pointer hit-test pipeline; the keyboard plugin
+    // has its own independent enabled flag that must also be cleared.
+    underlying.input.enabled = false;
+    if (underlying.input.keyboard) underlying.input.keyboard.enabled = false;
+
+    this.settings = GameContext.activeProfile ? GameContext.activeProfile.settings : { ...DEFAULT_ACCESSIBILITY_SETTINGS };
+
+    this.add.rectangle(BASE_WIDTH / 2, BASE_HEIGHT / 2, BASE_WIDTH, BASE_HEIGHT, 0x000000, 0.85);
+    this.add.text(BASE_WIDTH / 2, 6, "SETTINGS", { fontFamily: "monospace", fontSize: "10px", color: "#ffffff" }).setOrigin(0.5, 0);
+
+    this.renderMenu();
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      underlying.input.enabled = true;
+      if (underlying.input.keyboard) underlying.input.keyboard.enabled = true;
+      this.scene.resume(this.returnTo);
+    });
+  }
+
+  private renderMenu(): void {
+    const s = this.settings;
+
+    const items: TextMenuItem[] = [
+      { label: `Game Speed: ${Math.round(s.gameSpeed * 100)}%`, onSelect: () => this.update_(() => (s.gameSpeed = nextInCycle(SPEED_STEPS, s.gameSpeed))) },
+      {
+        label: `Assisted Timing Windows: ${s.assistedTimingWindows ? "ON" : "OFF"}`,
+        onSelect: () =>
+          this.update_(() => {
+            s.assistedTimingWindows = !s.assistedTimingWindows;
+            if (s.assistedTimingWindows) GameContext.analytics.track("assist_mode_enabled");
+          }),
+      },
+      { label: `Reduced Motion: ${s.reducedMotion ? "ON" : "OFF"}`, onSelect: () => this.update_(() => (s.reducedMotion = !s.reducedMotion)) },
+      { label: `Photosensitivity-Safe Mode: ${s.photosensitivitySafeMode ? "ON" : "OFF"}`, onSelect: () => this.update_(() => (s.photosensitivitySafeMode = !s.photosensitivitySafeMode)) },
+      { label: `Captions: ${s.captionsEnabled ? "ON" : "OFF"}`, onSelect: () => this.update_(() => (s.captionsEnabled = !s.captionsEnabled)) },
+      { label: `Practice Mode: ${s.practiceMode ? "ON" : "OFF"}`, onSelect: () => this.update_(() => (s.practiceMode = !s.practiceMode)) },
+      { label: `Music Volume: ${Math.round(s.volumeMusic * 100)}%`, onSelect: () => this.update_(() => (s.volumeMusic = nextInCycle(VOLUME_STEPS, s.volumeMusic))) },
+      { label: `SFX Volume: ${Math.round(s.volumeSfx * 100)}%`, onSelect: () => this.update_(() => (s.volumeSfx = nextInCycle(VOLUME_STEPS, s.volumeSfx))) },
+      { label: `UI Volume: ${Math.round(s.volumeUi * 100)}%`, onSelect: () => this.update_(() => (s.volumeUi = nextInCycle(VOLUME_STEPS, s.volumeUi))) },
+      {
+        label: this.capturingBinding ? "Remap Tap Key: press any key..." : `Remap Tap Key: ${(s.keyBindings.tap ?? " ").trim() || "SPACE"}`,
+        onSelect: () => this.beginRemap(),
+      },
+      { label: "Recalibrate Audio/Video Sync", onSelect: () => this.recalibrate() },
+      { label: "Back", onSelect: () => this.close() },
+    ];
+
+    if (this.menu) {
+      this.menu.setItems(items);
+    } else {
+      this.menu = new TextMenu(this, 16, 24, items, 12);
+    }
+  }
+
+  private update_(mutator: () => void): void {
+    mutator();
+    if (GameContext.activeProfile) void GameContext.persistActiveProfile();
+    this.renderMenu();
+  }
+
+  private beginRemap(): void {
+    if (this.capturingBinding) return;
+    this.capturingBinding = true;
+    this.renderMenu();
+
+    this.captureHandler = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        this.capturingBinding = false;
+        this.cleanupCapture();
+        this.renderMenu();
+        return;
+      }
+      this.settings.keyBindings.tap = event.key === " " ? " " : event.key;
+      this.capturingBinding = false;
+      this.cleanupCapture();
+      if (GameContext.activeProfile) void GameContext.persistActiveProfile();
+      this.renderMenu();
+    };
+    // Capture in the next tick so the Enter/Space that opened this menu item
+    // doesn't immediately get captured as the new binding.
+    this.time.delayedCall(50, () => {
+      this.input.keyboard?.once("keydown", this.captureHandler!);
+    });
+  }
+
+  private cleanupCapture(): void {
+    if (this.captureHandler) this.input.keyboard?.off("keydown", this.captureHandler);
+    this.captureHandler = undefined;
+  }
+
+  private recalibrate(): void {
+    this.cleanupCapture();
+    this.scene.stop(this.returnTo);
+    this.scene.stop();
+    this.scene.start("CalibrationScene");
+  }
+
+  private close(): void {
+    this.cleanupCapture();
+    this.scene.stop();
   }
 }

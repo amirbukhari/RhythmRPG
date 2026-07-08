@@ -29,12 +29,15 @@ export class BattleScene extends Phaser.Scene {
   private timingTargets: number[] = [];
   private capturedTiers: JudgmentTier[] = [];
   private stepIndex = 0;
+  private pendingAbilityId: string | null = null;
 
   private hpText!: Phaser.GameObjects.Text;
   private enemyText!: Phaser.GameObjects.Text;
   private beatText!: Phaser.GameObjects.Text;
   private promptText!: Phaser.GameObjects.Text;
   private logText!: Phaser.GameObjects.Text;
+  private tapKey = " ";
+  private captionsEnabled = true;
 
   constructor() {
     super("BattleScene");
@@ -51,11 +54,13 @@ export class BattleScene extends Phaser.Scene {
     const beatmap = getBeatmap(encounter.trackId);
     const heroes = ["warrior", "tank", "mage", "healer"].map((id) => getHeroClass(id));
 
-    this.combat = createCombat(heroes, encounter);
-    this.beatsPerBar = beatmap.meterSequence[0]?.num ?? 4;
     const settings = GameContext.activeProfile.settings;
+    this.combat = createCombat(heroes, encounter, { practiceMode: settings.practiceMode });
+    this.beatsPerBar = beatmap.meterSequence[0]?.num ?? 4;
     this.effectiveBpm = beatmap.bpm * settings.gameSpeed;
     this.calibrationOffsetSeconds = GameContext.activeProfile.calibrationOffsetMs / 1000;
+    this.tapKey = settings.keyBindings.tap ?? " ";
+    this.captionsEnabled = settings.captionsEnabled;
 
     GameContext.analytics.track("battle_started", { encounterId });
 
@@ -72,6 +77,7 @@ export class BattleScene extends Phaser.Scene {
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.clock.stop());
 
+    this.appendLog();
     this.enterCommandStage();
   }
 
@@ -109,7 +115,7 @@ export class BattleScene extends Phaser.Scene {
       if (index === -1 || index >= this.activeAbilityIds.length) return;
       this.selectAbility(this.activeAbilityIds[index]);
     } else if (this.stage === "awaiting-input") {
-      if (event.key === " " || event.key === "Enter") this.captureInput();
+      if (event.key === this.tapKey) this.captureInput();
     }
   }
 
@@ -123,12 +129,15 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
     const ability = getAbility(abilityId);
+    GameContext.analytics.track("ability_used", { abilityId, heroId });
     const phraseStart = nextBarBoundary(this.clock.currentTime, this.effectiveBpm, this.beatsPerBar);
     this.timingTargets = timingTemplateToSeconds(ability.timingTemplate, phraseStart, this.effectiveBpm, this.beatsPerBar);
     this.capturedTiers = [];
     this.stepIndex = 0;
+    this.pendingAbilityId = abilityId;
     this.stage = "awaiting-input";
-    this.promptText.setText(`${heroId.toUpperCase()}: ${ability.abilityId}\nPress SPACE on each beat (${ability.inputPattern.length} steps)`);
+    const keyLabel = this.tapKey === " " ? "SPACE" : this.tapKey.toUpperCase();
+    this.promptText.setText(`${heroId.toUpperCase()}: ${ability.abilityId}\nPress ${keyLabel} on each beat (${ability.inputPattern.length} steps)`);
   }
 
   private captureInput(): void {
@@ -154,6 +163,10 @@ export class BattleScene extends Phaser.Scene {
     if (tier === "miss") GameContext.analytics.track("judgment_miss");
 
     if (this.stepIndex >= this.timingTargets.length) {
+      const hasMiss = this.capturedTiers.includes("miss");
+      if (this.pendingAbilityId === "healer_sightread" && !hasMiss) {
+        GameContext.analytics.track("sightread_used");
+      }
       resolveHeroPerformance(this.combat, this.capturedTiers);
       this.appendLog();
       this.enterCommandStage();
@@ -161,6 +174,13 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private appendLog(): void {
+    // PRD §9.3: captions must be able to convey musically meaningful events
+    // without sound; this log is that channel, so it's the one thing gated
+    // on captionsEnabled rather than always shown.
+    if (!this.captionsEnabled) {
+      this.logText.setText("");
+      return;
+    }
     const lines = this.combat.log.slice(-4).map((e) => e.message);
     this.logText.setText(lines.join("\n"));
   }

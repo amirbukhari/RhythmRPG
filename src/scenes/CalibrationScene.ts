@@ -11,14 +11,23 @@ export class CalibrationScene extends Phaser.Scene {
   private statusText!: Phaser.GameObjects.Text;
   private taps: number[] = [];
   private scheduleId: number | null = null;
+  private tapKey = " ";
+  private gentleFlash = false;
 
   constructor() {
     super("CalibrationScene");
   }
 
   async create(): Promise<void> {
+    const settings = GameContext.activeProfile?.settings;
+    this.tapKey = settings?.keyBindings.tap ?? " ";
+    // PRD §9.3/W3C photosensitivity guidance: no full-brightness flashing
+    // when reduced motion or photosensitivity-safe mode is on.
+    this.gentleFlash = Boolean(settings?.reducedMotion || settings?.photosensitivitySafeMode);
+    const keyLabel = this.tapKey === " " ? "SPACE" : this.tapKey.toUpperCase();
+
     this.add
-      .text(BASE_WIDTH / 2, 20, "CALIBRATION\nTap SPACE on every beat", {
+      .text(BASE_WIDTH / 2, 20, `CALIBRATION\nTap ${keyLabel} on every beat`, {
         fontFamily: "monospace",
         fontSize: "9px",
         color: "#ffffff",
@@ -38,13 +47,18 @@ export class CalibrationScene extends Phaser.Scene {
     await this.clock.start(CALIBRATION_BPM);
     this.scheduleId = this.clock.scheduleRepeat(() => this.flashPulse(), "4n");
 
-    this.input.keyboard?.on("keydown-SPACE", () => this.registerTap());
+    this.input.keyboard?.on("keydown", (event: KeyboardEvent) => {
+      if (event.key === this.tapKey) this.registerTap();
+    });
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.cleanup());
   }
 
   private flashPulse(): void {
-    this.pulse.setFillStyle(0xffffff);
+    // Gentle mode: gradual color shift only, no bright flash. Default mode:
+    // a full-brightness flash, but at ~1.67Hz (100 BPM quarter notes), well
+    // under the 3/second seizure-risk threshold W3C flags.
+    this.pulse.setFillStyle(this.gentleFlash ? 0x8888ff : 0xffffff);
     this.time.delayedCall(100, () => this.pulse.setFillStyle(0x4444ff));
   }
 
