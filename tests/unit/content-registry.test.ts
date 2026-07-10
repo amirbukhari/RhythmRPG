@@ -57,10 +57,15 @@ describe("ContentRegistry", () => {
     }
   });
 
-  it("loads a valid campaign whose start node exists and references a real encounter", () => {
+  it("loads a valid campaign whose start node exists and resolves to real encounters", () => {
     const start = getCampaignNode(campaign.startNodeId);
     expect(start.type).toBe("battle");
-    expect(encounters.has(start.encounterId!)).toBe(true);
+    // The start node draws from an encounterPool (per-visit variety, PRD §8.6).
+    const ids = start.encounterPool ?? [start.encounterId!];
+    expect(ids.length).toBeGreaterThan(0);
+    for (const id of ids) {
+      expect(encounters.has(id), `start node references missing encounter "${id}"`).toBe(true);
+    }
   });
 
   it("resolves every campaign node's encounterId/encounterPool entries to real encounters", () => {

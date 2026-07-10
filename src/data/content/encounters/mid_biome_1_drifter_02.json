@@ -1,0 +1,11 @@
+{
+  "encounterId": "mid_biome_1_drifter_02",
+  "trackId": "mid_biome_1_01",
+  "enemyWave": ["drifter", "slime"],
+  "accentProfile": null,
+  "victoryRewards": {
+    "xp": 95,
+    "currency": 40,
+    "relicChoices": ["counter_charm"]
+  }
+}

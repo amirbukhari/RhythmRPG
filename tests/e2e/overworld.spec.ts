@@ -63,7 +63,8 @@ test.describe("overworld", () => {
       nodeId: window.__meterfallDebug.GameContext.pendingNodeId,
     }));
     expect(pending.nodeId).toBe("opening_1");
-    expect(pending.encounterId).toBe("opening_biome_slime_01");
+    // opening_1 resolves randomly from its encounterPool each visit.
+    expect(["opening_biome_slime_01", "opening_biome_slime_02"]).toContain(pending.encounterId);
   });
 
   test("locked and cleared markers do not trigger battles", async ({ page }) => {
