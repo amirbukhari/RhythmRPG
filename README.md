@@ -78,17 +78,19 @@ tools/
 npm install
 npm run dev        # starts Vite dev server
 npm run typecheck  # tsc --noEmit
-npm test           # vitest run -- 94 unit tests
-npm run test:e2e   # playwright test -- 11 e2e specs (Chromium + Firefox)
+npm test           # vitest run -- 118 unit tests
+npm run test:e2e   # playwright test -- 16 e2e specs (Chromium + Firefox)
 npm run build      # production build to dist/
 ```
 
 Play through: audio-unlock gate → main menu → create a save → AV calibration
-(tap along to the pulse) → campaign map → 5 chained encounters ending in a real
-3-phase boss (keyboard: 1/2/3 picks an ability, arrow keys + 1/2/3 pick a
-target when more than one enemy is alive, Space hits the beat) → results, with
-real relic and skill-unlock rewards. Settings are reachable from the main menu
-or map screen and are fully functional, not placeholders.
+(tap along to the pulse) → walkable pixel-art overworld (arrows/WASD to move;
+walk onto a glowing node marker to start its fight) → 5 chained encounters
+ending in a real 3-phase boss (keyboard: 1/2/3 picks an ability, arrow keys +
+1/2/3 pick a target when more than one enemy is alive, Space hits the beat) →
+results, with real relic and skill-unlock rewards → back on the overworld at
+the node you just fought. Settings are reachable from the main menu or with
+ESC on the overworld and are fully functional, not placeholders.
 
 ## Non-negotiable architecture rule
 
