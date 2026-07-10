@@ -159,18 +159,24 @@ def _phase_from_freq(freq_arr):
     return phase, dt
 
 
-def pulse_wave(freq, n_samples, duty, vibrato_depth=0.0, vibrato_hz=5.5):
+def pulse_wave(freq_or_arr, n_samples, duty, vibrato_depth=0.0, vibrato_hz=5.5, vibrato_onset_seconds=0.15):
     """Anti-aliased pulse wave: a naive square built from two band-limited
     steps (rising edge at phase 0, falling edge at phase `duty`), each
     PolyBLEP-corrected, rather than np.where's hard (aliasing) transition.
-    `vibrato_depth` (fractional frequency deviation, e.g. 0.01 = ~1 semitone
-    peak) adds the slow pitch wobble that's a defining piece of expressive
-    chiptune lead lines -- a dead-flat pitch is what makes a synth sound
-    like a test tone rather than a played instrument."""
-    freq_arr = np.full(n_samples, float(freq))
+    Accepts a constant frequency or a per-sample array (portamento glides
+    need the latter). `vibrato_depth` (fractional frequency deviation, e.g.
+    0.01 = ~1 semitone peak) adds the slow pitch wobble that's a defining
+    piece of expressive chiptune lead lines -- a dead-flat pitch is what
+    makes a synth sound like a test tone rather than a played instrument.
+    The depth ramps in over `vibrato_onset_seconds` rather than being
+    instantly at full depth from the note's attack -- real vibrato (voice,
+    strings, and skilled trackers imitating them) is added after a note
+    has settled, not applied from the very first cycle."""
+    freq_arr = np.full(n_samples, float(freq_or_arr)) if np.isscalar(freq_or_arr) else np.asarray(freq_or_arr, dtype=float)
     if vibrato_depth > 0:
         t = np.arange(n_samples) / SAMPLE_RATE
-        freq_arr = freq_arr * (1.0 + vibrato_depth * np.sin(2 * np.pi * vibrato_hz * t))
+        onset = np.clip(t / max(vibrato_onset_seconds, 1e-4), 0.0, 1.0)
+        freq_arr = freq_arr * (1.0 + vibrato_depth * onset * np.sin(2 * np.pi * vibrato_hz * t))
     phase, dt = _phase_from_freq(freq_arr)
     wave = np.where(phase < duty, 1.0, -1.0)
     wave = wave + _poly_blep(phase, dt)
@@ -178,17 +184,76 @@ def pulse_wave(freq, n_samples, duty, vibrato_depth=0.0, vibrato_hz=5.5):
     return wave
 
 
-def triangle_wave_4bit(freq_or_arr, n_samples):
+def portamento_freq_track(from_midi, to_midi, n_samples, glide_seconds=0.05):
+    """Linear (in semitones) pitch glide from one note into the next,
+    rather than a hard retrigger -- the smooth, connected bassline
+    character associated with a played (not sequenced-staccato) bass part.
+    Only the first `glide_seconds` moves; the remainder holds at
+    `to_midi`."""
+    glide_samples = min(n_samples, max(1, int(glide_seconds * SAMPLE_RATE)))
+    ramp = np.linspace(0.0, 1.0, glide_samples)
+    semitone_track = np.full(n_samples, float(to_midi))
+    semitone_track[:glide_samples] = from_midi + (to_midi - from_midi) * ramp
+    return midi_to_hz(semitone_track)
+
+
+_WAVETABLE_SHAPES = ("triangle", "soft_square", "saw")
+
+
+def _wavetable_shape(phase, shape):
+    """Three hand-designed 32-step wavetable timbres, standing in for the
+    GB wave channel's fully custom (any 32x4-bit samples) waveform memory --
+    which advanced LSDJ composers use instead of the plain default triangle
+    every beginner patch starts from. Picking a register-appropriate shape
+    (see CHANNEL_CFG usage in render_channel) is itself the technique, not
+    just having more than one option."""
+    if shape == "soft_square":
+        # A rounded/soft square -- warmer and more filtered than a hard
+        # pulse, characteristic of a wave-channel bass voice.
+        return np.tanh(2.5 * np.sin(2.0 * np.pi * phase))
+    if shape == "saw":
+        # Bright ramp saw -- classic wave-channel lead/pluck timbre, an
+        # octave's worth of harmonics brighter than a triangle.
+        return 2.0 * phase - 1.0
+    return 4.0 * np.abs(phase - 0.5) - 1.0  # triangle (LSDJ default)
+
+
+def triangle_wave_4bit(freq_or_arr, n_samples, shape="triangle"):
     """LSDJ's default wave-channel shape is a triangle; the GB wave channel
     holds 32 4-bit samples, so quantize to 16 levels for the right texture.
     A triangle's harmonics fall off much faster than a square's, so it
     doesn't need PolyBLEP correction to avoid harshness. Accepts either a
     constant frequency or a per-sample frequency array (arpeggios need the
-    latter -- see `arpeggiated_freq_track`)."""
+    latter -- see `arpeggiated_freq_track`). `shape` picks among
+    `_WAVETABLE_SHAPES`."""
     freq_arr = np.full(n_samples, float(freq_or_arr)) if np.isscalar(freq_or_arr) else freq_or_arr
     phase, _ = _phase_from_freq(freq_arr)
-    tri = 4.0 * np.abs(phase - 0.5) - 1.0
-    return np.round((tri + 1.0) * 7.5) / 7.5 - 1.0
+    raw = _wavetable_shape(phase, shape)
+    return np.round((raw + 1.0) * 7.5) / 7.5 - 1.0
+
+
+def feedback_delay(signal, delay_seconds, feedback=0.32, mix=0.28):
+    """A simple tempo-synced feedback delay/echo -- one of the most
+    recognizable space-creating production techniques in chiptune mixing
+    (real hardware has no built-in reverb, so echo does that job). Applied
+    to the whole rendered channel, not per note, since a real echo tail
+    naturally spans past a note's own end."""
+    delay_samples = max(1, int(delay_seconds * SAMPLE_RATE))
+    out = signal.copy()
+    tap = np.zeros_like(signal)
+    tap[delay_samples:] = signal[:-delay_samples]
+    accum = tap.copy()
+    # A handful of repeats is enough to hear a decaying echo without an
+    # unbounded feedback loop; each successive tap is the previous one
+    # shifted and attenuated by `feedback`.
+    gain = feedback
+    for _ in range(4):
+        shifted = np.zeros_like(signal)
+        shifted[delay_samples:] = accum[:-delay_samples]
+        out = out + shifted * gain
+        accum = shifted
+        gain *= feedback
+    return signal * (1.0 - mix) + out * mix
 
 
 # A single monophonic wave channel can't hold a chord, so implying one
@@ -311,6 +376,14 @@ CHANNEL_CFG = {
 # genuinely sustained notes should.
 ARP_MIN_STEPS = 3
 VIBRATO_MIN_STEPS = 6
+# Consecutive bass notes closer together than this glide instead of
+# retriggering -- an idiomatic "played" bassline touch, not applied to
+# genuinely separated notes where a clean retrigger is more natural.
+PORTAMENTO_MAX_GAP_STEPS = 4
+# Wave-channel register split for wavetable choice: bass-range notes get a
+# rounder, filtered voice; melody-range notes get a brighter one.
+WAV_BASS_MIDI_CEILING = 55
+WAV_LEAD_MIDI_FLOOR = 72
 
 
 def render_channel(channel, notes, step_seconds, total_samples):
@@ -345,10 +418,20 @@ def render_channel(channel, notes, step_seconds, total_samples):
             note_gain = cfg["gain"] * voice["gain"]
             decay = voice["decay"]
         elif channel == "wav":
+            shape = "soft_square" if midi < WAV_BASS_MIDI_CEILING else ("saw" if midi >= WAV_LEAD_MIDI_FLOOR else "triangle")
             if dur_steps >= ARP_MIN_STEPS:
-                tone = triangle_wave_4bit(arpeggiated_freq_track(midi, n), n)
+                tone = triangle_wave_4bit(arpeggiated_freq_track(midi, n), n, shape=shape)
             else:
-                tone = triangle_wave_4bit(midi_to_hz(midi), n)
+                tone = triangle_wave_4bit(midi_to_hz(midi), n, shape=shape)
+            note_gain = cfg["gain"]
+            decay = cfg["decay"]
+        elif channel == "pu2":
+            prev_pitch = notes[i - 1][1] if i > 0 else None
+            gap = abs_step - notes[i - 1][0] if i > 0 else None
+            if prev_pitch is not None and prev_pitch != midi and gap is not None and gap <= PORTAMENTO_MAX_GAP_STEPS:
+                tone = pulse_wave(portamento_freq_track(prev_pitch, midi, n), n, cfg["duty"])
+            else:
+                tone = pulse_wave(midi_to_hz(midi), n, cfg["duty"])
             note_gain = cfg["gain"]
             decay = cfg["decay"]
         else:
@@ -357,6 +440,12 @@ def render_channel(channel, notes, step_seconds, total_samples):
             note_gain = cfg["gain"]
             decay = cfg["decay"]
         out[start:start + n] += tone * gb_envelope(n, decay) * note_gain
+    if channel == "pu1":
+        # Echo on the lead only -- centering the arrangement's rhythmic
+        # (noise) and harmonic (wave) core while giving the melodic voice
+        # the space/depth treatment is itself a mix decision, not just
+        # "add echo everywhere."
+        out = feedback_delay(out, delay_seconds=step_seconds * 3)  # dotted-8th-ish slapback
     filtered = one_pole_lowpass(out, cfg["lowpass_hz"])
     left_gain, right_gain = _pan_gains(cfg["pan"])
     return filtered * left_gain, filtered * right_gain
