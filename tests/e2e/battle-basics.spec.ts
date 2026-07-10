@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { bootToMap, jumpToEncounter, getBattleSceneState } from "./helpers";
+import { bootToOverworld, jumpToEncounter, getBattleSceneState } from "./helpers";
 
 // One boot+calibration per file (not per test) -- each is ~5s of real
 // calibration-tap wait time, and re-doing it for every test made the full
@@ -12,7 +12,7 @@ let page: Page;
 
 test.beforeAll(async ({ browser }) => {
   page = await browser.newPage();
-  await bootToMap(page);
+  await bootToOverworld(page);
 });
 
 test.afterAll(async () => {

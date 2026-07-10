@@ -30,7 +30,7 @@ export class SaveScene extends Phaser.Scene {
     GameContext.activeProfile = profile;
     GameContext.analytics.setConsent(profile.analyticsConsent);
     GameContext.analytics.track("save_loaded", { slotId });
-    this.scene.start(profile.calibrationDone ? "MapScene" : "CalibrationScene");
+    this.scene.start(profile.calibrationDone ? "OverworldScene" : "CalibrationScene");
   }
 
   private async createSlot(): Promise<void> {

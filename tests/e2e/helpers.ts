@@ -34,7 +34,7 @@ export async function passAudioGate(page: Page): Promise<void> {
   await waitForScene(page, "MainMenuScene");
 }
 
-/** From the main menu: creates a new save and completes the 8-tap calibration, landing on the map. */
+/** From the main menu: creates a new save and completes the 8-tap calibration, landing on the overworld. */
 export async function createSaveAndCalibrate(page: Page): Promise<void> {
   await page.keyboard.press("Enter"); // Start/Continue -> SaveScene
   await waitForScene(page, "SaveScene");
@@ -45,11 +45,11 @@ export async function createSaveAndCalibrate(page: Page): Promise<void> {
     await page.keyboard.press("Space");
     await page.waitForTimeout(600); // real calibration BPM is 100 -> 600ms/beat
   }
-  await waitForScene(page, "MapScene");
+  await waitForScene(page, "OverworldScene");
 }
 
-/** Full boot sequence through to a fresh, calibrated save on the campaign map. */
-export async function bootToMap(page: Page): Promise<void> {
+/** Full boot sequence through to a fresh, calibrated save on the overworld. */
+export async function bootToOverworld(page: Page): Promise<void> {
   await page.goto("/");
   await passAudioGate(page);
   await createSaveAndCalibrate(page);
@@ -62,7 +62,7 @@ export async function jumpToEncounter(page: Page, nodeId: string, encounterId: s
       const dbg = window.__meterfallDebug;
       dbg.GameContext.pendingNodeId = nodeId;
       dbg.GameContext.pendingEncounterId = encounterId;
-      dbg.game.scene.stop("MapScene");
+      dbg.game.scene.stop("OverworldScene");
       dbg.game.scene.start("BattleScene");
     },
     { nodeId, encounterId }
@@ -71,17 +71,17 @@ export async function jumpToEncounter(page: Page, nodeId: string, encounterId: s
 }
 
 /**
- * Launches SettingsOverlay in parallel over MapScene, exactly as MapScene's
- * own "Settings" menu item does. Note: `launch` lives on a scene instance's
+ * Launches SettingsOverlay in parallel over OverworldScene, exactly as
+ * OverworldScene's own ESC binding does. Note: `launch` lives on a scene instance's
  * own ScenePlugin (`this.scene.launch(...)` from inside a Scene), not on
  * the global SceneManager (`game.scene`) -- caught by tsc once tests were
  * added to the typecheck include list, since `game.scene.launch(...)` looks
  * plausible but doesn't type-check.
  */
-export async function openSettingsFromMap(page: Page): Promise<void> {
+export async function openSettingsFromOverworld(page: Page): Promise<void> {
   await page.evaluate(() => {
-    const mapScene = window.__meterfallDebug.game.scene.getScene("MapScene") as unknown as Phaser.Scene;
-    mapScene.scene.launch("SettingsOverlay", { returnTo: "MapScene" });
+    const mapScene = window.__meterfallDebug.game.scene.getScene("OverworldScene") as unknown as Phaser.Scene;
+    mapScene.scene.launch("SettingsOverlay", { returnTo: "OverworldScene" });
   });
   await waitForScene(page, "SettingsOverlay");
 }
@@ -98,7 +98,7 @@ export async function openSettingsFromMap(page: Page): Promise<void> {
  *
  * Must call `.stop()` on the scene's OWN ScenePlugin (`settingsScene.scene`),
  * not `game.scene.stop(key)` on the global SceneManager -- the same class of
- * bug already documented on `openSettingsFromMap`'s use of `.launch()`.
+ * bug already documented on `openSettingsFromOverworld`'s use of `.launch()`.
  * Confirmed live: going through the global manager left the underlying
  * scene's queued `resume()` never processed, hanging every caller forever.
  */

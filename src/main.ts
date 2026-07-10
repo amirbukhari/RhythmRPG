@@ -5,7 +5,7 @@ import { AudioGateScene } from "./scenes/AudioGateScene";
 import { MainMenuScene } from "./scenes/MainMenuScene";
 import { SaveScene } from "./scenes/SaveScene";
 import { CalibrationScene } from "./scenes/CalibrationScene";
-import { MapScene } from "./scenes/MapScene";
+import { OverworldScene } from "./scenes/OverworldScene";
 import { BattleScene } from "./scenes/BattleScene";
 import { ResultsScene } from "./scenes/ResultsScene";
 import { SettingsOverlay } from "./scenes/SettingsOverlay";
@@ -20,7 +20,7 @@ const game = new Phaser.Game({
     MainMenuScene,
     SaveScene,
     CalibrationScene,
-    MapScene,
+    OverworldScene,
     BattleScene,
     ResultsScene,
     SettingsOverlay,

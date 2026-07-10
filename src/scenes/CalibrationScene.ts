@@ -88,7 +88,7 @@ export class CalibrationScene extends Phaser.Scene {
       await GameContext.persistActiveProfile();
     }
     GameContext.analytics.track("calibration_completed", { offsetMs });
-    this.scene.start("MapScene");
+    this.scene.start("OverworldScene");
   }
 
   private cleanup(): void {

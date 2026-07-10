@@ -86,7 +86,7 @@ export class BattleScene extends Phaser.Scene {
   async create(): Promise<void> {
     const encounterId = GameContext.pendingEncounterId;
     if (!encounterId || !GameContext.activeProfile) {
-      this.scene.start("MapScene");
+      this.scene.start("OverworldScene");
       return;
     }
 
@@ -489,6 +489,7 @@ export class BattleScene extends Phaser.Scene {
       unlockedSkills: newlyUnlockedSkills,
     };
     GameContext.pendingEncounterId = null;
+    GameContext.returnToNodeId = nodeId; // survives the pending-field clears so the overworld can respawn the player here
     GameContext.pendingNodeId = null;
 
     void GameContext.persistActiveProfile().then(() => this.scene.start("ResultsScene"));
