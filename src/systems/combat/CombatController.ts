@@ -13,11 +13,35 @@ import { TIER_GROOVE_GAIN, TIER_POTENCY, type JudgmentTier } from "./JudgmentSys
  * touches Web Audio, DOM, or wall-clock time, so it's fully unit-testable.
  */
 
+/**
+ * Every stat that appears in authored content has a real mechanical meaning
+ * (nothing is cosmetic):
+ *
+ * On heroes --
+ * - "guard": fraction of incoming enemy damage blocked (summed, clamped 0..1).
+ * - "accuracy": widens this hero's own judgment timing windows by the summed
+ *   fraction (read by BattleScene via heroTimingWindowMultiplier) -- how
+ *   Sightread's "the party reads the music better" buff actually helps.
+ * - "resist": reduces the magnitude of enemy debuffs applied to this hero
+ *   by the summed fraction.
+ * - "enemyDebuff" (applied BY enemies): reduces this hero's outgoing damage
+ *   by the summed (negative) fraction.
+ *
+ * On enemies --
+ * - "defense" (negative): increases damage the enemy takes.
+ * - "accuracy"/"speed" (negative): reduce the enemy's outgoing damage --
+ *   deterministic "the enemy lands its hits worse/slower", never an RNG
+ *   miss chance (PRD pillar: rhythm clarity, no hidden randomness).
+ * - "targetFocus": a taunt -- while present, the enemy's attacks are
+ *   redirected to the hero who applied it (sourceHeroId), if still alive.
+ */
 export interface StatusEffect {
   stat: string;
   value: number;
   remainingRounds: number;
   sourceAbilityId: string;
+  /** The hero who applied this effect -- set for hero-applied debuffs so taunts know where to redirect. */
+  sourceHeroId?: string;
 }
 
 export interface HeroState {
@@ -98,6 +122,18 @@ function statValue(effects: StatusEffect[], stat: string): number {
   return effects.filter((e) => e.stat === stat).reduce((sum, e) => sum + e.value, 0);
 }
 
+/**
+ * How much wider (or narrower) this hero's judgment timing windows are from
+ * active "accuracy" status effects (e.g. Sightread's party buff): 1.0 = no
+ * change, 1.1 = 10% wider. BattleScene multiplies this into judge()'s window
+ * multiplier alongside the accessibility assist setting.
+ */
+export function heroTimingWindowMultiplier(state: CombatState, heroId: string): number {
+  const hero = state.heroes.find((h) => h.heroId === heroId);
+  if (!hero) return 1;
+  return clamp(1 + statValue(hero.statusEffects, "accuracy"), 0.5, 2);
+}
+
 function rollIntent(enemy: EnemyState, enemyDef: Enemy): EnemyIntent {
   const intent = enemyDef.intents[enemy.intentCursor % enemyDef.intents.length];
   enemy.intentCursor += 1;
@@ -175,8 +211,14 @@ export function queueHeroAction(
   if (hero.focus < ability.focusCost) {
     throw new Error(`Hero "${heroId}" has ${hero.focus} focus, needs ${ability.focusCost} for "${abilityId}".`);
   }
+  // Ultimates (PRD §8.5) spend the shared party Groove meter.
+  const grooveCost = ability.grooveCost ?? 0;
+  if (state.groove < grooveCost) {
+    throw new Error(`Party has ${state.groove} groove, needs ${grooveCost} for "${abilityId}".`);
+  }
 
   hero.focus -= ability.focusCost;
+  state.groove -= grooveCost;
   state.pendingAction = { heroId, ability, ...targets };
   state.phase = "performance";
 }
@@ -208,7 +250,12 @@ function applyAbilityEffect(state: CombatState, effect: AbilityEffect, potency: 
         ? state.enemies.find((e) => e.instanceId === pending.targetEnemyId)
         : pickDefaultEnemyTarget(state);
       if (!target || target.hp <= 0) return;
-      const dealt = Math.round((effect.value ?? 0) * potency);
+      // "defense" debuffs on the target (negative values) increase the
+      // damage it takes; "enemyDebuff" effects ON the acting hero (applied
+      // by enemies, negative values) reduce the hero's output.
+      const defenseMultiplier = clamp(1 - statValue(target.statusEffects, "defense"), 0, 2);
+      const attackMultiplier = clamp(1 + statValue(actingHero.statusEffects, "enemyDebuff"), 0, 2);
+      const dealt = Math.round((effect.value ?? 0) * potency * defenseMultiplier * attackMultiplier);
       target.hp = clamp(target.hp - dealt, 0, target.maxHp);
       log(state, `${pending.heroId} hits ${target.name} with ${pending.ability.abilityId} for ${dealt} (${Math.round(potency * 100)}% potency).`);
       break;
@@ -263,6 +310,7 @@ function applyAbilityEffect(state: CombatState, effect: AbilityEffect, potency: 
         value: effect.value ?? 0,
         remainingRounds: (effect.durationRounds ?? 1) + 1,
         sourceAbilityId: pending.ability.abilityId,
+        sourceHeroId: pending.heroId, // taunts ("targetFocus") redirect the enemy here
       });
       break;
     }
@@ -326,19 +374,36 @@ function resolveEnemyActions(state: CombatState): void {
     if (!intent) continue;
 
     if (intent.effect.type === "damage") {
-      const pool = intent.effect.target === "lowestHpHero" ? [pickDefaultHealTarget(state)].filter(Boolean) as HeroState[] : aliveHeroes(state);
+      // A live taunt ("targetFocus", e.g. Taunt Stomp) overrides normal
+      // target selection: the enemy attacks the hero who taunted it.
+      const taunt = enemy.statusEffects.find((e) => e.stat === "targetFocus" && e.sourceHeroId);
+      const taunter = taunt ? aliveHeroes(state).find((h) => h.heroId === taunt.sourceHeroId) : undefined;
+      const pool = taunter
+        ? [taunter]
+        : intent.effect.target === "lowestHpHero"
+          ? ([pickDefaultHealTarget(state)].filter(Boolean) as HeroState[])
+          : aliveHeroes(state);
       const target = pool.length ? pool[Math.floor(Math.random() * pool.length)] : undefined;
       if (!target) continue;
+      // Debuffs on the enemy itself ("accuracy"/"speed", negative values)
+      // reduce its outgoing damage deterministically -- never an RNG miss.
+      const outputMultiplier = clamp(
+        1 + statValue(enemy.statusEffects, "accuracy") + statValue(enemy.statusEffects, "speed"),
+        0,
+        2
+      );
       const guardReduction = statValue(target.statusEffects, "guard");
-      const dealt = Math.round(intent.effect.value * (1 - clamp(guardReduction, 0, 1)));
+      const dealt = Math.round(intent.effect.value * outputMultiplier * (1 - clamp(guardReduction, 0, 1)));
       target.hp = clamp(target.hp - dealt, 0, target.maxHp);
-      log(state, `${enemy.name} uses ${intent.telegraph} on ${target.heroId} for ${dealt}${guardReduction > 0 ? " (guarded)" : ""}.`);
+      log(state, `${enemy.name} uses ${intent.telegraph} on ${target.heroId} for ${dealt}${guardReduction > 0 ? " (guarded)" : ""}${taunter ? " (taunted)" : ""}.`);
     } else if (intent.effect.type === "debuff") {
       const target = aliveHeroes(state)[0];
       if (!target) continue;
+      // "resist" buffs (Purify Hymn) shrink incoming enemy debuffs.
+      const resist = clamp(statValue(target.statusEffects, "resist"), 0, 1);
       target.statusEffects.push({
         stat: "enemyDebuff",
-        value: intent.effect.value,
+        value: intent.effect.value * (1 - resist),
         remainingRounds: 2,
         sourceAbilityId: intent.telegraph,
       });

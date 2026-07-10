@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import { GameContext } from "../state/GameContext";
 import { getEncounter, getBeatmap, getHeroClass, getAbility, getBossPhaseConfig, getCampaignNode } from "../data/ContentRegistry";
 import type { BossPhase } from "../data/schemas/BossPhaseConfig";
-import { createCombat, queueHeroAction, resolveHeroPerformance, type CombatState } from "../systems/combat/CombatController";
+import { createCombat, queueHeroAction, resolveHeroPerformance, heroTimingWindowMultiplier, type CombatState } from "../systems/combat/CombatController";
 import { TransportClock } from "../systems/audio/TransportClock";
 import { BeatmapSonifier } from "../systems/audio/BeatmapSonifier";
 import { timingTemplateToSeconds } from "../systems/combat/PhraseTiming";
@@ -180,17 +180,25 @@ export class BattleScene extends Phaser.Scene {
     if (!heroId) return; // enemy resolution already advanced the round internally
     this.stage = "command";
     // Base kit (PRD §8.4) plus the tier-2 unlock ability once the boss that
-    // grants it has been cleared (PRD §8.5) -- see GameContext.activeProfile.unlockedSkills.
+    // grants it has been cleared (PRD §8.5, GameContext.activeProfile.unlockedSkills),
+    // plus the role's Groove-spending ultimate (§8.5) -- always listed, since
+    // its gate is the shared Groove meter, not a persistent unlock.
     const tier2Id = `${heroId}_tier2`;
     const unlocked = GameContext.activeProfile?.unlockedSkills.includes(tier2Id) ?? false;
-    this.activeAbilityIds = [...getHeroClass(heroId).abilityIds, ...(unlocked ? [tier2Id] : [])];
-    const labels = this.activeAbilityIds.map((id, i) => `${i + 1}: ${getAbility(id).abilityId} (${getAbility(id).focusCost}f)`).join("  ");
+    this.activeAbilityIds = [...getHeroClass(heroId).abilityIds, ...(unlocked ? [tier2Id] : []), `${heroId}_ultimate`];
+    const labels = this.activeAbilityIds
+      .map((id, i) => {
+        const ability = getAbility(id);
+        const cost = ability.grooveCost ? `${ability.grooveCost}g` : `${ability.focusCost}f`;
+        return `${i + 1}: ${ability.abilityId} (${cost})`;
+      })
+      .join("  ");
     this.promptText.setText(`${heroId.toUpperCase()}'s turn — choose an ability\n${labels}`);
   }
 
   private onKeyDown(event: KeyboardEvent): void {
     if (this.stage === "command") {
-      const index = ["1", "2", "3", "4"].indexOf(event.key);
+      const index = ["1", "2", "3", "4", "5"].indexOf(event.key);
       if (index === -1 || index >= this.activeAbilityIds.length) return;
       this.selectAbility(this.activeAbilityIds[index]);
     } else if (this.stage === "select-target") {
@@ -260,7 +268,11 @@ export class BattleScene extends Phaser.Scene {
     const measuredTime = this.clock.currentTime - this.calibrationOffsetSeconds;
     const target = this.timingTargets[this.stepIndex];
     const deltaMs = (measuredTime - target) * 1000;
-    const tier = judge(deltaMs, { assistMultiplier: GameContext.activeProfile?.settings.assistedTimingWindows ? 1.5 : 1 });
+    // Accessibility assist and any active "accuracy" buff (e.g. Sightread's
+    // party buff) both widen the windows -- multiplicative, both real.
+    const assist = GameContext.activeProfile?.settings.assistedTimingWindows ? 1.5 : 1;
+    const buff = this.combat.pendingAction ? heroTimingWindowMultiplier(this.combat, this.combat.pendingAction.heroId) : 1;
+    const tier = judge(deltaMs, { assistMultiplier: assist * buff });
     this.recordTier(tier);
   }
 

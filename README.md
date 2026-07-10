@@ -78,7 +78,7 @@ tools/
 npm install
 npm run dev        # starts Vite dev server
 npm run typecheck  # tsc --noEmit
-npm test           # vitest run -- 118 unit tests
+npm test           # vitest run -- 129 unit tests
 npm run test:e2e   # playwright test -- 16 e2e specs (Chromium + Firefox)
 npm run build      # production build to dist/
 ```

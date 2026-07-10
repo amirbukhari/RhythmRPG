@@ -174,4 +174,27 @@ describe("CombatController", () => {
       expect(hero.statusEffects).toContainEqual(expect.objectContaining({ stat: "guard", value: 0.5, sourceAbilityId: "tank_tier2" }));
     }
   });
+
+  it("rejects an ultimate when the party lacks the Groove to pay for it (PRD §8.5)", () => {
+    expect(state.groove).toBe(0);
+    expect(() => queueHeroAction(state, "warrior", "warrior_ultimate")).toThrow(/groove/);
+  });
+
+  it("spends the shared Groove meter when an ultimate is used, and resolves its effects", () => {
+    state.groove = 100;
+    queueHeroAction(state, "warrior", "warrior_ultimate"); // 100g, 8 taps, 90 dmg
+    expect(state.groove).toBe(0);
+    const grooveBeforeResolve = state.groove;
+    resolveHeroPerformance(state, Array(8).fill("perfect"));
+    const slime = state.enemies[0];
+    expect(slime.hp).toBe(0); // 90 > slime's 60 max HP
+    expect(state.outcome).toBe("ongoing"); // other heroes still queued; victory settles at round end
+    expect(state.groove).toBeGreaterThan(grooveBeforeResolve); // perfect steps still rebuild groove
+  });
+
+  it("a normal ability never touches Groove", () => {
+    state.groove = 50;
+    queueHeroAction(state, "warrior", "warrior_slash_chain");
+    expect(state.groove).toBe(50);
+  });
 });

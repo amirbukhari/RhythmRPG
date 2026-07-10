@@ -10,6 +10,12 @@
     "abilityId": { "type": "string" },
     "role": { "type": "string", "enum": ["warrior", "tank", "mage", "healer"] },
     "focusCost": { "type": "integer", "minimum": 0 },
+    "grooveCost": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Shared party Groove spent to use this ability (PRD §8.5 ultimates). Omitted/0 for normal abilities."
+    },
     "phraseLengthBars": { "type": "integer", "minimum": 1, "maximum": 2 },
     "inputPattern": {
       "type": "array",

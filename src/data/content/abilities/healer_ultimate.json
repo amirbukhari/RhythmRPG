@@ -1,0 +1,13 @@
+{
+  "abilityId": "healer_ultimate",
+  "role": "healer",
+  "focusCost": 0,
+  "grooveCost": 100,
+  "phraseLengthBars": 2,
+  "inputPattern": ["tap", "hold", "release", "tap", "tap"],
+  "timingTemplate": ["1.1", "1.3", "2.1", "2.3", "2.4"],
+  "effects": [
+    { "type": "heal", "value": 999 },
+    { "type": "partyBuff", "stat": "accuracy", "value": 0.2, "durationRounds": 2 }
+  ]
+}

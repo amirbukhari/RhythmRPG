@@ -14,12 +14,12 @@ import {
 
 describe("ContentRegistry", () => {
   it("loads and validates all shipped ability files", () => {
-    expect(abilities.size).toBe(16);
+    expect(abilities.size).toBe(20);
   });
 
-  it("has the 3 core PRD §8.4 abilities plus 1 tier-2 unlock ability per role", () => {
+  it("has the 3 core PRD §8.4 abilities plus 1 tier-2 unlock and 1 ultimate per role (§8.5)", () => {
     for (const role of ["warrior", "tank", "mage", "healer"] as const) {
-      expect(abilitiesForRole(role)).toHaveLength(4);
+      expect(abilitiesForRole(role)).toHaveLength(5);
     }
   });
 
@@ -31,6 +31,15 @@ describe("ContentRegistry", () => {
   it("gives every role a tier-2 ability, keyed to match the boss-clear unlock id", () => {
     for (const role of ["warrior", "tank", "mage", "healer"] as const) {
       expect(abilities.has(`${role}_tier2`)).toBe(true);
+    }
+  });
+
+  it("gives every role a Groove-costed ultimate, keyed to match BattleScene's kit builder (PRD §8.5)", () => {
+    for (const role of ["warrior", "tank", "mage", "healer"] as const) {
+      const ultimate = abilities.get(`${role}_ultimate`);
+      expect(ultimate).toBeDefined();
+      expect(ultimate!.grooveCost).toBe(100);
+      expect(ultimate!.role).toBe(role);
     }
   });
 
