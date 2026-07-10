@@ -9,15 +9,32 @@ lib/midi_to_lsdsng.py, so their structure is fully known (note starts on a
 16th-note grid, one instrument per channel, no FX/tables/grooves), and the
 Game Boy APU's four channels are simple enough to synthesize directly:
 
-  pu1  lead   -> 50% duty pulse wave
+  pu1  lead   -> 50% duty pulse wave, with vibrato on longer-held notes
   pu2  bass   -> 25% duty pulse wave
-  wav  chords -> 4-bit-quantized triangle (LSDJ's default wave shape)
-  noi  drums  -> 15-bit LFSR noise burst
+  wav  chords -> 4-bit-quantized triangle, arpeggiated on longer-held notes
+                 to fake the polyphony a single monophonic wave channel
+                 can't produce -- the actual technique advanced LSDJ artists
+                 use for implied harmony, not something invented here
+  noi  drums  -> 15-bit LFSR noise, with kick/snare/hihat character varied
+                 by position in the bar instead of one uniform click
+
+Also renders to stereo with per-channel panning (pulses spread left/right,
+wave/noise centered) rather than a single mono sum, since arrangement- and
+mix-level polish (implied harmony, articulation, a beat that reads as a
+beat, a stereo image) is what's actually within reach here -- the note
+*data* itself was transcribed before this tool existed, from a source
+master this repo doesn't have on disk, so no amount of arrangement or DSP
+recovers melodic content the transcription never captured. This produces a
+better-programmed chiptune arrangement of that transcribed material, not a
+recreation of any specific existing recording.
 
 This is a faithful renderer for what this pipeline writes, not a general
-LSDJ player: FX columns, tables, grooves, and vibrato are ignored because
-midi_to_lsdsng.py never writes them. Hand-tuned .lsdsng files that use those
-features will render without them.
+LSDJ player: FX columns, tables, grooves, and native vibrato/arp effects
+are ignored because midi_to_lsdsng.py never writes them -- the vibrato and
+arpeggios here are applied at render time as an arrangement choice, not
+read from the .lsdsng. Hand-tuned .lsdsng files that use LSDJ's own FX
+columns will render without them (see the LSDJ-emulator path in README.md
+for those).
 
 Usage:
   python3 render_lsdsng.py <input.lsdsng> <output.wav> [--bpm N] [--loop-beats N]
@@ -118,37 +135,80 @@ def _poly_blep(phase, dt):
     just digital screech. This is the standard fix: subtract a small
     polynomial correction within one sample-period of each edge so the
     edge's harmonic content stays band-limited. `phase` is 0..1 position
-    within the cycle, `dt` is the phase increment per sample (freq/SR)."""
+    within the cycle, `dt` is the phase increment per sample (freq/SR),
+    either a scalar or a per-sample array (varying dt supports vibrato)."""
+    dt = np.broadcast_to(dt, phase.shape)
     corr = np.zeros_like(phase)
     near_rising = phase < dt
-    t = phase[near_rising] / dt
+    dtc = dt[near_rising]
+    t = phase[near_rising] / dtc
     corr[near_rising] = t + t - t * t - 1.0
     near_falling = phase > (1.0 - dt)
-    t2 = (phase[near_falling] - 1.0) / dt
+    dtc2 = dt[near_falling]
+    t2 = (phase[near_falling] - 1.0) / dtc2
     corr[near_falling] = t2 * t2 + t2 + t2 + 1.0
     return corr
 
 
-def pulse_wave(freq, n_samples, duty):
+def _phase_from_freq(freq_arr):
+    """Continuous phase accumulator for a (possibly time-varying) frequency
+    array -- needed for vibrato and arpeggios, where a plain
+    `arange(n)*freq/SR` isn't valid because freq isn't constant."""
+    dt = freq_arr / SAMPLE_RATE
+    phase = np.mod(np.cumsum(dt) - dt, 1.0)  # sample 0 starts at phase 0
+    return phase, dt
+
+
+def pulse_wave(freq, n_samples, duty, vibrato_depth=0.0, vibrato_hz=5.5):
     """Anti-aliased pulse wave: a naive square built from two band-limited
     steps (rising edge at phase 0, falling edge at phase `duty`), each
-    PolyBLEP-corrected, rather than np.where's hard (aliasing) transition."""
-    dt = freq / SAMPLE_RATE
-    phase = (np.arange(n_samples) * dt) % 1.0
+    PolyBLEP-corrected, rather than np.where's hard (aliasing) transition.
+    `vibrato_depth` (fractional frequency deviation, e.g. 0.01 = ~1 semitone
+    peak) adds the slow pitch wobble that's a defining piece of expressive
+    chiptune lead lines -- a dead-flat pitch is what makes a synth sound
+    like a test tone rather than a played instrument."""
+    freq_arr = np.full(n_samples, float(freq))
+    if vibrato_depth > 0:
+        t = np.arange(n_samples) / SAMPLE_RATE
+        freq_arr = freq_arr * (1.0 + vibrato_depth * np.sin(2 * np.pi * vibrato_hz * t))
+    phase, dt = _phase_from_freq(freq_arr)
     wave = np.where(phase < duty, 1.0, -1.0)
     wave = wave + _poly_blep(phase, dt)
     wave = wave - _poly_blep((phase - duty) % 1.0, dt)
     return wave
 
 
-def triangle_wave_4bit(freq, n_samples):
+def triangle_wave_4bit(freq_or_arr, n_samples):
     """LSDJ's default wave-channel shape is a triangle; the GB wave channel
     holds 32 4-bit samples, so quantize to 16 levels for the right texture.
     A triangle's harmonics fall off much faster than a square's, so it
-    doesn't need PolyBLEP correction to avoid harshness."""
-    phase = (np.arange(n_samples) * freq / SAMPLE_RATE) % 1.0
+    doesn't need PolyBLEP correction to avoid harshness. Accepts either a
+    constant frequency or a per-sample frequency array (arpeggios need the
+    latter -- see `arpeggiated_freq_track`)."""
+    freq_arr = np.full(n_samples, float(freq_or_arr)) if np.isscalar(freq_or_arr) else freq_or_arr
+    phase, _ = _phase_from_freq(freq_arr)
     tri = 4.0 * np.abs(phase - 0.5) - 1.0
     return np.round((tri + 1.0) * 7.5) / 7.5 - 1.0
+
+
+# A single monophonic wave channel can't hold a chord, so implying one
+# means cycling rapidly through chord tones -- the actual technique
+# skilled LSDJ artists use for harmony on a monophonic channel, not
+# something invented for this renderer. Root/fifth/octave/fifth is
+# consonant regardless of major/minor (this renderer has no key
+# information to know which third would fit).
+ARP_PATTERN_SEMITONES = (0, 7, 12, 7)
+ARP_STEP_SECONDS = 0.045
+
+
+def arpeggiated_freq_track(midi, n_samples):
+    """Per-sample frequency array cycling ARP_PATTERN_SEMITONES every
+    ARP_STEP_SECONDS, for a held wave-channel note long enough to make an
+    arpeggio read as a chord rather than a stutter."""
+    arp_step_samples = max(1, int(ARP_STEP_SECONDS * SAMPLE_RATE))
+    step_idx = (np.arange(n_samples) // arp_step_samples) % len(ARP_PATTERN_SEMITONES)
+    semitone_offsets = np.array(ARP_PATTERN_SEMITONES)[step_idx]
+    return midi_to_hz(midi) * 2.0 ** (semitone_offsets / 12.0)
 
 
 def lfsr_noise(n_samples, clock_hz=32768, seed=0x7FFF):
@@ -163,6 +223,23 @@ def lfsr_noise(n_samples, clock_hz=32768, seed=0x7FFF):
         bits[i] = 1.0 if (lfsr & 1) else -1.0
     idx = (np.arange(n_samples) * clock_hz // SAMPLE_RATE).astype(np.int64)
     return bits[idx]
+
+
+# Kick/snare/hihat character keyed off position within the 16-step LSDJ
+# phrase (this tool's stand-in for "the bar" -- the .lsdsng format has no
+# meter information of its own). A real drum kit has distinct voices; the
+# previous version fired an identical click for every hit regardless of
+# position, which reads as a hiss/wash rather than a beat once density
+# gets much above one hit per beat. This is an original drum-programming
+# heuristic (classic four-on-the-floor-with-backbeat feel), not
+# transcribed from source data the .lsdsng doesn't contain (real kit
+# labels were never captured -- see transcribe.py's known limitations).
+def _drum_voice(step_in_phrase):
+    if step_in_phrase % 8 == 0:
+        return {"clock_hz": 5000, "decay": 0.11, "gain": 1.15}  # kick
+    if step_in_phrase % 8 == 4:
+        return {"clock_hz": 9000, "decay": 0.09, "gain": 1.0}  # snare
+    return {"clock_hz": 24000, "decay": 0.03, "gain": 0.65}  # hihat
 
 
 def one_pole_lowpass(signal, cutoff_hz):
@@ -219,12 +296,21 @@ def defuzz_octave(notes):
 # articulated character (short for lead/bass so sparse notes read as
 # distinct hits rather than drones; longer for pads) rather than one
 # generic curve. `lowpass_hz` softens raw digital harshness per role.
+# `pan`: -1 (hard left) .. +1 (hard right); pulses spread wide (a classic
+# 2-pulse chiptune stereo image), wave/noise stay centered so the harmonic
+# and rhythmic core of the arrangement doesn't move with the listener.
 CHANNEL_CFG = {
-    "pu1": {"duty": 0.50, "max_steps": 8, "decay": 0.35, "gain": 0.34, "lowpass_hz": 9000},
-    "pu2": {"duty": 0.25, "max_steps": 8, "decay": 0.30, "gain": 0.24, "lowpass_hz": 4500},
-    "wav": {"duty": None, "max_steps": 12, "decay": 0.55, "gain": 0.24, "lowpass_hz": 7000},
-    "noi": {"duty": None, "max_steps": 1, "decay": 0.07, "gain": 0.20, "lowpass_hz": 6000},
+    "pu1": {"duty": 0.50, "max_steps": 8, "decay": 0.35, "gain": 0.34, "lowpass_hz": 9000, "pan": -0.35},
+    "pu2": {"duty": 0.25, "max_steps": 8, "decay": 0.30, "gain": 0.24, "lowpass_hz": 4500, "pan": 0.35},
+    "wav": {"duty": None, "max_steps": 12, "decay": 0.55, "gain": 0.22, "lowpass_hz": 7000, "pan": 0.0},
+    "noi": {"duty": None, "max_steps": 1, "decay": 0.07, "gain": 0.20, "lowpass_hz": 6000, "pan": 0.0},
 }
+
+# Notes held at least this many arp/vibrato cycles before the effect kicks
+# in -- a quick staccato pluck shouldn't warble or arpeggiate, only
+# genuinely sustained notes should.
+ARP_MIN_STEPS = 3
+VIBRATO_MIN_STEPS = 6
 
 
 def render_channel(channel, notes, step_seconds, total_samples):
@@ -245,6 +331,7 @@ def render_channel(channel, notes, step_seconds, total_samples):
         # rendering of "we don't actually know how long this note rang."
         if channel == "noi":
             dur_seconds = 0.08
+            dur_steps = 1
         else:
             next_step = notes[i + 1][0] if i + 1 < len(notes) else abs_step + cfg["max_steps"]
             dur_steps = min(next_step - abs_step, cfg["max_steps"])
@@ -253,13 +340,32 @@ def render_channel(channel, notes, step_seconds, total_samples):
         if n <= 0:
             continue
         if channel == "noi":
-            tone = lfsr_noise(n)
+            voice = _drum_voice(abs_step % 16)
+            tone = lfsr_noise(n, clock_hz=voice["clock_hz"])
+            note_gain = cfg["gain"] * voice["gain"]
+            decay = voice["decay"]
         elif channel == "wav":
-            tone = triangle_wave_4bit(midi_to_hz(midi), n)
+            if dur_steps >= ARP_MIN_STEPS:
+                tone = triangle_wave_4bit(arpeggiated_freq_track(midi, n), n)
+            else:
+                tone = triangle_wave_4bit(midi_to_hz(midi), n)
+            note_gain = cfg["gain"]
+            decay = cfg["decay"]
         else:
-            tone = pulse_wave(midi_to_hz(midi), n, cfg["duty"])
-        out[start:start + n] += tone * gb_envelope(n, cfg["decay"]) * cfg["gain"]
-    return one_pole_lowpass(out, cfg["lowpass_hz"])
+            vibrato = 0.012 if dur_steps >= VIBRATO_MIN_STEPS else 0.0
+            tone = pulse_wave(midi_to_hz(midi), n, cfg["duty"], vibrato_depth=vibrato)
+            note_gain = cfg["gain"]
+            decay = cfg["decay"]
+        out[start:start + n] += tone * gb_envelope(n, decay) * note_gain
+    filtered = one_pole_lowpass(out, cfg["lowpass_hz"])
+    left_gain, right_gain = _pan_gains(cfg["pan"])
+    return filtered * left_gain, filtered * right_gain
+
+
+def _pan_gains(pan):
+    """Equal-power pan law; pan in [-1, 1]."""
+    angle = (pan + 1.0) * (np.pi / 4.0)
+    return np.cos(angle), np.sin(angle)
 
 
 def render(path, bpm=None, loop_beats=None):
@@ -278,11 +384,16 @@ def render(path, bpm=None, loop_beats=None):
         total_beats = int(np.ceil(music_beats / 4.0)) * 4
     total_samples = int(round(total_beats * 4 * step_seconds * SAMPLE_RATE))
 
-    mix = np.zeros(total_samples)
+    mix_l = np.zeros(total_samples)
+    mix_r = np.zeros(total_samples)
     for channel in CHANNELS:
-        mix += render_channel(channel, events[channel], step_seconds, total_samples)
+        left, right = render_channel(channel, events[channel], step_seconds, total_samples)
+        mix_l += left
+        mix_r += right
 
-    # Soft-clip and normalize; keep headroom so in-game volume math is sane.
+    # Soft-clip and normalize together (same scale factor both channels) so
+    # the stereo image/pan balance set in CHANNEL_CFG survives normalization.
+    mix = np.stack([mix_l, mix_r], axis=1)
     mix = np.tanh(mix * 1.2)
     peak = np.max(np.abs(mix))
     if peak > 0:
@@ -301,9 +412,10 @@ def render(path, bpm=None, loop_beats=None):
 
 
 def write_wav(path, samples):
+    """`samples` is (n, 2) stereo float in [-1, 1]."""
     pcm = (np.clip(samples, -1.0, 1.0) * 32767).astype(np.int16)
     with wave.open(path, "wb") as f:
-        f.setnchannels(1)
+        f.setnchannels(2)
         f.setsampwidth(2)
         f.setframerate(SAMPLE_RATE)
         f.writeframes(pcm.tobytes())

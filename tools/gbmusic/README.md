@@ -157,6 +157,28 @@ python3 render_all_tracks.py   # renders all 7 stage/boss tracks into assets/aud
   fully exposed. Each channel gets a one-pole lowpass tuned to its role
   (bass darker, lead brighter, noise softened toward a hi-hat/shaker
   character instead of raw static).
+- **Arpeggiated wave channel.** A single monophonic channel can't hold a
+  chord; rapidly cycling root/fifth/octave/fifth on longer-held wave-channel
+  notes implies harmony the same way skilled LSDJ composers do on a
+  monophonic channel (`arpeggiated_freq_track`), rather than one flat tone.
+- **Vibrato on longer-held lead notes.** A small (~1 semitone), slow pitch
+  wobble on `pu1` notes held long enough to be noticeable — a dead-flat
+  pitch reads as a test tone, not a played line.
+- **Kick/snare/hihat-voiced drums.** The previous version fired one
+  identical noise-burst per hit regardless of position, which reads as a
+  hiss/wash once density gets much above one hit/beat (some tracks here
+  exceed 12 hits/bar). `_drum_voice` varies the noise channel's clock rate,
+  decay, and gain by position in the 16-step LSDJ phrase for a
+  kick/snare/hihat feel — a drum-programming heuristic, not data the
+  `.lsdsng` actually contains (real kit labels were never transcribed).
+- **Stereo output with per-channel panning.** Pulse channels spread
+  left/right (a classic two-pulse chiptune stereo image); wave/noise stay
+  centered. Previously mono.
+
+These are genre-standard chiptune *arrangement and production* techniques
+(the same kind any competent LSDJ composer applies), not a reproduction of
+any specific existing recording — this tool has no access to, and does not
+reference, any other artist's actual audio.
 - `--bpm` renders at an overridden tempo; `render_all_tracks.py` uses each
   beatmap's authored BPM so audio and judgment grid stay bar-aligned.
 - `--loop-beats` cuts the render to a whole multiple of the beatmap's
