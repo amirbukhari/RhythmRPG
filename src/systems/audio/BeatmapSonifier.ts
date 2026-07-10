@@ -6,11 +6,12 @@ import { eventSeconds, patternLengthSeconds } from "../combat/MeterSequence";
 /**
  * Sonifies a beatmap's downbeat and enemyTelegraph events as audible synth
  * hits scheduled against Tone.Transport, looping for the length of the
- * authored pattern. This is scratch-track sonification, not the shipped
- * soundtrack (PRD §11.2's DAW-authored stems / tools/gbmusic chiptune
- * pipeline are the real music path) -- but it makes the audio-clock-driven
- * timing in PRD §10.2 actually audible instead of a silent scheduler,
- * which matters for a game whose entire premise is playing to the beat.
+ * authored pattern. Originally this was the only audio in the game; now the
+ * rendered chiptune tracks (ChiptuneMusicPlayer/BattleTracks) are the
+ * musical bed and this remains layered on top as the downbeat/telegraph cue
+ * layer -- the machine-transcribed tracks don't guarantee an audibly marked
+ * downbeat by themselves, and "rhythm clarity before difficulty" (PRD §7.3)
+ * wants the judgment grid explicitly audible.
  */
 export class BeatmapSonifier {
   private downbeatSynth = new Tone.Synth({

@@ -55,11 +55,22 @@ export async function bootToMap(page: Page): Promise<void> {
   await createSaveAndCalibrate(page);
 }
 
-/** Jumps directly to a battle, bypassing map navigation -- for specs that test battle mechanics, not map UX. */
+/**
+ * Jumps directly to a battle, bypassing map navigation -- for specs that
+ * test battle mechanics, not map UX. Resolves only once the NEW battle's
+ * async create() has fully finished (combat object replaced + command
+ * stage reached): Phaser marks the scene active while create() is still
+ * awaiting audio preload/clock start, and because the same Scene instance
+ * is reused across battles, stale `stage`/`combat` fields from a previous
+ * battle can otherwise satisfy a naive wait and let a spec send input
+ * before the new battle is listening.
+ */
 export async function jumpToEncounter(page: Page, nodeId: string, encounterId: string): Promise<void> {
   await page.evaluate(
     ({ nodeId, encounterId }) => {
       const dbg = window.__meterfallDebug;
+      const scene = dbg.game.scene.getScene("BattleScene") as unknown as { combat?: unknown };
+      (window as unknown as { __prevCombat: unknown }).__prevCombat = scene?.combat ?? null;
       dbg.GameContext.pendingNodeId = nodeId;
       dbg.GameContext.pendingEncounterId = encounterId;
       dbg.game.scene.stop("MapScene");
@@ -67,7 +78,11 @@ export async function jumpToEncounter(page: Page, nodeId: string, encounterId: s
     },
     { nodeId, encounterId }
   );
-  await waitForScene(page, "BattleScene");
+  await page.waitForFunction(() => {
+    const scene = window.__meterfallDebug.game.scene.getScene("BattleScene") as unknown as { combat?: unknown; stage?: string };
+    const prev = (window as unknown as { __prevCombat: unknown }).__prevCombat;
+    return !!scene.combat && scene.combat !== prev && scene.stage === "command";
+  });
 }
 
 /**
@@ -108,6 +123,23 @@ export async function closeSettings(page: Page, returnTo: string): Promise<void>
     settingsScene.scene.stop();
   });
   await waitForScene(page, returnTo);
+}
+
+/**
+ * State of BattleScene's ChiptuneMusicPlayer: whether a rendered battle
+ * track is actually playing (as opposed to the sonifier-only fallback that
+ * kicks in when a trackId has no rendered audio or the buffer fails to
+ * load). `state` is the underlying Tone.Player's "started"/"stopped".
+ */
+export async function getMusicState(page: Page): Promise<{ hasPlayer: boolean; state: string | null }> {
+  return page.evaluate(() => {
+    const scene = window.__meterfallDebug.game.scene.getScene("BattleScene") as unknown as Record<string, unknown>;
+    const music = scene.music as { player: { state: string } | null } | undefined;
+    return {
+      hasPlayer: !!music?.player,
+      state: music?.player?.state ?? null,
+    };
+  });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

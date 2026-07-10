@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { bootToMap, jumpToEncounter, getBattleSceneState } from "./helpers";
+import { bootToMap, jumpToEncounter, getBattleSceneState, getMusicState } from "./helpers";
 
 // One boot+calibration per file (not per test) -- each is ~5s of real
 // calibration-tap wait time, and re-doing it for every test made the full
@@ -30,6 +30,26 @@ test.describe("battle basics", () => {
     expect(state.enemies).toHaveLength(1);
     expect(state.enemies[0].enemyId).toBe("slime");
     expect(state.outcome).toBe("ongoing");
+  });
+
+  test("plays the rendered chiptune battle track, not just the sonifier", async () => {
+    await jumpToEncounter(page, "opening_1", "opening_biome_slime_01");
+
+    // PRD §20.2 item 2 (real music integration): the encounter's rendered
+    // chiptune track (assets/audio/battle/) must actually be loaded and
+    // playing -- a 404'd or undecodable asset degrades silently to
+    // sonifier-only, which this would catch. Waits rather than asserting
+    // immediately: the scene registers as active while its async create()
+    // is still fetching/decoding the buffer.
+    await page.waitForFunction(
+      () => {
+        const scene = window.__meterfallDebug.game.scene.getScene("BattleScene") as unknown as { music?: { player: unknown } };
+        return !!scene.music?.player;
+      },
+      { timeout: 10_000 }
+    );
+    const music = await getMusicState(page);
+    expect(music.state).toBe("started");
   });
 
   test("selecting an ability enters the timed performance stage and accepts a tap", async () => {

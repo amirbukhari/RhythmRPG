@@ -5,6 +5,7 @@ import type { BossPhase } from "../data/schemas/BossPhaseConfig";
 import { createCombat, queueHeroAction, resolveHeroPerformance, type CombatState } from "../systems/combat/CombatController";
 import { TransportClock } from "../systems/audio/TransportClock";
 import { BeatmapSonifier } from "../systems/audio/BeatmapSonifier";
+import { ChiptuneMusicPlayer } from "../systems/audio/ChiptuneMusicPlayer";
 import { timingTemplateToSeconds } from "../systems/combat/PhraseTiming";
 import { positionAtSeconds, nextBarBoundarySeconds, meterAtBar } from "../systems/combat/MeterSequence";
 import { upcomingEvents } from "../systems/combat/Forecast";
@@ -30,7 +31,7 @@ const ROLE_TINTS: Record<HeroRole, number> = {
   healer: 0x77ff99,
 };
 
-type InputStage = "command" | "select-target" | "count-in" | "awaiting-input" | "ended";
+type InputStage = "loading" | "command" | "select-target" | "count-in" | "awaiting-input" | "ended";
 
 /**
  * All combat logic and UI. See PRD §8.2-§8.7.
@@ -40,12 +41,13 @@ type InputStage = "command" | "select-target" | "count-in" | "awaiting-input" | 
 export class BattleScene extends Phaser.Scene {
   private clock = new TransportClock();
   private sonifier!: BeatmapSonifier;
+  private music!: ChiptuneMusicPlayer;
   private combat!: CombatState;
   private beatmap!: Beatmap;
   private effectiveBpm = 120;
   private calibrationOffsetSeconds = 0;
 
-  private stage: InputStage = "command";
+  private stage: InputStage = "loading";
   private activeAbilityIds: string[] = [];
   private timingTargets: number[] = [];
   private capturedTiers: JudgmentTier[] = [];
@@ -89,6 +91,14 @@ export class BattleScene extends Phaser.Scene {
       this.scene.start("MapScene");
       return;
     }
+
+    // Phaser reuses one persistent Scene instance across stop/relaunch
+    // cycles (PRD v4.2 revision note), so a relaunched battle would
+    // otherwise carry the previous battle's terminal stage through create()
+    // -- and since create() awaits audio preload, anything polling `stage`
+    // (or a player mashing keys) during that window must see the battle as
+    // not-yet-interactive, not as a stale "command"/"ended" state.
+    this.stage = "loading";
 
     const encounter = getEncounter(encounterId);
     const beatmap = getBeatmap(encounter.trackId);
@@ -134,15 +144,27 @@ export class BattleScene extends Phaser.Scene {
       return this.add.circle(x, 46, 8, 0xff4444);
     });
 
+    // Fetch+decode this fight's rendered chiptune track(s) before the clock
+    // starts -- a boss needs every phase's track ready up front because the
+    // phase swap happens on an exact bar boundary and can't await a network
+    // fetch. Fresh instance each create(): Phaser reuses one persistent
+    // Scene object across stop/relaunch cycles (see the SettingsOverlay
+    // reuse-after-stop bug in the PRD v4.2 revision note).
+    this.music = new ChiptuneMusicPlayer();
+    await this.music.preload([beatmap.trackId, ...this.bossPhases.map((p) => p.trackId)]);
+
     await this.clock.start(this.effectiveBpm);
     this.phaseStartSeconds = this.clock.currentTime;
     this.sonifier = new BeatmapSonifier(this.clock);
     this.sonifier.setVolume(settings.volumeMusic);
     this.sonifier.start(beatmap, this.effectiveBpm, this.phaseStartSeconds);
+    this.music.setVolume(settings.volumeMusic);
+    this.music.start(beatmap.trackId, this.phaseStartSeconds, settings.gameSpeed);
     this.input.keyboard?.on("keydown", (event: KeyboardEvent) => this.onKeyDown(event));
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.sonifier.dispose();
+      this.music.dispose();
       this.clock.stop();
     });
 
@@ -422,6 +444,7 @@ export class BattleScene extends Phaser.Scene {
     this.phaseTransitionScheduled = false;
 
     this.sonifier.start(newBeatmap, this.effectiveBpm, startAtSeconds);
+    this.music.start(phase.trackId, startAtSeconds, gameSpeed);
 
     GameContext.analytics.track("boss_phase_reached", { phase: phaseIndex + 1, trackId: phase.trackId });
     this.combat.log.push({ round: this.combat.round, message: `The Conductor enters phase ${phaseIndex + 1}.` });
@@ -431,6 +454,10 @@ export class BattleScene extends Phaser.Scene {
   private endBattle(): void {
     if (this.stage === "ended") return;
     this.stage = "ended";
+    // The music player is not transport-synced (see ChiptuneMusicPlayer),
+    // so stopping the clock alone would leave the track playing into the
+    // results screen.
+    this.music.stop();
     this.clock.stop();
 
     const profile = GameContext.activeProfile!;

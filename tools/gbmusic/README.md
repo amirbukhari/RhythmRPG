@@ -9,7 +9,10 @@ Adapted from the author's own [lsdj-midi-studio](https://github.com/amirbukhari/
 project, which vendors and Python-3-fixes [alexras/pylsdj](https://github.com/alexras/pylsdj)
 (MIT). That project converts **MIDI → `.lsdsng`**; this tool adds the missing
 front half — **audio → MIDI** — via stem separation + transcription, chosen
-specifically because it maps cleanly onto Game Boy hardware.
+specifically because it maps cleanly onto Game Boy hardware. pylsdj's own
+dependency [alexras/bread](https://github.com/alexras/bread) (MIT) is also
+vendored under `lib/bread` — pure Python, but its sdist can't build on
+current Ubuntu setuptools (see `lib/bread/VENDORED.md`).
 
 ## Why stem separation first
 
@@ -108,9 +111,47 @@ still needs its own hand-tuning pass in LSDJ; the final boss's meter changes
 (PRD §8.7) are authored separately in the beatmap JSON regardless of which
 slice underlies them — see PRD §10.5.
 
-## Auditioning / rendering the result
+## Rendering to audio without LSDJ: `render_lsdsng.py`
 
-`.lsdsng` is a project file, not audio — you need LSDJ itself to hear it:
+`.lsdsng` is a project file, not audio. For a long time that meant rendering
+required LSDJ itself (emulator or hardware — see the next section), which
+this repo can't automate: the LSDJ ROM isn't redistributable, and PyBoy's
+public API exposes no audio-buffer export (investigated and documented in
+PRD §20.2 history). `render_lsdsng.py` closes that gap by synthesizing the
+four Game Boy APU channels directly:
+
+```bash
+python3 render_lsdsng.py output/opening_biome.lsdsng out.wav [--bpm N] [--loop-beats N]
+python3 render_all_tracks.py   # renders all 7 stage/boss tracks into assets/audio/battle/ as OGG
+```
+
+- pu1 → 50% duty pulse, pu2 → 25% duty pulse, wav → 4-bit-quantized
+  triangle, noi → 15-bit LFSR noise, with GB-style stepped (15-level)
+  volume envelopes.
+- `--bpm` renders at an overridden tempo; `render_all_tracks.py` uses each
+  beatmap's authored BPM so audio and judgment grid stay bar-aligned.
+- `--loop-beats` cuts the render to a whole multiple of the beatmap's
+  pattern loop length (quarter-note beats), making the file seamlessly
+  loopable against gameplay.
+- Faithful to what *this pipeline writes*, not a general LSDJ player: FX
+  columns, tables, grooves, and vibrato are ignored because
+  `lib/midi_to_lsdsng.py` never writes them. A hand-tuned `.lsdsng` that
+  uses those features still needs the LSDJ path below to be heard fully.
+
+The in-game battle tracks (`assets/audio/battle/*.ogg`, loaded via
+`src/systems/audio/BattleTracks.ts`) are produced by `render_all_tracks.py`.
+Re-run it after regenerating or hand-tuning any draft.
+
+Renderer dependencies: `numpy` (synthesis), plus the vendored `lib/bread`
+and `lib/pylsdj` with `bitstring` (parsing) — see `requirements.txt`.
+`render_all_tracks.py` additionally needs `ffmpeg` on `PATH` for OGG
+encoding. The heavyweight transcription deps (Demucs, basic-pitch) are NOT
+needed just to render.
+
+## Auditioning / rendering via LSDJ itself
+
+For final-quality renders of hand-tuned projects (real envelope/FX
+behavior), LSDJ remains the reference player:
 
 1. **Emulator (fastest):** load `output/*.lsdsng` into any Game Boy emulator
    that supports LSDJ `.sav` injection (e.g. via `pylsdj.SAVFile`, as the

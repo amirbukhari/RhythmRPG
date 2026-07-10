@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { bootToMap, jumpToEncounter, getBattleSceneState } from "./helpers";
+import { bootToMap, jumpToEncounter, getBattleSceneState, getMusicState } from "./helpers";
 
 /**
  * PRD §8.7 / release gate #3: "the final boss reliably executes authored
@@ -53,6 +53,13 @@ test.describe("boss phase transitions", () => {
     const state = await getBattleSceneState(page);
     expect(state.beatmapTrackId).toBe("boss_conductor_p2");
     expect(state.effectiveBpm).toBe(178);
+
+    // The phase swap must also restart the music on the new phase's rendered
+    // track -- all phase tracks are preloaded at battle start precisely so
+    // this can happen on the bar boundary without awaiting a fetch.
+    const music = await getMusicState(page);
+    expect(music.hasPlayer).toBe(true);
+    expect(music.state).toBe("started");
   });
 
   test("crossing the phase 3 threshold reaches a live 5/4 meter", async () => {

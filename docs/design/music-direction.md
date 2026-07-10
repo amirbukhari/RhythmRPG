@@ -49,6 +49,22 @@ stems yet; each needs a hand-tuning pass in LSDJ before it satisfies the
 delivery spec in PRD §11.2 (full mix preview, stems, tempo/meter maps,
 authoring click reference, SFX pack).
 
+## Rendered in-game tracks
+
+All 7 drafts are now rendered to playable Game Boy-style audio
+(`assets/audio/battle/*.ogg`) by `tools/gbmusic/render_all_tracks.py` (an
+APU synthesizer over the parsed `.lsdsng` note data — no LSDJ ROM or
+emulator needed; see the rendering section of `tools/gbmusic/README.md`).
+Each file is rendered at its beatmap's authored BPM and cut to an exact
+whole multiple of the beatmap's pattern loop, so it loops bar-aligned with
+the judgment grid in-game (`src/systems/audio/BattleTracks.ts` /
+`ChiptuneMusicPlayer.ts`). The transcribed tempi and the authored beatmap
+BPMs match 1:1 (105/117/129/110/105/178/105), so no time-stretching is
+involved. These renders inherit the drafts' machine-transcription caveats —
+they make the tracks *hearable and shippable as placeholders*, not
+hand-tuned final stems; re-run `render_all_tracks.py` after any hand-tuning
+pass to refresh the game's audio.
+
 ## Final boss meter changes
 
 The boss-phase slices above supply the *audio content* only. The actual

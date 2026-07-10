@@ -3,6 +3,18 @@
 Session paused at the user's request. This file is the single place to look
 when picking this project back up. Read this before doing anything else.
 
+> **Addendum 2026-07-10 (music session):** Gap 2 below ("Music — blocked on
+> a working Game Boy audio-rendering path existing at all") is now **closed**
+> — `tools/gbmusic/render_lsdsng.py` synthesizes the APU channels directly
+> from the parsed `.lsdsng` note data (no PyBoy, no LSDJ ROM), and all 7
+> battle tracks play in-game via `src/systems/audio/ChiptuneMusicPlayer.ts`,
+> bar-aligned and boss-phase-aware. What remains of the music gap is a human
+> listening/hand-tuning pass (quality, not plumbing). Also fixed a latent
+> `BattleScene` scene-reuse input-eating bug found along the way. Counts in
+> this file are stale: now 105 unit tests, 13 Chromium e2e tests. See PRD
+> v4.5 revision entry and §20 for the current authoritative snapshot. The
+> overworld plan below remains unstarted and unaffected.
+
 ## The standing `/goal` (now cancelled)
 
 A `/goal` was set earlier in this session:
