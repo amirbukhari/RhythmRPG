@@ -128,6 +128,35 @@ python3 render_all_tracks.py   # renders all 7 stage/boss tracks into assets/aud
 - pu1 → 50% duty pulse, pu2 → 25% duty pulse, wav → 4-bit-quantized
   triangle, noi → 15-bit LFSR noise, with GB-style stepped (15-level)
   volume envelopes.
+- **Anti-aliased pulse synthesis (PolyBLEP).** A naively sampled hard
+  square-wave edge aliases badly above a couple hundred Hz — audible as
+  harsh digital screech, not a "retro" sound. Both pulse edges are
+  corrected with a band-limited step (PolyBLEP) instead of a hard
+  transition. Measured effect on a real render: high-frequency (>8kHz)
+  spectral energy dropped from 34% to 16% of the signal.
+- **Short, plucked note envelopes, not bar-long drones.** The generator
+  only ever writes note *starts* (no LSDJ note-cut/off event), so a note's
+  true duration isn't recoverable from the `.lsdsng` alone — the previous
+  version sustained each note until the next one on that channel, capped
+  at up to a full bar, which reads as a persistent drone wherever the
+  source transcription is sparse (some tracks' lead channel is under 1
+  note/bar). Now capped much shorter (~2 beats) per channel, so a sparse
+  passage renders as distinct decaying hits with silence between, not a
+  held tone.
+- **Octave-glitch smoothing (`defuzz_octave`).** Per-stem polyphonic pitch
+  transcription occasionally reports a note an octave away from its
+  neighbors (a known basic-pitch failure mode on dense/harmonic content).
+  Detects a note that jumps ≥10 semitones from *both* neighbors and snaps
+  it to whichever octave of the same pitch class confidently fits the
+  neighbor average — deliberately conservative (an ordinary fifth/sixth
+  leap is common and must survive untouched) so it only fires on
+  clear octave-scale errors.
+- **Per-channel lowpass filtering.** Real Game Boy audio passes through the
+  console's analog output stage; rendering the raw digital waveform with
+  no filtering left every edge (and the wave channel's 4-bit staircase)
+  fully exposed. Each channel gets a one-pole lowpass tuned to its role
+  (bass darker, lead brighter, noise softened toward a hi-hat/shaker
+  character instead of raw static).
 - `--bpm` renders at an overridden tempo; `render_all_tracks.py` uses each
   beatmap's authored BPM so audio and judgment grid stay bar-aligned.
 - `--loop-beats` cuts the render to a whole multiple of the beatmap's
@@ -138,15 +167,27 @@ python3 render_all_tracks.py   # renders all 7 stage/boss tracks into assets/aud
   `lib/midi_to_lsdsng.py` never writes them. A hand-tuned `.lsdsng` that
   uses those features still needs the LSDJ path below to be heard fully.
 
+**Ceiling on fidelity to the source track.** All of the above fixes
+*synthesis* quality; they cannot fix the note *data* itself, which was
+transcribed (Demucs stem separation + basic-pitch pitch detection +
+librosa onset drums) before this tool existed, from a source master this
+repo doesn't have on disk (gitignored, local-only). If the transcription
+undershoots — e.g. a genuinely sparse-sounding lead line, because Demucs'
+vocal separation smeared the singing before basic-pitch ever saw it — no
+amount of better rendering recovers notes that were never captured. The
+real fix for that is feeding `convert.py` pre-separated stems (skipping the
+lossy Demucs step entirely) or re-transcribing against a cleaner source;
+see `docs/design/music-direction.md` for the current status of that.
+
 The in-game battle tracks (`assets/audio/battle/*.ogg`, loaded via
 `src/systems/audio/BattleTracks.ts`) are produced by `render_all_tracks.py`.
 Re-run it after regenerating or hand-tuning any draft.
 
-Renderer dependencies: `numpy` (synthesis), plus the vendored `lib/bread`
-and `lib/pylsdj` with `bitstring` (parsing) — see `requirements.txt`.
-`render_all_tracks.py` additionally needs `ffmpeg` on `PATH` for OGG
-encoding. The heavyweight transcription deps (Demucs, basic-pitch) are NOT
-needed just to render.
+Renderer dependencies: `numpy` and `scipy` (synthesis/filtering), plus the
+vendored `lib/bread` and `lib/pylsdj` with `bitstring` (parsing) — see
+`requirements.txt`. `render_all_tracks.py` additionally needs `ffmpeg` on
+`PATH` for OGG encoding. The heavyweight transcription deps (Demucs,
+basic-pitch) are NOT needed just to render.
 
 ## Auditioning / rendering via LSDJ itself
 

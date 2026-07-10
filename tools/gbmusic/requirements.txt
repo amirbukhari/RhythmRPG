@@ -4,7 +4,8 @@ librosa
 mido
 
 # .lsdsng -> audio rendering only (render_lsdsng.py / render_all_tracks.py)
-# needs just these two -- the heavyweight transcription deps above are NOT
+# needs these three -- the heavyweight transcription deps above are NOT
 # required for rendering. (bread and pylsdj themselves are vendored in lib/.)
 numpy
+scipy
 bitstring

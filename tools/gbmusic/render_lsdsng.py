@@ -37,6 +37,7 @@ import sys
 import wave
 
 import numpy as np
+import scipy.signal
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 import pylsdj  # noqa: E402
@@ -110,14 +111,41 @@ def gb_envelope(n_samples, decay_seconds, sustain_level=0.0):
     return np.round(env * 15) / 15
 
 
+def _poly_blep(phase, dt):
+    """Bandlimited step correction (PolyBLEP) applied at a phase discontinuity.
+    Naively sampling a hard square/pulse edge at 44.1kHz aliases badly for
+    any note above a couple hundred Hz -- audibly harsh, not a "retro" sound,
+    just digital screech. This is the standard fix: subtract a small
+    polynomial correction within one sample-period of each edge so the
+    edge's harmonic content stays band-limited. `phase` is 0..1 position
+    within the cycle, `dt` is the phase increment per sample (freq/SR)."""
+    corr = np.zeros_like(phase)
+    near_rising = phase < dt
+    t = phase[near_rising] / dt
+    corr[near_rising] = t + t - t * t - 1.0
+    near_falling = phase > (1.0 - dt)
+    t2 = (phase[near_falling] - 1.0) / dt
+    corr[near_falling] = t2 * t2 + t2 + t2 + 1.0
+    return corr
+
+
 def pulse_wave(freq, n_samples, duty):
-    phase = (np.arange(n_samples) * freq / SAMPLE_RATE) % 1.0
-    return np.where(phase < duty, 1.0, -1.0)
+    """Anti-aliased pulse wave: a naive square built from two band-limited
+    steps (rising edge at phase 0, falling edge at phase `duty`), each
+    PolyBLEP-corrected, rather than np.where's hard (aliasing) transition."""
+    dt = freq / SAMPLE_RATE
+    phase = (np.arange(n_samples) * dt) % 1.0
+    wave = np.where(phase < duty, 1.0, -1.0)
+    wave = wave + _poly_blep(phase, dt)
+    wave = wave - _poly_blep((phase - duty) % 1.0, dt)
+    return wave
 
 
 def triangle_wave_4bit(freq, n_samples):
     """LSDJ's default wave-channel shape is a triangle; the GB wave channel
-    holds 32 4-bit samples, so quantize to 16 levels for the right texture."""
+    holds 32 4-bit samples, so quantize to 16 levels for the right texture.
+    A triangle's harmonics fall off much faster than a square's, so it
+    doesn't need PolyBLEP correction to avoid harshness."""
     phase = (np.arange(n_samples) * freq / SAMPLE_RATE) % 1.0
     tri = 4.0 * np.abs(phase - 0.5) - 1.0
     return np.round((tri + 1.0) * 7.5) / 7.5 - 1.0
@@ -137,17 +165,72 @@ def lfsr_noise(n_samples, clock_hz=32768, seed=0x7FFF):
     return bits[idx]
 
 
-# Per-channel synthesis config: (duty/None, max sustain in steps, decay s, gain)
+def one_pole_lowpass(signal, cutoff_hz):
+    """Simple one-pole IIR lowpass. Real GB audio output runs through the
+    console's analog output stage before you ever hear it; skipping any
+    filtering here left every channel's raw digital edges (plus the 4-bit
+    wave-channel's staircase quantization) fully exposed, which reads as
+    harsh/buzzy rather than warm. Applied per-channel with a cutoff tuned
+    to that channel's role."""
+    alpha = 1.0 / (1.0 + SAMPLE_RATE / (2 * np.pi * cutoff_hz))
+    b = [alpha]
+    a = [1, -(1 - alpha)]
+    return scipy.signal.lfilter(b, a, signal)
+
+
+def defuzz_octave(notes):
+    """Heuristic fix for a specific, observed transcription artifact: a
+    polyphonic stem transcribed independently per-frame (basic-pitch) will
+    occasionally report the same pitch class an octave away from its
+    neighbors -- e.g. ...,55,76,62,57,... where 76 (=64 mod 12, matching
+    the surrounding 62-65 cluster an octave up) is very likely the same
+    note mis-registered an octave high, not a real melodic leap.
+
+    Trigger is deliberately conservative: a fifth (7 semitones) or sixth is
+    completely ordinary melodic movement and must survive untouched, so
+    this only fires on jumps >= 10 semitones from BOTH neighbors (an
+    octave-scale leap), and only applies the fix if some octave of the same
+    pitch class lands within 4 semitones of the neighbor average -- i.e.
+    only when there's a confident, near-exact octave-shifted match, not
+    just "closest available option." A real, intentional octave-or-larger
+    leap is rare and usually approached stepwise, so it's very unlikely to
+    also have a same-pitch-class neighbor-fit this close by coincidence.
+
+    `notes` is a list of (abs_step, midi_pitch, transpose); returns a new
+    list with pitches only in the returned tuples.
+    """
+    if len(notes) < 3:
+        return list(notes)
+    out = list(notes)
+    for i in range(1, len(out) - 1):
+        step, pitch, t = out[i]
+        prev_pitch = out[i - 1][1]
+        next_pitch = out[i + 1][1]
+        neighbor_avg = (prev_pitch + next_pitch) / 2.0
+        if abs(pitch - prev_pitch) >= 10 and abs(pitch - next_pitch) >= 10:
+            candidates = [pitch + 12 * k for k in (-2, -1, 1, 2)]
+            best = min(candidates, key=lambda c: abs(c - neighbor_avg))
+            if abs(best - neighbor_avg) <= 6 and abs(best - neighbor_avg) < abs(pitch - neighbor_avg):
+                out[i] = (step, best, t)
+    return out
+
+
+# Per-channel synthesis config. `decay` is tuned per role for a plucked,
+# articulated character (short for lead/bass so sparse notes read as
+# distinct hits rather than drones; longer for pads) rather than one
+# generic curve. `lowpass_hz` softens raw digital harshness per role.
 CHANNEL_CFG = {
-    "pu1": {"duty": 0.50, "max_steps": 16, "decay": 0.60, "gain": 0.30},
-    "pu2": {"duty": 0.25, "max_steps": 12, "decay": 0.50, "gain": 0.28},
-    "wav": {"duty": None, "max_steps": 16, "decay": 0.80, "gain": 0.30},
-    "noi": {"duty": None, "max_steps": 1, "decay": 0.06, "gain": 0.26},
+    "pu1": {"duty": 0.50, "max_steps": 8, "decay": 0.35, "gain": 0.34, "lowpass_hz": 9000},
+    "pu2": {"duty": 0.25, "max_steps": 8, "decay": 0.30, "gain": 0.24, "lowpass_hz": 4500},
+    "wav": {"duty": None, "max_steps": 12, "decay": 0.55, "gain": 0.24, "lowpass_hz": 7000},
+    "noi": {"duty": None, "max_steps": 1, "decay": 0.07, "gain": 0.20, "lowpass_hz": 6000},
 }
 
 
 def render_channel(channel, notes, step_seconds, total_samples):
     cfg = CHANNEL_CFG[channel]
+    if channel != "noi":
+        notes = defuzz_octave(notes)
     out = np.zeros(total_samples)
     for i, (abs_step, midi, _t) in enumerate(notes):
         start = int(round(abs_step * step_seconds * SAMPLE_RATE))
@@ -155,6 +238,11 @@ def render_channel(channel, notes, step_seconds, total_samples):
             break
         # Sustain until the next note on this channel, capped per channel --
         # the generator writes note starts only (LSDJ envelopes handle ends).
+        # The cap is intentionally short (see CHANNEL_CFG): the note data has
+        # very sparse passages (well under 1 note/bar in places), and holding
+        # those as a bar-long tone is a drone, not a melody -- a short,
+        # decaying articulation is the more honest (and more listenable)
+        # rendering of "we don't actually know how long this note rang."
         if channel == "noi":
             dur_seconds = 0.08
         else:
@@ -171,7 +259,7 @@ def render_channel(channel, notes, step_seconds, total_samples):
         else:
             tone = pulse_wave(midi_to_hz(midi), n, cfg["duty"])
         out[start:start + n] += tone * gb_envelope(n, cfg["decay"]) * cfg["gain"]
-    return out
+    return one_pole_lowpass(out, cfg["lowpass_hz"])
 
 
 def render(path, bpm=None, loop_beats=None):
