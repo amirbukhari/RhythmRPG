@@ -57,6 +57,7 @@ export class BattleScene extends Phaser.Scene {
   private heroSpriteBaseScale = 1.3; // heroes are 20x24; scaled up for battle presence
   private enemySprites: Phaser.GameObjects.Sprite[] = [];
   private enemyLabels: Phaser.GameObjects.Text[] = [];
+  private caustics: Phaser.GameObjects.TileSprite | null = null;
   private hpText!: Phaser.GameObjects.Text;
   private enemyText!: Phaser.GameObjects.Text;
   private beatText!: Phaser.GameObjects.Text;
@@ -155,6 +156,28 @@ export class BattleScene extends Phaser.Scene {
     const bgKey = this.isBossFight ? "bg_battle_conductor" : "bg_battle_abyss";
     this.add.image(BASE_WIDTH / 2, BASE_HEIGHT / 2, bgKey).setDepth(-10);
 
+    // Slow underwater caustic shimmer over the water region (scrolled in update).
+    this.caustics = this.add
+      .tileSprite(0, 0, BASE_WIDTH, 118, "caustics")
+      .setOrigin(0, 0)
+      .setDepth(-9)
+      .setAlpha(this.getReducedMotion() ? 0.18 : 0.4);
+
+    // A few motes drifting up through the water for life.
+    if (!this.getReducedMotion()) {
+      for (let i = 0; i < 10; i++) {
+        const mote = this.add.circle(Phaser.Math.Between(10, BASE_WIDTH - 10), Phaser.Math.Between(20, 110), 1, 0x9fe8e0, 0.6).setDepth(-8);
+        this.tweens.add({
+          targets: mote,
+          y: mote.y - Phaser.Math.Between(24, 60),
+          alpha: 0,
+          duration: Phaser.Math.Between(3000, 6000),
+          repeat: -1,
+          delay: i * 300,
+        });
+      }
+    }
+
     const FLOOR_Y = 116;
     // A receding diagonal so all four heroes are visible, warrior nearest.
     const heroHomes = [
@@ -207,8 +230,17 @@ export class BattleScene extends Phaser.Scene {
     this.add.ellipse(x, y, rx * 2, rx, color, alpha).setDepth(1);
   }
 
+  private getReducedMotion(): boolean {
+    const s = GameContext.activeProfile?.settings;
+    return Boolean(s?.reducedMotion || s?.photosensitivitySafeMode);
+  }
+
   update(): void {
     if (!this.combat) return;
+    if (this.caustics && !this.getReducedMotion()) {
+      this.caustics.tilePositionX += 0.06;
+      this.caustics.tilePositionY -= 0.1;
+    }
     this.renderHeroes();
     this.renderEnemies();
     this.renderBeat();

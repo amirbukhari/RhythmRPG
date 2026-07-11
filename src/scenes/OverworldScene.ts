@@ -9,6 +9,7 @@ import tilemapUrl from "../../assets/tilemaps/overworld.json?url";
 import leaderDownUrl from "../../assets/sprites/heroes/warrior/down.png";
 import leaderSideUrl from "../../assets/sprites/heroes/warrior/side.png";
 import leaderUpUrl from "../../assets/sprites/heroes/warrior/up.png";
+import propsUrl from "../../assets/sprites/overworld/props.png";
 
 // The party leader shown on the overworld (the Deereater/warrior). Frames are
 // authored at this size by tools/pixelart/heroes.py.
@@ -58,6 +59,7 @@ export class OverworldScene extends Phaser.Scene {
     if (!this.textures.exists("leader_down")) this.load.spritesheet("leader_down", leaderDownUrl, sheet);
     if (!this.textures.exists("leader_side")) this.load.spritesheet("leader_side", leaderSideUrl, sheet);
     if (!this.textures.exists("leader_up")) this.load.spritesheet("leader_up", leaderUpUrl, sheet);
+    if (!this.textures.exists("ow_props")) this.load.spritesheet("ow_props", propsUrl, { frameWidth: 20, frameHeight: 24 });
   }
 
   create(): void {
@@ -90,6 +92,8 @@ export class OverworldScene extends Phaser.Scene {
     this.markers = objects
       .filter((o) => o.name !== "spawn")
       .map((o) => ({ nodeId: o.name, col: Math.floor(o.x! / TILE_SIZE), row: Math.floor(o.y! / TILE_SIZE) }));
+    const spawnTile = { col: Math.floor(spawnObject.x! / TILE_SIZE), row: Math.floor(spawnObject.y! / TILE_SIZE) };
+    this.decorate(map, ground, spawnTile);
     for (const marker of this.markers) this.drawMarker(profile, marker);
 
     // One 4-frame walk cycle per facing (down/side/up); left reuses side
@@ -258,6 +262,50 @@ export class OverworldScene extends Phaser.Scene {
     GameContext.pendingEncounterId = encounterId;
     GameContext.pendingNodeId = marker.nodeId;
     this.scene.start("BattleScene");
+  }
+
+  /**
+   * Dresses the map so it doesn't read as hard-cut tile blocks: a bright foam
+   * line + dark bank wherever water meets land, and gothic props (bones,
+   * tombstones, dead trees, fungus, reeds, obelisk shards) scattered
+   * deterministically on grass, clear of node markers, the spawn, and the
+   * road. Purely decorative -- props don't affect walkability.
+   */
+  private decorate(map: Phaser.Tilemaps.Tilemap, ground: Phaser.Tilemaps.TilemapLayer, spawnTile: GridPosition): void {
+    const GRASS = 1;
+    const WATER = 3;
+    const keyOf = (c: number, r: number) => `${c},${r}`;
+    const blocked = new Set<string>();
+    for (const t of [...this.markers.map((m) => ({ col: m.col, row: m.row })), spawnTile]) {
+      for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) blocked.add(keyOf(t.col + dc, t.row + dr));
+    }
+
+    const shore = this.add.graphics().setDepth(1);
+    const FOAM = 0x9fe8e0;
+    const BANK = 0x14384f;
+    const isLand = (c: number, r: number) => {
+      const n = ground.getTileAt(c, r)?.index;
+      return n !== undefined && n !== WATER;
+    };
+
+    for (let row = 0; row < map.height; row++) {
+      for (let col = 0; col < map.width; col++) {
+        const idx = ground.getTileAt(col, row)?.index;
+        const px = col * TILE_SIZE;
+        const py = row * TILE_SIZE;
+        if (idx === WATER) {
+          if (isLand(col, row - 1)) shore.fillStyle(FOAM, 0.7).fillRect(px, py, TILE_SIZE, 1).fillStyle(BANK, 0.5).fillRect(px, py + 1, TILE_SIZE, 1);
+          if (isLand(col, row + 1)) shore.fillStyle(FOAM, 0.55).fillRect(px, py + TILE_SIZE - 1, TILE_SIZE, 1);
+          if (isLand(col - 1, row)) shore.fillStyle(FOAM, 0.5).fillRect(px, py, 1, TILE_SIZE);
+          if (isLand(col + 1, row)) shore.fillStyle(FOAM, 0.5).fillRect(px + TILE_SIZE - 1, py, 1, TILE_SIZE);
+        } else if (idx === GRASS && !blocked.has(keyOf(col, row))) {
+          const h = ((col * 73856093) ^ (row * 19349663)) >>> 0;
+          if (h % 100 < 11) {
+            this.add.image(px + TILE_SIZE / 2, py + TILE_SIZE + 2, "ow_props", h % 6).setOrigin(0.5, 1).setDepth(2);
+          }
+        }
+      }
+    }
   }
 
   private drawMarker(profile: NonNullable<typeof GameContext.activeProfile>, marker: Marker): void {

@@ -102,6 +102,46 @@ def outline(img: Image.Image, color: Rgba = PALETTE["K"], diagonal: bool = True)
     return out
 
 
+def _mix(c: Rgba, other: Rgba, t: float) -> Rgba:
+    return tuple(round(c[i] + (other[i] - c[i]) * t) for i in range(3)) + (c[3],)  # type: ignore[return-value]
+
+
+def rim_light(img: Image.Image, color: Rgba = PALETTE["L"], strength: float = 0.5) -> Image.Image:
+    """Paint a subtle light on the top/upper-left silhouette edge -- the
+    consistent light source that makes a flat sprite read as sculpted. Only
+    touches opaque pixels whose up/left neighbour is transparent."""
+    w, h = img.size
+    src = img.load()
+    out = img.copy()
+    dst = out.load()
+    for y in range(h):
+        for x in range(w):
+            if src[x, y][3] == 0:
+                continue
+            up = src[x, y - 1][3] if y > 0 else 0
+            left = src[x - 1, y][3] if x > 0 else 0
+            upleft = src[x - 1, y - 1][3] if x > 0 and y > 0 else 0
+            if up == 0 or left == 0 or upleft == 0:
+                dst[x, y] = _mix(src[x, y], color, strength)
+    return out
+
+
+def drop_shadow(img: Image.Image, dx: int = 1, dy: int = 2, alpha: int = 90) -> Image.Image:
+    """Composite a soft dark shadow of the silhouette behind the sprite,
+    offset down-right. Grows the canvas to fit the offset."""
+    w, h = img.size
+    out = Image.new("RGBA", (w + abs(dx), h + abs(dy)), TRANSPARENT)
+    shadow = Image.new("RGBA", img.size, TRANSPARENT)
+    sp, ip = shadow.load(), img.load()
+    for y in range(h):
+        for x in range(w):
+            if ip[x, y][3] > 0:
+                sp[x, y] = (4, 5, 9, alpha)
+    out.alpha_composite(shadow, (max(dx, 0), max(dy, 0)))
+    out.alpha_composite(img, (max(-dx, 0), max(-dy, 0)))
+    return out
+
+
 def pad_to(img: Image.Image, w: int, h: int, ax: float = 0.5, ay: float = 1.0) -> Image.Image:
     """Center a sprite in a fixed frame (ax/ay = 0..1 anchor; default bottom-center)."""
     out = Image.new("RGBA", (w, h), TRANSPARENT)
