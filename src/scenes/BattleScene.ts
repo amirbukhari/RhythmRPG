@@ -112,10 +112,14 @@ export class BattleScene extends Phaser.Scene {
 
     this.buildBattlefield();
 
-    // --- HUD: top beat strip + bottom command panel over the scene ---------
-    this.add.rectangle(0, 0, BASE_WIDTH, 13, 0x05060a, 0.7).setOrigin(0, 0).setDepth(20);
-    this.add.rectangle(0, 124, BASE_WIDTH, BASE_HEIGHT - 124, 0x05060a, 0.82).setOrigin(0, 0).setDepth(20);
-    this.add.rectangle(0, 123, BASE_WIDTH, 1, 0x8a52a0, 0.8).setOrigin(0, 0).setDepth(20); // amethyst divider
+    // --- HUD: framed top beat strip + bottom command panel -----------------
+    // Nine-slice panels placed so their outer borders run off-screen and only
+    // the inner ornate edge shows as the divider between HUD and battlefield.
+    const pk = this.isBossFight ? "ui_panel_boss" : "ui_panel";
+    this.add.nineslice(-6, -6, pk, undefined, BASE_WIDTH + 12, 20, 5, 5, 5, 5).setOrigin(0, 0).setDepth(20);
+    this.add.nineslice(-6, 122, pk, undefined, BASE_WIDTH + 12, BASE_HEIGHT - 116, 5, 5, 5, 5).setOrigin(0, 0).setDepth(20);
+    // stat-legend icons on the top strip (heart / focus / groove)
+    [0, 1, 2].forEach((frame, i) => this.add.image(280 + i * 13, 7, "ui_icons", frame).setDepth(21).setScale(0.9));
 
     this.beatText = this.add.text(6, 3, "", { fontFamily: "monospace", fontSize: "8px", color: "#79b855" }).setDepth(21);
     this.forecastText = this.add
