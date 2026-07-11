@@ -3,6 +3,7 @@ import { GameContext } from "../state/GameContext";
 import { RELICS } from "../systems/progression/Relics";
 import { BASE_WIDTH, BASE_HEIGHT } from "../config/GameConfig";
 import { TextMenu } from "../ui/components/TextMenu";
+import { addBackdrop } from "../ui/Backdrop";
 
 /** XP, relic, and unlock summary after a battle. See PRD §8.5. */
 export class ResultsScene extends Phaser.Scene {
@@ -20,6 +21,8 @@ export class ResultsScene extends Phaser.Scene {
       this.scene.start("OverworldScene");
       return;
     }
+
+    addBackdrop(this, 0.55);
 
     const headline = result.outcome === "victory" ? "VICTORY" : "DEFEAT";
     const color = result.outcome === "victory" ? "#ffe066" : "#ff5555";

@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import * as Tone from "tone";
 import { GameContext } from "../state/GameContext";
 import { BASE_WIDTH, BASE_HEIGHT } from "../config/GameConfig";
+import { addBackdrop } from "../ui/Backdrop";
 
 /**
  * Mandatory "Press Any Key to Start Audio" gate.
@@ -16,12 +17,15 @@ export class AudioGateScene extends Phaser.Scene {
   }
 
   create(): void {
+    addBackdrop(this, 0.45);
     this.add
       .text(BASE_WIDTH / 2, BASE_HEIGHT / 2, "PRESS ANY KEY OR CLICK TO CONTINUE", {
         fontFamily: "monospace",
         fontSize: "10px",
-        color: "#ffffff",
+        color: "#f4efe2",
         align: "center",
+        stroke: "#05060a",
+        strokeThickness: 3,
         wordWrap: { width: BASE_WIDTH - 20 },
       })
       .setOrigin(0.5);

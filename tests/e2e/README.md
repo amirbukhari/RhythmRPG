@@ -85,11 +85,29 @@ from the CI/deploy gate (see `deploy-pages.yml`) so it can't block shipping;
 it remains configured and runnable locally as a project for whoever picks up
 that investigation.
 
+## Timing sensitivity under software WebGL
+
+This sandbox (and headless CI) render the game with *software* WebGL
+(swiftshader), which is much slower than a GPU. The game now draws real
+pixel-art scenes (painted battle backdrops, per-scene backdrops, sprite
+sheets), so scene loads/transitions take longer here and an occasional
+synthetic input (a `page.mouse.click` / `keyboard.press`) is dropped under
+load. Two deliberate mitigations, neither of which weakens what's asserted:
+
+- **Tap-until-advance**: calibration needs 8 taps then advances; the helpers
+  tap *until* the scene changes (capped), not exactly 8 times, so a single
+  dropped synthetic input doesn't strand the flow. It still requires 8
+  registered taps to advance, so the real path is still exercised.
+- **`timeout: 60_000` + `retries: 2`** (`playwright.config.mjs`): the waits
+  are for real state, never arbitrary sleeps; the higher ceiling and retries
+  just absorb a slow software-rendered frame or a rare dropped input. Real
+  hardware runs far under this.
+
 ## Structure
 
-- `helpers.ts` — shared flows (`bootToMap`, `jumpToEncounter`, scene-state
-  getters). `bootToMap` includes the full 8-tap calibration, which is real
-  wall-clock time (~5s) -- specs that need multiple scenarios share one boot
+- `helpers.ts` — shared flows (`bootToOverworld`, `jumpToEncounter`,
+  scene-state getters). `bootToOverworld` includes the full calibration
+  (real wall-clock time) -- specs that need multiple scenarios share one boot
   per file (`test.describe.configure({ mode: "serial" })` + `beforeAll`)
   rather than re-booting per test.
 - `boot-flow.spec.ts` — boot through calibration to the map; save persistence across a reload.

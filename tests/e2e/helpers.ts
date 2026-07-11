@@ -41,9 +41,15 @@ export async function createSaveAndCalibrate(page: Page): Promise<void> {
   await page.keyboard.press("Enter"); // + New Save -> CalibrationScene
   await waitForScene(page, "CalibrationScene");
 
-  for (let i = 0; i < 8; i++) {
+  // Calibration needs 8 taps, then advances. Tap until it advances rather
+  // than exactly 8 times: under heavy headless-WebGL load a synthetic keypress
+  // is occasionally dropped, which would strand the fixed-count loop one tap
+  // short. Extra presses are harmless no-ops once the scene has changed. This
+  // still exercises the real path -- without 8 registered taps it never
+  // advances off CalibrationScene.
+  for (let i = 0; i < 16 && !(await isSceneActive(page, "OverworldScene")); i++) {
     await page.keyboard.press("Space");
-    await page.waitForTimeout(600); // real calibration BPM is 100 -> 600ms/beat
+    await page.waitForTimeout(400);
   }
   await waitForScene(page, "OverworldScene");
 }

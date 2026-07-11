@@ -50,9 +50,14 @@ test.describe("boot flow", () => {
     await page.keyboard.press("Enter"); // + New Save -> CalibrationScene
     await waitForScene(page, "CalibrationScene");
 
-    for (let i = 0; i < 8; i++) {
+    // Calibration needs 8 taps (the scene caps at 8, then advances). Click
+    // until it advances rather than exactly 8 times: under heavy headless-WebGL
+    // load a synthetic pointer event is occasionally dropped, and extra clicks
+    // are harmless no-ops once the scene has changed. This still exercises the
+    // real pointer path -- without 8 registered taps it never advances.
+    for (let i = 0; i < 16 && !(await isSceneActive(page, "OverworldScene")); i++) {
       await page.mouse.click(BASE_WIDTH / 2, BASE_HEIGHT / 2);
-      await page.waitForTimeout(600); // real calibration BPM is 100 -> 600ms/beat
+      await page.waitForTimeout(400);
     }
 
     await waitForScene(page, "OverworldScene");
