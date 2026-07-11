@@ -7,6 +7,7 @@ import { SaveScene } from "./scenes/SaveScene";
 import { CalibrationScene } from "./scenes/CalibrationScene";
 import { OverworldScene } from "./scenes/OverworldScene";
 import { BattleScene } from "./scenes/BattleScene";
+import { ActionBattleScene } from "./scenes/ActionBattleScene";
 import { ResultsScene } from "./scenes/ResultsScene";
 import { SettingsOverlay } from "./scenes/SettingsOverlay";
 import { GameContext } from "./state/GameContext";
@@ -22,6 +23,7 @@ const game = new Phaser.Game({
     CalibrationScene,
     OverworldScene,
     BattleScene,
+    ActionBattleScene,
     ResultsScene,
     SettingsOverlay,
   ],
