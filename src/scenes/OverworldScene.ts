@@ -6,7 +6,14 @@ import { nodeStatus, type NodeStatus } from "../systems/progression/CampaignReac
 import { stepTarget, isWalkable, type Direction, type GridPosition } from "../systems/overworld/OverworldMovement";
 import tilesetUrl from "../../assets/tilemaps/overworld_tileset.png";
 import tilemapUrl from "../../assets/tilemaps/overworld.json?url";
-import runSheetUrl from "../../assets/sprites/heroes/placeholder/Amir Run.png";
+import leaderDownUrl from "../../assets/sprites/heroes/warrior/down.png";
+import leaderSideUrl from "../../assets/sprites/heroes/warrior/side.png";
+import leaderUpUrl from "../../assets/sprites/heroes/warrior/up.png";
+
+// The party leader shown on the overworld (the Deereater/warrior). Frames are
+// authored at this size by tools/pixelart/heroes.py.
+const HERO_FRAME_W = 20;
+const HERO_FRAME_H = 24;
 
 const TILE_SIZE = 16;
 const STEP_DURATION_MS = 160;
@@ -47,9 +54,10 @@ export class OverworldScene extends Phaser.Scene {
     // re-register live cache keys.
     if (!this.textures.exists("overworld_tiles")) this.load.image("overworld_tiles", tilesetUrl);
     if (!this.cache.tilemap.exists("overworld")) this.load.tilemapTiledJSON("overworld", tilemapUrl);
-    if (!this.textures.exists("amir_run")) {
-      this.load.spritesheet("amir_run", runSheetUrl, { frameWidth: 128, frameHeight: 128 });
-    }
+    const sheet = { frameWidth: HERO_FRAME_W, frameHeight: HERO_FRAME_H };
+    if (!this.textures.exists("leader_down")) this.load.spritesheet("leader_down", leaderDownUrl, sheet);
+    if (!this.textures.exists("leader_side")) this.load.spritesheet("leader_side", leaderSideUrl, sheet);
+    if (!this.textures.exists("leader_up")) this.load.spritesheet("leader_up", leaderUpUrl, sheet);
   }
 
   create(): void {
@@ -84,13 +92,17 @@ export class OverworldScene extends Phaser.Scene {
       .map((o) => ({ nodeId: o.name, col: Math.floor(o.x! / TILE_SIZE), row: Math.floor(o.y! / TILE_SIZE) }));
     for (const marker of this.markers) this.drawMarker(profile, marker);
 
-    if (!this.anims.exists("amir_walk")) {
-      this.anims.create({
-        key: "amir_walk",
-        frames: this.anims.generateFrameNumbers("amir_run", { start: 0, end: 7 }),
-        frameRate: 12,
-        repeat: -1,
-      });
+    // One 4-frame walk cycle per facing (down/side/up); left reuses side
+    // flipped. Frame 0 of each is the standing pose.
+    for (const facing of ["down", "side", "up"] as const) {
+      if (!this.anims.exists(`leader_walk_${facing}`)) {
+        this.anims.create({
+          key: `leader_walk_${facing}`,
+          frames: this.anims.generateFrameNumbers(`leader_${facing}`, { start: 0, end: 3 }),
+          frameRate: 8,
+          repeat: -1,
+        });
+      }
     }
 
     // Return to the node just fought rather than the fixed spawn point --
@@ -103,14 +115,12 @@ export class OverworldScene extends Phaser.Scene {
       ? { col: returnMarker.col, row: returnMarker.row }
       : { col: Math.floor(spawnObject.x! / TILE_SIZE), row: Math.floor(spawnObject.y! / TILE_SIZE) };
 
-    this.player = this.add.sprite(0, 0, "amir_run", 0);
-    // The run-cycle frames are 128x128 but the figure itself only occupies
-    // ~36px in the middle of each frame (bbox measured across all 8
-    // frames), so the scale is set for the *figure* to stand ~22px --
-    // about 1.4 tiles, classic JRPG proportions -- not the frame. The
-    // origin puts the figure's feet (y=80/128 in-frame) on the tile center.
-    this.player.setScale(0.6);
-    this.player.setOrigin(0.52, 0.625);
+    this.player = this.add.sprite(0, 0, "leader_down", 0);
+    // Frames are 20x24 with the figure ~22px tall (feet near the bottom).
+    // Origin at the feet so the character stands on the tile centre, at
+    // native scale -- ~1.4 tiles tall against 16px tiles, classic JRPG.
+    this.player.setOrigin(0.5, 0.92);
+    this.player.setDepth(5);
     this.snapPlayerToGrid();
 
     this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
@@ -122,11 +132,38 @@ export class OverworldScene extends Phaser.Scene {
     this.wasd = keyboard.addKeys("W,A,S,D") as OverworldScene["wasd"];
     keyboard.on("keydown-ESC", () => this.scene.launch("SettingsOverlay", { returnTo: "OverworldScene" }));
 
+    this.addAtmosphere();
+
+    // HUD hint on a dark strip so it stays legible over the busy ground.
+    this.add.rectangle(0, 0, this.scale.width, 12, 0x05060a, 0.72).setOrigin(0, 0).setScrollFactor(0).setDepth(19);
     this.add
-      .text(4, 4, "Arrows/WASD: move   ESC: settings", { fontFamily: "monospace", fontSize: "7px", color: "#ffffff" })
+      .text(4, 3, "Arrows/WASD: move   ESC: settings", { fontFamily: "monospace", fontSize: "7px", color: "#d8ceb6" })
       .setScrollFactor(0)
-      .setDepth(10)
-      .setAlpha(0.8);
+      .setDepth(20);
+  }
+
+  /**
+   * A screen-space vignette (darkened edges) plus a faint cold overcast --
+   * cheap, camera-locked, and the single biggest "this feels like a mood,
+   * not a tech demo" win. Skipped under photosensitivity-safe mode.
+   */
+  private addAtmosphere(): void {
+    if (GameContext.activeProfile?.settings.photosensitivitySafeMode) return;
+    const { width, height } = this.scale;
+    const g = this.add.graphics().setScrollFactor(0).setDepth(15);
+    // cold overcast tint
+    g.fillStyle(0x0b1420, 0.18).fillRect(0, 0, width, height);
+    // vignette: nested translucent frames, darker toward the edge
+    const steps = 10;
+    for (let i = 0; i < steps; i++) {
+      const t = i / steps;
+      g.fillStyle(0x05060a, 0.06);
+      const inset = Math.round((t * Math.min(width, height)) / 2.4);
+      g.fillRect(0, 0, width, inset); // top
+      g.fillRect(0, height - inset, width, inset); // bottom
+      g.fillRect(0, 0, inset, height); // left
+      g.fillRect(width - inset, 0, inset, height); // right
+    }
   }
 
   update(): void {
@@ -135,7 +172,7 @@ export class OverworldScene extends Phaser.Scene {
     if (dir) this.tryStep(dir);
     else if (this.player.anims.isPlaying) {
       this.player.anims.stop();
-      this.player.setFrame(0);
+      this.player.setFrame(0); // standing pose of whatever facing we last set
     }
   }
 
@@ -168,18 +205,17 @@ export class OverworldScene extends Phaser.Scene {
   }
 
   private tryStep(dir: Direction): void {
-    // Only one horizontal art strip exists (PRD §11.4): left is the same
-    // frames flipped; up/down reuse them unflipped. Placeholder-art
-    // limitation, not a bug.
-    if (dir === "left") this.player.setFlipX(true);
-    if (dir === "right") this.player.setFlipX(false);
+    // Point the sprite the way we're walking. Real per-facing art for
+    // up/down/side (heroes.py); left is side flipped horizontally.
+    this.faceDirection(dir);
 
     const target = stepTarget(this.playerPos, dir);
     if (!isWalkable(this.walkable, target)) return;
 
     this.moving = true;
-    if (!this.player.anims.isPlaying) this.player.play("amir_walk");
     this.playerPos = target;
+    const anim = `leader_walk_${this.facingKey(dir)}`;
+    if (this.player.anims.getName() !== anim || !this.player.anims.isPlaying) this.player.play(anim);
     this.tweens.add({
       targets: this.player,
       x: target.col * TILE_SIZE + TILE_SIZE / 2,
@@ -190,6 +226,19 @@ export class OverworldScene extends Phaser.Scene {
         this.checkEncounterTrigger();
       },
     });
+  }
+
+  private facingKey(dir: Direction): "down" | "up" | "side" {
+    if (dir === "up") return "up";
+    if (dir === "down") return "down";
+    return "side";
+  }
+
+  /** Sets the correct facing texture + flip without necessarily animating. */
+  private faceDirection(dir: Direction): void {
+    const key = this.facingKey(dir);
+    this.player.setFlipX(dir === "left");
+    if (this.player.texture.key !== `leader_${key}`) this.player.setTexture(`leader_${key}`, 0);
   }
 
   /**
