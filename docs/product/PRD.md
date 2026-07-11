@@ -6,7 +6,7 @@
 |---|---|
 | Document title | Project Meterfall — Browser Rhythm RPG PRD |
 | Codename | Project Meterfall |
-| Status | Draft v5.3 — vertical slice with a real, cohesive, lyric-derived pixel-art pass (art bible + in-code pipeline: distinct hero classes, themed enemies, tileset, painted battle backdrops, titled menu), a walkable pixel-art overworld hub (scope change, §7.1), full ability kits including Groove-spend ultimates and a fully-wired stat model, real per-visit encounter variety on every non-boss node, and a verified-green (Chromium) CI/deploy pipeline; remaining gaps are external-resource-blocked (real audio, real-device QA, Firefox root-cause) or incremental depth (animation frames, follow-on content) — pending stakeholder sign-off |
+| Status | Draft v6.0 — **major direction change in progress**: combat pivots from turn-based rhythm to a **real-time rhythm-action arena** (run-around movement, dashes/i-frames, frame-data attacks, hitstun/knockback/combos, parries, on-beat power — *Melee*-depth) with **Hyper Light Drifter**-register art (colossal enemies, silhouette-first, glow/bloom). The game is *The Drowned Chorus* (world/story bible written). Prior turn-based slice, overworld hub, pixel-art pipeline, and CI are in place; the action-combat engine and HLD art upgrade are being built against this revised spec. See §20 for build-vs-spec status. |
 | Owner | Amir Bukhari |
 | Author | Amir Bukhari (compiled from concept notes and deep research) |
 | Created | 2026-07-08 |
@@ -34,6 +34,7 @@
 | 4.4 | 2026-07-08 | Amir Bukhari | Real user report on the live deploy: unable to get past calibration at all. Root cause: `CalibrationScene` only ever accepted keyboard taps — every other mandatory, unskippable screen (`AudioGateScene`, every `TextMenu`) accepts both keyboard and pointer input, but calibration was keyboard-only with zero feedback for a player who clicked/tapped instead, a first-run-blocking bug on the very first interactive screen the game requires. Fixed by adding a `pointerdown` handler alongside the existing `keydown` one; added an e2e regression test that completes calibration via mouse clicks only. Also reworded `AudioGateScene`'s "PRESS ANY KEY TO START AUDIO" (misread as "music will play") to "PRESS ANY KEY OR CLICK TO CONTINUE" — no audio, music or otherwise, is ever played by that screen; it only unlocks the browser's AudioContext for later use. |
 | 5.0 | 2026-07-10 | Amir Bukhari | **Scope change from live-play feedback: replaced the node-select campaign map with a walkable pixel-art overworld** ("is this a text-based game? I wanted a pixel art game I could run around in") — a real tilemap hub (script-generated 4-tile tileset + Tiled-JSON 40×24 map with BFS-validated marker reachability, `tools/overworld/generate_overworld_map.py`), tile-snapped 4-directional movement with collision (pure `OverworldMovement` module, no physics engine), camera-follow, the previously-unused 8-frame run spritesheet as the walking player, node markers color-coded by cleared/unlocked/locked status (`CampaignReachability`, extracted pure from `MapScene`), walk-onto-marker battle triggering, and respawn-at-fought-node after battles (`GameContext.returnToNodeId`). `MapScene` deleted; §7.1's "no free-roam overworld" decision superseded (see revised row). Also closed §20.2's last no-external-blocker gap: every non-boss node now draws from a 2-entry `encounterPool` (boss deliberately fixed — its phase config is keyed to the specific encounter). Updated §7.1, §8.1, §10.5, §10.6, §11.4, §20. 118 unit tests (was 102); 16 Chromium e2e specs (was 11/12, including 4 new overworld specs); prior cycle's flagged Pages deploy failure confirmed transient — latest deploy verified green. |
 | 5.1 | 2026-07-10 | Amir Bukhari | Closed two spec-vs-implementation gaps found by auditing §8 requirements directly against the code (both invisible to §20's previous accounting): (1) **§8.5's "Groove … spent on ultimates" had no spend path at all** — Groove could only accumulate. Added an optional `grooveCost` to the canonical ability schema, gating/spending in `queueHeroAction`, one authored 100-Groove ultimate per role, and the command-menu wiring (5-slot kit, `(100g)` labels); §8.5 now specifies the realized design. (2) **Five authored stats (`accuracy`, `speed`, `defense`, `resist`, `targetFocus`) and enemy-applied debuffs were cosmetic** — pushed onto `statusEffects` but read by nothing (only hero `guard` was ever consulted). All are now mechanically wired with deterministic semantics documented on `StatusEffect` (no RNG miss chances, per the rhythm-clarity pillar), including a real taunt and Sightread's accuracy buff actually widening judgment windows. 129 unit tests (was 118, incl. new `combat-stats.test.ts` pinning every wiring); 16 Chromium e2e specs re-verified; ultimate flow verified live in-browser. |
+| 6.0 | 2026-07-11 | Amir Bukhari | **Direction change: real-time rhythm-action + Hyper Light Drifter art.** On direct feedback ("I need to be able to run around in battle and attack stuff… mechanics super intricate like Super Smash Bros. Melee"; "the art needs to be wayyy sicker… like Hyper Light Drifter with its colossal-feeling art and enemies"), pivoted the combat pillar from turn-based rhythm to a **real-time action arena**: 8-dir momentum movement, dash with i-frames, light/heavy/special/ultimate attacks with real frame data (startup/active/recovery), hitstun + damage-%-scaled knockback + DI, on-beat parries, and cancels/tech — with the rhythm woven in as on-beat power windows (audio-clock spine unchanged). Rewrote the art direction to the HLD register: colossal silhouette-first enemies, vivid limited palette, additive glow/bloom. Rewrote §7.3 pillars, §8.2–§8.5 combat model, §11.1 art, §7.2 scope, and the status line; the prior turn-based slice, overworld, pipeline, and CI carry forward while the new action engine and HLD art are built against this spec (see §20.4). |
 | 5.3 | 2026-07-10 | Amir Bukhari | **Real art pass, from the lyrics.** Acting on direct feedback ("make all the pixel art sprite sheets… make this game absolutely beautiful and use these lyrics to inspire the art"), derived a full art direction from the uploaded Skatopia setlist lyrics ("the drowned chorus" — gothic, drowned, clockwork body-horror as *beautiful* moody pixel art) and built it. Added an in-code pixel-art pipeline (`tools/pixelart/`: one master palette + grid→PNG render/outline/pack; `generate_all.py` regenerates everything deterministically) and authored: four **distinct** hero classes (down/side/up walk cycles), six lyric-themed enemies incl. the Conductor boss (idle-animated), a seamlessly-tiling overworld tileset, two painted 320×180 battle backdrops, and a titled main menu — replacing every tinted-placeholder/colored-circle. Overhauled `BattleScene` (backdrop + party + animated wave + reflowed HUD), gave `OverworldScene` real directional hero art + a mood vignette, and put the shared abyss backdrop behind the menu/gate/results scenes. Wrote `docs/design/art-bible.md`; updated §11.1/§11.4/§20. All authored in code — no external art, no image generation. 129 unit tests, 16 Chromium e2e specs, typecheck, build all green; every scene screenshot-verified in-browser. |
 | 5.2 | 2026-07-10 | Amir Bukhari | Same audit, third find: §14's analytics were consent-gated (off by default, correctly privacy-first) but **no UI existed for a player to ever grant consent**, so the entire event set was unreachable in real play. Added an "Analytics (local-only)" toggle to SettingsOverlay writing the persisted `SaveProfile.analyticsConsent` (shown only with an active profile; v1 analytics remain in-memory/no-network). Verified live end to end: toggle ON → events record → consent survives reload+load. |
 
@@ -150,13 +151,15 @@ These map directly to the analytics events defined in §14.
 
 ### 7.2 Out of scope (v1)
 
-Online features, user-generated beatmaps, procedural soundtrack generation, voice acting, multi-map/open-world exploration (the single-map overworld hub of §7.1 is in scope as of v5.0; a traversable world of multiple connected maps, towns, NPCs, and secrets is not), controller rumble as a required channel, live beat detection from arbitrary/imported songs, monetization plumbing.
+Online/netcode multiplayer (local co-op/party-switch is a later increment, not v1), user-generated beatmaps, procedural soundtrack generation, voice acting, multi-map/open-world exploration (the single-map overworld hub of §7.1 is in scope as of v5.0; a traversable world of multiple connected maps, towns, NPCs, and secrets is not), controller rumble as a required channel, live beat detection from arbitrary/imported songs, monetization plumbing. (Real-time action combat is now firmly *in* scope as of v6.0 — it was previously excluded in favor of turn-based.)
 
-### 7.3 Product pillars
+### 7.3 Product pillars (v6.0 — real-time rhythm-action)
 
-1. **Rhythm clarity before difficulty** — every mechanic must make the beat more legible, never less.
-2. **Turn-based strategy with rhythmic execution** — the game is an RPG first, a reflex gauntlet second; this also aligns with accessibility guidance favoring turn-based structures to reduce real-time pressure.
-3. **Musical variety without musical confusion** — content starts in 4/4, differentiates via accents/subdivisions, and introduces true meter changes deliberately, never disguising a rhythmic pattern (clave) as a time signature.
+1. **Movement is the game.** Combat is a real-time action arena you run, dash, and space in — think *Hyper Light Drifter*'s kinetic clarity with *Super Smash Bros. Melee*'s mechanical depth. Every action has real frame data (startup / active / recovery); mastery is spacing, timing, cancels, and reads, not menu selection.
+2. **The chorus drives the fight.** The rhythm layer is not a minigame bolted on — the arena beats to the track. Attacks, dashes, and parries executed on-beat are *empowered* (bonus damage/knockback, extended i-frames, Groove); enemy attacks telegraph and land on the beat. Reading the music is reading the fight. This is why it is still *The Drowned Chorus*.
+3. **Rhythm clarity before difficulty** — every mechanic must make the beat more legible, never less; the beat UI, telegraphs, and on-beat feedback are always readable.
+4. **Colossal, readable art.** Enemies are imposing and silhouette-first; the player is small against screen-filling bosses. Vivid, limited palette with emissive glow on a desaturated dark world.
+5. **Accessible depth.** Assist/story modes widen on-beat windows, a practice mode has no fail state, and reduced-motion/photosensitivity-safe modes tame effects — none of which remove the skill ceiling for players who want it.
 
 ---
 
@@ -166,52 +169,61 @@ Online features, user-generated beatmaps, procedural soundtrack generation, voic
 
 Boot → audio-gesture unlock → save slot select/create → optional AV calibration → walkable overworld hub whose campaign nodes (battle / elite / camp / boss) are map markers, unlocked in graph order → walk onto an unlocked marker to start its battle → node reward → respawn on the overworld at the node just fought → repeat until final boss cleared. (v1–v4: a node-select menu map; replaced by the overworld in v5.0, same underlying campaign graph.)
 
-### 8.2 Battle loop and turn structure
+### 8.2 Battle model — real-time action arena (v6.0)
 
-Combat is strictly turn-based (not ATB, not real-time):
+> **Direction change (v6.0):** combat is now a **real-time action arena**, not turn-based. The player directly controls one hero (the party lead; switchable/co-op party members are a later increment), running around a bounded arena, spacing against enemies, and attacking in real time. Depth is in the *Super Smash Bros. Melee* register: every action has real frame data, movement has momentum and cancel windows, and mastery is spacing, timing, cancels, and reads. The prior turn-based/phrase model (v1–v5) is retired; the audio-clock spine (§10.2), content pipeline (§10.5), and campaign/overworld (§8.1) carry forward.
 
-1. **Intent phase** — enemy intents displayed.
-2. **Command phase** — player selects one action for the active hero; untimed in normal play.
-3. **Performance phase** — action executes as an authored rhythmic phrase over a one-bar count-in.
-4. **Resolution phase** — damage/healing/status/resource changes apply.
-5. **Next combatant** — turn advances.
-6. **Round end** — end-of-round effects trigger after all living combatants have acted.
+**Movement.**
+- 8-directional run with acceleration/friction (momentum) and a max speed; a short skid on hard direction reversal.
+- **Dash / dodge**: a burst with **invincibility frames** on startup, committed recovery, and a short cooldown. An *on-beat* dash (§8.3) extends the i-frames and refunds cooldown — the core risk/reward of moving to the music.
+- Facing is set by aim/movement; all attacks are directional.
 
-### 8.3 Timing model
+**Attacks (per-hero moveset).**
+- **Light** — fast startup, low commitment, gatlings into a short combo within a cancel window.
+- **Heavy** — slow startup, high knockback/damage, armor on select frames.
+- **Special** — costs Focus; the hero's defining tool (e.g. the Deereater's lunge, the Esoterophobe's zone).
+- **Ultimate** — costs the full Groove meter; a screen-shaking verse loud enough to break the song.
+- Each attack is a hitbox with **frame data** (startup / active / recovery), damage, a knockback vector, and hitstun.
 
-- Every action maps to an authored phrase (1–2 measures) against the active track's beatmap; timing is never discovered by blind trial.
-- The UI always displays current measure, current beat, next downbeat, and the active phrase lane.
-- Judgment tiers (pre-accessibility-modifier):
+**Hit reactions (real combos).**
+- **Hitstun**: a hit locks the victim out for frames scaled by damage — enabling true combos and juggles.
+- **Knockback**: a vector whose magnitude scales with the hit *and* the victim's accumulated **damage %** (Melee-style), so combos carry across the arena. **Directional Influence (DI)**: holding a direction during hitstun nudges the knockback vector — defender counterplay.
+- **Parry / perfect-guard**: a tight **on-beat** guard that negates a hit and staggers the attacker; the parry window opens on the beat.
 
-| Tier | Window | Result |
+**Cancels & tech (the depth layer).** Attack→dash cancel on the beat (dash-dance pressure, whiff-punish); light→light→heavy gatling inside cancel windows; on-beat dash-out-of-pivot slides for spacing. Everything cancellable is cancellable only inside a few-frame window, rewarding precision.
+
+**Encounter flow.** Enter arena → real-time fight (defeat the wave / survive the boss's phases) → on clear, rewards (§8.5) → back to the overworld at the fought node. No turns, no mid-fight menus.
+
+### 8.3 Timing model — on-beat power within real time
+
+The four judgment tiers now grade the timing of a **real-time action relative to the nearest beat** (not a scripted phrase). On-beat actions are *empowered*; off-beat still execute, weaker:
+
+| Tier | Window | On-beat effect |
 |---|---:|---|
-| Perfect | ±45 ms | 100% base potency + streak gain |
-| Great | ±90 ms | 85% base potency |
-| Good | ±140 ms | 65% base potency |
-| Miss | outside Good | 0% potency, combo break |
+| Perfect | ±45 ms | +full power: max bonus damage/knockback, extended dash i-frames, parry active, +Groove |
+| Great | ±90 ms | strong bonus, +Groove |
+| Good | ±140 ms | small bonus |
+| Off | outside Good | base action, no bonus, no Groove |
 
-- Story mode widens all windows by 25%. Calibration offsets apply globally, before judgment.
+Story/assist mode widens all windows; calibration offset applies globally, before judgment (§10.3). Enemy attacks telegraph and land on the beat, so reading the music reads the fight; **Sightread** reveals the upcoming beats/telegraphs and any meter change (the "see the music" tool). Audio-clock authority is unchanged (§10.2) — all timing derives from `TransportClock`, never wall-clock.
 
-### 8.4 Party and role kits
+### 8.4 Party and hero movesets
 
-| Role | Combat purpose | Core abilities (v1) | Signature mechanic |
-|---|---|---|---|
-| Warrior | Burst damage | Slash Chain, Rising Break, Finisher | Longer, higher-reward combo phrases |
-| Tank | Mitigation / interruption | Guard Pulse, Taunt Stomp, Iron Wall | Downbeat-based guard and interrupt windows |
-| Mage | Debuff / pattern disruption | Arc Flash, Hex Syncopation, Static Field | Offbeat and syncopated phrase design |
-| Healer | Sustain / visibility | Mend Cadence, Purify Hymn, Sightread | Reveals future cues and meter changes |
+Each hero is an **action moveset** (not a menu of phrases): light, heavy, special (Focus), ultimate (Groove), plus a signature movement/defensive trait.
 
-**Sightread** (healer) is the canonical realization of the source concept's "see the music" idea: it reveals the next two measures of enemy telegraph glyphs, syncopation markers, and upcoming meter changes. Without it, players still see the current phrase lane and barline — there is no scenario where the baseline beat UI is hidden.
-
-**Tier-2 unlock ability.** Resolving §8.5's "each hero unlocks one new skill after each biome boss": each role gets a fourth ability (Warrior: a demanding 6-step two-bar combo for higher damage; Tank: a party-wide guard; Mage: a combined damage+debuff strike; Healer: a large heal plus party accuracy buff), granted once the run's boss node is cleared. This extends the v1 kit table above from 3 to 4 abilities per role — a deliberate decision, not an accident of implementation.
+| Hero | Combat identity | Signature trait |
+|---|---|---|
+| **the Deereater** (warrior) | aggressive burst; long committal combos | a lunging gap-close on the beat |
+| **the Saltminer** (tank) | space control & armor; punishes whiffs | on-beat parry with a wide window and a stagger counter |
+| **the Esoterophobe** (mage) | zoning & disruption; controls the arena | places a lingering hex-zone that debuffs foes crossing it |
+| **Sunshine Sally** (healer) | sustain & sight; keeps the party reading the music | **Sightread** (forecast) + an on-beat heal pulse |
 
 ### 8.5 Resources and progression
 
-- Each hero has HP and Focus; Focus is earned by accurate play and spent on advanced skills.
-- The party shares a **Groove** meter, built from streaks, spent on ultimates. Missed inputs reduce Groove gain but never remove existing Focus.
-
-**Ultimates (v5.1 realization of the Groove spend).** Each role has one ultimate ability (`{role}_ultimate`), always listed in the command menu and gated only by the shared Groove meter (cost: the full 100), not by a persistent unlock: Warrior — an 8-step two-bar barrage for massive single-target damage; Tank — a party-wide 75% guard plus an interrupt; Mage — damage plus heavy `accuracy`/`defense` debuffs on the target; Healer — a full heal on the most-wounded hero plus a party-wide accuracy buff. Like every ability, an ultimate's potency scales with performance accuracy — spending 100 Groove and missing the phrase wastes it, which is the intended risk/reward of banking the meter.
-- Progression is deterministic, not loot-driven: one new skill per hero per biome boss. Equipment limited to one relic slot per hero plus one shared party charm.
+- **HP** (a bar) and an accumulating **damage %** that scales incoming knockback (Melee-style), so a battered fighter gets launched further.
+- **Focus** — built by on-beat aggression, spent on specials.
+- **Groove** (shared) — built by on-beat play and clean combos, spent on the ultimate. Whiffing/getting hit off-beat slows Groove gain but never drains Focus.
+- Progression is deterministic, not loot-driven: each boss clear unlocks a new moveset tool per hero. Equipment limited to one relic slot per hero plus one shared party charm.
 
 ### 8.6 Encounter design progression
 
@@ -335,18 +347,20 @@ All save data lives in **IndexedDB**: player settings, calibration offsets, camp
 
 ## 11. Content and UX Requirements
 
-### 11.1 Art direction
+### 11.1 Art direction — *Hyper Light Drifter* register (v6.0)
+
+**Target feel:** *Hyper Light Drifter*. Colossal, imposing enemies that dwarf a small, nimble player; bold, instantly-readable **silhouette-first** design; a **vivid, limited palette** — a few searing accent hues (abyssal teal, plum/magenta, ember-gold, blood) on desaturated near-black depths — with **additive glow/bloom** on eyes, weapon arcs, attack telegraphs, hazards, and the chorus's light. Dramatic scale and negative space; crunchy, deliberate, low-frame-count animation with strong anticipation/impact poses. Emissive readability is a hard requirement: every attack telegraph and hitbox-active frame must glow so the real-time fight is legible at a glance.
 
 | Asset type | Spec |
 |---|---|
-| Base resolution | 320×180 |
+| Base resolution | 320×180 (small player, screen-filling bosses) |
 | Tile size | 16×16 |
-| Hero combat sprite | 48×48 |
-| Enemy combat sprite | 48×48 to 64×64 |
-| UI icons | 16×16 |
-| Battle backgrounds | 320×180, layered, parallax optional |
-| Animation rate | 8–12 fps authored; engine interpolation reserved for camera/UI only |
-| Palette policy | One global master palette + per-biome accent extension |
+| Player combat sprite | ~20×24, silhouette-readable |
+| Standard enemy | 48×48+; **elites/bosses 96–180px** (colossal, may exceed one screen height) |
+| Glow/bloom | additive emissive layer on eyes, edges, energy, telegraphs, and hazards |
+| Battle arenas | 320×180, layered depth (fog/atmospheric perspective), god-rays, caustics |
+| Animation | low frame count, high contrast in pose (anticipation → impact → recovery), 8–12 fps |
+| Palette policy | one global master palette, ruthlessly limited; saturated accents on desaturated darks (HLD discipline) |
 
 **Realized direction (v5.3):** the art bible now exists — [`docs/design/art-bible.md`](../design/art-bible.md) — and the game ships a real, cohesive pixel-art pass built to it, derived from the Skatopia setlist lyrics ("the drowned chorus": a gothic, drowned, clockwork world). Everything is authored in code as palette-indexed pixel grids and rendered deterministically to PNG (`tools/pixelart/`, regenerate with `generate_all.py`) — four *distinct* hero classes (not one tinted sprite), six lyric-themed enemies incl. the Conductor boss, a seamlessly-tiling overworld tileset, painted battle backdrops, and a titled main menu, all sharing one master palette. This supersedes the earlier "carried-forward Amir placeholder" basis (§11.4); the Amir reference frames are retained only as historical animation-timing reference. Remaining art work is animation depth (attack/hurt frames, true 4-directional art), not a from-scratch art pass — see art-bible §6 and §20.2.
 
@@ -543,3 +557,11 @@ The vertical-slice exit condition is met, the between-battles experience is a re
 **Blocked on something outside this environment** (not closeable by more engineering effort alone): (1) a dedicated audio-rendering spike to get the `tools/gbmusic/` chiptune drafts playing as real audio, replacing `BeatmapSonifier` — needs either a maintained PyBoy audio-export path or a non-PyBoy Game Boy audio renderer to exist first; (2) a real art-bible pass: distinct per-class spritesheets, 4-directional overworld walk cycles, and a real tileset, gated on `docs/design/art-bible.md` and actual art production; (3) the QA matrix (§16) on real, non-headless browsers/devices; (4) the Firefox e2e root-cause (needs a maintainer with a non-sandboxed environment to bisect against, since both this sandbox and real CI show the identical failure).
 
 **Pure follow-on content, no external blocker but also no open v1 requirement**: (5) author real branching (`CampaignNode.next` already supports multiple ids, but `CampaignReachability` and progression logic only ever follow `next[0]` — letting the player actually choose a branch needs both content and divergent overworld roads/markers); (6) author a second full biome (second boss, second overworld map) to move from "one biome, one boss" toward the fuller campaign shape in §8.6; (7) overworld depth beyond the hub mechanic: camp-node content, NPCs/secrets, re-fighting cleared nodes.
+
+### 20.4 v6.0 pivot — build status (as of 2026-07-11)
+
+The v6.0 direction change (real-time rhythm-action combat + HLD-register art) is **in progress against the rewritten §8/§11.1 spec**. Snapshot:
+
+- **Carried forward, still real:** the walkable overworld hub, the Skatopia-lyric art pipeline (`tools/pixelart/`), the world/story bible (*The Drowned Chorus*), the audio-clock spine (`TransportClock`), the content pipeline and campaign graph, the framed UI skin, and the CI/deploy pipeline.
+- **Being built:** the real-time `ActionBattleScene` and its Phaser-free action-combat systems (movement/momentum, dash + i-frames, frame-data attacks, hitstun + knockback + DI, on-beat power, enemy AI), plus the HLD art upgrade (colossal silhouette-first enemies, additive glow/bloom, dramatic scale). These replace the turn-based `BattleScene`/`CombatController` as the primary combat once solid; the turn-based system remains in the tree until the action system reaches parity so the game is never left unplayable mid-pivot.
+- **Honest note:** *Melee*-grade depth (full cancel/tech tree, DI, wavedash-like movement) and a fully screen-filling animated boss are a multi-increment build; this section will be re-cut as each layer lands. The spec (§8.2–§8.5) is the target; this subsection tracks reality against it.
