@@ -3,6 +3,7 @@ import { GameContext } from "../state/GameContext";
 import { RELICS } from "../systems/progression/Relics";
 import { BASE_WIDTH, BASE_HEIGHT } from "../config/GameConfig";
 import { TextMenu } from "../ui/components/TextMenu";
+import { addBackdrop } from "../ui/Backdrop";
 
 /** XP, relic, and unlock summary after a battle. See PRD §8.5. */
 export class ResultsScene extends Phaser.Scene {
@@ -17,9 +18,11 @@ export class ResultsScene extends Phaser.Scene {
     GameContext.lastBattleResult = null;
 
     if (!result) {
-      this.scene.start("MapScene");
+      this.scene.start("OverworldScene");
       return;
     }
+
+    addBackdrop(this, 0.55);
 
     const headline = result.outcome === "victory" ? "VICTORY" : "DEFEAT";
     const color = result.outcome === "victory" ? "#ffe066" : "#ff5555";
@@ -54,7 +57,7 @@ export class ResultsScene extends Phaser.Scene {
             label: `Take: ${RELICS[relicId]?.name ?? relicId} -- ${RELICS[relicId]?.description ?? ""}`,
             onSelect: () => this.chooseRelic(relicId),
           }))
-        : [{ label: "Continue", onSelect: () => this.scene.start("MapScene") }];
+        : [{ label: "Continue", onSelect: () => this.scene.start("OverworldScene") }];
 
     if (this.menu) this.menu.setItems(items);
     else this.menu = new TextMenu(this, 16, BASE_HEIGHT - 60, items, 14);

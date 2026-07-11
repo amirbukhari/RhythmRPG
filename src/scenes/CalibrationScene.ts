@@ -44,9 +44,13 @@ export class CalibrationScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    await this.clock.start(CALIBRATION_BPM);
-    this.scheduleId = this.clock.scheduleRepeat(() => this.flashPulse(), "4n");
-
+    // Wire input BEFORE the async clock start below. create() is async, and
+    // the scene reports active (scene.isActive) the moment it's added -- so a
+    // tap landing during `await this.clock.start()` would be silently dropped
+    // if handlers were attached after it. That race dropped the player's (or
+    // a fast test's) first tap and, on a slow boot, could strand them a tap
+    // short. Handlers reference this.clock, which is a valid (pre-start,
+    // t=0) TransportClock until start() resolves.
     this.input.keyboard?.on("keydown", (event: KeyboardEvent) => {
       if (event.key === this.tapKey) this.registerTap();
     });
@@ -57,6 +61,9 @@ export class CalibrationScene extends Phaser.Scene {
     // pressing a physical key -- e.g. on a touch device, or just by habit --
     // got completely stuck here with no feedback and no way to proceed.
     this.input.on("pointerdown", () => this.registerTap());
+
+    await this.clock.start(CALIBRATION_BPM);
+    this.scheduleId = this.clock.scheduleRepeat(() => this.flashPulse(), "4n");
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.cleanup());
   }
@@ -88,7 +95,7 @@ export class CalibrationScene extends Phaser.Scene {
       await GameContext.persistActiveProfile();
     }
     GameContext.analytics.track("calibration_completed", { offsetMs });
-    this.scene.start("MapScene");
+    this.scene.start("OverworldScene");
   }
 
   private cleanup(): void {

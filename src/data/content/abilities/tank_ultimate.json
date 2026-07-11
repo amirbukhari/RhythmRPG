@@ -1,0 +1,13 @@
+{
+  "abilityId": "tank_ultimate",
+  "role": "tank",
+  "focusCost": 0,
+  "grooveCost": 100,
+  "phraseLengthBars": 2,
+  "inputPattern": ["hold", "release", "tap", "tap"],
+  "timingTemplate": ["1.1", "1.4", "2.1", "2.3"],
+  "effects": [
+    { "type": "partyBuff", "stat": "guard", "value": 0.75, "durationRounds": 2 },
+    { "type": "interrupt" }
+  ]
+}

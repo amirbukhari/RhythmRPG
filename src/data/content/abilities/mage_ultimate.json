@@ -1,0 +1,14 @@
+{
+  "abilityId": "mage_ultimate",
+  "role": "mage",
+  "focusCost": 0,
+  "grooveCost": 100,
+  "phraseLengthBars": 2,
+  "inputPattern": ["tap", "tap", "tap", "tap", "tap", "tap"],
+  "timingTemplate": ["1.2", "1.4", "2.1", "2.2", "2.3", "2.4"],
+  "effects": [
+    { "type": "damage", "value": 45 },
+    { "type": "debuff", "stat": "accuracy", "value": -0.3, "durationRounds": 2 },
+    { "type": "debuff", "stat": "defense", "value": -0.3, "durationRounds": 2 }
+  ]
+}

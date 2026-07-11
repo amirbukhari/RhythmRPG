@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import { GameContext } from "../state/GameContext";
 import { getEncounter, getBeatmap, getHeroClass, getAbility, getBossPhaseConfig, getCampaignNode } from "../data/ContentRegistry";
 import type { BossPhase } from "../data/schemas/BossPhaseConfig";
-import { createCombat, queueHeroAction, resolveHeroPerformance, type CombatState } from "../systems/combat/CombatController";
+import { createCombat, queueHeroAction, resolveHeroPerformance, heroTimingWindowMultiplier, type CombatState } from "../systems/combat/CombatController";
 import { TransportClock } from "../systems/audio/TransportClock";
 import { BeatmapSonifier } from "../systems/audio/BeatmapSonifier";
 import { timingTemplateToSeconds } from "../systems/combat/PhraseTiming";
@@ -10,7 +10,7 @@ import { positionAtSeconds, nextBarBoundarySeconds, meterAtBar } from "../system
 import { upcomingEvents } from "../systems/combat/Forecast";
 import { applyRelics } from "../systems/progression/Relics";
 import { judge, type JudgmentTier } from "../systems/combat/JudgmentSystem";
-import { BASE_WIDTH } from "../config/GameConfig";
+import { BASE_WIDTH, BASE_HEIGHT } from "../config/GameConfig";
 import type { Beatmap } from "../data/schemas/Beatmap";
 import type { HeroRole } from "../data/schemas/Ability";
 
@@ -53,9 +53,11 @@ export class BattleScene extends Phaser.Scene {
   private pendingAbilityId: string | null = null;
   private targetableEnemyIds: string[] = [];
 
-  private heroSprites: Phaser.GameObjects.Image[] = [];
-  private heroSpriteBaseScale = 1; // setDisplaySize()'s resulting scale; setScale() for the active-hero highlight must multiply this, not replace it
-  private enemyShapes: Phaser.GameObjects.Arc[] = [];
+  private heroSprites: Phaser.GameObjects.Sprite[] = [];
+  private heroSpriteBaseScale = 1.3; // heroes are 20x24; scaled up for battle presence
+  private enemySprites: Phaser.GameObjects.Sprite[] = [];
+  private enemyLabels: Phaser.GameObjects.Text[] = [];
+  private caustics: Phaser.GameObjects.TileSprite | null = null;
   private hpText!: Phaser.GameObjects.Text;
   private enemyText!: Phaser.GameObjects.Text;
   private beatText!: Phaser.GameObjects.Text;
@@ -86,7 +88,7 @@ export class BattleScene extends Phaser.Scene {
   async create(): Promise<void> {
     const encounterId = GameContext.pendingEncounterId;
     if (!encounterId || !GameContext.activeProfile) {
-      this.scene.start("MapScene");
+      this.scene.start("OverworldScene");
       return;
     }
 
@@ -108,31 +110,29 @@ export class BattleScene extends Phaser.Scene {
 
     GameContext.analytics.track("battle_started", { encounterId });
 
-    this.hpText = this.add.text(8, 8, "", { fontFamily: "monospace", fontSize: "8px", color: "#ffffff" });
-    this.enemyText = this.add.text(8, 60, "", { fontFamily: "monospace", fontSize: "8px", color: "#ff8888" });
-    this.beatText = this.add.text(8, 80, "", { fontFamily: "monospace", fontSize: "8px", color: "#88ff88" });
-    this.forecastText = this.add.text(8, 92, "", { fontFamily: "monospace", fontSize: "7px", color: "#66ddff", wordWrap: { width: BASE_WIDTH - 16 } });
+    this.buildBattlefield();
+
+    // --- HUD: framed top beat strip + bottom command panel -----------------
+    // Nine-slice panels placed so their outer borders run off-screen and only
+    // the inner ornate edge shows as the divider between HUD and battlefield.
+    const pk = this.isBossFight ? "ui_panel_boss" : "ui_panel";
+    this.add.nineslice(-6, -6, pk, undefined, BASE_WIDTH + 12, 20, 5, 5, 5, 5).setOrigin(0, 0).setDepth(20);
+    this.add.nineslice(-6, 122, pk, undefined, BASE_WIDTH + 12, BASE_HEIGHT - 116, 5, 5, 5, 5).setOrigin(0, 0).setDepth(20);
+    // stat-legend icons on the top strip (heart / focus / groove)
+    [0, 1, 2].forEach((frame, i) => this.add.image(280 + i * 13, 7, "ui_icons", frame).setDepth(21).setScale(0.9));
+
+    this.beatText = this.add.text(6, 3, "", { fontFamily: "monospace", fontSize: "8px", color: "#79b855" }).setDepth(21);
+    this.forecastText = this.add
+      .text(6, 15, "", { fontFamily: "monospace", fontSize: "7px", color: "#49c6bd", wordWrap: { width: BASE_WIDTH - 12 } })
+      .setDepth(6);
+    this.hpText = this.add.text(6, 128, "", { fontFamily: "monospace", fontSize: "7px", color: "#d8ceb6" }).setDepth(21);
     this.promptText = this.add
-      .text(BASE_WIDTH / 2, 110, "", { fontFamily: "monospace", fontSize: "8px", color: "#ffe066", align: "center", wordWrap: { width: BASE_WIDTH - 16 } })
-      .setOrigin(0.5, 0);
-    this.logText = this.add.text(8, 150, "", { fontFamily: "monospace", fontSize: "7px", color: "#888888" });
-
-    // Placeholder party portraits in the otherwise-empty top-right region
-    // (the text panels are all left/center-aligned) -- see ROLE_TINTS.
-    const spriteSize = 28; // smaller than the PRD §11.1 48x48 spec to fit this text-first layout until a real art pass
-    this.heroSprites = this.combat.heroes.map((hero, i) => {
-      const x = BASE_WIDTH - 8 - spriteSize * 4 + i * spriteSize + spriteSize / 2;
-      const sprite = this.add.image(x, 8 + spriteSize / 2, "hero_placeholder");
-      sprite.setDisplaySize(spriteSize - 2, spriteSize - 2);
-      sprite.setTint(ROLE_TINTS[hero.role]);
-      return sprite;
-    });
-    this.heroSpriteBaseScale = this.heroSprites[0]?.scaleX ?? 1;
-
-    this.enemyShapes = this.combat.enemies.map((_, i) => {
-      const x = BASE_WIDTH - 8 - this.combat.enemies.length * 20 + i * 20 + 10;
-      return this.add.circle(x, 46, 8, 0xff4444);
-    });
+      .text(150, 128, "", { fontFamily: "monospace", fontSize: "7px", color: "#f0a648", wordWrap: { width: BASE_WIDTH - 156 } })
+      .setDepth(21);
+    this.logText = this.add.text(150, 170, "", { fontFamily: "monospace", fontSize: "7px", color: "#877d70", wordWrap: { width: BASE_WIDTH - 156 } }).setDepth(21);
+    // enemyText is kept as the aggregate intent readout but drawn off-screen;
+    // per-enemy labels above each sprite are the visible version now.
+    this.enemyText = this.add.text(0, -50, "", { fontFamily: "monospace", fontSize: "7px", color: "#c22f34" });
 
     await this.clock.start(this.effectiveBpm);
     this.phaseStartSeconds = this.clock.currentTime;
@@ -150,8 +150,101 @@ export class BattleScene extends Phaser.Scene {
     this.enterCommandStage();
   }
 
+  /**
+   * Draws the scene the combat plays out over: a painted backdrop (the boss
+   * gets its clock-lined variant), the party standing lower-left facing the
+   * foe, and the enemy wave on the floor to the right -- each with a soft
+   * ground shadow and idle motion (party breathe-bob, enemy 2-frame idle).
+   */
+  private buildBattlefield(): void {
+    const bgKey = this.isBossFight ? "bg_battle_conductor" : "bg_battle_abyss";
+    this.add.image(BASE_WIDTH / 2, BASE_HEIGHT / 2, bgKey).setDepth(-10);
+
+    // Slow underwater caustic shimmer over the water region (scrolled in update).
+    this.caustics = this.add
+      .tileSprite(0, 0, BASE_WIDTH, 118, "caustics")
+      .setOrigin(0, 0)
+      .setDepth(-9)
+      .setAlpha(this.getReducedMotion() ? 0.18 : 0.4);
+
+    // A few motes drifting up through the water for life.
+    if (!this.getReducedMotion()) {
+      for (let i = 0; i < 10; i++) {
+        const mote = this.add.circle(Phaser.Math.Between(10, BASE_WIDTH - 10), Phaser.Math.Between(20, 110), 1, 0x9fe8e0, 0.6).setDepth(-8);
+        this.tweens.add({
+          targets: mote,
+          y: mote.y - Phaser.Math.Between(24, 60),
+          alpha: 0,
+          duration: Phaser.Math.Between(3000, 6000),
+          repeat: -1,
+          delay: i * 300,
+        });
+      }
+    }
+
+    const FLOOR_Y = 116;
+    // A receding diagonal so all four heroes are visible, warrior nearest.
+    const heroHomes = [
+      { x: 30, y: 134 },
+      { x: 54, y: 127 },
+      { x: 78, y: 120 },
+      { x: 102, y: 113 },
+    ];
+    this.heroSprites = this.combat.heroes.map((hero, i) => {
+      const home = heroHomes[i] ?? { x: 40 + i * 14, y: 120 };
+      this.addShadow(home.x, home.y, 8, ROLE_TINTS[hero.role], 0.3);
+      const sprite = this.add.sprite(home.x, home.y, `hero_${hero.classId}`, 0);
+      sprite.setOrigin(0.5, 1).setScale(this.heroSpriteBaseScale).setDepth(2 + i);
+      this.tweens.add({ targets: sprite, y: home.y - 1, duration: 900 + i * 90, yoyo: true, repeat: -1, ease: "Sine.inOut" });
+      return sprite;
+    });
+
+    const n = this.combat.enemies.length;
+    const spacing = 52;
+    const groupCx = 232;
+    this.enemySprites = [];
+    this.enemyLabels = [];
+    this.combat.enemies.forEach((enemy, i) => {
+      const x = Math.round(groupCx + (i - (n - 1) / 2) * spacing);
+      this.addShadow(x, FLOOR_Y, 15, 0x000000, 0.38);
+      const key = `enemy_${enemy.enemyId}`;
+      const animKey = `idle_${enemy.enemyId}`;
+      if (!this.anims.exists(animKey)) {
+        this.anims.create({ key: animKey, frames: this.anims.generateFrameNumbers(key, { start: 0, end: 1 }), frameRate: 1.6, repeat: -1 });
+      }
+      const sprite = this.add.sprite(x, FLOOR_Y + 2, key, 0).setOrigin(0.5, 1).setDepth(3);
+      sprite.play(animKey);
+      this.enemySprites.push(sprite);
+      const label = this.add
+        .text(x, FLOOR_Y - 48, "", {
+          fontFamily: "monospace",
+          fontSize: "7px",
+          color: "#f4efe2",
+          align: "center",
+          stroke: "#05060a",
+          strokeThickness: 3,
+        })
+        .setOrigin(0.5, 1)
+        .setDepth(6);
+      this.enemyLabels.push(label);
+    });
+  }
+
+  private addShadow(x: number, y: number, rx: number, color: number, alpha: number): void {
+    this.add.ellipse(x, y, rx * 2, rx, color, alpha).setDepth(1);
+  }
+
+  private getReducedMotion(): boolean {
+    const s = GameContext.activeProfile?.settings;
+    return Boolean(s?.reducedMotion || s?.photosensitivitySafeMode);
+  }
+
   update(): void {
     if (!this.combat) return;
+    if (this.caustics && !this.getReducedMotion()) {
+      this.caustics.tilePositionX += 0.06;
+      this.caustics.tilePositionY -= 0.1;
+    }
     this.renderHeroes();
     this.renderEnemies();
     this.renderBeat();
@@ -180,17 +273,25 @@ export class BattleScene extends Phaser.Scene {
     if (!heroId) return; // enemy resolution already advanced the round internally
     this.stage = "command";
     // Base kit (PRD §8.4) plus the tier-2 unlock ability once the boss that
-    // grants it has been cleared (PRD §8.5) -- see GameContext.activeProfile.unlockedSkills.
+    // grants it has been cleared (PRD §8.5, GameContext.activeProfile.unlockedSkills),
+    // plus the role's Groove-spending ultimate (§8.5) -- always listed, since
+    // its gate is the shared Groove meter, not a persistent unlock.
     const tier2Id = `${heroId}_tier2`;
     const unlocked = GameContext.activeProfile?.unlockedSkills.includes(tier2Id) ?? false;
-    this.activeAbilityIds = [...getHeroClass(heroId).abilityIds, ...(unlocked ? [tier2Id] : [])];
-    const labels = this.activeAbilityIds.map((id, i) => `${i + 1}: ${getAbility(id).abilityId} (${getAbility(id).focusCost}f)`).join("  ");
+    this.activeAbilityIds = [...getHeroClass(heroId).abilityIds, ...(unlocked ? [tier2Id] : []), `${heroId}_ultimate`];
+    const labels = this.activeAbilityIds
+      .map((id, i) => {
+        const ability = getAbility(id);
+        const cost = ability.grooveCost ? `${ability.grooveCost}g` : `${ability.focusCost}f`;
+        return `${i + 1}: ${ability.abilityId} (${cost})`;
+      })
+      .join("  ");
     this.promptText.setText(`${heroId.toUpperCase()}'s turn — choose an ability\n${labels}`);
   }
 
   private onKeyDown(event: KeyboardEvent): void {
     if (this.stage === "command") {
-      const index = ["1", "2", "3", "4"].indexOf(event.key);
+      const index = ["1", "2", "3", "4", "5"].indexOf(event.key);
       if (index === -1 || index >= this.activeAbilityIds.length) return;
       this.selectAbility(this.activeAbilityIds[index]);
     } else if (this.stage === "select-target") {
@@ -260,7 +361,11 @@ export class BattleScene extends Phaser.Scene {
     const measuredTime = this.clock.currentTime - this.calibrationOffsetSeconds;
     const target = this.timingTargets[this.stepIndex];
     const deltaMs = (measuredTime - target) * 1000;
-    const tier = judge(deltaMs, { assistMultiplier: GameContext.activeProfile?.settings.assistedTimingWindows ? 1.5 : 1 });
+    // Accessibility assist and any active "accuracy" buff (e.g. Sightread's
+    // party buff) both widen the windows -- multiplicative, both real.
+    const assist = GameContext.activeProfile?.settings.assistedTimingWindows ? 1.5 : 1;
+    const buff = this.combat.pendingAction ? heroTimingWindowMultiplier(this.combat, this.combat.pendingAction.heroId) : 1;
+    const tier = judge(deltaMs, { assistMultiplier: assist * buff });
     this.recordTier(tier);
   }
 
@@ -333,19 +438,23 @@ export class BattleScene extends Phaser.Scene {
 
   private renderHeroes(): void {
     const lines = this.combat.heroes.map((h) => {
-      const marker = h.heroId === this.activeHeroId && this.stage !== "ended" ? "> " : "  ";
-      const dead = h.hp <= 0 ? " [DOWN]" : "";
-      return `${marker}${h.heroId.padEnd(8)} HP ${h.hp}/${h.maxHp}  Focus ${h.focus}/${h.maxFocus}${dead}`;
+      const marker = h.heroId === this.activeHeroId && this.stage !== "ended" ? ">" : " ";
+      const name = h.heroId.charAt(0).toUpperCase() + h.heroId.slice(1);
+      const dead = h.hp <= 0 ? " DOWN" : "";
+      return `${marker}${name.padEnd(8)} ${h.hp}/${h.maxHp}  F${h.focus}/${h.maxFocus}${dead}`;
     });
-    lines.push(`Groove: ${this.combat.groove}/100 (streak ${this.combat.grooveStreak})`);
+    lines.push(`Groove ${this.combat.groove}/100  streak ${this.combat.grooveStreak}`);
     this.hpText.setText(lines.join("\n"));
 
     this.combat.heroes.forEach((hero, i) => {
       const sprite = this.heroSprites[i];
       if (!sprite) return;
-      sprite.setAlpha(hero.hp <= 0 ? 0.25 : 1);
       const isActive = hero.heroId === this.activeHeroId && this.stage !== "ended";
-      sprite.setScale(this.heroSpriteBaseScale * (isActive ? 1.15 : 1));
+      sprite.setAlpha(hero.hp <= 0 ? 0.25 : 1);
+      sprite.setScale(this.heroSpriteBaseScale * (isActive ? 1.18 : 1));
+      // dim/cool the inactive heroes so the acting one reads as "up".
+      if (isActive || hero.hp <= 0) sprite.clearTint();
+      else sprite.setTint(0x9aa0b0);
     });
   }
 
@@ -354,9 +463,24 @@ export class BattleScene extends Phaser.Scene {
     this.enemyText.setText(lines.join("\n"));
 
     this.combat.enemies.forEach((enemy, i) => {
-      const shape = this.enemyShapes[i];
-      if (!shape) return;
-      shape.setAlpha(enemy.hp <= 0 ? 0.15 : 1);
+      const sprite = this.enemySprites[i];
+      const label = this.enemyLabels[i];
+      if (sprite) {
+        const down = enemy.hp <= 0;
+        sprite.setAlpha(down ? 0.12 : 1);
+        if (down && sprite.anims.isPlaying) sprite.anims.stop();
+      }
+      if (label) {
+        if (enemy.hp <= 0) {
+          label.setText("");
+        } else {
+          // A single foe (boss) shows its name; a wave stays compact so the
+          // labels don't collide -- the sprite already identifies each one.
+          const short = (enemy.currentIntent?.telegraph ?? "-").split("_").slice(-1)[0];
+          const nameLine = this.combat.enemies.length === 1 ? `${enemy.name}\n` : "";
+          label.setText(`${nameLine}${enemy.hp}/${enemy.maxHp}\n${short}`);
+        }
+      }
     });
   }
 
@@ -489,6 +613,7 @@ export class BattleScene extends Phaser.Scene {
       unlockedSkills: newlyUnlockedSkills,
     };
     GameContext.pendingEncounterId = null;
+    GameContext.returnToNodeId = nodeId; // survives the pending-field clears so the overworld can respawn the player here
     GameContext.pendingNodeId = null;
 
     void GameContext.persistActiveProfile().then(() => this.scene.start("ResultsScene"));

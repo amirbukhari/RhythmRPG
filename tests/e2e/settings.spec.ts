@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { bootToMap, openSettingsFromMap, closeSettings } from "./helpers";
+import { bootToOverworld, openSettingsFromOverworld, closeSettings } from "./helpers";
 
 /**
  * Regression coverage for two real bugs found via manual live testing
@@ -27,7 +27,7 @@ let page: Page;
 
 test.beforeAll(async ({ browser }) => {
   page = await browser.newPage();
-  await bootToMap(page);
+  await bootToOverworld(page);
 });
 
 test.afterAll(async () => {
@@ -36,7 +36,7 @@ test.afterAll(async () => {
 
 test.describe("settings", () => {
   test("keyboard selection survives multiple sequential toggles without resetting or double-handling input", async () => {
-    await openSettingsFromMap(page);
+    await openSettingsFromOverworld(page);
 
     await page.keyboard.press("Enter"); // toggle Game Speed (index 0) -> 70%
     await page.waitForFunction(() => window.__meterfallDebug.GameContext.activeProfile?.settings.gameSpeed === 0.7);
@@ -54,11 +54,11 @@ test.describe("settings", () => {
     expect(settings.assistedTimingWindows).toBe(true);
     expect(settings.reducedMotion).toBe(true);
 
-    await closeSettings(page, "MapScene");
+    await closeSettings(page, "OverworldScene");
   });
 
   test("remapping the tap key persists and is honored in battle", async () => {
-    await openSettingsFromMap(page);
+    await openSettingsFromOverworld(page);
 
     // Navigate to "Remap Tap Key" (index 9 in the fixed settings menu order).
     for (let i = 0; i < 9; i++) {

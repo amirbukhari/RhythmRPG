@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { BASE_WIDTH } from "../config/GameConfig";
 import { TextMenu } from "../ui/components/TextMenu";
+import { addBackdrop } from "../ui/Backdrop";
 
 /** Start, continue, settings. See PRD §10.6. */
 export class MainMenuScene extends Phaser.Scene {
@@ -9,15 +10,41 @@ export class MainMenuScene extends Phaser.Scene {
   }
 
   create(): void {
+    addBackdrop(this, 0.55);
+
     this.add
-      .text(BASE_WIDTH / 2, 40, "PROJECT METERFALL", {
+      .text(BASE_WIDTH / 2, 34, "THE DROWNED", {
         fontFamily: "monospace",
-        fontSize: "14px",
-        color: "#ffffff",
+        fontSize: "22px",
+        color: "#f4efe2",
+        fontStyle: "bold",
+        stroke: "#4b2a57",
+        strokeThickness: 6,
+      })
+      .setOrigin(0.5)
+      .setShadow(0, 2, "#05060a", 4, true, true);
+    this.add
+      .text(BASE_WIDTH / 2, 58, "CHORUS", {
+        fontFamily: "monospace",
+        fontSize: "22px",
+        color: "#49c6bd",
+        fontStyle: "bold",
+        stroke: "#153a52",
+        strokeThickness: 6,
+      })
+      .setOrigin(0.5)
+      .setShadow(0, 2, "#05060a", 4, true, true);
+    this.add
+      .text(BASE_WIDTH / 2, 78, "· a rhythm of rust and tide ·", {
+        fontFamily: "monospace",
+        fontSize: "8px",
+        color: "#d8ceb6",
       })
       .setOrigin(0.5);
 
-    new TextMenu(this, BASE_WIDTH / 2 - 30, 90, [
+    // framed menu panel
+    this.add.nineslice(BASE_WIDTH / 2, 116, "ui_panel", undefined, 132, 42, 5, 5, 5, 5).setDepth(0);
+    new TextMenu(this, BASE_WIDTH / 2 - 48, 102, [
       { label: "Start / Continue", onSelect: () => this.scene.start("SaveScene") },
       { label: "Settings", onSelect: () => this.scene.launch("SettingsOverlay", { returnTo: "MainMenuScene" }) },
     ]);

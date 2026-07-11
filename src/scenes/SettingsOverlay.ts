@@ -95,6 +95,23 @@ export class SettingsOverlay extends Phaser.Scene {
       { label: "Back", onSelect: () => this.close() },
     ];
 
+    // Analytics consent (PRD §14) lives on the save profile root, not in
+    // AccessibilitySettings, and only makes sense with an active profile --
+    // without this toggle the player could never actually consent, leaving
+    // the §14 event set permanently gated off in real play. v1 analytics
+    // are local-only (no network), so "ON" only enables in-memory recording.
+    const profile = GameContext.activeProfile;
+    if (profile) {
+      items.splice(items.length - 2, 0, {
+        label: `Analytics (local-only): ${profile.analyticsConsent ? "ON" : "OFF"}`,
+        onSelect: () =>
+          this.update_(() => {
+            profile.analyticsConsent = !profile.analyticsConsent;
+            GameContext.analytics.setConsent(profile.analyticsConsent);
+          }),
+      });
+    }
+
     if (this.menu) {
       this.menu.setItems(items);
     } else {

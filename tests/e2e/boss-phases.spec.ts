@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { bootToMap, jumpToEncounter, getBattleSceneState } from "./helpers";
+import { bootToOverworld, jumpToEncounter, getBattleSceneState } from "./helpers";
 
 /**
  * PRD §8.7 / release gate #3: "the final boss reliably executes authored
@@ -23,7 +23,7 @@ let page: Page;
 
 test.beforeAll(async ({ browser }) => {
   page = await browser.newPage();
-  await bootToMap(page);
+  await bootToOverworld(page);
   await jumpToEncounter(page, "boss_1", "boss_conductor_01");
 });
 
