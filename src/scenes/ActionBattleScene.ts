@@ -24,6 +24,15 @@ const ENEMY_SCALE: Record<string, number> = {
   drifter: 1.5,
   slime: 1.4,
 };
+// The campaign nodes as movements of the drowned chorus (docs/design/world-bible.md).
+const NODE_MOVEMENT: Record<string, string> = {
+  opening_1: "The Shallows",
+  mid_1: "The Salt Mines",
+  mid_2: "The Pit Below",
+  mid_3: "The Attic of Teeth",
+  boss_1: "The Conductor's Hall",
+};
+
 // Emissive accent per enemy for the additive glow (eyes / aura / telegraph).
 const ENEMY_ACCENT: Record<string, number> = {
   the_conductor: 0xf0a648,
@@ -140,6 +149,8 @@ export class ActionBattleScene extends Phaser.Scene {
       })
       .setOrigin(1, 0.5)
       .setDepth(21);
+
+    this.showBattleIntro(encounter.enemyWave);
 
     // Wire input BEFORE the async clock.start() below: create() is async and
     // the scene reports active (and its update() loop starts) the moment it's
@@ -270,6 +281,21 @@ export class ActionBattleScene extends Phaser.Scene {
     this.resourceText.setText(
       `HP ${Math.ceil(p.hp)}/${p.maxHp}   Focus ${this.arena.focus}/5   Groove ${Math.round(this.arena.groove)}/100   DMG ${Math.round(p.damagePct)}%`
     );
+  }
+
+  /** A fading title card naming the movement (biome) and the foe -- narrative flavor. */
+  private showBattleIntro(enemyWave: string[]): void {
+    const movement = (this.nodeId && NODE_MOVEMENT[this.nodeId]) || "The Drowned Chorus";
+    const foes = [...new Set(enemyWave.map((id) => getEnemy(id).name))].join(" · ");
+    const title = this.add
+      .text(BASE_WIDTH / 2, 70, movement, { fontFamily: "monospace", fontSize: "16px", color: "#f4efe2", fontStyle: "bold", stroke: "#05060a", strokeThickness: 4 })
+      .setOrigin(0.5)
+      .setDepth(30);
+    const sub = this.add
+      .text(BASE_WIDTH / 2, 88, foes, { fontFamily: "monospace", fontSize: "8px", color: "#49c6bd", stroke: "#05060a", strokeThickness: 3 })
+      .setOrigin(0.5)
+      .setDepth(30);
+    this.tweens.add({ targets: [title, sub], alpha: 0, delay: 1400, duration: 900, onComplete: () => { title.destroy(); sub.destroy(); } });
   }
 
   /** A brief additive impact star where a hit lands (skipped under reduced motion). */
