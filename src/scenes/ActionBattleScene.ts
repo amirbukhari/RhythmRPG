@@ -15,7 +15,24 @@ import {
 
 const ARENA_W = BASE_WIDTH;
 const ARENA_H = 168;
-const ENEMY_SCALE: Record<string, number> = { the_conductor: 2.4, elite_wraith: 1.7 };
+// Colossal, imposing scale contrast (HLD, PRD §11.1) -- the player is small.
+const ENEMY_SCALE: Record<string, number> = {
+  the_conductor: 2.9,
+  elite_wraith: 2.0,
+  luchador_mask: 1.6,
+  luchador_grunt: 1.5,
+  drifter: 1.5,
+  slime: 1.4,
+};
+// Emissive accent per enemy for the additive glow (eyes / aura / telegraph).
+const ENEMY_ACCENT: Record<string, number> = {
+  the_conductor: 0xf0a648,
+  elite_wraith: 0x49c6bd,
+  luchador_mask: 0xb98fca,
+  luchador_grunt: 0xc22f34,
+  drifter: 0x9fe8e0,
+  slime: 0x9aca43,
+};
 
 /**
  * Real-time action-combat arena (PRD §8.2, v6.0). Run around, dash with
@@ -35,6 +52,12 @@ export class ActionBattleScene extends Phaser.Scene {
   private finished = false;
 
   private sprites = new Map<string, Phaser.GameObjects.Sprite>();
+  private auras = new Map<string, Phaser.GameObjects.Image>();
+  private eyes = new Map<string, Phaser.GameObjects.Image>();
+  private accents = new Map<string, number>();
+  private lastEnemyHp = new Map<string, number>();
+  private beatGlow!: Phaser.GameObjects.Image;
+  private attackGlow!: Phaser.GameObjects.Image;
   private hpBars!: Phaser.GameObjects.Graphics;
   private fx!: Phaser.GameObjects.Graphics;
   private beatText!: Phaser.GameObjects.Text;
@@ -71,15 +94,28 @@ export class ActionBattleScene extends Phaser.Scene {
     const enemyHps = encounter.enemyWave.map((id) => getEnemy(id).maxHp);
     this.arena = createArena(ARENA_W, ARENA_H, enemyHps);
 
+    const ADD = Phaser.BlendModes.ADD;
+
+    // on-beat flash under the player + the player's active-attack glow arc
+    this.beatGlow = this.add.image(0, 0, "glow").setBlendMode(ADD).setTint(0x49c6bd).setDepth(4).setAlpha(0).setScale(1.3);
+    this.attackGlow = this.add.image(0, 0, "glow").setBlendMode(ADD).setTint(0xf4d27a).setDepth(7).setAlpha(0).setScale(0.6);
+
     // player sprite (the party leader)
     const p = getPlayer(this.arena);
     const pSprite = this.add.sprite(p.pos.x, p.pos.y, "hero_warrior", 0).setOrigin(0.5, 0.8).setScale(1.3).setDepth(5);
     this.sprites.set(p.id, pSprite);
 
-    // enemy sprites, mapped 1:1 with the sim's enemy fighters
+    // enemy sprites (colossal), each with an emissive aura + glowing eyes
     getEnemies(this.arena).forEach((e, i) => {
       const enemyId = encounter.enemyWave[i];
       const scale = ENEMY_SCALE[enemyId] ?? 1.25;
+      const accent = ENEMY_ACCENT[enemyId] ?? 0xffffff;
+      this.accents.set(e.id, accent);
+      this.lastEnemyHp.set(e.id, e.hp);
+      const aura = this.add.image(e.pos.x, e.pos.y, "glow").setBlendMode(ADD).setTint(accent).setDepth(3).setScale(scale * 1.1).setAlpha(0.4);
+      const eye = this.add.image(e.pos.x, e.pos.y, "glow").setBlendMode(ADD).setTint(accent).setDepth(6).setScale(scale * 0.4).setAlpha(0.85);
+      this.auras.set(e.id, aura);
+      this.eyes.set(e.id, eye);
       const s = this.add.sprite(e.pos.x, e.pos.y, `enemy_${enemyId}`, 0).setOrigin(0.5, 0.85).setScale(scale).setDepth(4);
       this.sprites.set(e.id, s);
     });
@@ -166,11 +202,14 @@ export class ActionBattleScene extends Phaser.Scene {
 
   private render(): void {
     const reduced = Boolean(GameContext.activeProfile?.settings.reducedMotion);
+    const beatWave = 0.5 + 0.5 * Math.sin((this.clock.currentTime / this.beatSeconds) * Math.PI * 2);
     for (const f of this.arena.fighters) {
       const s = this.sprites.get(f.id);
       if (!s) continue;
       if (f.state === "dead") {
         s.setAlpha(0.12);
+        this.auras.get(f.id)?.setAlpha(0);
+        this.eyes.get(f.id)?.setAlpha(0);
         continue;
       }
       s.setPosition(Math.round(f.pos.x), Math.round(f.pos.y));
@@ -180,20 +219,43 @@ export class ActionBattleScene extends Phaser.Scene {
       s.setAlpha(f.iframes > 0 && !reduced ? (Math.floor(this.time.now / 60) % 2 ? 0.4 : 1) : 1);
     }
 
-    // fx: enemy telegraph rings + player active hitbox arc
+    // emissive glow: enemy auras/eyes pulse with the beat and flare red on windup
+    for (const e of getEnemies(this.arena)) {
+      const aura = this.auras.get(e.id);
+      const eye = this.eyes.get(e.id);
+      if (!aura || !eye || e.state === "dead") continue;
+      const accent = this.accents.get(e.id) ?? 0xffffff;
+      const windup = e.ai?.mode === "windup";
+      const enemySprite = this.sprites.get(e.id)!;
+      const headY = e.pos.y - enemySprite.displayHeight * 0.55;
+      aura
+        .setPosition(e.pos.x, e.pos.y - 6)
+        .setTint(windup ? 0xc22f34 : accent)
+        .setAlpha((windup ? 0.75 : 0.3) + (reduced ? 0 : 0.12 * beatWave))
+        .setScale((windup ? 1.5 : 1.1) * enemySprite.scaleX);
+      eye.setPosition(e.pos.x, headY).setTint(windup ? 0xffd27a : accent).setAlpha(0.7 + (reduced ? 0 : 0.25 * beatWave));
+      // hit spark when this enemy's HP drops
+      const prev = this.lastEnemyHp.get(e.id) ?? e.hp;
+      if (e.hp < prev - 0.01) this.spawnSpark(e.pos.x, e.pos.y - 8);
+      this.lastEnemyHp.set(e.id, e.hp);
+    }
+
+    // fx graphics: crisp telegraph ring (kept alongside the soft glow)
     this.fx.clear();
     for (const e of getEnemies(this.arena)) {
-      if (e.ai?.mode === "windup" && e.state !== "dead") {
-        this.fx.lineStyle(2, 0xc22f34, 0.9).strokeCircle(e.pos.x, e.pos.y - 6, 14);
-      }
+      if (e.ai?.mode === "windup" && e.state !== "dead") this.fx.lineStyle(2, 0xc22f34, 0.9).strokeCircle(e.pos.x, e.pos.y - 6, 15);
     }
+
+    // player: on-beat flash + active-attack glow arc
     const p = getPlayer(this.arena);
+    this.beatGlow.setPosition(p.pos.x, p.pos.y - 4).setAlpha(this.isOnBeat() && !reduced ? 0.35 : 0.08);
     if (p.attack?.phase === "active") {
       const d = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[p.facing];
       const cx = p.pos.x + d[0] * p.attack.def.reach;
       const cy = p.pos.y + d[1] * p.attack.def.reach;
-      const glow = p.attack.onBeat ? 0xf4d27a : 0xd8ceb6;
-      this.fx.fillStyle(glow, 0.5).fillCircle(cx, cy, p.attack.def.radius);
+      this.attackGlow.setPosition(cx, cy).setTint(p.attack.onBeat ? 0xf4d27a : 0xd8ceb6).setScale((p.attack.def.radius / 32) * (p.attack.onBeat ? 1.5 : 1)).setAlpha(p.attack.onBeat ? 1 : 0.7);
+    } else {
+      this.attackGlow.setAlpha(0);
     }
 
     this.drawHpBars();
@@ -202,6 +264,13 @@ export class ActionBattleScene extends Phaser.Scene {
     this.beatText.setText(`Beat ${beat}/4`);
     this.beatPulse.setScale(this.isOnBeat() ? 1.7 : 1).setFillStyle(this.isOnBeat() ? 0xf4d27a : 0x49c6bd);
     this.resourceText.setText(`HP ${Math.ceil(p.hp)}/${p.maxHp}   DMG ${Math.round(p.damagePct)}%   Groove ${Math.round(this.arena.groove)}/100`);
+  }
+
+  /** A brief additive impact star where a hit lands (skipped under reduced motion). */
+  private spawnSpark(x: number, y: number): void {
+    if (GameContext.activeProfile?.settings.reducedMotion) return;
+    const s = this.add.image(x, y, "spark").setBlendMode(Phaser.BlendModes.ADD).setDepth(9).setScale(0.4).setTint(0xfff4d0);
+    this.tweens.add({ targets: s, scale: 1.3, alpha: 0, angle: 40, duration: 220, onComplete: () => s.destroy() });
   }
 
   private drawHpBars(): void {

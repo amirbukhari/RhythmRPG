@@ -13,6 +13,9 @@ import tiles
 import heroes
 import enemies
 import backgrounds
+import props
+import ui
+import fx
 from skatopia import save
 
 
@@ -22,6 +25,13 @@ def main() -> None:
     enemies.build_all()
     save(backgrounds.build(False), "backgrounds/battle_abyss.png")
     save(backgrounds.build(True), "backgrounds/battle_conductor.png")
+    save(backgrounds.caustics(), "backgrounds/caustics.png")
+    save(props.build_sheet(), "sprites/overworld/props.png")
+    save(ui.panel(False), "ui/panel.png")
+    save(ui.panel(True), "ui/panel_boss.png")
+    save(ui.icon_sheet()[0], "ui/icons.png")
+    save(fx.radial(), "fx/glow.png")
+    save(fx.spark(), "fx/spark.png")
     print("all art regenerated")
 
 

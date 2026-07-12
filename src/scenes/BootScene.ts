@@ -5,6 +5,8 @@ import causticsUrl from "../../assets/backgrounds/caustics.png";
 import uiPanelUrl from "../../assets/ui/panel.png";
 import uiPanelBossUrl from "../../assets/ui/panel_boss.png";
 import uiIconsUrl from "../../assets/ui/icons.png";
+import glowUrl from "../../assets/fx/glow.png";
+import sparkUrl from "../../assets/fx/spark.png";
 import warriorBattleUrl from "../../assets/sprites/heroes/warrior/side.png";
 import tankBattleUrl from "../../assets/sprites/heroes/tank/side.png";
 import mageBattleUrl from "../../assets/sprites/heroes/mage/side.png";
@@ -47,6 +49,8 @@ export class BootScene extends Phaser.Scene {
     this.load.image("ui_panel", uiPanelUrl);
     this.load.image("ui_panel_boss", uiPanelBossUrl);
     this.load.spritesheet("ui_icons", uiIconsUrl, { frameWidth: 10, frameHeight: 10 });
+    this.load.image("glow", glowUrl);
+    this.load.image("spark", sparkUrl);
     for (const [role, url] of Object.entries(HERO_BATTLE_URLS)) {
       this.load.spritesheet(`hero_${role}`, url, { frameWidth: 20, frameHeight: 24 });
     }
