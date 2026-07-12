@@ -65,7 +65,7 @@ export class ActionBattleScene extends Phaser.Scene {
   private beatPulse!: Phaser.GameObjects.Arc;
 
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
-  private keys!: Record<"W" | "A" | "S" | "D" | "J" | "K" | "SHIFT" | "SPACE", Phaser.Input.Keyboard.Key>;
+  private keys!: Record<"W" | "A" | "S" | "D" | "J" | "K" | "L" | "I" | "SHIFT" | "SPACE", Phaser.Input.Keyboard.Key>;
 
   constructor() {
     super("ActionBattleScene");
@@ -131,7 +131,7 @@ export class ActionBattleScene extends Phaser.Scene {
       .text(6, BASE_HEIGHT - 10, "", { fontFamily: "monospace", fontSize: "7px", color: "#d8ceb6", stroke: "#05060a", strokeThickness: 3 })
       .setDepth(21);
     this.add
-      .text(BASE_WIDTH - 6, BASE_HEIGHT - 10, "WASD move  J light  K heavy  Shift dash", {
+      .text(BASE_WIDTH - 6, BASE_HEIGHT - 10, "WASD move · J/K atk · L special · I parry · Shift dash", {
         fontFamily: "monospace",
         fontSize: "7px",
         color: "#877d70",
@@ -146,7 +146,7 @@ export class ActionBattleScene extends Phaser.Scene {
     // added, so a frame running during `await` must not touch undefined keys.
     const kb = this.input.keyboard!;
     this.cursors = kb.createCursorKeys();
-    this.keys = kb.addKeys("W,A,S,D,J,K,SHIFT,SPACE") as ActionBattleScene["keys"];
+    this.keys = kb.addKeys("W,A,S,D,J,K,L,I,SHIFT,SPACE") as ActionBattleScene["keys"];
 
     // audio clock + audible beat
     await this.clock.start(bpm);
@@ -194,10 +194,12 @@ export class ActionBattleScene extends Phaser.Scene {
     const JD = Phaser.Input.Keyboard.JustDown;
     const light = JD(k.J) || JD(k.SPACE);
     const heavy = JD(k.K);
+    const special = JD(k.L);
     const dash = JD(k.SHIFT);
+    const parry = JD(k.I);
     // on-beat is evaluated at the instant of an action press
-    const onBeat = (light || heavy || dash) && this.isOnBeat();
-    return { move, dash, light, heavy, onBeat };
+    const onBeat = (light || heavy || special || dash || parry) && this.isOnBeat();
+    return { move, dash, light, heavy, special, parry, onBeat };
   }
 
   private render(): void {
@@ -246,9 +248,11 @@ export class ActionBattleScene extends Phaser.Scene {
       if (e.ai?.mode === "windup" && e.state !== "dead") this.fx.lineStyle(2, 0xc22f34, 0.9).strokeCircle(e.pos.x, e.pos.y - 6, 15);
     }
 
-    // player: on-beat flash + active-attack glow arc
+    // player: parry shield flash > on-beat flash > active-attack glow arc
     const p = getPlayer(this.arena);
-    this.beatGlow.setPosition(p.pos.x, p.pos.y - 4).setAlpha(this.isOnBeat() && !reduced ? 0.35 : 0.08);
+    this.beatGlow.setPosition(p.pos.x, p.pos.y - 4);
+    if (p.parryTimer > 0 && !reduced) this.beatGlow.setTint(0xeaf6ff).setScale(1.7).setAlpha(0.75);
+    else this.beatGlow.setTint(0x49c6bd).setScale(1.3).setAlpha(this.isOnBeat() && !reduced ? 0.35 : 0.08);
     if (p.attack?.phase === "active") {
       const d = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[p.facing];
       const cx = p.pos.x + d[0] * p.attack.def.reach;
@@ -263,7 +267,9 @@ export class ActionBattleScene extends Phaser.Scene {
     const beat = Math.floor((this.clock.currentTime / this.beatSeconds) % 4) + 1;
     this.beatText.setText(`Beat ${beat}/4`);
     this.beatPulse.setScale(this.isOnBeat() ? 1.7 : 1).setFillStyle(this.isOnBeat() ? 0xf4d27a : 0x49c6bd);
-    this.resourceText.setText(`HP ${Math.ceil(p.hp)}/${p.maxHp}   DMG ${Math.round(p.damagePct)}%   Groove ${Math.round(this.arena.groove)}/100`);
+    this.resourceText.setText(
+      `HP ${Math.ceil(p.hp)}/${p.maxHp}   Focus ${this.arena.focus}/5   Groove ${Math.round(this.arena.groove)}/100   DMG ${Math.round(p.damagePct)}%`
+    );
   }
 
   /** A brief additive impact star where a hit lands (skipped under reduced motion). */

@@ -15,7 +15,7 @@ import {
   type FrameInput,
 } from "../../src/systems/action/ActionCombat";
 
-const IDLE: FrameInput = { move: { x: 0, y: 0 }, dash: false, light: false, heavy: false, onBeat: false };
+const IDLE: FrameInput = { move: { x: 0, y: 0 }, dash: false, light: false, heavy: false, special: false, parry: false, onBeat: false };
 
 function tick(a: Arena, input: Partial<FrameInput>, dt = 1 / 60): void {
   step(a, { ...IDLE, ...input }, dt);
@@ -128,5 +128,65 @@ describe("arena simulation", () => {
     for (let i = 0; i < 120; i++) tick(a, { move: { x: -1, y: 0 } });
     expect(p.pos.x).toBeGreaterThanOrEqual(p.radius);
     expect(p.pos.x).toBeLessThanOrEqual(200 - p.radius);
+  });
+});
+
+describe("depth mechanics (PRD §8.2)", () => {
+  function duel(): Arena {
+    const a = createArena(200, 120, [60]);
+    player(a).pos = { x: 100, y: 60 };
+    enemies(a)[0].pos = { x: 100, y: 46 };
+    enemies(a)[0].ai!.mode = "recover";
+    enemies(a)[0].ai!.timer = 999;
+    return a;
+  }
+
+  it("a Focus special costs Focus, is gated when Focus is empty, and hits harder than a light", () => {
+    const a = duel();
+    expect(a.focus).toBe(0);
+    tick(a, { move: { x: 0, y: -1 }, special: true }); // no focus -> refused, becomes nothing/movement
+    expect(player(a).attack).toBeNull();
+
+    a.focus = 2;
+    tick(a, { move: { x: 0, y: -1 }, special: true });
+    expect(a.focus).toBe(1); // spent one
+    for (let i = 0; i < 40; i++) tick(a, {});
+    const specialDmg = enemies(a)[0].maxHp - enemies(a)[0].hp;
+    expect(specialDmg).toBeGreaterThan(LIGHT.damage); // 20 vs 6
+  });
+
+  it("an on-beat parry negates an enemy hit and staggers the attacker into hitstun", () => {
+    const a = createArena(200, 120, [30]);
+    const p = player(a);
+    const e = enemies(a)[0];
+    p.pos = { x: 100, y: 60 };
+    e.pos = { x: 100, y: 74 };
+    // open an on-beat parry
+    tick(a, { parry: true, onBeat: true });
+    expect(p.parryTimer).toBeGreaterThan(0);
+    const hpBefore = p.hp;
+    // stage an active enemy hitbox overlapping the player
+    e.attack = { def: { ...LIGHT, reach: 0, radius: 40, damage: 10 }, phase: "active", timer: 0.08, onBeat: false, hitIds: [] };
+    e.state = "attack";
+    tick(a, {});
+    expect(p.hp).toBe(hpBefore); // hit negated
+    expect(e.state).toBe("hitstun"); // attacker staggered
+    expect(a.groove).toBeGreaterThan(0); // reward
+  });
+
+  it("an off-beat parry gives only a whiff window (does not negate a hit landing after it closes)", () => {
+    const a = createArena(200, 120, [30]);
+    const p = player(a);
+    const e = enemies(a)[0];
+    p.pos = { x: 100, y: 60 };
+    e.pos = { x: 100, y: 74 };
+    tick(a, { parry: true, onBeat: false }); // tiny 0.04s window
+    for (let i = 0; i < 6; i++) tick(a, {}); // ~0.1s later the window is closed
+    expect(p.parryTimer).toBe(0);
+    const hpBefore = p.hp;
+    e.attack = { def: { ...LIGHT, reach: 0, radius: 40, damage: 10 }, phase: "active", timer: 0.08, onBeat: false, hitIds: [] };
+    e.state = "attack";
+    tick(a, {});
+    expect(p.hp).toBeLessThan(hpBefore); // not parried
   });
 });

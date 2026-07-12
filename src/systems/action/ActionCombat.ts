@@ -22,10 +22,19 @@ export interface AttackDef {
   radius: number; // hitbox radius
 }
 
-/** The player's two core attacks (PRD §8.2). Specials/ultimate build on these. */
+/** The player's attacks (PRD §8.2). Special costs Focus; ultimate is future. */
 export const LIGHT: AttackDef = { startup: 0.05, active: 0.08, recovery: 0.13, damage: 6, knockback: 110, reach: 15, radius: 12 };
 export const HEAVY: AttackDef = { startup: 0.19, active: 0.1, recovery: 0.28, damage: 14, knockback: 250, reach: 20, radius: 14 };
+export const SPECIAL: AttackDef = { startup: 0.12, active: 0.1, recovery: 0.22, damage: 20, knockback: 210, reach: 22, radius: 16 };
 export const ENEMY_STRIKE: AttackDef = { startup: 0.28, active: 0.12, recovery: 0.4, damage: 9, knockback: 160, reach: 16, radius: 13 };
+
+export const SPECIAL_FOCUS_COST = 1;
+export const FOCUS_MAX = 5;
+const PARRY_WINDOW = 0.16; // active parry frames after an on-beat guard
+const PARRY_CD = 0.45;
+// A press during an attack's recovery can cancel into the next attack, but
+// only inside this window AND on-beat -- the rhythm-gated combo/gatling layer.
+const CANCEL_WINDOW = 0.12;
 
 const MOVE_ACCEL = 900;
 const MAX_SPEED = 92;
@@ -59,6 +68,8 @@ export interface Fighter {
   stateTimer: number; // committed lock (hitstun / dash) countdown
   iframes: number;
   dashCd: number;
+  parryTimer: number; // >0 = an on-beat parry is active this instant
+  parryCd: number;
   attack: ActiveAttack | null;
   ai?: { mode: "approach" | "windup" | "recover"; timer: number };
 }
@@ -68,6 +79,8 @@ export interface FrameInput {
   dash: boolean; // edge-triggered (just pressed)
   light: boolean;
   heavy: boolean;
+  special: boolean;
+  parry: boolean;
   onBeat: boolean; // was this press inside the on-beat window (§8.3)
 }
 
@@ -143,6 +156,8 @@ export function createFighter(id: string, team: "player" | "enemy", pos: Vec, ma
     stateTimer: 0,
     iframes: 0,
     dashCd: 0,
+    parryTimer: 0,
+    parryCd: 0,
     attack: null,
     ai: team === "enemy" ? { mode: "approach", timer: 0 } : undefined,
   };
@@ -169,6 +184,23 @@ export function enemies(a: Arena): Fighter[] {
 
 function applyHit(a: Arena, attacker: Fighter, def: AttackDef, target: Fighter, onBeat: boolean, di: Vec): void {
   if (target.iframes > 0 || target.state === "dead") return;
+  // On-beat parry: negate the hit and stagger the attacker into hitstun,
+  // knocked back off the target -- defence converted into offence (PRD §8.2).
+  if (target.parryTimer > 0) {
+    target.parryTimer = 0;
+    let bx = attacker.pos.x - target.pos.x;
+    let by = attacker.pos.y - target.pos.y;
+    const bl = Math.hypot(bx, by) || 1;
+    attacker.vel = { x: (bx / bl) * 180, y: (by / bl) * 180 };
+    attacker.state = "hitstun";
+    attacker.stateTimer = 0.45;
+    attacker.attack = null;
+    if (attacker.ai) attacker.ai.mode = "approach";
+    a.groove = Math.min(100, a.groove + 14);
+    a.focus = Math.min(FOCUS_MAX, a.focus + 1);
+    a.log.push("parry!");
+    return;
+  }
   const mult = onBeatMultiplier(onBeat);
   const dmg = def.damage * mult;
   target.hp -= dmg;
@@ -185,7 +217,10 @@ function applyHit(a: Arena, attacker: Fighter, def: AttackDef, target: Fighter, 
   target.state = "hitstun";
   target.stateTimer = hitstunSeconds(dmg, target.damagePct);
   target.attack = null;
-  if (attacker.team === "player" && onBeat) a.groove = Math.min(100, a.groove + 8);
+  if (attacker.team === "player" && onBeat) {
+    a.groove = Math.min(100, a.groove + 8);
+    a.focus = Math.min(FOCUS_MAX, a.focus + 1);
+  }
   if (target.hp <= 0) {
     target.hp = 0;
     target.state = "dead";
@@ -231,6 +266,19 @@ function advanceAttack(a: Arena, f: Fighter, dt: number, di: Vec): void {
 function stepPlayer(a: Arena, f: Fighter, input: FrameInput, dt: number): void {
   const busy = f.state === "hitstun" || f.state === "attack" || f.state === "dash";
 
+  // On-beat parry (guard): opens a brief negate-and-stagger window. Off-beat
+  // presses still spend the cooldown -- a punishable whiff (PRD §8.2).
+  if (input.parry && !busy && f.parryCd <= 0) {
+    f.parryTimer = input.onBeat ? PARRY_WINDOW : 0.04;
+    f.parryCd = PARRY_CD;
+    f.facing = facingFromMove(input.move, f.facing);
+    return;
+  }
+
+  // A press during an attack's recovery can cancel into the next attack, but
+  // only on-beat and inside the cancel window -- rhythm-gated combo strings.
+  const inCancelWindow = f.state === "attack" && f.attack?.phase === "recovery" && input.onBeat && f.attack.timer <= CANCEL_WINDOW;
+
   // dash (i-frame burst) -- only from a free state
   if (input.dash && !busy && f.dashCd <= 0) {
     f.facing = facingFromMove(input.move, f.facing);
@@ -241,7 +289,11 @@ function stepPlayer(a: Arena, f: Fighter, input: FrameInput, dt: number): void {
     f.stateTimer = DASH_TIME;
     f.iframes = input.onBeat ? DASH_IFRAMES_ONBEAT : DASH_IFRAMES;
     f.dashCd = input.onBeat ? DASH_CD_ONBEAT : DASH_CD;
-  } else if ((input.light || input.heavy) && (f.state === "idle" || f.state === "run")) {
+  } else if (input.special && (f.state === "idle" || f.state === "run" || inCancelWindow) && a.focus >= SPECIAL_FOCUS_COST) {
+    a.focus -= SPECIAL_FOCUS_COST;
+    f.facing = facingFromMove(input.move, f.facing);
+    startAttack(f, SPECIAL, input.onBeat);
+  } else if ((input.light || input.heavy) && (f.state === "idle" || f.state === "run" || inCancelWindow)) {
     f.facing = facingFromMove(input.move, f.facing);
     startAttack(f, input.light ? LIGHT : HEAVY, input.onBeat);
   } else if (f.state === "idle" || f.state === "run") {
@@ -338,6 +390,8 @@ export function step(a: Arena, input: FrameInput, dt: number): Arena {
 
     f.iframes = Math.max(0, f.iframes - dt);
     f.dashCd = Math.max(0, f.dashCd - dt);
+    f.parryTimer = Math.max(0, f.parryTimer - dt);
+    f.parryCd = Math.max(0, f.parryCd - dt);
     if (f.stateTimer > 0) {
       f.stateTimer -= dt;
       if (f.stateTimer <= 0 && (f.state === "dash" || f.state === "hitstun")) f.state = "idle";
