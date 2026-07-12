@@ -295,3 +295,64 @@ def contact_sheet() -> Image.Image:
 
 if __name__ == "__main__":
     build_all()
+
+
+# --- battle attack frames (side-facing): windup + swing ---------------------
+# Authored action poses for the playable lead in the real-time arena (PRD
+# §11.1 "anticipation -> impact"): frame 0 coils with the cleaver drawn back
+# high; frame 1 swings it fully forward with a motion arc.
+
+WARRIOR_ATTACK_WINDUP = [
+    "....oo........",
+    "...rRRr..b....",
+    "..rRRRRo.Bb...",
+    "..RFFFr..Bb...",
+    "..FKfF..bB....",
+    "..FFff.bB.....",
+    ".bBBRbBB......",
+    "MBBBBBb.......",
+    "MBBBBBB.......",
+    "MBBBBBB.......",
+    ".BBBBBb.......",
+    ".rBBBb........",
+    ".bBBBb........",
+    ".NNNN.........",
+    ".NN.N.........",
+    ".NN.NN........",
+    ".dd.dd........",
+    "kdd.ddk.......",
+]
+
+WARRIOR_ATTACK_SWING = [
+    "....oo........",
+    "...rRRr.......",
+    "..rRRRRo......",
+    "..RFFFr.......",
+    "..FKfF....w...",
+    "..FFff...ww...",
+    ".bBBRb..wW....",
+    "MBBBBBbwWBb...",
+    "MBBBBBBWBBb...",
+    "MBBBBBBbBb....",
+    ".BBBBBb.b.....",
+    ".rBBBb........",
+    ".bBBBb........",
+    ".NNNN.........",
+    ".NN.NN........",
+    ".NN..N........",
+    ".dd..dd.......",
+    "kdd..ddk......",
+]
+
+
+def build_warrior_attack() -> "Image.Image":
+    from PIL import Image as _I
+    fw, fh = 24, 24
+    frames = []
+    for grid in (WARRIOR_ATTACK_WINDUP, WARRIOR_ATTACK_SWING):
+        img = outline(render(grid))
+        frames.append(img)
+    sheet = _I.new("RGBA", (fw * 2, fh), (0, 0, 0, 0))
+    for i, f in enumerate(frames):
+        sheet.alpha_composite(f, (i * fw, fh - f.height))
+    return sheet

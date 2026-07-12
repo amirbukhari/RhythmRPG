@@ -134,18 +134,28 @@ export class ActionBattleScene extends Phaser.Scene {
     const pSprite = this.add.sprite(p.pos.x, p.pos.y, "hero_warrior", 0).setOrigin(0.5, 0.8).setScale(1.3).setDepth(5);
     this.sprites.set(p.id, pSprite);
 
-    // enemy sprites (colossal), each with an emissive aura + glowing eyes
+    // enemy sprites (colossal), each with an emissive aura + glowing eyes.
+    // The Conductor uses his NATIVE colossal sheet (52x72 authored at size,
+    // PRD §11.1) with a real 2-pose conducting animation -- never an
+    // upscaled small sprite.
     getEnemies(this.arena).forEach((e, i) => {
       const enemyId = encounter.enemyWave[i];
-      const scale = ENEMY_SCALE[enemyId] ?? 1.25;
+      const colossal = enemyId === "the_conductor";
+      const texKey = colossal ? "conductor_colossal" : `enemy_${enemyId}`;
+      const scale = colossal ? 1.5 : (ENEMY_SCALE[enemyId] ?? 1.25);
       const accent = ENEMY_ACCENT[enemyId] ?? 0xffffff;
       this.accents.set(e.id, accent);
       this.lastEnemyHp.set(e.id, e.hp);
-      const aura = this.add.image(e.pos.x, e.pos.y, "glow").setBlendMode(ADD).setTint(accent).setDepth(3).setScale(scale * 1.1).setAlpha(0.4);
+      const aura = this.add.image(e.pos.x, e.pos.y, "glow").setBlendMode(ADD).setTint(accent).setDepth(3).setScale(scale * (colossal ? 1.6 : 1.1)).setAlpha(0.4);
       const eye = this.add.image(e.pos.x, e.pos.y, "glow").setBlendMode(ADD).setTint(accent).setDepth(6).setScale(scale * 0.4).setAlpha(0.85);
       this.auras.set(e.id, aura);
       this.eyes.set(e.id, eye);
-      const s = this.add.sprite(e.pos.x, e.pos.y, `enemy_${enemyId}`, 0).setOrigin(0.5, 0.85).setScale(scale).setDepth(4);
+      const animKey = `arena_idle_${texKey}`;
+      if (!this.anims.exists(animKey)) {
+        this.anims.create({ key: animKey, frames: this.anims.generateFrameNumbers(texKey, { start: 0, end: 1 }), frameRate: colossal ? 1.2 : 1.6, repeat: -1 });
+      }
+      const s = this.add.sprite(e.pos.x, e.pos.y, texKey, 0).setOrigin(0.5, colossal ? 0.95 : 0.85).setScale(scale).setDepth(4);
+      s.play(animKey);
       this.sprites.set(e.id, s);
     });
 
@@ -250,7 +260,20 @@ export class ActionBattleScene extends Phaser.Scene {
       }
       s.setPosition(Math.round(f.pos.x), Math.round(f.pos.y));
       s.setDepth(4 + f.pos.y / 100);
-      if (f.team === "player") s.setFlipX(f.facing === "left");
+      if (f.team === "player") {
+        s.setFlipX(f.facing === "left");
+        // authored action poses: windup on startup, swing on active/recovery
+        if (f.attack) {
+          const frame = f.attack.phase === "startup" ? 0 : 1;
+          if (s.texture.key !== "hero_warrior_attack") s.anims.stop();
+          s.setTexture("hero_warrior_attack", frame);
+        } else if (s.texture.key !== "hero_warrior") {
+          s.setTexture("hero_warrior", 0);
+        }
+      }
+      // hurt: hard white impact flash while in hitstun (everyone)
+      if (f.state === "hitstun" && !reduced) s.setTintFill(0xffffff);
+      else s.clearTint();
       // i-frame blink (skipped under reduced motion); windup telegraph is in fx
       s.setAlpha(f.iframes > 0 && !reduced ? (Math.floor(this.time.now / 60) % 2 ? 0.4 : 1) : 1);
     }

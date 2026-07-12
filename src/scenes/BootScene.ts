@@ -32,6 +32,8 @@ import luchadorGruntUrl from "../../assets/sprites/enemies/luchador_grunt.png";
 import luchadorMaskUrl from "../../assets/sprites/enemies/luchador_mask.png";
 import eliteWraithUrl from "../../assets/sprites/enemies/elite_wraith.png";
 import conductorUrl from "../../assets/sprites/enemies/the_conductor.png";
+import conductorColossalUrl from "../../assets/sprites/enemies/conductor_colossal.png";
+import warriorAttackUrl from "../../assets/sprites/heroes/warrior/attack.png";
 
 // All battle art (Skatopia pixel-art pipeline, tools/pixelart/) is loaded
 // once here so every scene's texture manager has it. Heroes are 20x24
@@ -62,6 +64,10 @@ export class BootScene extends Phaser.Scene {
     this.load.image("bg_battle_conductor", battleConductorUrl);
     this.load.image("caustics", causticsUrl);
     for (const [key, url] of Object.entries(ARENA_URLS)) this.load.image(key, url);
+    // Native colossal boss art (PRD §11.1: authored at size, never upscaled)
+    // and the playable lead's authored attack poses (windup -> swing).
+    this.load.spritesheet("conductor_colossal", conductorColossalUrl, { frameWidth: 52, frameHeight: 72 });
+    this.load.spritesheet("hero_warrior_attack", warriorAttackUrl, { frameWidth: 24, frameHeight: 24 });
     this.load.image("ui_panel", uiPanelUrl);
     this.load.image("ui_panel_boss", uiPanelBossUrl);
     this.load.spritesheet("ui_icons", uiIconsUrl, { frameWidth: 10, frameHeight: 10 });
