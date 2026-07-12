@@ -261,7 +261,7 @@ export class OverworldScene extends Phaser.Scene {
     if (!encounterId) return; // camp nodes have no encounter
     GameContext.pendingEncounterId = encounterId;
     GameContext.pendingNodeId = marker.nodeId;
-    this.scene.start("BattleScene");
+    this.scene.start("ActionBattleScene"); // v6.0 real-time combat
   }
 
   /**

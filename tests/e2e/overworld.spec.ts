@@ -56,7 +56,7 @@ test.describe("overworld", () => {
       const scene = window.__meterfallDebug.game.scene.getScene("OverworldScene") as unknown as OverworldSeams;
       scene.debugTeleportToNode("opening_1");
     });
-    await waitForScene(page, "BattleScene");
+    await waitForScene(page, "ActionBattleScene"); // v6.0 real-time combat
 
     const pending = await page.evaluate(() => ({
       encounterId: window.__meterfallDebug.GameContext.pendingEncounterId,
@@ -76,7 +76,7 @@ test.describe("overworld", () => {
       scene.debugTeleportToNode("mid_2");
     });
     await page.waitForTimeout(500);
-    expect(await isSceneActive(page, "BattleScene")).toBe(false);
+    expect(await isSceneActive(page, "ActionBattleScene")).toBe(false);
     expect(await isSceneActive(page, "OverworldScene")).toBe(true);
 
     // Mark opening_1 cleared (as a won battle would) and stand on it: no re-fight.
@@ -88,7 +88,7 @@ test.describe("overworld", () => {
       scene.debugTeleportToNode("opening_1");
     });
     await page.waitForTimeout(500);
-    expect(await isSceneActive(page, "BattleScene")).toBe(false);
+    expect(await isSceneActive(page, "ActionBattleScene")).toBe(false);
     expect(await isSceneActive(page, "OverworldScene")).toBe(true);
   });
 
@@ -100,19 +100,21 @@ test.describe("overworld", () => {
       const scene = window.__meterfallDebug.game.scene.getScene("OverworldScene") as unknown as OverworldSeams;
       scene.debugTeleportToNode("opening_1");
     });
-    await waitForScene(page, "BattleScene");
+    await waitForScene(page, "ActionBattleScene");
 
-    // Force the win through the same private endBattle() path a real
-    // victory takes (TS `private` doesn't exist at runtime) -- playing a
-    // full battle with real timed taps is battle-basics.spec.ts's job.
+    // Force the win by emptying the arena's enemy HP; the sim detects victory
+    // on the next tick and runs the real finishBattle()/reward path. Playing a
+    // full real-time fight with live input is the manual-verification job.
     await page.evaluate(() => {
-      const scene = window.__meterfallDebug.game.scene.getScene("BattleScene") as unknown as {
-        combat: { outcome: string; enemies: { hp: number }[] };
-        endBattle(): void;
+      const scene = window.__meterfallDebug.game.scene.getScene("ActionBattleScene") as unknown as {
+        arena: { fighters: { team: string; hp: number; state: string }[] };
       };
-      for (const enemy of scene.combat.enemies) enemy.hp = 0;
-      scene.combat.outcome = "victory";
-      scene.endBattle();
+      for (const f of scene.arena.fighters) {
+        if (f.team === "enemy") {
+          f.hp = 0;
+          f.state = "dead";
+        }
+      }
     });
     await waitForScene(page, "ResultsScene");
 

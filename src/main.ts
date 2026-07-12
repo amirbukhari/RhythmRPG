@@ -7,11 +7,14 @@ import { SaveScene } from "./scenes/SaveScene";
 import { CalibrationScene } from "./scenes/CalibrationScene";
 import { OverworldScene } from "./scenes/OverworldScene";
 import { BattleScene } from "./scenes/BattleScene";
+import { ActionBattleScene } from "./scenes/ActionBattleScene";
 import { ResultsScene } from "./scenes/ResultsScene";
 import { SettingsOverlay } from "./scenes/SettingsOverlay";
 import { GameContext } from "./state/GameContext";
 
-// Fixed scene stack per PRD §10.6.
+// Fixed scene stack per PRD §10.6. ActionBattleScene (v6.0 real-time combat)
+// is the one the overworld launches; BattleScene (turn-based) remains
+// registered during the pivot so its regression coverage still runs.
 const game = new Phaser.Game({
   ...gameConfig,
   scene: [
@@ -21,6 +24,7 @@ const game = new Phaser.Game({
     SaveScene,
     CalibrationScene,
     OverworldScene,
+    ActionBattleScene,
     BattleScene,
     ResultsScene,
     SettingsOverlay,
