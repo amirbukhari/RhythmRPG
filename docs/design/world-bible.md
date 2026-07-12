@@ -64,6 +64,43 @@ movement of the chorus, reframed from a placeholder biome to a lyric.
 | `mid_3` | **The Attic of Teeth** | *"have you ever seen a mouth this wide?"* — rats, bones, teeth | the elite wraith |
 | `boss_1` | **The Conductor's Hall** | *"he's been trying to describe a sound again"* | **The Conductor** |
 
+### 5a. The untold stories (canonical arena staging)
+
+Each movement is fought inside a specific place staged to imply a past the
+game never narrates (PRD §11.1.1). This is the canon behind each staging —
+**never surfaced as text in-game**; it exists so the art stays coherent.
+
+- **The Shallows.** The village drowned during its harvest festival — the
+  maypole ring of boats was a blessing rite for the fleet. The rising water
+  came *with* the first verse of the chorus, gently, and most didn't run.
+  One boat still strains at its mooring above the green: the baker's
+  daughter cut everyone else's boats loose first, and hers ran out of rope.
+- **The Salt Mines.** The miners broke into a gallery that sang back. They
+  gathered at the tunnel mouth to listen — pillar of salt is what listening
+  too long *is*, down here ("when you're turning to salt, it's when you're
+  staring ahead"). The one statue facing away is the foreman, who covered
+  his ears and ran, and calcified anyway, mid-stride, three steps from the
+  lift.
+- **The Pit Below.** The carnival kept performing after the water came —
+  "cannibals so eager we'll eat each other on dates." The champion's final
+  match was against something that came up through the ring floor; the
+  ropes snapped outward when it left with him. The two lanterns that still
+  burn are the two bouts the crowd voted to see again. The crowd is still
+  down there, in a sense; the tipped chairs face away because in the end
+  no one could watch.
+- **The Attic of Teeth.** The room from "Ratchet Government" and "Truckers
+  for Christ": someone locked themselves in to transcribe the sound in the
+  walls before it finished transcribing *them* — pens for a bed, every
+  surface black with attempts, musical staves gouged among the words. The
+  claw marks inside the door are theirs; the door was never locked from
+  the outside.
+- **The Conductor's Hall.** The orchestra drowned rehearsing the ending.
+  The Conductor kept conducting; the stands' pages are blank because he
+  erases every attempt except the last row's — the only players who ever
+  got it right, and who he therefore could never let leave. The clocks
+  each stopped at the moment a player gave up; they melt because he keeps
+  re-conducting those moments.
+
 ## 6. The Conductor
 
 The world's composer and final boss (PRD §8.7). Gaunt, black-coated, a clock
