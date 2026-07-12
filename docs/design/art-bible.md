@@ -36,8 +36,13 @@ Pipeline modules (`tools/pixelart/`):
 | `tiles.py` | `assets/tilemaps/overworld_tileset.png` — 4 seamlessly-tiling 16×16 tiles. |
 | `heroes.py` | `assets/sprites/heroes/{role}/{down,side,up}.png` — 4 classes × 3 facings, each a 4-frame walk strip. |
 | `enemies.py` | `assets/sprites/enemies/{id}.png` — 6 enemies, 48×48, 2-frame idle. |
-| `backgrounds.py` | `assets/backgrounds/battle_{abyss,conductor}.png` — 320×180 battle backdrops. |
-| `generate_all.py` | Runs all of the above. |
+| `backgrounds.py` | `assets/backgrounds/battle_{abyss,conductor}.png` + a tiling `caustics` overlay — 320×180 backdrops with atmospheric depth, god-rays, and floor caustics. |
+| `props.py` | `assets/sprites/overworld/props.png` — gothic overworld decorations (dead tree, tombstone, bone pile, fungus, reeds, obelisk shard). |
+| `ui.py` | `assets/ui/` — a nine-slice window frame (+ boss variant) and stat icons. |
+| `fx.py` | `assets/fx/` — white radial glow + impact-spark textures, tinted and additively blended in-engine for the HLD emissive look. |
+| `generate_all.py` | Runs all of the above deterministically. |
+
+**HLD register (v6.0+).** The real-time action arena leans into *Hyper Light Drifter*: enemies are scaled **colossal** and silhouette-first (the Conductor towers ~2.9× over the small player), and emission is faked with additive glow (`fx.py`) — accent-tinted auras and glowing eyes that pulse on the beat, red windup telegraphs, an on-beat player flash, bright attack arcs, and impact sparks. All emissive fx are reduced-motion aware.
 
 Core technique: a sprite is a list of equal-length strings; each character is
 a key into the palette (`" "`/`"."` = transparent). A 1px outline pass and a
