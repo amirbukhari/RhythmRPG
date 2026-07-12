@@ -2,6 +2,21 @@ import Phaser from "phaser";
 import battleAbyssUrl from "../../assets/backgrounds/battle_abyss.png";
 import battleConductorUrl from "../../assets/backgrounds/battle_conductor.png";
 import causticsUrl from "../../assets/backgrounds/caustics.png";
+import arenaShallowsUrl from "../../assets/backgrounds/arena_shallows.png";
+import arenaSaltminesUrl from "../../assets/backgrounds/arena_saltmines.png";
+import arenaPitUrl from "../../assets/backgrounds/arena_pit.png";
+import arenaAtticUrl from "../../assets/backgrounds/arena_attic.png";
+import arenaHallUrl from "../../assets/backgrounds/arena_hall.png";
+
+// One authored arena per campaign movement (PRD §11.1.1) -- each a specific
+// place with an untold story staged in its set pieces.
+const ARENA_URLS: Record<string, string> = {
+  arena_shallows: arenaShallowsUrl,
+  arena_saltmines: arenaSaltminesUrl,
+  arena_pit: arenaPitUrl,
+  arena_attic: arenaAtticUrl,
+  arena_hall: arenaHallUrl,
+};
 import uiPanelUrl from "../../assets/ui/panel.png";
 import uiPanelBossUrl from "../../assets/ui/panel_boss.png";
 import uiIconsUrl from "../../assets/ui/icons.png";
@@ -46,6 +61,7 @@ export class BootScene extends Phaser.Scene {
     this.load.image("bg_battle_abyss", battleAbyssUrl);
     this.load.image("bg_battle_conductor", battleConductorUrl);
     this.load.image("caustics", causticsUrl);
+    for (const [key, url] of Object.entries(ARENA_URLS)) this.load.image(key, url);
     this.load.image("ui_panel", uiPanelUrl);
     this.load.image("ui_panel_boss", uiPanelBossUrl);
     this.load.spritesheet("ui_icons", uiIconsUrl, { frameWidth: 10, frameHeight: 10 });

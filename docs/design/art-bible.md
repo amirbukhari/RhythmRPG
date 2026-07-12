@@ -36,7 +36,7 @@ Pipeline modules (`tools/pixelart/`):
 | `tiles.py` | `assets/tilemaps/overworld_tileset.png` — 4 seamlessly-tiling 16×16 tiles. |
 | `heroes.py` | `assets/sprites/heroes/{role}/{down,side,up}.png` — 4 classes × 3 facings, each a 4-frame walk strip. |
 | `enemies.py` | `assets/sprites/enemies/{id}.png` — 6 enemies, 48×48, 2-frame idle. |
-| `backgrounds.py` | `assets/backgrounds/battle_{abyss,conductor}.png` + a tiling `caustics` overlay — 320×180 backdrops with atmospheric depth, god-rays, and floor caustics. |
+| `backgrounds.py` | `assets/backgrounds/arena_{shallows,saltmines,pit,attic,hall}.png` — five distinct story-staged arenas (PRD §11.1.1, lore in world-bible §5a), plus the legacy `battle_{abyss,conductor}` pair (menus/turn-based) and a tiling `caustics` overlay. Each arena carries a beat-pulsing story light wired in `ActionBattleScene`. |
 | `props.py` | `assets/sprites/overworld/props.png` — gothic overworld decorations (dead tree, tombstone, bone pile, fungus, reeds, obelisk shard). |
 | `ui.py` | `assets/ui/` — a nine-slice window frame (+ boss variant) and stat icons. |
 | `fx.py` | `assets/fx/` — white radial glow + impact-spark textures, tinted and additively blended in-engine for the HLD emissive look. |

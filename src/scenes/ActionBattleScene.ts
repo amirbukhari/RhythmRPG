@@ -33,6 +33,17 @@ const NODE_MOVEMENT: Record<string, string> = {
   boss_1: "The Conductor's Hall",
 };
 
+// Per-movement arena backdrop + its story light: the one point in each place
+// that visibly answers the music (PRD §11.1.1 rule 4), pulsing on the beat.
+const NODE_ARENA: Record<string, { key: string; light: { x: number; y: number; color: number } }> = {
+  opening_1: { key: "arena_shallows", light: { x: 202, y: 68, color: 0xf0a648 } }, // the leaning spire's lamp
+  mid_1: { key: "arena_saltmines", light: { x: 258, y: 106, color: 0xf0a648 } }, // the singing tunnel mouth
+  mid_2: { key: "arena_pit", light: { x: 142, y: 32, color: 0xf4d27a } }, // the lantern still burning
+  mid_3: { key: "arena_attic", light: { x: 265, y: 57, color: 0xf0a648 } }, // the keyhole
+  boss_1: { key: "arena_hall", light: { x: 161, y: 91, color: 0xf0a648 } }, // the podium flame
+};
+const DEFAULT_ARENA = { key: "arena_shallows", light: { x: 202, y: 68, color: 0xf0a648 } };
+
 // Emissive accent per enemy for the additive glow (eyes / aura / telegraph).
 const ENEMY_ACCENT: Record<string, number> = {
   the_conductor: 0xf0a648,
@@ -67,6 +78,7 @@ export class ActionBattleScene extends Phaser.Scene {
   private lastEnemyHp = new Map<string, number>();
   private beatGlow!: Phaser.GameObjects.Image;
   private attackGlow!: Phaser.GameObjects.Image;
+  private storyLight!: Phaser.GameObjects.Image;
   private hpBars!: Phaser.GameObjects.Graphics;
   private fx!: Phaser.GameObjects.Graphics;
   private beatText!: Phaser.GameObjects.Text;
@@ -96,8 +108,16 @@ export class ActionBattleScene extends Phaser.Scene {
     const bpm = beatmap.bpm * settings.gameSpeed;
     this.beatSeconds = 60 / bpm;
 
-    // backdrop
-    this.add.image(BASE_WIDTH / 2, BASE_HEIGHT / 2, this.isBoss ? "bg_battle_conductor" : "bg_battle_abyss").setDepth(-10);
+    // the movement's own arena (PRD §11.1.1) + its beat-pulsing story light
+    const arenaDef = (this.nodeId && NODE_ARENA[this.nodeId]) || DEFAULT_ARENA;
+    this.add.image(BASE_WIDTH / 2, BASE_HEIGHT / 2, arenaDef.key).setDepth(-10);
+    this.storyLight = this.add
+      .image(arenaDef.light.x, arenaDef.light.y, "glow")
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setTint(arenaDef.light.color)
+      .setScale(0.5)
+      .setAlpha(0.3)
+      .setDepth(-9);
 
     // build the sim from the encounter's enemy wave
     const enemyHps = encounter.enemyWave.map((id) => getEnemy(id).maxHp);
@@ -216,6 +236,9 @@ export class ActionBattleScene extends Phaser.Scene {
   private render(): void {
     const reduced = Boolean(GameContext.activeProfile?.settings.reducedMotion);
     const beatWave = 0.5 + 0.5 * Math.sin((this.clock.currentTime / this.beatSeconds) * Math.PI * 2);
+
+    // the arena's story light answers the music (PRD §11.1.1 rule 4)
+    this.storyLight.setAlpha(reduced ? 0.3 : 0.18 + 0.32 * beatWave).setScale(reduced ? 0.5 : 0.42 + 0.16 * beatWave);
     for (const f of this.arena.fighters) {
       const s = this.sprites.get(f.id);
       if (!s) continue;
