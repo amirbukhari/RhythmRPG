@@ -33,11 +33,11 @@ Pipeline modules (`tools/pixelart/`):
 | File | Produces |
 |---|---|
 | `skatopia.py` | The master palette + the render/outline/frame/pack/save primitives every other module uses. |
-| `tiles.py` | `assets/tilemaps/overworld_tileset.png` — 4 seamlessly-tiling 16×16 tiles. |
+| `tiles.py` | `assets/tilemaps/overworld_tileset.png` — 4 seamlessly-tiling 16×16 tiles (grass/path/water/rock), re-tinted toward each region's arena accent hue for 5 regions × 4 tiles = 20 total (v7.0, PRD §8.8.1). Sole owner of the tileset image; `tools/overworld/generate_overworld_map.py` is the sole owner of the map layout JSON. |
 | `heroes.py` | `assets/sprites/heroes/{role}/{down,side,up}.png` — 4 classes × 3 facings, each a 4-frame walk strip. |
 | `enemies.py` | `assets/sprites/enemies/{id}.png` — 6 enemies, 48×48, 2-frame idle. |
 | `backgrounds.py` | `assets/backgrounds/arena_{shallows,saltmines,pit,attic,hall}.png` — five distinct story-staged arenas (PRD §11.1.1, lore in world-bible §5a), plus the legacy `battle_{abyss,conductor}` pair (menus/turn-based) and a tiling `caustics` overlay. Each arena carries a beat-pulsing story light wired in `ActionBattleScene`. |
-| `props.py` | `assets/sprites/overworld/props.png` — gothic overworld decorations (dead tree, tombstone, bone pile, fungus, reeds, obelisk shard). |
+| `props.py` | `assets/sprites/overworld/props.png` — gothic overworld decorations (dead tree, tombstone, bone pile, fungus, reeds, obelisk shard) plus a 7th frame, `echo_rune`, the interactive found-lore marker (v7.0, PRD §8.8.2) that `OverworldScene` layers an additive glow pulse over at runtime. |
 | `ui.py` | `assets/ui/` — a nine-slice window frame (+ boss variant) and stat icons. |
 | `fx.py` | `assets/fx/` — white radial glow + impact-spark textures, tinted and additively blended in-engine for the HLD emissive look. |
 | `generate_all.py` | Runs all of the above deterministically. |
