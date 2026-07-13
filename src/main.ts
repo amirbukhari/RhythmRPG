@@ -11,6 +11,7 @@ import { ActionBattleScene } from "./scenes/ActionBattleScene";
 import { ResultsScene } from "./scenes/ResultsScene";
 import { SettingsOverlay } from "./scenes/SettingsOverlay";
 import { GameContext } from "./state/GameContext";
+import { initTouchControls } from "./ui/TouchControls";
 
 // Fixed scene stack per PRD §10.6. ActionBattleScene (v6.0 real-time combat)
 // is the one the overworld launches; BattleScene (turn-based) remains
@@ -30,6 +31,10 @@ const game = new Phaser.Game({
     SettingsOverlay,
   ],
 });
+
+// On-screen controls for phones/tablets (no-op on desktop). Synthesizes the
+// keyboard events every scene already reads, so the game is playable by touch.
+initTouchControls();
 
 // Dev-only debug hook: exposes app state for the tests/e2e/ Playwright suite
 // and manual debugging. Stripped from production builds by Vite's dead-code
