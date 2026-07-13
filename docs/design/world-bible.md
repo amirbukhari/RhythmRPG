@@ -101,6 +101,67 @@ game never narrates (PRD §11.1.1). This is the canon behind each staging —
   each stopped at the moment a player gave up; they melt because he keeps
   re-conducting those moments.
 
+### 5b. The explorable world (PRD §8.8) — regions and echoes
+
+The walkable world is five joined regions, one per movement, each dressed in
+its arena's visual language so approaching a place foreshadows it. Each
+region carries 2 **echoes** (10 total) — hand-placed, off the critical path,
+each surfacing exactly one line when found (PRD §8.8.2). No echo text is
+ever shown automatically; the player must walk to it and interact.
+
+**Region 1 — The Shallows Road** (teal, coastal). Rooftops break the
+shallows either side of the path; a rope ladder leads down into deeper,
+darker water off to one side.
+- *Echo — Baker's Ledger.* A waterlogged ledger page pinned under a stone,
+  half the entries crossed out. Line: *"Everyone's boat but mine — I'll
+  follow once the last one's free."*
+- *Echo — The Empty Cradle.* A cradle, lashed to a rooftop, rocking on
+  nothing. Line: *"She untied every line but her own."*
+
+**Region 2 — The Salt Road** (ember/gold, mine approach). Rail spurs
+multiply as the path nears the mine; abandoned lanterns line the rock face,
+unlit, all pointed the same way.
+- *Echo — The Foreman's Ledger.* A tally slate, chalk marks counting up to
+  a day that never got a total. Line: *"Everyone's shift but mine ends at
+  the sound. I keep counting anyway."*
+- *Echo — Listening Stones.* A ring of small stones stacked at ear height,
+  facing the tunnel, untouched by the tide that moves everything else here.
+  Line: *"If you stack them right, they listen back."*
+
+**Region 3 — The Carnival Road** (plum/magenta, pit approach). Ticket
+booths, a fortune-teller's tent collapsed inward, more dead lanterns.
+- *Echo — Two Ticket Stubs.* Pinned together, still bright red, unlike
+  everything around them. Line: *"Front row, both of us. He said don't
+  blink."*
+- *Echo — The Fortune Wheel.* Stopped on the same wedge as the day it
+  drowned. Line: *"It never lands anywhere else now. I've checked."*
+
+**Region 4 — The Attic Approach** (blood/rust, building exterior). The
+building around the Attic of Teeth from the outside — boarded windows,
+one still lit from within, a drainpipe someone climbed and didn't climb back
+down.
+- *Echo — The Boarded Window.* Boards nailed from the *outside*, over a
+  window still faintly lit from within. Line: *"We didn't lock her in.
+  We tried to keep it out."*
+- *Echo — The Handprint.* A single small handprint in old paint, on the
+  outside sill, reaching up. Line: *"Not for help. For quiet."*
+
+**Region 5 — The Conductor's Plaza** (ink + ember, flooded approach). A
+drowned concert plaza before the hall — toppled statues of an audience,
+programs still floating, all for a performance with no listed ending.
+- *Echo — The Program.* A concert program, water-swollen, every performer's
+  name blank except one. Line: *"He wrote his own name in last, every
+  time, like it might come out different."*
+- *Echo — The Standing Ovation.* A row of stone figures, mid-applause,
+  facing the hall. Line: *"They clapped until the water was over their
+  heads. He never once turned around."*
+
+**Secrets (PRD §8.8.3).** Each region hides at least one non-obvious
+traversal element — a rock gap that only reads as passable up close, a path
+behind a wreck or waterfall, a route visible only from one vantage —
+gating a relic or an echo, never critical-path content. Hand-placed, not
+procedural: a discoverable secret has to be a decision someone made.
+
 ## 6. The Conductor
 
 The world's composer and final boss (PRD §8.7). Gaunt, black-coated, a clock
