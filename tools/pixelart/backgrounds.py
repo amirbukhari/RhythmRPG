@@ -428,9 +428,18 @@ def caustics() -> Image.Image:
 
 
 if __name__ == "__main__":
-    for name, fn in ARENAS.items():
-        save(fn(), f"backgrounds/arena_{name}.png")
+    import os
+    # The arena backdrops are now AI-generated (tools/pixelart/generate_ai.py,
+    # committed under assets/backgrounds/arena_*.png). These procedural painters
+    # are kept as the fallback/reference but do NOT clobber the shipped AI art
+    # unless REGEN_ARENAS=1 is set explicitly.
+    if os.environ.get("REGEN_ARENAS") == "1":
+        for name, fn in ARENAS.items():
+            save(fn(), f"backgrounds/arena_{name}.png")
+        print("procedural arenas regenerated:", ", ".join(ARENAS))
+    else:
+        print("skipping arena painters (AI art is source of truth; REGEN_ARENAS=1 to override)")
     save(build(False), "backgrounds/battle_abyss.png")
     save(build(True), "backgrounds/battle_conductor.png")
     save(caustics(), "backgrounds/caustics.png")
-    print("backgrounds written:", ", ".join(ARENAS))
+    print("backgrounds written (abyss/conductor/caustics)")
