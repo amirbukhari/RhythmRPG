@@ -1,8 +1,15 @@
 {
   "enemyId": "slime",
-  "name": "Slime",
+  "name": "Rot-Ooze",
   "maxHp": 60,
   "intents": [
-    { "telegraph": "slime_lunge", "effect": { "type": "damage", "value": 8, "target": "randomHero" } }
+    {
+      "telegraph": "slime_lunge",
+      "effect": {
+        "type": "damage",
+        "value": 8,
+        "target": "randomHero"
+      }
+    }
   ]
 }

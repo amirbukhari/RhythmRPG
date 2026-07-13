@@ -141,6 +141,52 @@ def build() -> Image.Image:
     return sheet
 
 
+# --- multi-region variants (PRD §8.8 / world-bible §5b) --------------------
+# One dominant accent hue per region (matching each region's arena, §11.1.1)
+# tinted over the same 4 base tiles, so the explorable world visually
+# telegraphs which movement you're approaching without redrawing from
+# scratch. Order matches the campaign graph: Shallows -> Salt Mines ->
+# Pit Below -> Attic of Teeth -> Conductor's Hall.
+REGIONS = ["shallows", "saltmines", "pit", "attic", "hall"]
+REGION_ACCENT: dict[str, tuple] = {
+    "shallows": PALETTE["C"],
+    "saltmines": PALETTE["o"],
+    "pit": PALETTE["P"],
+    "attic": PALETTE["r"],
+    "hall": PALETTE["p"],
+}
+
+
+def _tint(img: Image.Image, accent: tuple, amt: float) -> Image.Image:
+    px = img.load()
+    for y in range(T):
+        for x in range(T):
+            c = px[x, y]
+            px[x, y] = tuple(round(c[i] + (accent[i] - c[i]) * amt) for i in range(3)) + (255,)
+    return img
+
+
+def region_tiles(region: str) -> list[Image.Image]:
+    accent = REGION_ACCENT[region]
+    return [
+        _tint(grass(), accent, 0.38),
+        _tint(path(), accent, 0.24),
+        _tint(water(), accent, 0.48),
+        _tint(rock(), accent, 0.32),
+    ]
+
+
+def build_multi_region() -> Image.Image:
+    """One row of 4 tiles (grass/path/water/rock) per region, 20 tiles total,
+    tile id = region_index*4 + {0,1,2,3} -- the convention the overworld
+    generator and OverworldScene both key off of."""
+    sheet = Image.new("RGBA", (T * 4 * len(REGIONS), T), (0, 0, 0, 0))
+    for ri, region in enumerate(REGIONS):
+        for ti, tile in enumerate(region_tiles(region)):
+            sheet.alpha_composite(tile, ((ri * 4 + ti) * T, 0))
+    return sheet
+
+
 def preview(sheet: Image.Image) -> Image.Image:
     """A 4x4 tiled swatch of each tile so seams are visible at review time."""
     prev = Image.new("RGBA", (T * 4 * 4, T * 4), (0, 0, 0, 0))

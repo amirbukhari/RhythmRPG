@@ -85,6 +85,25 @@ OBELISK_SHARD = [
     "gvwWvgG.",
 ]
 
+# A found-lore marker (PRD §8.8.2): a small carved rune stone, distinct from
+# the purely decorative props above so it reads as interactive. The scene
+# layers an additive glow pulse over this at runtime (tools/pixelart/fx.py),
+# so the base art itself just needs a clean, readable silhouette + a carved
+# glyph socket for that glow to sit in.
+ECHO_RUNE = [
+    "..vvvv..",
+    ".vwwwwv.",
+    "vwWWWWwv",
+    "vwWCCCWv",
+    "vwWCoCWv",
+    "vwWCCCWv",
+    "vwWWWWwv",
+    ".vwwwwv.",
+    "..vvvv..",
+    "...vv...",
+    "...gg...",
+]
+
 PROPS = {
     "dead_tree": DEAD_TREE,
     "tombstone": TOMBSTONE,
@@ -92,6 +111,7 @@ PROPS = {
     "fungus": FUNGUS,
     "reeds": REEDS,
     "obelisk_shard": OBELISK_SHARD,
+    "echo_rune": ECHO_RUNE,
 }
 ORDER = list(PROPS.keys())
 FRAME_W, FRAME_H = 20, 24

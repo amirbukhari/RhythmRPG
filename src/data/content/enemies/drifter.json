@@ -1,9 +1,22 @@
 {
   "enemyId": "drifter",
-  "name": "Drifter",
+  "name": "Saltmine Drifter",
   "maxHp": 70,
   "intents": [
-    { "telegraph": "drifter_sway", "effect": { "type": "damage", "value": 7, "target": "randomHero" } },
-    { "telegraph": "drifter_drag", "effect": { "type": "debuff", "value": -0.1 } }
+    {
+      "telegraph": "drifter_sway",
+      "effect": {
+        "type": "damage",
+        "value": 7,
+        "target": "randomHero"
+      }
+    },
+    {
+      "telegraph": "drifter_drag",
+      "effect": {
+        "type": "debuff",
+        "value": -0.1
+      }
+    }
   ]
 }
