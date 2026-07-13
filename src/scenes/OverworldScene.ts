@@ -126,6 +126,7 @@ export class OverworldScene extends Phaser.Scene {
     });
 
     this.decorate(map, ground, spawnTile);
+    this.softenSeamsAndDapple(map);
     this.drawLandmarks();
     this.drawNpcs(spawnTile);
     for (const marker of this.markers) this.drawMarker(profile, marker);
@@ -483,6 +484,44 @@ export class OverworldScene extends Phaser.Scene {
           }
         }
       }
+    }
+  }
+
+  /**
+   * Two cheap, static, world-space passes that kill the last "flat tilemap"
+   * tells: (1) a soft cross-fade band at each region boundary so the five
+   * moods bleed into one another instead of meeting on a razor-straight line;
+   * (2) a large-scale shadow-dapple overlay (the fog texture, world-space,
+   * dark, low alpha) so the repeated grass stamp dissolves under organic
+   * light variation far larger than the 16px grid.
+   */
+  private softenSeamsAndDapple(map: Phaser.Tilemaps.Tilemap): void {
+    const REGION_W = 26; // tiles (tools/overworld/generate_overworld_map.py)
+    // accent per region, matching tools/pixelart/tiles.py REGION_ACCENT order
+    const accents = [0x49c6bd, 0xf0a648, 0x8a52a0, 0xa8431c, 0x4b2a57];
+    const g = this.add.graphics().setDepth(1);
+    const bandTiles = 4;
+    for (let seam = 1; seam < accents.length; seam++) {
+      const seamX = seam * REGION_W * TILE_SIZE;
+      for (let t = -bandTiles; t < bandTiles; t++) {
+        const x = seamX + t * TILE_SIZE;
+        // fade toward the seam from each side, tinting with that side's accent
+        const side = t < 0 ? seam - 1 : seam;
+        const dist = (bandTiles - Math.abs(t)) / bandTiles; // 0 at edge -> 1 at seam
+        g.fillStyle(accents[side], 0.16 * dist);
+        g.fillRect(x, 0, TILE_SIZE, map.heightInPixels);
+      }
+    }
+
+    if (!GameContext.activeProfile?.settings.photosensitivitySafeMode) {
+      // world-space shadow dapple: soft dark blobs, tiled large, breaking the grid
+      this.add
+        .tileSprite(0, 0, map.widthInPixels, map.heightInPixels, "fx_haze")
+        .setOrigin(0, 0)
+        .setDepth(1)
+        .setTileScale(2.4)
+        .setTint(0x05060a)
+        .setAlpha(0.16);
     }
   }
 
