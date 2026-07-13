@@ -28,6 +28,42 @@ provided **Amir** guitarist.
 
 ---
 
+## Where to generate these (tools & workflow)
+
+You generate the art; I wire it. Pick a tool by the job — the ones below are
+**pixel-art-native** (they output real pixel grids, spritesheet frames, and
+transparent PNGs, which general art generators don't):
+
+| Job | Best tools | Why |
+|---|---|---|
+| **Characters w/ animation states** (the ≥22 band states, enemy states) | **PixelLab** (`pixellab.ai`), **Sprite-AI** (`sprite-ai.art`) | animate a base sprite into walk/run/attack cycles + 4/8-direction; built for game characters |
+| **Spritesheets at exact frame size** | **Spritesheets.AI** (`spritesheets.ai`), **PixelBox** (`llamagen.ai/ai-pixel-art-generator`) | pixel-perfect frames on a grid, transparent PNG w/ premultiplied alpha |
+| **Tilesets (seamless / autotile)** | **PixelLab** (tileset mode), **Spritesheets.AI** | generates tiles that fit together seamlessly |
+| **Backgrounds / arena scenes / key art** | a strong general model — ChatGPT·DALL·E (`chatgpt.com`), Google Gemini (`gemini.google.com`), Midjourney (`midjourney.com`) | not pixel-native, so run the result through the importer to quantize/clean |
+| **Style consistency across all ~575 slots** | **Scenario** (`scenario.com`) — train a small style model on Amir + your first assets | keeps the whole game one cohesive look |
+
+**Workflow that fits this game:**
+1. **Anchor the style once.** Generate/settle one hero (or reuse **Amir**) and 2–3
+   tiles you love. Feed them back as a *style reference image* (most tools support
+   it) on every later prompt so the set stays cohesive. Optionally train a Scenario
+   model on them.
+2. **Paste the [Global Style Block](#global-style-block) + [palette](#master-palette)** into every prompt.
+3. **Transparency:** if the tool exports transparent PNGs, great. If not, generate the
+   sprite on a **solid flat green (`#00ff00`) or magenta (`#ff00ff`) background** — my
+   importer keys it out (`--key '#00ff00'`).
+4. **Don't sweat exact pixel size or exact palette** at generation time — generate big
+   and colorful; the importer downscales to the target frame size and snaps colors to
+   the master palette.
+5. **Send me the file** (attach or commit) and say the slot; I run one importer command
+   and wire it in.
+
+> Free tiers exist on most of these (e.g. Sprite-AI ~15 free gens, PixelLab/Scenario
+> trials); pricing/URLs shift, so confirm current terms on each site. You don't need a
+> paid plan to start — do one asset, hand it to me, and we prove the whole loop before
+> you scale up.
+
+---
+
 ## Global Style Block
 
 > Paste before **every** prompt below.
