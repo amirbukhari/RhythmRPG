@@ -16,6 +16,30 @@ from skatopia import PALETTE, save
 
 T = 16
 
+# --- designed-tile craft (PRD §11.1 criterion 7): intentional pixel art with
+# a light source, value ramps, ordered dithering (never per-pixel RNG fills),
+# and hand-placed motifs. Local higher-contrast ramps (not the muddy near-black
+# fills the noise tiles used) so grass reads as grass, water as water.
+_GREEN = [_c for _c in (  # dark -> light moss/turf ramp
+    (0x20, 0x33, 0x1e, 255), (0x2f, 0x50, 0x2b, 255), (0x3f, 0x6f, 0x36, 255),
+    (0x5a, 0x93, 0x46, 255), (0x7c, 0xb8, 0x5a, 255),
+)]
+_SALT = [_c for _c in (  # bone/salt road ramp
+    (0x4b, 0x46, 0x38, 255), (0x6f, 0x67, 0x54, 255), (0x9c, 0x92, 0x7a, 255),
+    (0xcf, 0xc6, 0xae, 255), (0xf1, 0xec, 0xdd, 255),
+)]
+_AQUA = [_c for _c in (  # abyss depth ramp
+    (0x0b, 0x22, 0x33, 255), (0x15, 0x3a, 0x52, 255), (0x1f, 0x6f, 0x77, 255),
+    (0x49, 0xc6, 0xbd, 255), (0x9f, 0xe8, 0xe0, 255),
+)]
+_STONE = [_c for _c in (  # wet stone ramp
+    (0x23, 0x28, 0x30, 255), (0x3a, 0x43, 0x4f, 255), (0x58, 0x64, 0x70, 255),
+    (0x97, 0xa2, 0xae, 255), (0xcc, 0xd4, 0xdc, 255),
+)]
+
+# 4x4 ordered (Bayer) dither matrix, values 0..15 -> smooth ramp transitions.
+_BAYER = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]
+
 
 def _img() -> tuple[Image.Image, object]:
     im = Image.new("RGBA", (T, T), (0, 0, 0, 255))
@@ -26,110 +50,112 @@ def _wrapx(x: int) -> int:
     return x % T
 
 
+def _dither(px, x: int, y: int, lo, hi, level: int) -> None:
+    """Place hi where the Bayer threshold is below `level` (0..16), else lo --
+    an ordered dither between two ramp steps, seamless and grain-free."""
+    px[x % T, y % T] = hi if _BAYER[y % 4][x % 4] < level else lo
+
+
 def grass() -> Image.Image:
-    """Dark rot-moss turf -- moody and desaturated for the Skatopia mood, not
-    a cheerful meadow: near-black moss base, a few sick-olive blades, rot specks."""
-    rng = random.Random(11)
+    """Rot-moss turf, designed: a top-lit dithered green base, soft darker soil
+    patches, and hand-placed blade tufts with lit tips -- reads as turf, moody
+    but not muddy."""
     im, px = _img()
-    # base leans on the darkest greens + ink so the world reads gothic
-    base = [PALETTE["S"], PALETTE["g"], PALETTE["k"], PALETTE["S"], PALETTE["d"]]
+    # uniform dithered base (no per-tile gradient -> no banding when tiled)
     for y in range(T):
         for x in range(T):
-            px[x, y] = base[(x * 3 + y * 5 + rng.randint(0, 4)) % len(base)]
-    # sparse blades: mostly dark, only the occasional living tip
-    for _ in range(18):
-        x = rng.randrange(T)
-        y = rng.randrange(2, T)
-        px[x, y] = PALETTE["S"]
-        px[x, y - 1] = PALETTE["g"] if rng.random() < 0.7 else PALETTE["s"]
-    for _ in range(3):
-        px[rng.randrange(T), rng.randrange(T)] = PALETTE["G"]  # a rare bright shoot
-    # rot specks (dried blood / decay)
-    for _ in range(4):
-        px[rng.randrange(T), rng.randrange(T)] = PALETTE["Y"]
+            _dither(px, x, y, _GREEN[1], _GREEN[2], 6)
+    # soft darker soil dapple (deterministic circular patches, wrapped)
+    for (cx, cy, r) in ((4, 12, 3), (12, 5, 3), (9, 14, 2), (14, 10, 2)):
+        for y in range(cy - r, cy + r + 1):
+            for x in range(cx - r, cx + r + 1):
+                if (x - cx) ** 2 + (y - cy) ** 2 <= r * r:
+                    _dither(px, x, y, _GREEN[0], _GREEN[1], 7)
+    # blade tufts: dark base, bright lit tip (hand-placed, wrap-safe)
+    for (bx, by) in ((3, 11), (7, 14), (10, 6), (13, 13), (5, 4), (14, 3), (1, 8)):
+        for dx, h in ((-1, 2), (0, 3), (1, 2)):
+            x = (bx + dx) % T
+            for k in range(h):
+                y = (by - k) % T
+                px[x, y] = _GREEN[4] if k == h - 1 else _GREEN[3] if k == h - 2 else _GREEN[1]
+    # a pebble + a tiny flower for a focal fleck
+    px[8, 10] = _SALT[1]; px[9, 10] = _SALT[0]
+    px[11, 9] = (0xf0, 0xa6, 0xc0, 255); px[11, 8] = (0xf4, 0xd2, 0x7a, 255)
     return im
 
 
 def path() -> Image.Image:
-    """Salt/bone road: pale staggered brickwork ('turning to salt'), dark
-    mortar, a top-lit face on each brick. 8x4 bricks, half-offset per course,
-    both dividing 16 so it tiles seamlessly."""
-    rng = random.Random(23)
+    """Salt/bone road: staggered brick with a top-lit lip, shaded underside,
+    dark mortar, and light dither in each face. 8x4 bricks, half-offset per
+    course -- both divide 16 so it tiles seamlessly."""
     im, px = _img()
-    for y in range(T):
-        for x in range(T):
-            px[x, y] = PALETTE["w"]
+    mort = _SALT[0]
     for y in range(T):
         course = y // 4
         offset = (course % 2) * 4
         for x in range(T):
-            horizontal = (y % 4 == 0)
-            vertical = ((x + offset) % 8 == 0)
-            if horizontal or vertical:
-                px[x, y] = PALETTE["V"]
+            if y % 4 == 0 or (x + offset) % 8 == 0:
+                px[x, y] = mort  # mortar grid
             elif y % 4 == 1:
-                px[x, y] = PALETTE["W"]  # top-lit lip of each brick
+                px[x, y] = _SALT[4] if (x + offset) % 8 in (1, 2) else _SALT[3]  # top-lit lip
             elif y % 4 == 3:
-                px[x, y] = PALETTE["v"]  # shaded underside
-    # weathering: a crack across one brick, scattered salt pitting
+                px[x, y] = _SALT[1]  # shaded underside
+            else:
+                _dither(px, x, y, _SALT[2], _SALT[3], 5)  # brick face
+    # a hairline crack down one brick + a couple of moss specks in the mortar
     cx = 3
     for y in range(5, 11):
-        px[_wrapx(cx), y] = PALETTE["V"]
-        cx += rng.choice([0, 1, 1])
-    for _ in range(6):
-        px[rng.randrange(T), rng.randrange(T)] = PALETTE["v"]
+        px[_wrapx(cx), y] = _SALT[0]
+        cx += (y % 2)
+    px[0, 6] = _GREEN[1]; px[8, 10] = _GREEN[1]
     return im
 
 
 def water() -> Image.Image:
-    """The abyss: deep at the bottom, teal ripples, pearl glints -- 'live in the ocean'."""
-    rng = random.Random(37)
+    """The abyss: a vertical depth gradient (dark bottom -> teal top) with
+    hand-placed horizontal wave crests and pearl foam highlights."""
     im, px = _img()
+    # uniform mid-depth base (no per-tile gradient -> seamless in big bodies)
     for y in range(T):
-        # vertical depth gradient
-        band = PALETTE["E"] if y > 10 else PALETTE["e"] if y > 4 else PALETTE["c"]
         for x in range(T):
-            px[x, y] = band
-    # horizontal ripple strokes (wrap in x)
-    for _ in range(14):
-        y = rng.randrange(T)
-        x0 = rng.randrange(T)
-        ln = rng.randint(2, 4)
-        col = PALETTE["c"] if y < 8 else PALETTE["e"]
-        for i in range(ln):
-            px[_wrapx(x0 + i), y] = col
-    # bright glints near the surface
-    for _ in range(5):
-        px[rng.randrange(T), rng.randrange(0, 6)] = PALETTE["C"]
+            _dither(px, x, y, _AQUA[1], _AQUA[2], 6)
+    # wave crests: bright teal lines with a foam glint, offset per row (wrap)
+    for (cy, phase) in ((3, 0), (8, 3), (12, 6), (15, 1)):
+        for x in range(T):
+            y = (cy + (1 if (x + phase) % 6 < 2 else 0)) % T
+            px[x, y] = _AQUA[3]
+            if (x + phase) % 6 == 0:
+                px[x, (y - 1) % T] = _AQUA[4]  # foam highlight
     return im
 
 
 def rock() -> Image.Image:
-    """Wet dark stone with moss in the seams and a top-lit face."""
-    rng = random.Random(53)
+    """Wet dark stone: a dithered base with hand-placed faceted boulders --
+    each a lit top-left plane, mid body, and dark bottom-right, with a rim and
+    moss in the seams."""
     im, px = _img()
     for y in range(T):
         for x in range(T):
-            px[x, y] = PALETTE["m"] if (x + y) % 2 or rng.random() < 0.5 else PALETTE["N"]
-    # blocky facets: lighter tops, darker undersides
-    for _ in range(5):
-        bx, by = rng.randrange(T), rng.randrange(2, T - 2)
-        bw, bh = rng.randint(4, 7), rng.randint(3, 5)
-        for y in range(by, min(T, by + bh)):
-            for x in range(bx, bx + bw):
-                xx = _wrapx(x)
-                if y == by:
-                    px[xx, y] = PALETTE["M"]
-                elif y == by + bh - 1:
-                    px[xx, y] = PALETTE["N"]
+            _dither(px, x, y, _STONE[0], _STONE[1], 6)
+    for (cx, cy, r) in ((5, 6, 4), (11, 11, 5), (13, 3, 3)):
+        for y in range(cy - r, cy + r + 1):
+            for x in range(cx - r, cx + r + 1):
+                d2 = (x - cx) ** 2 + (y - cy) ** 2
+                if d2 > r * r:
+                    continue
+                xx, yy = x % T, y % T
+                s = (x - cx) + (y - cy)
+                if d2 >= (r - 0) ** 2 - 1:
+                    px[xx, yy] = _STONE[0]  # rim
+                elif s < -r // 2:
+                    px[xx, yy] = _STONE[3]  # top-left lit
+                elif s > r // 2:
+                    px[xx, yy] = _STONE[1]  # bottom-right shade
                 else:
-                    px[xx, y] = PALETTE["m"]
-    # broken rim highlights (not a full row -> no stripe when tiled) + moss
-    for _ in range(7):
-        x = rng.randrange(T)
-        px[x, rng.randrange(0, 2)] = PALETTE["L"]
-    for _ in range(12):
-        px[rng.randrange(T), rng.randrange(T)] = PALETTE["g"]
+                    px[xx, yy] = _STONE[2]  # body
+    # moss in the seams between boulders
+    for (mx, my) in ((8, 8), (2, 12), (14, 9), (9, 1)):
+        px[mx % T, my % T] = _GREEN[1]
     return im
 
 
