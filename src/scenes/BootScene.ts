@@ -17,6 +17,16 @@ const ARENA_URLS: Record<string, string> = {
   arena_attic: arenaAtticUrl,
   arena_hall: arenaHallUrl,
 };
+
+// The band -- Inhalants (tools/pixelart/bandmates.py). Amir is the provided
+// hand-drawn guitarist; the other three are authored to match. Every member
+// ships three 48x48 strips: idle, run, attack. Loaded once here as
+// `band_<member>` (idle) / `band_<member>_run` / `band_<member>_attack`.
+const BAND_URLS = import.meta.glob("../../assets/sprites/band/*/*.png", {
+  eager: true,
+  query: "?url",
+  import: "default",
+}) as Record<string, string>;
 import uiPanelUrl from "../../assets/ui/panel.png";
 import uiPanelBossUrl from "../../assets/ui/panel_boss.png";
 import uiIconsUrl from "../../assets/ui/icons.png";
@@ -75,6 +85,15 @@ export class BootScene extends Phaser.Scene {
     this.load.image("spark", sparkUrl);
     for (const [role, url] of Object.entries(HERO_BATTLE_URLS)) {
       this.load.spritesheet(`hero_${role}`, url, { frameWidth: 20, frameHeight: 24 });
+    }
+    // Band sprites: `band_amir/idle.png` -> key `band_amir`; `.../run.png` ->
+    // `band_amir_run`; `.../attack.png` -> `band_amir_attack`. All 48x48.
+    for (const [path, url] of Object.entries(BAND_URLS)) {
+      const m = /band\/([^/]+)\/([^/]+)\.png$/.exec(path);
+      if (!m) continue;
+      const [, member, anim] = m;
+      const key = anim === "idle" ? `band_${member}` : `band_${member}_${anim}`;
+      this.load.spritesheet(key, url, { frameWidth: 48, frameHeight: 48 });
     }
     for (const [name, url] of Object.entries(ENEMY_URLS)) {
       this.load.spritesheet(`enemy_${name}`, url, { frameWidth: 48, frameHeight: 48 });

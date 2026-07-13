@@ -6,16 +6,8 @@ import { nodeStatus, type NodeStatus } from "../systems/progression/CampaignReac
 import { stepTarget, isWalkable, type Direction, type GridPosition } from "../systems/overworld/OverworldMovement";
 import tilesetUrl from "../../assets/tilemaps/overworld_tileset.png";
 import tilemapUrl from "../../assets/tilemaps/overworld.json?url";
-import leaderDownUrl from "../../assets/sprites/heroes/warrior/down.png";
-import leaderSideUrl from "../../assets/sprites/heroes/warrior/side.png";
-import leaderUpUrl from "../../assets/sprites/heroes/warrior/up.png";
 import propsUrl from "../../assets/sprites/overworld/props.png";
 import { BASE_WIDTH, BASE_HEIGHT } from "../config/GameConfig";
-
-// The party leader shown on the overworld (the Deereater/warrior). Frames are
-// authored at this size by tools/pixelart/heroes.py.
-const HERO_FRAME_W = 20;
-const HERO_FRAME_H = 24;
 
 const TILE_SIZE = 16;
 const STEP_DURATION_MS = 160;
@@ -78,10 +70,8 @@ export class OverworldScene extends Phaser.Scene {
     // re-register live cache keys.
     if (!this.textures.exists("overworld_tiles")) this.load.image("overworld_tiles", tilesetUrl);
     if (!this.cache.tilemap.exists("overworld")) this.load.tilemapTiledJSON("overworld", tilemapUrl);
-    const sheet = { frameWidth: HERO_FRAME_W, frameHeight: HERO_FRAME_H };
-    if (!this.textures.exists("leader_down")) this.load.spritesheet("leader_down", leaderDownUrl, sheet);
-    if (!this.textures.exists("leader_side")) this.load.spritesheet("leader_side", leaderSideUrl, sheet);
-    if (!this.textures.exists("leader_up")) this.load.spritesheet("leader_up", leaderUpUrl, sheet);
+    // The leader (Amir) and the old-hero NPC sprites are loaded centrally in
+    // BootScene (band_* and hero_*); nothing hero-related to preload here.
     if (!this.textures.exists("ow_props")) this.load.spritesheet("ow_props", propsUrl, { frameWidth: 20, frameHeight: 24 });
   }
 
@@ -135,20 +125,31 @@ export class OverworldScene extends Phaser.Scene {
     });
 
     this.decorate(map, ground, spawnTile);
+    this.drawNpcs(spawnTile);
     for (const marker of this.markers) this.drawMarker(profile, marker);
     for (const echo of this.echoes) this.drawEcho(echo);
 
-    // One 4-frame walk cycle per facing (down/side/up); left reuses side
-    // flipped. Frame 0 of each is the standing pose.
-    for (const facing of ["down", "side", "up"] as const) {
-      if (!this.anims.exists(`leader_walk_${facing}`)) {
-        this.anims.create({
-          key: `leader_walk_${facing}`,
-          frames: this.anims.generateFrameNumbers(`leader_${facing}`, { start: 0, end: 3 }),
-          frameRate: 8,
-          repeat: -1,
-        });
-      }
+    // The party leader on the map is Amir, the band's guitarist (his real
+    // hand-drawn art, tools/pixelart/bandmates.py). His sheets are side-facing
+    // only, so one run cycle serves every direction (flipped for left); the
+    // idle is his breathing stand. Frame counts are read off the loaded
+    // textures so re-authoring the sheets can't desync the ranges.
+    const lastFrame = (key: string) => this.textures.get(key).frameTotal - 2; // -1 for __BASE
+    if (!this.anims.exists("leader_walk")) {
+      this.anims.create({
+        key: "leader_walk",
+        frames: this.anims.generateFrameNumbers("band_amir_run", { start: 0, end: lastFrame("band_amir_run") }),
+        frameRate: 12,
+        repeat: -1,
+      });
+    }
+    if (!this.anims.exists("leader_idle")) {
+      this.anims.create({
+        key: "leader_idle",
+        frames: this.anims.generateFrameNumbers("band_amir", { start: 0, end: lastFrame("band_amir") }),
+        frameRate: 5,
+        repeat: -1,
+      });
     }
 
     // Return to the node just fought rather than the fixed spawn point --
@@ -161,12 +162,13 @@ export class OverworldScene extends Phaser.Scene {
       ? { col: returnMarker.col, row: returnMarker.row }
       : { col: Math.floor(spawnObject.x! / TILE_SIZE), row: Math.floor(spawnObject.y! / TILE_SIZE) };
 
-    this.player = this.add.sprite(0, 0, "leader_down", 0);
-    // Frames are 20x24 with the figure ~22px tall (feet near the bottom).
-    // Origin at the feet so the character stands on the tile centre, at
-    // native scale -- ~1.4 tiles tall against 16px tiles, classic JRPG.
-    this.player.setOrigin(0.5, 0.92);
+    this.player = this.add.sprite(0, 0, "band_amir", 0);
+    // Amir's frames are 48x48 with the figure ~37px tall; scaled to ~0.52 he
+    // stands ~1.2 tiles against the 16px tiles (feet-anchored so he sits on
+    // the tile centre). Idle breathes until the player moves.
+    this.player.setOrigin(0.5, 0.9).setScale(0.52);
     this.player.setDepth(5);
+    this.player.play("leader_idle");
     this.snapPlayerToGrid();
 
     this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
@@ -239,9 +241,8 @@ export class OverworldScene extends Phaser.Scene {
     if (this.moving) return;
     const dir = this.heldDirection();
     if (dir) this.tryStep(dir);
-    else if (this.player.anims.isPlaying) {
-      this.player.anims.stop();
-      this.player.setFrame(0); // standing pose of whatever facing we last set
+    else if (this.player.anims.getName() !== "leader_idle") {
+      this.player.play("leader_idle"); // drop back to the breathing stand
     }
   }
 
@@ -344,8 +345,8 @@ export class OverworldScene extends Phaser.Scene {
   }
 
   private tryStep(dir: Direction): void {
-    // Point the sprite the way we're walking. Real per-facing art for
-    // up/down/side (heroes.py); left is side flipped horizontally.
+    // Amir's art is side-facing; face the walk direction (flip for left) and
+    // run the one walk cycle for every direction.
     this.faceDirection(dir);
 
     const target = stepTarget(this.playerPos, dir);
@@ -353,8 +354,7 @@ export class OverworldScene extends Phaser.Scene {
 
     this.moving = true;
     this.playerPos = target;
-    const anim = `leader_walk_${this.facingKey(dir)}`;
-    if (this.player.anims.getName() !== anim || !this.player.anims.isPlaying) this.player.play(anim);
+    if (this.player.anims.getName() !== "leader_walk" || !this.player.anims.isPlaying) this.player.play("leader_walk");
     this.tweens.add({
       targets: this.player,
       x: target.col * TILE_SIZE + TILE_SIZE / 2,
@@ -367,17 +367,11 @@ export class OverworldScene extends Phaser.Scene {
     });
   }
 
-  private facingKey(dir: Direction): "down" | "up" | "side" {
-    if (dir === "up") return "up";
-    if (dir === "down") return "down";
-    return "side";
-  }
-
-  /** Sets the correct facing texture + flip without necessarily animating. */
+  /** Flips Amir to face the walk direction. Only horizontal moves change the
+   * flip; up/down keep the last-faced side (his art is side-only). */
   private faceDirection(dir: Direction): void {
-    const key = this.facingKey(dir);
-    this.player.setFlipX(dir === "left");
-    if (this.player.texture.key !== `leader_${key}`) this.player.setTexture(`leader_${key}`, 0);
+    if (dir === "left") this.player.setFlipX(true);
+    else if (dir === "right") this.player.setFlipX(false);
   }
 
   /**
@@ -449,6 +443,35 @@ export class OverworldScene extends Phaser.Scene {
             this.add.image(px + TILE_SIZE / 2, py + TILE_SIZE + 2, "ow_props", h % DECORATIVE_PROP_COUNT).setOrigin(0.5, 1).setDepth(2);
           }
         }
+      }
+    }
+  }
+
+  /**
+   * The four generated pre-band adventurers (warrior/tank/mage/healer) now
+   * live in the world as NPCs -- bystanders near the shore, not the party.
+   * Placed on the nearest walkable grass to a few offsets from spawn, each
+   * with a slow idle bob so they read as alive, but no interaction in v1.
+   */
+  private drawNpcs(spawnTile: GridPosition): void {
+    const reduced = Boolean(GameContext.activeProfile?.settings.reducedMotion);
+    const npcs: { key: string; dc: number; dr: number }[] = [
+      { key: "hero_tank", dc: 4, dr: -3 },
+      { key: "hero_mage", dc: 7, dr: -1 },
+      { key: "hero_healer", dc: 5, dr: 3 },
+      { key: "hero_warrior", dc: 9, dr: 2 },
+    ];
+    for (const npc of npcs) {
+      const col = spawnTile.col + npc.dc;
+      const row = spawnTile.row + npc.dr;
+      if (!isWalkable(this.walkable, { col, row })) continue;
+      const x = col * TILE_SIZE + TILE_SIZE / 2;
+      const y = row * TILE_SIZE + TILE_SIZE / 2;
+      this.add.ellipse(x, y + 2, 12, 5, 0x05060a, 0.35).setDepth(2); // contact shadow
+      const s = this.add.sprite(x, y, npc.key, 0).setOrigin(0.5, 0.9).setDepth(3);
+      s.setFlipX((col + row) % 2 === 0);
+      if (!reduced) {
+        this.tweens.add({ targets: s, y: y - 1, duration: 1100 + (col * 37) % 400, yoyo: true, repeat: -1, ease: "Sine.inOut" });
       }
     }
   }

@@ -17,6 +17,8 @@ import heroes
 import enemies
 import backgrounds
 import props
+import landmarks
+import bandmates
 import ui
 import fx
 from skatopia import save
@@ -43,6 +45,10 @@ def main() -> None:
     save(ui.icon_sheet()[0], "ui/icons.png")
     save(fx.radial(), "fx/glow.png")
     save(fx.spark(), "fx/spark.png")
+    save(fx.haze(), "fx/haze.png")
+    save(fx.godray(), "fx/godray.png")
+    save(landmarks.build_sheet(), "sprites/overworld/landmarks.png")
+    bandmates.build_all()  # the playable band -- Amir (from provided art) + 3 authored mates
     print("all art regenerated")
 
 

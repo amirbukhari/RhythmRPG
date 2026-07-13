@@ -1,8 +1,13 @@
 {
   "heroId": "warrior",
   "role": "warrior",
-  "name": "Warrior",
+  "name": "Amir",
+  "spriteId": "amir",
   "maxHp": 120,
   "maxFocus": 5,
-  "abilityIds": ["warrior_slash_chain", "warrior_rising_break", "warrior_finisher"]
+  "abilityIds": [
+    "warrior_slash_chain",
+    "warrior_rising_break",
+    "warrior_finisher"
+  ]
 }

@@ -129,9 +129,19 @@ export class ActionBattleScene extends Phaser.Scene {
     this.beatGlow = this.add.image(0, 0, "glow").setBlendMode(ADD).setTint(0x49c6bd).setDepth(4).setAlpha(0).setScale(1.3);
     this.attackGlow = this.add.image(0, 0, "glow").setBlendMode(ADD).setTint(0xf4d27a).setDepth(7).setAlpha(0).setScale(0.6);
 
-    // player sprite (the party leader)
+    // player sprite (the party leader -- Amir, the band's guitarist). His
+    // 48x48 art is scaled to sit small in the arena for the HLD size contrast.
     const p = getPlayer(this.arena);
-    const pSprite = this.add.sprite(p.pos.x, p.pos.y, "hero_warrior", 0).setOrigin(0.5, 0.8).setScale(1.3).setDepth(5);
+    const pSprite = this.add.sprite(p.pos.x, p.pos.y, "band_amir", 0).setOrigin(0.5, 0.82).setScale(0.62).setDepth(5);
+    if (!this.anims.exists("amir_idle")) {
+      this.anims.create({
+        key: "amir_idle",
+        frames: this.anims.generateFrameNumbers("band_amir", { start: 0, end: this.textures.get("band_amir").frameTotal - 2 }),
+        frameRate: 5,
+        repeat: -1,
+      });
+    }
+    pSprite.play("amir_idle");
     this.sprites.set(p.id, pSprite);
 
     // enemy sprites (colossal), each with an emissive aura + glowing eyes.
@@ -262,13 +272,14 @@ export class ActionBattleScene extends Phaser.Scene {
       s.setDepth(4 + f.pos.y / 100);
       if (f.team === "player") {
         s.setFlipX(f.facing === "left");
-        // authored action poses: windup on startup, swing on active/recovery
+        // Amir's authored guitar-swing poses: windup (startup) -> swing
+        // (active) -> follow-through (recovery); breathing idle otherwise.
         if (f.attack) {
-          const frame = f.attack.phase === "startup" ? 0 : 1;
-          if (s.texture.key !== "hero_warrior_attack") s.anims.stop();
-          s.setTexture("hero_warrior_attack", frame);
-        } else if (s.texture.key !== "hero_warrior") {
-          s.setTexture("hero_warrior", 0);
+          const frame = f.attack.phase === "startup" ? 0 : f.attack.phase === "active" ? 1 : 2;
+          if (s.anims.isPlaying) s.anims.stop();
+          s.setTexture("band_amir_attack", frame);
+        } else if (s.anims.getName() !== "amir_idle" || !s.anims.isPlaying) {
+          s.play("amir_idle");
         }
       }
       // hurt: hard white impact flash while in hitstun (everyone)
