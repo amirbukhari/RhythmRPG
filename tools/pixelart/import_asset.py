@@ -101,6 +101,36 @@ def key_background(img: Image.Image, tol: int = 28, key: str | None = None) -> I
     return img
 
 
+def _palette_image(palette: list[tuple[int, int, int]]) -> Image.Image:
+    """A PIL 'P'-mode image carrying `palette` (padded to 256), for quantize()."""
+    flat: list[int] = []
+    for r, g, b in palette:
+        flat += [r, g, b]
+    flat += [0, 0, 0] * (256 - len(palette))
+    pal = Image.new("P", (1, 1))
+    pal.putpalette(flat)
+    return pal
+
+
+def pixelate(img: Image.Image, logical_w: int, logical_h: int, *,
+             palette: list[tuple[int, int, int]] | None = None, dither: bool = True,
+             upscale_w: int | None = None, upscale_h: int | None = None) -> Image.Image:
+    """Turn a detailed/painterly image into real 8-bit pixel art: collapse to a
+    chunky logical resolution (kills painterly micro-detail), snap to a limited
+    palette with optional Floyd–Steinberg dithering, then nearest-upscale so the
+    pixels stay crisp and blocky. Alpha is preserved as a hard mask."""
+    img = img.convert("RGBA")
+    alpha = img.getchannel("A").resize((logical_w, logical_h), Image.BILINEAR)
+    small = img.convert("RGB").resize((logical_w, logical_h), Image.BILINEAR)
+    palimg = _palette_image(palette or MASTER_RGB)
+    q = small.quantize(palette=palimg, dither=Image.FLOYDSTEINBERG if dither else Image.NONE).convert("RGBA")
+    q.putalpha(alpha.point(lambda a: 255 if a >= 128 else 0))
+    uw, uh = upscale_w or logical_w, upscale_h or logical_h
+    if (uw, uh) != (logical_w, logical_h):
+        q = q.resize((uw, uh), Image.NEAREST)
+    return q
+
+
 def downscale(img: Image.Image, target_w: int, target_h: int) -> Image.Image:
     """Resize down to the target pixel size. LANCZOS for the area average
     (quantize afterward restores crisp flat colours)."""

@@ -183,8 +183,14 @@ def one(provider: str, prompt: str, out: str, frame: str, *, frames: int = 1, gr
     raw_path = Path(keep_raw) if keep_raw else Path("/tmp") / (Path(out).stem + "_raw.png")
     raw_path.parent.mkdir(parents=True, exist_ok=True)
     raw_path.write_bytes(raw)
-    img = I.import_asset(raw_path, fw, fh, cols=cols, rows=rows,
-                         do_quantize=quantize, do_key=not opaque, key_color=key)
+    if kind == "background":
+        # backgrounds must read as real 8-bit pixel art, not a downscaled
+        # painting: collapse to a chunky logical res + master palette + dither.
+        from PIL import Image
+        img = I.pixelate(Image.open(raw_path), fw // 2, fh // 2, dither=True, upscale_w=fw, upscale_h=fh)
+    else:
+        img = I.import_asset(raw_path, fw, fh, cols=cols, rows=rows,
+                             do_quantize=quantize, do_key=not opaque, key_color=key)
     dst = Path(out)
     dst.parent.mkdir(parents=True, exist_ok=True)
     img.save(dst)
