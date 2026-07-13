@@ -21,6 +21,8 @@ export interface SaveProfile {
   unlockedSkills: string[];
   relicInventory: string[];
   analyticsConsent: boolean;
+  /** Discoverable environmental-lore fragments found in the explorable world (PRD §8.8.2). Ids like "echo_0". */
+  echoesFound: string[];
 }
 
 export function createDefaultSaveProfile(slotId: string, startNodeId: string): SaveProfile {
@@ -33,6 +35,7 @@ export function createDefaultSaveProfile(slotId: string, startNodeId: string): S
     unlockedSkills: [],
     relicInventory: [],
     analyticsConsent: false,
+    echoesFound: [],
   };
 }
 

@@ -15,6 +15,8 @@ import { bootToOverworld, isSceneActive, waitForScene } from "./helpers";
 
 type OverworldSeams = {
   getPlayerGridPosition(): { col: number; row: number };
+  getMarkerGridPosition(nodeId: string): { col: number; row: number };
+  getMapRowCount(): number;
   debugTeleportToNode(nodeId: string): void;
 };
 
@@ -46,7 +48,11 @@ test.describe("overworld", () => {
     await page.waitForTimeout(1200);
     await page.keyboard.up("ArrowDown");
     const afterDown = await playerGridPosition(page);
-    expect(afterDown.row).toBeLessThan(23); // map is 24 rows; row 23 is the border wall
+    const lastRow = await page.evaluate(() => {
+      const scene = window.__meterfallDebug.game.scene.getScene("OverworldScene") as unknown as OverworldSeams;
+      return scene.getMapRowCount() - 1;
+    });
+    expect(afterDown.row).toBeLessThan(lastRow); // the border wall is the last map row
   });
 
   test("walking onto the unlocked first node starts its battle with the right pending state", async ({ page }) => {
@@ -128,7 +134,10 @@ test.describe("overworld", () => {
 
     const back = await playerGridPosition(page);
     expect(back).not.toEqual(spawn);
-    // opening_1's marker tile, from assets/tilemaps/overworld.json.
-    expect(back).toEqual({ col: 8, row: 19 });
+    const openingMarker = await page.evaluate(() => {
+      const scene = window.__meterfallDebug.game.scene.getScene("OverworldScene") as unknown as OverworldSeams;
+      return scene.getMarkerGridPosition("opening_1");
+    });
+    expect(back).toEqual(openingMarker);
   });
 });

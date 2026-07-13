@@ -1,19 +1,24 @@
 #!/usr/bin/env python3
-"""Generates the overworld's committed art/data assets:
+"""Generates the overworld's map data:
 
-  assets/tilemaps/overworld_tileset.png  (4 16x16 tiles: grass, path, water, rock)
-  assets/tilemaps/overworld.json         (Tiled-JSON map: `ground` tile layer +
-                                          `markers` object layer)
+  assets/tilemaps/overworld.json  (Tiled-JSON map: `ground` tile layer +
+                                   `markers` object layer + `echoes` object layer)
 
 Run from anywhere; paths are resolved relative to the repo root. Deterministic
 (fixed RNG seed), so re-running produces byte-identical output unless the
 authored layout below changes. The script BFS-validates that every campaign
-node marker is reachable on foot from the spawn point before writing anything,
-so a bad layout edit fails loudly here instead of soft-locking the game.
+node marker AND every echo/secret pocket is reachable on foot from the spawn
+point before writing anything, so a bad layout edit fails loudly here
+instead of soft-locking or stranding content in the shipped game.
 
-The tileset is programmatically generated placeholder art (PRD §11.4/§20.2:
-no image-generation tooling is available in this environment); the *map
-layout and marker data* are the real authored content.
+PRD §8.8 (v7.0): this is no longer a single-road "hub" between battles --
+it's a large, five-region explorable world (one region per movement, joined
+left-to-right in campaign order), substantially bigger than the walkable
+area alone requires, specifically so it has room to hold secrets. The
+tileset image itself (20 tiles: 4 base tiles x 5 region-tinted variants) is
+owned by tools/pixelart/tiles.py (region_tiles/build_multi_region) -- this
+script only lays out which tile id goes where and where the markers/echoes
+sit. See tools/pixelart/generate_all.py, which runs both in the right order.
 """
 
 from __future__ import annotations
@@ -23,100 +28,187 @@ import random
 from collections import deque
 from pathlib import Path
 
-from PIL import Image, ImageDraw
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 OUT_DIR = REPO_ROOT / "assets" / "tilemaps"
 
 TILE_SIZE = 16
-MAP_W, MAP_H = 40, 24  # 640x384 px -- larger than the 320x180 viewport so camera-follow matters
 
-# Tile ids (0-based within the tileset; Tiled layer data uses id+1 as the GID).
+# --- world layout: five regions joined left-to-right, campaign order -------
+REGIONS = ["shallows", "saltmines", "pit", "attic", "hall"]
+REGION_W, REGION_H = 26, 34
+MAP_W, MAP_H = REGION_W * len(REGIONS), REGION_H
+
+# Local tile ids within a region's own 4-tile block (see tiles.py).
 GRASS, PATH, WATER, ROCK = 0, 1, 2, 3
-WALKABLE = {GRASS, PATH}
+WALKABLE_LOCAL = {GRASS, PATH}
 
-# Campaign node markers: nodeId -> (col, row). Kept in sync with
-# src/data/content/campaign/opening_biome.json by the content-registry
-# cross-check in OverworldScene (it warns on unknown nodeIds at runtime) and
-# by the e2e suite walking the real map.
+
+def region_of(col: int) -> int:
+    return min(len(REGIONS) - 1, col // REGION_W)
+
+
+def tid(region_index: int, local: int) -> int:
+    """The raw (0-based) tile id for `local` (GRASS/PATH/WATER/ROCK) in a given region."""
+    return region_index * 4 + local
+
+
+def is_walkable_id(raw_id: int) -> bool:
+    return (raw_id % 4) in WALKABLE_LOCAL
+
+
+def wp(region_index: int, local_col: int, local_row: int) -> tuple[int, int]:
+    """A waypoint expressed in a region's own local coordinates."""
+    return (region_index * REGION_W + local_col, local_row)
+
+
+# Campaign node markers, kept in sync with src/data/content/campaign/opening_biome.json.
+# Placed in a loose zigzag across the five regions -- not just a straight
+# road -- so the world reads as a real winding descent, not a corridor.
 NODE_MARKERS: dict[str, tuple[int, int]] = {
-    "opening_1": (8, 19),
-    "mid_1": (16, 15),
-    "mid_2": (24, 11),
-    "mid_3": (30, 7),
-    "boss_1": (35, 3),
+    "opening_1": wp(0, 21, 8),
+    "mid_1": wp(1, 20, 26),
+    "mid_2": wp(2, 21, 9),
+    "mid_3": wp(3, 20, 25),
+    "boss_1": wp(4, 20, 17),
 }
-SPAWN: tuple[int, int] = (4, 20)
+SPAWN: tuple[int, int] = wp(0, 3, 27)
+
+# Two echoes per region (10 total) -- lore text mirrors world-bible §5b
+# verbatim so the map data and the design doc never drift apart. Each is
+# (title, one-line found-text, region, local anchor near where its spur/pocket lands).
+ECHOES: list[tuple[str, str, str, int, tuple[int, int]]] = [
+    ("Baker's Ledger", "Everyone's boat but mine -- I'll follow once the last one's free.", "shallows", 0, wp(0, 9, 6)),
+    ("The Empty Cradle", "She untied every line but her own.", "shallows", 0, wp(0, 18, 30)),
+    ("The Foreman's Ledger", "Everyone's shift but mine ends at the sound. I keep counting anyway.", "saltmines", 1, wp(1, 8, 30)),
+    ("Listening Stones", "If you stack them right, they listen back.", "saltmines", 1, wp(1, 17, 5)),
+    ("Two Ticket Stubs", "Front row, both of us. He said don't blink.", "pit", 2, wp(2, 8, 27)),
+    ("The Fortune Wheel", "It never lands anywhere else now. I've checked.", "pit", 2, wp(2, 18, 6)),
+    ("The Boarded Window", "We didn't lock her in. We tried to keep it out.", "attic", 3, wp(3, 9, 6)),
+    ("The Handprint", "Not for help. For quiet.", "attic", 3, wp(3, 17, 28)),
+    ("The Program", "He wrote his own name in last, every time, like it might come out different.", "hall", 4, wp(4, 9, 25)),
+    ("The Standing Ovation", "They clapped until the water was over their heads. He never once turned around.", "hall", 4, wp(4, 15, 6)),
+]
 
 
-def build_tileset(path: Path) -> None:
-    rng = random.Random(20260710)
-    img = Image.new("RGBA", (TILE_SIZE * 4, TILE_SIZE), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
+def _rect(grid: list[list[int]], c0: int, r0: int, c1: int, r1: int, val: int) -> None:
+    for r in range(max(0, r0), min(MAP_H, r1)):
+        for c in range(max(0, c0), min(MAP_W, c1)):
+            grid[r][c] = val
 
-    def speckle(tile_x: int, base: tuple[int, int, int], dots: tuple[int, int, int], n: int) -> None:
-        draw.rectangle([tile_x, 0, tile_x + TILE_SIZE - 1, TILE_SIZE - 1], fill=base + (255,))
-        for _ in range(n):
-            x = tile_x + rng.randrange(TILE_SIZE)
-            y = rng.randrange(TILE_SIZE)
-            draw.point((x, y), fill=dots + (255,))
 
-    speckle(GRASS * TILE_SIZE, (58, 125, 68), (44, 98, 52), 26)  # grass: green, darker flecks
-    speckle(PATH * TILE_SIZE, (194, 163, 107), (166, 136, 82), 18)  # path: packed dirt
-    speckle(WATER * TILE_SIZE, (43, 108, 176), (96, 165, 220), 10)  # water: blue, light glints
-    speckle(ROCK * TILE_SIZE, (107, 114, 128), (75, 82, 94), 22)  # rock: gray, cracks
+def _carve_path(grid: list[list[int]], a: tuple[int, int], b: tuple[int, int]) -> None:
+    """L-shaped corridor (horizontal then vertical) from a to b, PATH tile in a's region."""
+    c0, r0 = a
+    c1, r1 = b
+    region = region_of(c0)
+    p = tid(region, PATH)
+    step = 1 if c1 >= c0 else -1
+    for c in range(c0, c1 + step, step):
+        grid[r0][c] = p
+    step = 1 if r1 >= r0 else -1
+    for r in range(r0, r1 + step, step):
+        grid[r][c1] = tid(region_of(c1), PATH)
 
-    # A subtle edge shade on obstacle tiles so they read as solid at a glance.
-    for tile in (WATER, ROCK):
-        x0 = tile * TILE_SIZE
-        draw.rectangle([x0, 0, x0 + TILE_SIZE - 1, 0], fill=(30, 36, 48, 255))
-        draw.rectangle([x0, TILE_SIZE - 1, x0 + TILE_SIZE - 1, TILE_SIZE - 1], fill=(30, 36, 48, 255))
 
-    img.save(path)
+def _carve_secret_spur(grid: list[list[int]], rng: random.Random, from_pt: tuple[int, int], to_pt: tuple[int, int]) -> None:
+    """A 1-wide corridor from a point near the main road to a hidden pocket,
+    with an L-bend so the pocket isn't visible from the junction -- PRD
+    §8.8.3's 'reads as passable only up close' hidden path. The pocket
+    itself is carved as a small walkable clearing ringed by rock, entered
+    only through this spur."""
+    c0, r0 = from_pt
+    c1, r1 = to_pt
+    region = region_of(c1)
+    # the pocket FIRST: a small walkable clearing ringed by rock so it reads
+    # as enclosed... then the spur carved SECOND, punching the one opening
+    # through the ring the corridor actually needs. Order matters: carving
+    # the ring after the corridor would reseal it.
+    _rect(grid, c1 - 2, r1 - 2, c1 + 3, r1 + 3, tid(region, ROCK))
+    _rect(grid, c1 - 1, r1 - 1, c1 + 2, r1 + 2, tid(region, GRASS))
+    grid[r1][c1] = tid(region, PATH)
+    bend_col = c0 if rng.random() < 0.5 else c1
+    _carve_path(grid, (c0, r0), (bend_col, r0))
+    _carve_path(grid, (bend_col, r0), (bend_col, r1))
+    _carve_path(grid, (bend_col, r1), (c1, r1))
+
+
+def _dress_region(grid: list[list[int]], rng: random.Random, ri: int) -> None:
+    """Region-specific obstacle placement so each of the five feels distinct
+    in layout, not just tint (PRD §11.1.1 'one palette, five moods',
+    extended to the walkable world by §8.8.1)."""
+    base = ri * REGION_W
+    name = REGIONS[ri]
+    w = lambda local: tid(ri, local)  # noqa: E731
+
+    if name == "shallows":  # coastal: bay inlets top and bottom
+        _rect(grid, base + 2, 2, base + 12, 9, w(WATER))
+        _rect(grid, base + 14, REGION_H - 10, base + 24, REGION_H - 3, w(WATER))
+        for _ in range(3):  # sunken foundation stubs
+            c, r = base + rng.randrange(4, REGION_W - 4), rng.randrange(12, REGION_H - 12)
+            _rect(grid, c, r, c + 3, r + 3, w(ROCK))
+    elif name == "saltmines":  # mine road: long parallel rock ridges
+        for ridge_r in (6, 9, 20, 23):
+            _rect(grid, base + 3, ridge_r, base + REGION_W - 3, ridge_r + 1, w(ROCK))
+        _rect(grid, base + 4, 14, base + 10, 18, w(WATER))  # flooded shaft
+    elif name == "pit":  # sunken carnival ring: a big circular flooded pit, centered
+        cx, cy, rad = base + REGION_W // 2, REGION_H // 2, 7
+        for r in range(REGION_H):
+            for c in range(base, base + REGION_W):
+                if (c - cx) ** 2 + (r - cy) ** 2 <= rad * rad:
+                    grid[r][c] = w(WATER)
+        for _ in range(4):  # toppled seating debris
+            c, r = base + rng.randrange(3, REGION_W - 3), rng.randrange(3, REGION_H - 3)
+            if (c - cx) ** 2 + (r - cy) ** 2 > (rad + 2) ** 2:
+                _rect(grid, c, r, c + 2, r + 2, w(ROCK))
+    elif name == "attic":  # building exterior: tight rock-partitioned alleys
+        for i in range(4):
+            c = base + 5 + i * 5
+            _rect(grid, c, 3, c + 1, REGION_H - 6, w(ROCK))
+        # punch cross-corridors so it's a maze, not solid walls
+        for gap_r in (9, 17, 26):
+            for c in range(base + 5, base + 22, 5):
+                grid[gap_r][c] = w(GRASS)
+    elif name == "hall":  # flooded plaza: open water with statue columns
+        _rect(grid, base + 2, 2, base + REGION_W - 2, REGION_H - 2, w(WATER))
+        for cx, cy in [(8, 10), (18, 8), (6, 22), (20, 24), (13, 16)]:
+            _rect(grid, base + cx, cy, base + cx + 2, cy + 3, w(ROCK))
 
 
 def build_grid() -> list[list[int]]:
-    rng = random.Random(20260710)
-    grid = [[GRASS] * MAP_W for _ in range(MAP_H)]
+    rng = random.Random(20260711)
+    grid = [[tid(region_of(c), GRASS) for c in range(MAP_W)] for _ in range(MAP_H)]
 
-    # Solid rock border so the world reads as bounded (movement also clamps).
+    # solid rock border
     for c in range(MAP_W):
-        grid[0][c] = ROCK
-        grid[MAP_H - 1][c] = ROCK
+        grid[0][c] = tid(region_of(c), ROCK)
+        grid[MAP_H - 1][c] = tid(region_of(c), ROCK)
     for r in range(MAP_H):
-        grid[r][0] = ROCK
-        grid[r][MAP_W - 1] = ROCK
+        grid[r][0] = tid(region_of(0), ROCK)
+        grid[r][MAP_W - 1] = tid(region_of(MAP_W - 1), ROCK)
 
-    # Authored obstacle features.
-    for r in range(2, 8):  # north-west lake
-        for c in range(3, 11):
-            grid[r][c] = WATER
-    for r in range(16, 21):  # south-east pond
-        for c in range(30, 37):
-            grid[r][c] = WATER
-    for c in range(14, 23):  # central rock ridge
-        grid[8][c] = ROCK
-        grid[9][c] = ROCK
-    for r in range(12, 18):  # western rock spur
-        grid[r][6] = ROCK
-        grid[r][7] = ROCK
+    for ri in range(len(REGIONS)):
+        _dress_region(grid, rng, ri)
 
-    # Scattered rocks/water for texture. Placed before the path is carved, so
-    # the path always wins and connectivity is preserved by construction.
-    for _ in range(30):
+    # scattered texture obstacles, placed before carving so the road always wins
+    for _ in range(90):
         c, r = rng.randrange(2, MAP_W - 2), rng.randrange(2, MAP_H - 2)
-        grid[r][c] = ROCK if rng.random() < 0.7 else WATER
+        grid[r][c] = tid(region_of(c), ROCK if rng.random() < 0.6 else WATER)
 
-    # Carve the road: L-shaped (horizontal, then vertical) segments through
-    # spawn and every node, in campaign order.
+    # secret spurs: each echo is reachable only by branching off the main
+    # road at its region's node marker, then walking an L-bend corridor away
+    # from it into a hidden pocket (PRD §8.8.3). Carved BEFORE the main road
+    # (below) so the road always has final say if a pocket's ring happens to
+    # cross its route -- the road must never be the thing that gets sealed.
+    for _title, _text, _region, ri, anchor in ECHOES:
+        node_id = list(NODE_MARKERS.keys())[ri]
+        jump_off = NODE_MARKERS[node_id]
+        _carve_secret_spur(grid, rng, jump_off, anchor)
+
+    # the main road: waypoint chain through spawn, every node, in campaign
+    # order. Carved LAST so it's never accidentally resealed by a pocket ring.
     waypoints = [SPAWN, *NODE_MARKERS.values()]
-    for (c0, r0), (c1, r1) in zip(waypoints, waypoints[1:]):
-        step = 1 if c1 >= c0 else -1
-        for c in range(c0, c1 + step, step):
-            grid[r0][c] = PATH
-        step = 1 if r1 >= r0 else -1
-        for r in range(r0, r1 + step, step):
-            grid[r][c1] = PATH
+    for a, b in zip(waypoints, waypoints[1:]):
+        _carve_path(grid, a, b)
 
     return grid
 
@@ -128,12 +220,13 @@ def validate(grid: list[list[int]]) -> None:
         c, r = queue.popleft()
         for dc, dr in ((1, 0), (-1, 0), (0, 1), (0, -1)):
             nc, nr = c + dc, r + dr
-            if 0 <= nc < MAP_W and 0 <= nr < MAP_H and (nc, nr) not in seen and grid[nr][nc] in WALKABLE:
+            if 0 <= nc < MAP_W and 0 <= nr < MAP_H and (nc, nr) not in seen and is_walkable_id(grid[nr][nc]):
                 seen.add((nc, nr))
                 queue.append((nc, nr))
-    unreachable = [nid for nid, pos in NODE_MARKERS.items() if pos not in seen]
-    if unreachable:
-        raise SystemExit(f"Layout bug: markers unreachable from spawn: {unreachable}")
+    unreachable_nodes = [nid for nid, pos in NODE_MARKERS.items() if pos not in seen]
+    unreachable_echoes = [title for title, _, _, _, pos in ECHOES if pos not in seen]
+    if unreachable_nodes or unreachable_echoes:
+        raise SystemExit(f"Layout bug: unreachable from spawn -- nodes={unreachable_nodes} echoes={unreachable_echoes}")
 
 
 def build_map_json(grid: list[list[int]]) -> dict:
@@ -152,11 +245,31 @@ def build_map_json(grid: list[list[int]]) -> dict:
             "properties": properties,
         }
 
-    objects = [point_object(1, "spawn", *SPAWN, [])]
-    objects += [
+    marker_objects = [point_object(1, "spawn", *SPAWN, [])]
+    marker_objects += [
         point_object(i + 2, node_id, col, row, [{"name": "nodeId", "type": "string", "value": node_id}])
         for i, (node_id, (col, row)) in enumerate(NODE_MARKERS.items())
     ]
+
+    echo_objects = [
+        point_object(
+            100 + i,
+            f"echo_{i}",
+            pos[0],
+            pos[1],
+            [
+                {"name": "title", "type": "string", "value": title},
+                {"name": "text", "type": "string", "value": text},
+                {"name": "region", "type": "string", "value": region},
+            ],
+        )
+        for i, (title, text, region, _ri, pos) in enumerate(ECHOES)
+    ]
+
+    tileset_tiles = []
+    for ri in range(len(REGIONS)):
+        tileset_tiles.append({"id": tid(ri, WATER), "properties": [{"name": "collides", "type": "bool", "value": True}]})
+        tileset_tiles.append({"id": tid(ri, ROCK), "properties": [{"name": "collides", "type": "bool", "value": True}]})
 
     return {
         "type": "map",
@@ -169,8 +282,8 @@ def build_map_json(grid: list[list[int]]) -> dict:
         "height": MAP_H,
         "tilewidth": TILE_SIZE,
         "tileheight": TILE_SIZE,
-        "nextlayerid": 3,
-        "nextobjectid": len(objects) + 1,
+        "nextlayerid": 4,
+        "nextobjectid": len(marker_objects) + len(echo_objects) + 1,
         "layers": [
             {
                 "id": 1,
@@ -192,7 +305,17 @@ def build_map_json(grid: list[list[int]]) -> dict:
                 "y": 0,
                 "opacity": 1,
                 "visible": True,
-                "objects": objects,
+                "objects": marker_objects,
+            },
+            {
+                "id": 3,
+                "name": "echoes",
+                "type": "objectgroup",
+                "x": 0,
+                "y": 0,
+                "opacity": 1,
+                "visible": True,
+                "objects": echo_objects,
             },
         ],
         "tilesets": [
@@ -200,18 +323,15 @@ def build_map_json(grid: list[list[int]]) -> dict:
                 "firstgid": 1,
                 "name": "overworld_tileset",
                 "image": "overworld_tileset.png",
-                "imagewidth": TILE_SIZE * 4,
+                "imagewidth": TILE_SIZE * 4 * len(REGIONS),
                 "imageheight": TILE_SIZE,
                 "tilewidth": TILE_SIZE,
                 "tileheight": TILE_SIZE,
-                "tilecount": 4,
-                "columns": 4,
+                "tilecount": 4 * len(REGIONS),
+                "columns": 4 * len(REGIONS),
                 "margin": 0,
                 "spacing": 0,
-                "tiles": [
-                    {"id": WATER, "properties": [{"name": "collides", "type": "bool", "value": True}]},
-                    {"id": ROCK, "properties": [{"name": "collides", "type": "bool", "value": True}]},
-                ],
+                "tiles": tileset_tiles,
             }
         ],
     }
@@ -221,9 +341,8 @@ def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     grid = build_grid()
     validate(grid)
-    build_tileset(OUT_DIR / "overworld_tileset.png")
     (OUT_DIR / "overworld.json").write_text(json.dumps(build_map_json(grid), indent=2) + "\n")
-    print(f"Wrote {OUT_DIR / 'overworld_tileset.png'} and {OUT_DIR / 'overworld.json'}")
+    print(f"Wrote {OUT_DIR / 'overworld.json'} ({MAP_W}x{MAP_H}, {len(REGIONS)} regions, {len(ECHOES)} echoes)")
 
 
 if __name__ == "__main__":

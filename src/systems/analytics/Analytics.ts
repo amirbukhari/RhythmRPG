@@ -14,7 +14,8 @@ export type AnalyticsEvent =
   | "encounter_failed"
   | "encounter_cleared"
   | "boss_phase_reached"
-  | "save_loaded";
+  | "save_loaded"
+  | "echo_found";
 
 export interface AnalyticsRecord {
   event: AnalyticsEvent;

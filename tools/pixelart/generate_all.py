@@ -9,6 +9,9 @@ change. See docs/design/art-bible.md for the direction behind it all.
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 import tiles
 import heroes
 import enemies
@@ -18,9 +21,17 @@ import ui
 import fx
 from skatopia import save
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "overworld"))
+import generate_overworld_map  # noqa: E402  -- the world's map-layout owner (§8.8)
+
 
 def main() -> None:
-    save(tiles.build(), "tilemaps/overworld_tileset.png")
+    # The overworld tileset (20 tiles: 4 base x 5 region-tinted variants,
+    # PRD §8.8) is owned here; the map layout/echoes/markers are owned by
+    # generate_overworld_map.py, invoked right after so one command
+    # regenerates the whole explorable world consistently.
+    save(tiles.build_multi_region(), "tilemaps/overworld_tileset.png")
+    generate_overworld_map.main()
     heroes.build_all()
     enemies.build_all()
     save(backgrounds.build(False), "backgrounds/battle_abyss.png")
