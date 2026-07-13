@@ -373,8 +373,20 @@ versions of the relic icons in §9) · `chorus_shard` (a story collectible) ·
 2. **Attach** them here and say which slot(s), **or**
 3. Drop a **folder/zip** and I'll sort it.
 
-Per asset I: quantize to the master palette, downscale, slice multi-frame strips into
-the engine's frames, drop into the right `assets/` slot, wire it (new enemies/animation
-states get their loaders + state machines), verify in-browser, and deploy. The manifest
-fills row by row — the game climbs to real AAA one asset at a time, starting from the
-one that already is: **Amir**.
+Per asset I run it through the **importer** (`tools/pixelart/import_asset.py`), which
+palette-quantizes to the master palette, keys out a flat background, downscales, and
+slices/repacks frames to the engine's exact size — then I drop it into the right
+`assets/` slot, wire it (new enemies/animation states get their loaders + state
+machines), verify in-browser, and deploy. Example:
+
+```bash
+# a 6-frame 48x48 run cycle, green-screen background keyed out:
+python3 tools/pixelart/import_asset.py --input raw_run.png \
+    --out assets/sprites/band/vocalist/run.png --frame 48x48 --frames 6 --key '#00ff00'
+# a 4-tile 16x16 tileset row (opaque, no keying):
+python3 tools/pixelart/import_asset.py --input raw_tiles.png \
+    --out assets/tilemaps/shallows_terrain.png --frame 16x16 --grid 4x1 --opaque
+```
+
+The manifest fills row by row — the game climbs to real AAA one asset at a time,
+starting from the one that already is: **Amir**.
