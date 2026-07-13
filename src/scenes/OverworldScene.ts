@@ -59,6 +59,7 @@ export class OverworldScene extends Phaser.Scene {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: Record<"W" | "A" | "S" | "D", Phaser.Input.Keyboard.Key>;
   private interactKey!: Phaser.Input.Keyboard.Key;
+  private fog: Phaser.GameObjects.TileSprite | null = null;
 
   constructor() {
     super("OverworldScene");
@@ -125,6 +126,7 @@ export class OverworldScene extends Phaser.Scene {
     });
 
     this.decorate(map, ground, spawnTile);
+    this.drawLandmarks();
     this.drawNpcs(spawnTile);
     for (const marker of this.markers) this.drawMarker(profile, marker);
     for (const echo of this.echoes) this.drawEcho(echo);
@@ -214,8 +216,38 @@ export class OverworldScene extends Phaser.Scene {
    * not a tech demo" win. Skipped under photosensitivity-safe mode.
    */
   private addAtmosphere(): void {
-    if (GameContext.activeProfile?.settings.photosensitivitySafeMode) return;
+    const reduced = Boolean(GameContext.activeProfile?.settings.reducedMotion);
+    const safe = Boolean(GameContext.activeProfile?.settings.photosensitivitySafeMode);
     const { width, height } = this.scale;
+
+    if (!safe) {
+      // Drifting fog: a seamless haze tile scrolled slowly over the world for
+      // depth. Screen-locked and additive at low alpha so it reads as light
+      // haze, never a grey wash. Held still (just present) under reduced motion.
+      this.fog = this.add
+        .tileSprite(0, 0, width, height, "fx_haze")
+        .setOrigin(0, 0)
+        .setScrollFactor(0)
+        .setDepth(13)
+        .setBlendMode(Phaser.BlendModes.SCREEN)
+        .setAlpha(reduced ? 0.05 : 0.1);
+
+      // Raking god-ray shafts across the top -- additive, faint, evocative of
+      // light falling through a drowned sky. Skipped under reduced motion.
+      if (!reduced) {
+        const rays = this.add
+          .image(width / 2, 0, "fx_godray")
+          .setOrigin(0.5, 0)
+          .setScrollFactor(0)
+          .setDepth(14)
+          .setBlendMode(Phaser.BlendModes.ADD)
+          .setTint(0x9fe8e0)
+          .setAlpha(0.22)
+          .setDisplaySize(width * 1.2, height);
+        this.tweens.add({ targets: rays, alpha: 0.34, duration: 4200, yoyo: true, repeat: -1, ease: "Sine.inOut" });
+      }
+    }
+
     const g = this.add.graphics().setScrollFactor(0).setDepth(15);
     // cold overcast tint
     g.fillStyle(0x0b1420, 0.18).fillRect(0, 0, width, height);
@@ -234,6 +266,10 @@ export class OverworldScene extends Phaser.Scene {
 
   update(): void {
     if (!this.player) return;
+    if (this.fog && !GameContext.activeProfile?.settings.reducedMotion) {
+      this.fog.tilePositionX += 0.08;
+      this.fog.tilePositionY -= 0.03;
+    }
     this.updateNearbyEcho();
     if (Phaser.Input.Keyboard.JustDown(this.interactKey) && this.nearbyEcho && !this.echoPanel) {
       this.discoverEcho(this.nearbyEcho);
@@ -440,10 +476,37 @@ export class OverworldScene extends Phaser.Scene {
         } else if (isGrassGid(idx) && !blocked.has(keyOf(col, row))) {
           const h = ((col * 73856093) ^ (row * 19349663)) >>> 0;
           if (h % 100 < 11) {
-            this.add.image(px + TILE_SIZE / 2, py + TILE_SIZE + 2, "ow_props", h % DECORATIVE_PROP_COUNT).setOrigin(0.5, 1).setDepth(2);
+            const cx = px + TILE_SIZE / 2;
+            const cy = py + TILE_SIZE + 2;
+            shore.fillStyle(0x05060a, 0.28).fillEllipse(cx, cy - 1, 12, 4); // contact shadow
+            this.add.image(cx, cy, "ow_props", h % DECORATIVE_PROP_COUNT).setOrigin(0.5, 1).setDepth(2);
           }
         }
       }
+    }
+  }
+
+  /**
+   * One colossal set-piece per region (landmarks.py) placed off the road for
+   * scale + untold story (PRD §8.8.1): the drowned ship, salt headframe,
+   * carnival wheel, leaning tenement, and the Conductor's spire. Frame index
+   * == region index. Drawn behind gameplay with a soft contact shadow, big
+   * enough to tower over the 16px tiles.
+   */
+  private drawLandmarks(): void {
+    // (regionIndex, col, row) -- edge-of-region scenic spots clear of the road.
+    const spots: [number, number, number][] = [
+      [0, 21, 6],   // shallows: wrecked ship by the bay
+      [1, 44, 7],   // salt mines: winding headframe
+      [2, 66, 28],  // pit: drowned carnival wheel
+      [3, 90, 7],   // attic: leaning tenement
+      [4, 120, 27], // hall: the Conductor's spire
+    ];
+    for (const [frame, col, row] of spots) {
+      const x = col * TILE_SIZE + TILE_SIZE / 2;
+      const y = row * TILE_SIZE + TILE_SIZE;
+      this.add.ellipse(x, y, 44, 12, 0x05060a, 0.4).setDepth(0); // grounding shadow
+      this.add.image(x, y, "ow_landmarks", frame).setOrigin(0.5, 1).setScale(2.2).setDepth(1);
     }
   }
 

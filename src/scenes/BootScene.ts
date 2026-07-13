@@ -32,6 +32,9 @@ import uiPanelBossUrl from "../../assets/ui/panel_boss.png";
 import uiIconsUrl from "../../assets/ui/icons.png";
 import glowUrl from "../../assets/fx/glow.png";
 import sparkUrl from "../../assets/fx/spark.png";
+import hazeUrl from "../../assets/fx/haze.png";
+import godrayUrl from "../../assets/fx/godray.png";
+import landmarksUrl from "../../assets/sprites/overworld/landmarks.png";
 import warriorBattleUrl from "../../assets/sprites/heroes/warrior/side.png";
 import tankBattleUrl from "../../assets/sprites/heroes/tank/side.png";
 import mageBattleUrl from "../../assets/sprites/heroes/mage/side.png";
@@ -83,6 +86,11 @@ export class BootScene extends Phaser.Scene {
     this.load.spritesheet("ui_icons", uiIconsUrl, { frameWidth: 10, frameHeight: 10 });
     this.load.image("glow", glowUrl);
     this.load.image("spark", sparkUrl);
+    // Overworld atmosphere: seamless drifting fog, raking god-ray shafts, and
+    // one colossal set-piece landmark per region (30x40 frames).
+    this.load.image("fx_haze", hazeUrl);
+    this.load.image("fx_godray", godrayUrl);
+    this.load.spritesheet("ow_landmarks", landmarksUrl, { frameWidth: 30, frameHeight: 40 });
     for (const [role, url] of Object.entries(HERO_BATTLE_URLS)) {
       this.load.spritesheet(`hero_${role}`, url, { frameWidth: 20, frameHeight: 24 });
     }
