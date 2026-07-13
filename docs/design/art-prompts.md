@@ -1,51 +1,51 @@
-# The Drowned Chorus — Art Generation Prompts
+# The Drowned Chorus — Art Generation Prompt Catalog (AAA manifest)
 
-Everything you need to generate the game's art with any AI image tool (or hand
-to an artist), then drop the results back for me to wire in. The engine loads
-PNGs directly — **there is no pixel-for-pixel transcription step.** You generate
-the image, put the PNG in the repo (or send it to me), and I quantize it to the
-palette, slice it into frames, and wire it into the game — exactly how the
-provided **Amir** guitarist already works.
+Every art asset the game needs to be a real AAA pixel-art title — **~575 named
+slots, thousands of frames** — each with a generation prompt. This is the 1:1
+companion to **PRD §11.5 (AAA art asset manifest)**. The engine loads PNGs
+directly, so you generate the art (any AI image tool or an artist), drop the PNG
+into the slot, and I quantize → slice → wire → deploy it — the path proven by the
+provided **Amir** guitarist.
 
----
+> This is a production checklist, not a sample. "Enough art" = every row here
+> filled with real art. Work top-to-bottom, or cherry-pick a biome/character and
+> finish its whole set so the game grows in complete, shippable chunks.
 
-## How to use this file
-
-1. **Prepend the [Global Style Block](#global-style-block) to every prompt.** It carries
-   the world, register, palette, and pixel-art constraints so all assets match.
-2. Generate the asset from its section below. Generate **large and crisp**
-   (1024×1024 is fine) — I downscale + palette-quantize to the target size, so
-   don't try to hand-generate tiny 16px images.
-3. **Transparent background** for anything marked *(cutout)* — characters,
-   enemies, props, landmarks, UI pieces. Backgrounds/tilesets are opaque.
-4. Save with the **exact filename** shown and drop it under the shown path, or
-   just send it to me and say which slot it is.
-5. For multi-frame sprites, either generate a **horizontal strip** in the frame
-   order listed, or send me the individual poses and I'll pack the strip.
-
-**Consistency tip:** most generators let you attach a *reference image*. Use the
-existing `assets/sprites/heroes/placeholder/Amir Stand.png` as the style anchor
-for the band, and re-use your first good tile/enemy as a reference for the rest
-so the set stays cohesive.
+## Contents
+1. [Global style block](#global-style-block) · [Master palette](#master-palette) · [Delivery spec](#delivery-spec)
+2. [Playable band — full animation sets](#1-playable-band--full-animation-sets)
+3. [Enemies — full state sets](#2-enemies--full-state-sets)
+4. [Boss — The Conductor](#3-boss--the-conductor-multi-phase)
+5. [Tilesets — 5 biomes × autotile sheets](#4-tilesets--5-biomes)
+6. [Environment props & destructibles](#5-environment-props--destructibles)
+7. [Landmarks](#6-landmarks)
+8. [Parallax backgrounds & weather](#7-parallax-backgrounds--weather)
+9. [VFX library](#8-vfx-library)
+10. [UI kit](#9-ui-kit)
+11. [NPCs](#10-npcs)
+12. [Items & pickups](#11-items--pickups)
+13. [Tips & hand-back](#tips-for-ai-pixel-art-generation)
 
 ---
 
 ## Global Style Block
 
-> Paste this before every prompt below.
+> Paste before **every** prompt below.
 
 ```
 Pixel art in the style of Hyper Light Drifter and Blasphemous — beautiful, moody,
 gothic. Setting: "The Drowned Chorus", a surreal drowned/gothic world of ocean-floor
 abyss, salt and rust, melting black clocks, bone and pearl, blood, rot-green, and a
-looming Conductor. Dark, desaturated near-black base values with a few searing
-accent hues: abyssal teal, plum/magenta, ember-gold, blood red. Strong readable
-silhouettes, a consistent top-left light source, clean limited palette, subtle
-dithering for shading (no gradients, no anti-aliased blur, no photo-realism, no
-text, no watermark). Crisp pixels, high contrast, deliberate — not noisy.
+looming Conductor. Dark, desaturated near-black base values with a few searing accent
+hues: abyssal teal, plum/magenta, ember-gold, blood red. Strong readable silhouettes,
+consistent top-left light source, clean limited palette, subtle dithering for shading
+(no gradients, no anti-aliased blur, no photo-realism, no text, no watermark). Crisp
+pixels, high contrast, deliberate — not noisy.
 ```
 
-**Master palette** (keep every asset within these hues; hex):
+## Master palette
+
+Keep every asset within these hues (hex):
 
 ```
 Ink/void:   #05060a #0f111a #1c1f2b #2b2f3e
@@ -59,314 +59,322 @@ Flesh:      #dcae86 #ad7552 #c4bbb0 #877d70
 Metal:      #97a2ae #586470 #ccd4dc #3a434f
 ```
 
----
+## Delivery spec
 
-## Delivery spec (what each PNG must be)
+Generate **large and crisp** (≥1024px); I downscale + quantize to target. Transparent
+background for all cutouts (characters, enemies, props, landmarks, UI, items, VFX);
+opaque for tilesets and backgrounds. Multi-frame = a **horizontal strip** in the frame
+order given, or send individual poses and I'll pack them.
 
-| Asset | File / path | Display size | Frames | BG |
-|---|---|---|---|---|
-| Region tilesets | `assets/tilemaps/region_<name>.png` | 16×16 per tile, 4 in a row (grass, path, water, rock) | 4 | opaque, **seamlessly tileable** |
-| Band: idle | `assets/sprites/band/<member>/idle.png` | 48×48 per frame, horizontal strip | 4 | transparent |
-| Band: run | `assets/sprites/band/<member>/run.png` | 48×48 per frame | 6 | transparent |
-| Band: attack | `assets/sprites/band/<member>/attack.png` | 48×48 per frame | 3 | transparent |
-| Enemies | `assets/sprites/enemies/<id>.png` | 48×48 per frame | 2 (idle) | transparent |
-| Boss (Conductor) | `assets/sprites/enemies/conductor_colossal.png` | 96×128 per frame | 2 | transparent |
-| Arena backgrounds | `assets/backgrounds/arena_<name>.png` | 320×180 (whole scene) | 1 | opaque |
-| Overworld props | one PNG per prop, I'll pack them | ~32×40, feet at bottom | 1 | transparent |
-| Region landmarks | one PNG per landmark | ~64×80, feet at bottom | 1 | transparent |
-| UI panel | `assets/ui/panel.png` | 48×48 nine-slice frame | 1 | transparent center |
-| Stat icons | `assets/ui/icons.png` | 16×16 each, 3 in a row (heart, focus, groove) | 3 | transparent |
+| Asset | Path pattern | Frame size | BG |
+|---|---|---|---|
+| Band state | `assets/sprites/band/<member>/<state>.png` | 48×48 | transparent |
+| Band portrait | `assets/ui/portraits/<member>.png` | 64×64 | transparent |
+| Enemy state | `assets/sprites/enemies/<id>/<state>.png` | 48×48 (elites 64×64) | transparent |
+| Boss state | `assets/sprites/enemies/conductor/<state>.png` | 96×128 | transparent |
+| Tile sheet | `assets/tilemaps/<biome>_<sheet>.png` | 16×16 tiles | opaque, tileable |
+| Prop | `assets/sprites/overworld/props/<name>.png` | ~32×40 | transparent |
+| Landmark | `assets/sprites/overworld/landmarks/<name>.png` | ~64×80 | transparent |
+| Parallax layer | `assets/backgrounds/<biome>_<layer>.png` | 320×180 (wide for near) | opaque/transparent |
+| VFX | `assets/fx/<name>.png` | strip, ~32–64px | transparent |
+| UI piece | `assets/ui/<name>.png` | varies | transparent |
+| NPC | `assets/sprites/npcs/<id>/<state>.png` | 20×24–48×48 | transparent |
+| Item icon | `assets/ui/icons/<name>.png` | 16×16 | transparent |
 
-> Generate bigger than these sizes; I downscale. "Frames" = distinct poses I'll
-> slice into a strip. If a tool can't do exact frame counts, send me whatever
-> poses you get and I'll assemble them.
-
----
-
-## 1. Overworld tilesets — 5 regions
-
-Top-down tiles for the walkable world. Each region is one image with **4 tiles in
-a row: grass, path, water, rock**, all 16×16, **seamlessly tileable** (edges wrap).
-One dominant accent hue per region so the biomes read as distinct moods.
-
-**1.1 Shallows** — `region_shallows.png`
-```
-Top-down 16x16 game tileset, 4 seamlessly-tiling tiles in a row: (1) drowned coastal
-turf — dark teal-green moss with wet grass tufts; (2) a pale bone/salt cobblestone
-path; (3) shallow abyssal seawater with gentle teal wave crests and pearl foam;
-(4) wet dark barnacled shoreline rock. Dominant accent: abyssal teal (#49c6bd).
-```
-
-**1.2 Salt Mines** — `region_saltmines.png`
-```
-Top-down 16x16 game tileset, 4 seamlessly-tiling tiles: (1) salt-crusted ochre ground
-with dried moss; (2) a worn ember-lit mine road of pale stone; (3) brackish flooded
-shaft water; (4) rusted ore-veined rock. Dominant accent: ember-gold (#f0a648).
-```
-
-**1.3 Pit Below (drowned carnival)** — `region_pit.png`
-```
-Top-down 16x16 game tileset, 4 seamlessly-tiling tiles: (1) trampled violet-tinged
-fairground grass; (2) a cracked plum-stone midway path; (3) deep sunken pit water;
-(4) dark amethyst rubble rock. Dominant accent: plum/magenta (#8a52a0).
-```
-
-**1.4 Attic of Teeth** — `region_attic.png`
-```
-Top-down 16x16 game tileset, 4 seamlessly-tiling tiles: (1) rust-brown rotted-wood
-floorboards with grime; (2) a narrow rust-stained plank path; (3) black leak-water;
-(4) crumbling brick/plaster rock. Dominant accent: rust (#a8431c).
-```
-
-**1.5 Conductor's Hall (flooded plaza)** — `region_hall.png`
-```
-Top-down 16x16 game tileset, 4 seamlessly-tiling tiles: (1) drowned deep-plum plaza
-stone; (2) a processional bone-tile path; (3) still black flood water with faint
-reflections; (4) dark obsidian statue-stone. Dominant accent: deep plum (#4b2a57).
-```
+**Animation-state legend** (frame counts are targets; send what you get):
+`idle` 4 · `idle_combat` 4 · `walk` 6 · `run` 6 · `dash` 3 · `jump` 2 · `fall` 2 ·
+`land` 2 · `attack_1/2/3` 3 each · `heavy` 4 · `special` 5 · `ultimate` 6 · `parry` 3 ·
+`block` 2 · `hurt` 2 · `death` 5 · `downed` 1 · `revive` 3 · `victory` 4 · `interact` 3.
+Enemies: `idle` 2 · `move` 4 · `attack` 4 · `telegraph` 3 · `hurt` 2 · `death` 4
+(+ `projectile`/`special` where noted).
 
 ---
 
-## 2. The band — Inhalants (playable party)
+## 1. Playable band — full animation sets
 
-Side-view, facing right, punk/gothic rock band. **Keep them consistent with Amir**
-(dark-brown skin, spiked grey hair, black clothes, white tank — attach his sheet as
-a style reference). Each member: **idle (4 frames), run (6 frames), attack (3
-frames)**, 48×48, transparent, feet on the bottom line.
+Side-view, facing right, punk/gothic rock band, one cohesive design language (attach
+`assets/sprites/heroes/placeholder/Amir Stand.png` as a style reference). For each
+member, generate all 22 states (48×48) + a 64×64 portrait. Base look first, then run
+each state as "same character, now <motion>."
 
-**2.1 Amir — lead guitarist** — `band/amir/{idle,run,attack}.png`
-```
-Side-view pixel-art character sprite sheet, facing right: a lean dark-skinned punk
-rocker with a spiked grey mohawk-ish cut, black sleeveless top over a white tank,
-black jeans, carrying an electric guitar slung across his body. Frames: 4-frame
-breathing idle, 6-frame dynamic run (guitar bouncing), 3-frame guitar-swing attack
-(windup, downward swing, follow-through). 48x48 per frame, transparent background.
-```
-*(You already provided Amir; only regenerate if you want the whole band in one
-new unified style.)*
+Motion cues (apply to every member): `idle` relaxed sway · `idle_combat` weapon ready,
+tense · `walk` steady · `run` leaning sprint · `dash` blurred lunge with trail · `jump`
+launch, legs tucked · `fall` reaching down · `land` crouch absorb · `attack_1/2/3`
+three-hit instrument combo · `heavy` big wind-up overhead swing · `special` a
+signature move (below) · `ultimate` an explosive full-body finisher · `parry` a
+quick braced deflect flash · `block` guard raised · `hurt` recoil, head snap · `death`
+stagger → collapse · `downed` slumped on the ground · `revive` rising, gasping ·
+`victory` triumphant instrument raise · `interact` reaching/kneeling to touch.
 
-**2.2 Bassist — second guitarist / bass** — `band/bassist/{idle,run,attack}.png`
+**1.1 Amir — lead guitarist** — `band/amir/*` + `ui/portraits/amir.png`
 ```
-Same style/scale as Amir, a different band member facing right: broader build, tall
-red-dyed mohawk, sleeveless black vest, a heavy bass guitar held low. 4-frame idle,
-6-frame run, 3-frame attack swinging the bass headstock like a club. 48x48, transparent.
+Lean dark-skinned punk, spiked grey mohawk-ish cut, black sleeveless top over a white
+tank, black jeans, electric guitar slung across the body. Special = a shrieking guitar
+power-chord shockwave; ultimate = a whirling guitar-windmill unleashing a teal blast.
 ```
 
-**2.3 Vocalist** — `band/vocalist/{idle,run,attack}.png`
+**1.2 Bassist — second guitarist / bass** — `band/bassist/*` + portrait
 ```
-Same style/scale as Amir, facing right: lithe front-person, high spiked hair, torn
-white shirt under a black jacket, gripping a microphone with a trailing cable.
-4-frame idle, 6-frame run, 3-frame attack thrusting the mic forward mid-scream (a
-faint teal shock at the mic). 48x48, transparent.
+Broader build, tall red-dyed mohawk, sleeveless black vest, heavy low-slung bass.
+Special = a ground-thumping bass drop (shock ring); ultimate = swinging the bass like
+a wrecking club with an ember arc.
 ```
 
-**2.4 Drummer** — `band/drummer/{idle,run,attack}.png`
+**1.3 Vocalist** — `band/vocalist/*` + portrait
 ```
-Same style/scale as Amir, facing right: sturdy build, shaggy hair under a bandana,
-black tank, a drumstick in each hand. 4-frame idle, 6-frame run, 3-frame attack
-crashing both sticks down. 48x48, transparent.
+Lithe front-person, high spiked hair, torn white shirt under a black jacket, microphone
+with trailing cable. Special = a directional scream cone; ultimate = a sustained note
+that rings the whole arena teal (support/heal-flavored ult).
+```
+
+**1.4 Drummer** — `band/drummer/*` + portrait
+```
+Sturdy build, shaggy hair under a bandana, black tank, a drumstick in each hand.
+Special = a rapid double-stick flurry; ultimate = a colossal downbeat that quakes the
+floor (ember impact).
 ```
 
 ---
 
-## 3. Enemies
+## 2. Enemies — full state sets
 
-Side/front, generally facing left (toward the player). Colossal, silhouette-first,
-with faint additive glow on eyes. **2-frame idle** unless noted. 48×48, transparent.
+~18 types across the 5 biomes. Each: `idle, move, attack, telegraph, hurt, death`
+(48×48; elites 64×64). Ranged/elites add `projectile` or `special` as noted. All face
+left (toward the player). Faint additive glow on eyes.
 
-**3.1 Slime** — `enemies/slime.png`
-```
-A drowned rot-slime: a gelatinous mound of dark rot-green and moss with bubbling
-pearl-white spots and two dim glowing eyes, dripping brine. 2-frame idle (squash and
-settle). 48x48, transparent, faces left.
-```
+### Shallows (teal, drowned coast) — `enemies/<id>/*`
+- **brinemound_slime** `slime` — `A gelatinous rot-green mound with pearl spots and two dim eyes, dripping brine.`
+- **kelp_drifter** `drifter` — `A hooded abyssal wraith gliding above the floor, tattered teal-black cloak, one glowing eye-slit.`
+- **drowned_fisher** — `A waterlogged villager, slack face, oilskin coat, swinging a rusted gaff hook.`
+- **tidecaller** *(ranged, +`projectile`)* — `A barnacled priest-thing that hurls orbs of black water; projectile = a teal water bolt.`
 
-**3.2 Drifter** — `enemies/drifter.png`
-```
-A hooded abyssal wraith-drifter gliding above the floor, tattered teal-black cloak,
-a single glowing teal eye-slit, skeletal hands. Hyper Light Drifter register.
-2-frame idle (cloak sway). 48x48, transparent, faces left.
-```
+### Salt Mines (ember-gold) — `enemies/<id>/*`
+- **salt_grub** — `A pale segmented cave grub crusted in salt, burrows up from the ground to bite.`
+- **calcified_miner** *(elite 64×64)* — `A miner turned to salt mid-swing, pick raised, cracks glowing ember; slow, heavy.`
+- **ember_grunt** `luchador_grunt` — `A drowned masked wrestler in a cracked ember-gold mask, barrel chest, bandaged fists.`
+- **slag_hound** — `A fast lean beast of cooled slag and bone, ember seams, lunging bite.`
 
-**3.3 Luchador grunt** — `enemies/luchador_grunt.png`
-```
-A drowned masked wrestler ("clave" motif): waterlogged luchador in a cracked
-ember-gold mask, barrel chest, bandaged fists, rope belt. Menacing, gothic. 2-frame
-idle (breathing). 48x48, transparent, faces left.
-```
+### Pit Below (plum, drowned carnival) — `enemies/<id>/*`
+- **rot_clown** — `A sagging carnival jester, greasepaint over rot, oversized gloves, a lurching giggle-attack.`
+- **lantern_wisp** *(ranged, +`projectile`)* — `A floating dead-lantern spirit; projectile = a drifting plum ember.`
+- **big_top_brute** *(elite 64×64)* — `A hulking strongman in a torn singlet, chained kettlebell, ground-slam.`
+- **masked_luchador** `luchador_mask` *(elite 64×64)* — `A gleaming blood-red and bone mask with too many eye holes, kelp cape, glowing seams.`
 
-**3.4 Luchador mask (elite)** — `enemies/luchador_mask.png`
-```
-An elite luchador: taller, a gleaming blood-red and bone mask with too many eye
-holes, cape of kelp, glowing red seams. 2-frame idle. 48x48, transparent, faces left.
-```
+### Attic of Teeth (rust) — `enemies/<id>/*`
+- **gnawling** — `A small hunched biter, all teeth and knuckles, skitters and lunges.`
+- **wall_crawler** — `A flattened spider-limbed thing that drops from the ceiling to ambush.`
+- **pen_wraith** *(ranged, +`projectile`)* — `A spectral scribe trailing ink; projectile = a flung steel pen-nib dart.`
+- **elite_wraith** `elite_wraith` *(elite 64×64)* — `Tall spectral wraith, feathered hair, wide pearl-toothed grin, tattered plum shroud, magenta eyes.`
 
-**3.5 Elite wraith** — `enemies/elite_wraith.png`
-```
-"Teeth like pearls and hair like feathers": a tall spectral wraith, gaunt, feathered
-hair, a wide pearl-toothed grin, trailing tattered plum shroud, glowing magenta eyes.
-Beautiful and unsettling. 2-frame idle (drift). 48x48, transparent, faces left.
-```
-
-**3.6 The Conductor (standard)** — `enemies/the_conductor.png`
-```
-The Conductor: a gaunt towering figure in a dripping black tailcoat, a melting clock
-for a heart, baton raised, faceless under a wide hat, glowing amber clock-light.
-2-frame idle (baton sway). 48x48, transparent, faces left.
-```
-
-**3.7 The Conductor — COLOSSAL boss** — `enemies/conductor_colossal.png`
-```
-The Conductor as a screen-filling boss, authored at full size (not upscaled): a
-colossal gaunt maestro in a vast black melting tailcoat, a great cracked clock-face
-heart dripping molten gold, two long baton-arms, blank pages swirling, faceless void
-under the hat with two burning amber pinpoints. Awe and dread, HLD scale contrast.
-2 frames (conducting up, conducting down). 96x128 per frame, transparent, faces left.
-```
+### Conductor's Hall (deep plum, flooded) — `enemies/<id>/*`
+- **page_revenant** — `A ghost made of blank sheet-music pages, faceless, drifting and slashing with paper edges.`
+- **metronome_sentinel** *(elite 64×64)* — `A clockwork guardian, brass pendulum torso ticking side to side, arms that swing on the beat.`
 
 ---
 
-## 4. Battle arena backgrounds — 5 regions
+## 3. Boss — The Conductor (multi-phase)
 
-Full 320×180 side-view scenes the fight plays over. Each is a specific place with an
-**untold story told through set pieces** (no text). Opaque. Layered depth (fog,
-atmospheric perspective), one beat-pulsing focal light per scene.
+`assets/sprites/enemies/conductor/*`, 96×128 (screen-filling, authored at size, never
+upscaled), faces left.
 
-**4.1 Shallows** — `arena_shallows.png`
 ```
-Side-view pixel-art battlefield, 320x180: a drowned village green under shallow teal
-water at dusk. Set pieces: sunken cottage foundations, a single fishing boat still
-straining upward against a taut mooring rope (everyone left but one). Soft god-rays
-through teal water, atmospheric fog, a lantern glow focal point. Moody, beautiful.
+Base: a colossal gaunt maestro in a vast black melting tailcoat, a great cracked
+clock-face heart dripping molten gold, two long baton-arms, blank pages swirling,
+faceless void under a wide hat with two burning amber pinpoints.
 ```
+States (each its own strip):
+- `intro` — rises from the flooded podium, coat unfurling. (6)
+- `idle_p1` / `idle_p2` / `idle_p3` — per-phase idle sway, more frantic each phase. (2 each)
+- `attack_baton_sweep` — a wide horizontal baton slash. (4)
+- `attack_page_storm` — flings a fan of razor pages. (4, +`projectile` page)
+- `attack_clock_slam` — brings the clock-heart down, shockwave. (5)
+- `attack_gold_rain` — molten-gold droplets rain from above. (4, +`projectile` droplet)
+- `attack_tempo_pulse` — a radial beat shockwave (phase 3). (5)
+- `phase_transition` — clock cracks further, screen-wide amber flash. (5)
+- `stagger` — reels, heart exposed (the punish window). (3)
+- `hurt` — flinch. (2)
+- `death` — coat collapses, clock stops, gold sets solid. (8)
 
-**4.2 Salt Mines** — `arena_saltmines.png`
-```
-Side-view battlefield, 320x180: a salt-mine gallery, walls glittering with ember-lit
-salt. Set piece: a row of miners calcified mid-listen, one caught mid-stride, faces
-turned toward an unseen sound. Warm ember-gold rim light, dust motes, deep shadow.
-```
-
-**4.3 Pit Below** — `arena_pit.png`
-```
-Side-view battlefield, 320x180: a sunken carnival ring half-underwater, dead lantern
-strings, a tilted ticket booth. Set piece: circus ropes snapped and flung OUTWARD, as
-if something broke loose from the center. Plum/magenta glow, drifting bubbles, unease.
-```
-
-**4.4 Attic of Teeth** — `arena_attic.png`
-```
-Side-view battlefield, 320x180: a claustrophobic attic interior, rust and rotted
-timber, boarded window leaking grey light. Set piece: deep claw marks gouged on the
-INSIDE of the shut door, scattered pens, a scrawled musical staff. Rust palette, dread.
-```
-
-**4.5 Conductor's Hall** — `arena_hall.png`
-```
-Side-view battlefield, 320x180: a flooded grand hall / plaza before the Conductor.
-Set pieces: rows of blank sheet-music pages (only the last row filled), melting clocks
-stopped at the same moment, a raised podium. Deep-plum flood water, cold amber focal
-light, vast and solemn.
-```
+*(Optional mid-boss per biome, `enemies/<id>/*`, ~10 states each: a Shallows Tide-Warden
+and a Pit Ringmaster are the two strongest candidates.)*
 
 ---
 
-## 5. Overworld props (scatter decoration)
+## 4. Tilesets — 5 biomes
 
-Small top-down-ish cutouts placed on the map, drawn with a little face so they read
-at an angle (like a JRPG overworld). ~32×40, transparent, feet at bottom, top-left
-light, soft drop shadow baked in is fine. Send each as its own PNG; I'll pack them.
+Per biome, **9 sheets**, all 16×16, seamlessly tileable. Autotile sheets should include
+the standard edge/corner set (a 3×3 minimum: center, 4 edges, 4 outer corners; ideally
+a full 47-tile blob). One dominant accent hue per biome.
 
-```
-Set of gothic overworld decoration props, matching pixel-art style, transparent
-background, small (~32x40), consistent top-left light, each its own image:
-1. dead_tree   — a bare black twisted dead tree
-2. tombstone   — a weathered bone-pale leaning headstone
-3. bone_pile   — a small heap of pale bones and a skull
-4. fungus      — a cluster of teal-capped glowing mushrooms
-5. reeds       — a tuft of drowned marsh reeds
-6. obelisk_shard — a broken shard of a teal-glowing stone obelisk
-7. echo_rune   — a carved standing rune-stone with a glowing teal glyph socket
-                 (this one is interactive — keep the glyph clean for an added glow)
-```
+For each biome `<b>` in {`shallows`, `saltmines`, `pit`, `attic`, `hall`}, generate:
+- `<b>_terrain.png` — ground autotile (center + edges + corners) of the biome's turf/floor.
+- `<b>_path.png` — road/walkway autotile.
+- `<b>_water.png` — water + **shoreline transition** autotile (water-to-land edges, foam).
+- `<b>_cliff.png` — cliff faces / walls with top rim + drop shadow + side variants.
+- `<b>_transition.png` — a blend strip to the **next** biome's palette (for region seams).
+- `<b>_decal.png` — non-blocking overlay decals: cracks, moss, puddles, stains, rubble (8+).
+- `<b>_fg.png` — foreground occluders drawn over the player (overhangs, fronds, arches).
+- `<b>_anim.png` — animated tiles (2–4 frames): water surface shimmer / torch / drip.
+- `<b>_interactive.png` — door, chest, lever, save-shrine, breakable crate/urn (as tiles).
 
----
-
-## 6. Region landmarks (colossal set-pieces)
-
-One big silhouette landmark per region for scale + story. ~64×80, transparent, feet
-at bottom, silhouette-first. Send each as its own PNG.
-
-```
-1. drowned_ship  (Shallows) — a fishing sloop run aground, broken-backed, one mast
-   snapped, hull staved in, kelp-draped.
-2. salt_headframe (Salt Mines) — a rusted mine winding-tower / headframe over a black
-   shaft, slack cabling.
-3. carnival_wheel (Pit) — a drowned Ferris/fortune wheel, half-submerged and tilted,
-   cars hanging, plum-lit.
-4. leaning_tenement (Attic) — a condemned tenement leaning over the street, boarded
-   windows, one attic light still lit.
-5. conductor_spire (Hall) — a black obelisk-spire, faces blank, a single melting
-   stopped-clock face fused to it.
-```
+Biome flavor for the prompts (combine with the sheet type):
+- **shallows** — drowned coastal turf, bone-salt cobbles, teal seawater w/ pearl foam, barnacled shoreline rock; accent `#49c6bd`.
+- **saltmines** — salt-crusted ochre ground, ember-lit mine road, brackish shaft water, rusted ore rock; accent `#f0a648`.
+- **pit** — trampled violet fairground grass, cracked plum midway, deep pit water, amethyst rubble; accent `#8a52a0`.
+- **attic** — rust-brown rotted floorboards, plank path, black leak-water, crumbling brick/plaster; accent `#a8431c`.
+- **hall** — drowned deep-plum plaza stone, bone-tile processional path, still black flood water, obsidian statue-stone; accent `#4b2a57`.
 
 ---
 
-## 7. UI
+## 5. Environment props & destructibles
 
-**7.1 Panel frame** — `panel.png`
-```
-A nine-slice UI window frame, gothic pixel-art: dark bone-and-iron border with corner
-rivets, ornate but readable, transparent center (I stretch the middle). ~48x48 source.
-Also a boss variant (panel_boss.png) with blood-red trim and a small clock motif.
-```
+~12 per biome + shared interactables. `assets/sprites/overworld/props/<name>.png`,
+~32×40 (larger for big pieces), transparent, feet at bottom, top-left light.
 
-**7.2 Stat icons** — `icons.png`
-```
-Three 16x16 pixel-art stat icons in a row, transparent, matching palette:
-(1) heart — a blood-red heart (HP); (2) focus — a teal eye/tuning-fork (Focus);
-(3) groove — an ember-gold pulse/waveform (Groove). Bold, readable at tiny size.
-```
+**Shared interactables (animated where noted):** `chest` (closed/opening/open),
+`save_shrine` (a glowing tuning-fork shrine, idle pulse), `door` (shut/opening),
+`sign` (a leaning notice board), `lever` (up/down), `campfire` (flicker), `barrel`,
+`crate`, `urn` (each with an intact + shatter frame), `lore_stele` (a readable slab).
 
-**7.3 Title logo** *(optional, nice-to-have)* — `title_logo.png`
-```
-A pixel-art wordmark reading "THE DROWNED CHORUS", drowned-gothic, bone letters
-half-submerged in teal water with dripping ink and a faint melting-clock flourish.
-Transparent background, ~240x80.
-```
+**Shallows:** dead reeds, drowned rowboat, fishing net on a post, crab-shell pile, mooring bollard, broken jetty plank, kelp clump, buoy, salt-crusted anchor, tide pool, driftwood, gull skeleton.
+**Salt Mines:** ore cart, pickaxe in a wall, salt stalagmite, lantern hook, support timber, coiled cable, slag heap, cracked bell, ore vein cluster, water pump, dust pile, calcified glove.
+**Pit Below:** dead carousel horse, ticket booth, popcorn cart, striped tent pole, snapped rope coil, funhouse mirror, ring-toss stand, deflated balloon cluster, clown shoe, prize shelf, cage, bunting string.
+**Attic of Teeth:** rocking chair, boarded window, chest of drawers, hanging coats, birdcage, cracked mirror, stacked crates, oil lamp, torn wallpaper strip, mouse hole, spilled pen jar, music-box.
+**Conductor's Hall:** music stand, stacked blank pages, broken chandelier, velvet rope post, melting clock (small), podium step, statue plinth, pipe-organ fragment, candelabra, drowned chair row, banner, hourglass.
+
+*(One-line prompt each = the item name + "matching drowned-gothic pixel-art prop,
+transparent, ~32×40, top-left light".)*
+
+---
+
+## 6. Landmarks
+
+`assets/sprites/overworld/landmarks/<name>.png`, ~64×80 (primary up to 96×112),
+silhouette-first, transparent, feet at bottom.
+
+**Primary (1 per biome):** `drowned_ship` (Shallows — a sloop run aground, broken-backed,
+one snapped mast), `salt_headframe` (Salt Mines — rusted mine winding-tower over a black
+shaft), `carnival_wheel` (Pit — a half-submerged tilted Ferris wheel), `leaning_tenement`
+(Attic — a condemned tenement leaning over the street, one lit attic window),
+`conductor_spire` (Hall — a black obelisk-spire with a fused melting clock-face).
+
+**Secondary (~2 per biome):** shallows: `lighthouse_stump`, `sunken_chapel`; saltmines:
+`collapsed_gantry`, `salt_pillar_giant`; pit: `big_top_ruin`, `drowned_carousel`; attic:
+`clocktower_lean`, `gallows_frame`; hall: `great_organ`, `throne_of_pages`.
+
+---
+
+## 7. Parallax backgrounds & weather
+
+Per biome, **4 layers** for depth scrolling + the composite arena scene. Layers:
+`<biome>_sky.png` (far gradient/sky, static), `<biome>_far.png` (distant silhouettes,
+slow), `<biome>_mid.png` (mid structures), `<biome>_near.png` (foreground band, fast).
+320×180 (near can be wider), opaque sky / transparent overlays.
+
+Plus the 5 **arena composite scenes** (the fight backdrops, each with its untold-story
+set pieces — see PRD §11.1.1):
+- `arena_shallows` — drowned village green, one boat straining at its rope.
+- `arena_saltmines` — gallery of miners calcified mid-listen.
+- `arena_pit` — sunken carnival ring, ropes snapped outward.
+- `arena_attic` — clawed door from the inside, scrawled staves.
+- `arena_hall` — blank pages (last row filled), melting stopped clocks.
+
+**Weather overlays** (`assets/fx/weather_<name>.png`, tiling, scrolled in-engine):
+`rain`, `mist`, `ash_fall`, `bubbles_rise`, `dust_motes`, `falling_pages`.
+
+---
+
+## 8. VFX library
+
+`assets/fx/<name>.png`, transparent strips, additive-blended in-engine. Keep white/bright
+so a single texture tints to any accent.
+
+`hit_spark` (4) · `slash_light` (arc, 3) · `slash_heavy` (big arc, 4) · `parry_burst` (4) ·
+`dash_trail` (3) · `dust_run` (3) · `dust_land` (3) · `splash_water` (4) · `blood_hit` (3) ·
+`heal_bloom` (4) · `buff_ring` (4) · `proj_teal` / `proj_ember` / `proj_plum` (spin, 3 each) ·
+`muzzle_flash` (2) · `impact_ring` (4) · `explosion` (6) · `death_dissolve` (5) ·
+`status_poison` / `status_burn` / `status_stun` / `status_slow` / `status_shock` (aura, 3 each) ·
+`chorus_light` (a soft descending god-ray shaft, 4) · `beat_pulse` (a ring on the beat, 3) ·
+`groove_flare` (ultimate charge burst, 5).
+
+---
+
+## 9. UI kit
+
+`assets/ui/...`, transparent. A complete, cohesive gothic-HUD kit.
+
+**Frames & HUD:** `panel` (nine-slice window, bone-and-iron w/ rivets) · `panel_boss`
+(blood-red trim + clock motif) · `hud_frame` (combat HUD housing) · `bar_hp`,
+`bar_focus`, `bar_groove` (each: empty track + fill + cap, blood/teal/ember) ·
+`tooltip` (small nine-slice).
+
+**Icons — abilities** (`ui/icons/ability_<member>_<n>.png`, 16×16): 4 per member
+(attack, special, ultimate, passive) = 16 icons, each a tiny emblem of that move.
+
+**Icons — relics/items** (`ui/icons/<name>.png`, 16×16, ~20): metronome-charm,
+salt-heart, drowned-locket, cracked-baton, pearl-tooth, ember-string, tide-glass,
+rope-coil, page-quill, clock-gear, blood-vial, kelp-wreath, mask-shard, lantern-ember,
+bone-pick, feather-plume, plum-sapphire, foghorn, tuning-fork, chorus-shell.
+
+**Icons — stats/system** (16×16): `heart`, `focus_eye`, `groove_wave`, `coin`, `key`,
+`potion`, `map_pin`, `echo`, `settings_gear`, `volume`, `motion`, `contrast`.
+
+**Screens:** `title_logo` (wordmark "THE DROWNED CHORUS", bone letters half-submerged
+in teal) · `menu_illustration` (a moody key-art scene of the band before the drowned
+skyline) · `map_screen` (a stylized parchment world map frame) · `pause_panel` ·
+`results_panel` · `dialogue_box` + `nameplate` · `cursor` (a small baton/pointer) ·
+`button` (3 states: normal/hover/press) · `portrait_frame`.
+
+**Font:** `font_body` and `font_display` — bitmap pixel fonts (uppercase + lowercase +
+digits + punctuation), display weight more ornate/gothic. Deliver as a glyph sheet.
+
+---
+
+## 10. NPCs
+
+`assets/sprites/npcs/<id>/*` — each `idle` (2) + `talk` (2) + a 64×64 portrait.
+
+**Old band-era heroes, now townsfolk (4):** `ex_warrior`, `ex_tank`, `ex_mage`,
+`ex_healer` — the four generated adventurers, weathered, loitering by the shore.
+**New NPCs (~6):** `luthier` (instrument-mender vendor), `saltwife` (a Salt Mines
+widow), `barker` (a defeated carnival barker), `archivist` (keeper of the blank pages),
+`ferryman` (a hooded boat-poler), `child_of_the_choir` (a small masked chorister).
+
+---
+
+## 11. Items & pickups
+
+`assets/sprites/pickups/<name>.png` (world) + reuse the 16×16 icon for UI. Transparent.
+
+`health_orb` (teal, bob+glow) · `coin_small` / `coin_large` (ember, spin) · `key` ·
+`echo_mote` (a drifting lore fleck) · `map_fragment` · the **15 relics** (world-pickup
+versions of the relic icons in §9) · `chorus_shard` (a story collectible) ·
+`tuning_fork` (save token) · `bandage` (heal consumable) · `ember_vial` (buff consumable).
 
 ---
 
 ## Tips for AI pixel-art generation
 
-- **Say "pixel art" and a resolution feel** ("32x32 pixel art", "16-bit", "crisp
-  pixels, limited palette, no anti-aliasing"). Then generate large; I downscale.
-- **Lock the palette** by pasting the hex list into the prompt and/or attaching a
-  reference swatch. Consistency across assets matters more than any single image.
-- **Spritesheets are the hard part.** Many tools won't nail a clean 6-frame strip.
-  Easiest workflow: generate one strong reference pose per character, then generate
-  the other poses "same character, same outfit, now running / now swinging",
-  and **send me the poses separately** — I pack them into the strip.
-- **Transparent backgrounds:** ask for "transparent background, isolated sprite, no
-  scene". If a tool bakes a background, send it anyway — I can key it out.
-- **Tiles must tile:** ask for "seamless tileable texture, edges wrap". I verify the
-  seams and fix small artifacts when I import.
-- **Reference image = consistency.** Feed each new prompt your last good asset as a
-  style reference so the whole game reads as one world.
-
----
+- Say **"pixel art", a resolution feel** ("32×32 pixel art", "16-bit", "crisp pixels,
+  limited palette, no anti-aliasing"); generate large, I downscale.
+- **Lock the palette** — paste the hex list and/or attach a swatch. Cohesion across the
+  ~575 slots matters more than any single image.
+- **Spritesheets are the hard part.** Generate one strong reference pose per character,
+  then "same character, same outfit, now <state>", and send poses separately — I pack
+  the strips. Feed each new prompt your last good asset as a **style reference**.
+- **Transparent backgrounds:** "isolated sprite, transparent background, no scene." If a
+  tool bakes a background, send it anyway — I can key it out.
+- **Tiles must tile & autotile:** "seamless tileable texture, edges wrap"; for autotile,
+  ask for "edge and corner pieces on a grid." I verify seams and fix artifacts on import.
 
 ## How to hand assets back
 
-Any of these works:
+1. **Commit** PNGs into the paths above and tell me they're in, **or**
+2. **Attach** them here and say which slot(s), **or**
+3. Drop a **folder/zip** and I'll sort it.
 
-1. **Commit** the PNGs into the repo under the paths above and tell me they're in.
-2. **Attach** them to me in chat and say which slot each is ("this is the shallows
-   tileset", "this is the vocalist run").
-3. Drop a **folder/zip** of everything and I'll sort, quantize, slice, and wire it.
-
-For each asset I'll: quantize to the master palette, downscale to the target size,
-slice multi-frame strips into the engine's frames, drop it into the right `assets/`
-slot, regenerate anything derived, verify it in-browser, and deploy. You watch the
-game climb to real AAA one asset at a time — starting from the one that already is:
-Amir.
+Per asset I: quantize to the master palette, downscale, slice multi-frame strips into
+the engine's frames, drop into the right `assets/` slot, wire it (new enemies/animation
+states get their loaders + state machines), verify in-browser, and deploy. The manifest
+fills row by row — the game climbs to real AAA one asset at a time, starting from the
+one that already is: **Amir**.
