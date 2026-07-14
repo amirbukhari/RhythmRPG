@@ -71,16 +71,17 @@ def grass() -> Image.Image:
             for x in range(cx - r, cx + r + 1):
                 if (x - cx) ** 2 + (y - cy) ** 2 <= r * r:
                     _dither(px, x, y, _GREEN[0], _GREEN[1], 7)
-    # blade tufts: dark base, bright lit tip (hand-placed, wrap-safe)
-    for (bx, by) in ((3, 11), (7, 14), (10, 6), (13, 13), (5, 4), (14, 3), (1, 8)):
+    # blade tufts: dark base, lit tip -- sparse, and NO bright-white tips or
+    # per-tile flower (AAA audit O1: every-tile motifs repeat as wallpaper
+    # confetti when the same tile covers a whole region)
+    for (bx, by) in ((3, 11), (10, 6), (13, 13), (6, 3)):
         for dx, h in ((-1, 2), (0, 3), (1, 2)):
             x = (bx + dx) % T
             for k in range(h):
                 y = (by - k) % T
-                px[x, y] = _GREEN[4] if k == h - 1 else _GREEN[3] if k == h - 2 else _GREEN[1]
-    # a pebble + a tiny flower for a focal fleck
+                px[x, y] = _GREEN[3] if k == h - 1 else _GREEN[2] if k == h - 2 else _GREEN[1]
+    # a single pebble for a quiet focal fleck
     px[8, 10] = _SALT[1]; px[9, 10] = _SALT[0]
-    px[11, 9] = (0xf0, 0xa6, 0xc0, 255); px[11, 8] = (0xf4, 0xd2, 0x7a, 255)
     return im
 
 
@@ -112,20 +113,24 @@ def path() -> Image.Image:
 
 
 def water() -> Image.Image:
-    """The abyss: a vertical depth gradient (dark bottom -> teal top) with
-    hand-placed horizontal wave crests and pearl foam highlights."""
+    """The abyss (AAA audit O2): a DARK deep body -- big water reads as depth,
+    not a bright pattern. Near-black dithered base, sparse dim swells, and a
+    single rare crest glint so the surface still moves without turning into a
+    cyan panel."""
     im, px = _img()
-    # uniform mid-depth base (no per-tile gradient -> seamless in big bodies)
+    # deep base: the two darkest ramp steps only
     for y in range(T):
         for x in range(T):
-            _dither(px, x, y, _AQUA[1], _AQUA[2], 6)
-    # wave crests: bright teal lines with a foam glint, offset per row (wrap)
-    for (cy, phase) in ((3, 0), (8, 3), (12, 6), (15, 1)):
+            _dither(px, x, y, _AQUA[0], _AQUA[1], 5)
+    # two dim swell lines (one ramp step up -- visible, not glowing)
+    for (cy, phase) in ((4, 0), (11, 5)):
         for x in range(T):
-            y = (cy + (1 if (x + phase) % 6 < 2 else 0)) % T
-            px[x, y] = _AQUA[3]
-            if (x + phase) % 6 == 0:
-                px[x, (y - 1) % T] = _AQUA[4]  # foam highlight
+            y = (cy + (1 if (x + phase) % 8 < 3 else 0)) % T
+            px[x, y] = _AQUA[1]
+            if (x + phase) % 11 == 0:
+                px[x, y] = _AQUA[2]  # rare crest fleck
+    # one pearl glint per tile, tiny
+    px[6, 8] = _AQUA[3]
     return im
 
 
@@ -197,7 +202,9 @@ def region_tiles(region: str) -> list[Image.Image]:
     return [
         _tint(grass(), accent, 0.38),
         _tint(path(), accent, 0.24),
-        _tint(water(), accent, 0.48),
+        # water stays a gentle hue-shift only (AAA audit O2): a strong tint
+        # toward the bright accent flattened the dark body into a washed panel
+        _tint(water(), accent, 0.14),
         _tint(rock(), accent, 0.32),
     ]
 
