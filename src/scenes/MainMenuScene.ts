@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import { BASE_WIDTH, BASE_HEIGHT } from "../config/GameConfig";
 import { TextMenu } from "../ui/components/TextMenu";
 import { addBackdrop } from "../ui/Backdrop";
-import { music } from "../systems/audio/MusicEngine";
+import { music } from "../systems/audio/SongPlayer";
 import { GameContext } from "../state/GameContext";
 
 /** Start, continue, settings. See PRD §10.6. */

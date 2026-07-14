@@ -5,7 +5,7 @@ import { TransportClock } from "../systems/audio/TransportClock";
 import { BeatmapSonifier } from "../systems/audio/BeatmapSonifier";
 import { BASE_WIDTH, BASE_HEIGHT } from "../config/GameConfig";
 import { composeArena, ARENA_LAYOUTS } from "./env/ArenaComposer";
-import { music } from "../systems/audio/MusicEngine";
+import { music } from "../systems/audio/SongPlayer";
 import {
   createArena,
   step,
@@ -223,7 +223,9 @@ export class ActionBattleScene extends Phaser.Scene {
     // audio clock + audible beat
     await this.clock.start(bpm);
     this.sonifier = new BeatmapSonifier(this.clock);
-    this.sonifier.setVolume(settings.volumeMusic * 0.5);
+    // The real Inhalants track is the soundtrack now (SongPlayer); the beatmap
+    // sonifier stays only as a quiet rhythm-cue tick so it doesn't clash.
+    this.sonifier.setVolume(settings.volumeMusic * 0.22);
     music.setVolume(settings.volumeMusic);
     music.setMode(this.isBoss ? "boss" : "combat");
     music.start();
@@ -296,7 +298,10 @@ export class ActionBattleScene extends Phaser.Scene {
       const ry = f.pos.y + HORIZON; // render y on the floor
       s.setPosition(Math.round(f.pos.x), Math.round(ry));
       s.setDepth(4 + f.pos.y / 100);
-      this.groundShadows.get(f.id)?.setPosition(Math.round(f.pos.x), Math.round(ry)).setDepth(3);
+      // Ground the shadow at the sprite's actual feet (origin isn't the bottom
+      // edge), so it sits under the character instead of floating at its waist.
+      const feetY = ry + s.displayHeight * (1 - s.originY);
+      this.groundShadows.get(f.id)?.setPosition(Math.round(f.pos.x), Math.round(feetY)).setDepth(3);
       if (f.team === "player") {
         s.setFlipX(f.facing === "left");
         // Amir's authored guitar-swing poses: windup (startup) -> swing
