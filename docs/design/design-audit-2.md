@@ -47,3 +47,19 @@ Burn-down: G1–G4 in the plate (one pass), G5 in scene scatter. Acceptance: re-
 the audit captures — no repeated stamp is identifiable anywhere on any screen; rock
 reads as landform; water reads as depth; the plate sits in one register with the
 AI pieces.
+
+
+## Burn-down status (same day, PRD v9.0)
+
+| # | Status |
+|---|---|
+| G1 | ✅ Rock clusters render as single painted mesas (craggy silhouette, cracked lit top, striated cliff face, cast shadow) — no rock tile stamps exist anywhere |
+| G2 | ✅ Roads are continuous worn ribbons (edges, wear, stones) — zero repetition |
+| G3 | ✅ Water is unified dark bodies with organic foam shorelines — the "panel" read is gone |
+| G4 | ✅ Grass is a grained, pooled, tufted field; region bases blend across seams |
+| G5 | ✅ Prop scatter jittered off the grid |
+
+Acceptance re-verified on fresh captures (shallows, saltmines, pit, in-world fight):
+no repeated stamp identifiable on any screen; the ground plate sits in one register
+with the AI-painted sprites. Regenerate the plate any time the map changes:
+`python3 tools/overworld/paint_ground.py`.
