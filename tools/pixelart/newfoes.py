@@ -59,9 +59,9 @@ def build(foe: str, subject: str, seed: int) -> None:
     src = Image.open(io.BytesIO(raw)).convert("RGBA")
     cut = autocrop(keep_main_island(scrub_mist(autocrop(flood_key(src, tol=60)))))
     ar = cut.width / cut.height
-    lh = 44
+    lh = 66
     lw = max(16, min(48, round(lh * ar)))
-    fig = pixelate(cut, lw, lh, dither=False, colors=28)
+    fig = pixelate(cut, lw, lh, dither=False, colors=56)
     base = fit_to_frame(fig)
     OUT.mkdir(parents=True, exist_ok=True)
     pack([base, breathe(base)]).save(OUT / f"{foe}.png")

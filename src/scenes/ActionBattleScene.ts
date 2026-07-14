@@ -23,11 +23,13 @@ const HORIZON = 0;
 const ARENA_W = BASE_WIDTH;
 const ARENA_H = BASE_HEIGHT;
 // Colossal, imposing scale contrast (HLD, PRD §11.1) -- the player is small.
+// (72px foe frames since the legibility pass -- scales are 2/3 of the old
+// 48px-frame values so on-screen sizes are unchanged.)
 const ENEMY_SCALE: Record<string, number> = {
-  the_conductor: 2.9,
-  elite_wraith: 2.0,
-  drifter: 1.5,
-  slime: 1.4,
+  the_conductor: 2.9, // legacy 48px small sheet (fights use the colossal one)
+  elite_wraith: 1.33,
+  drifter: 1.0,
+  slime: 0.93,
 };
 // The campaign nodes as movements of the drowned chorus (docs/design/world-bible.md).
 const NODE_MOVEMENT: Record<string, string> = {
@@ -151,7 +153,7 @@ export class ActionBattleScene extends Phaser.Scene {
     // 48x48 art is scaled to sit small in the arena for the HLD size contrast.
     const p = getPlayer(this.arena);
     this.groundShadows.set(p.id, this.add.ellipse(p.pos.x, p.pos.y + HORIZON, 16, 6, 0x05060a, 0.4).setDepth(3));
-    const pSprite = this.add.sprite(p.pos.x, p.pos.y + HORIZON, "band_amir", 0).setOrigin(0.5, 0.82).setScale(0.62).setDepth(5);
+    const pSprite = this.add.sprite(p.pos.x, p.pos.y + HORIZON, "band_amir", 0).setOrigin(0.5, 0.82).setScale(0.41).setDepth(5);
     if (!this.anims.exists("amir_idle")) {
       this.anims.create({
         key: "amir_idle",
