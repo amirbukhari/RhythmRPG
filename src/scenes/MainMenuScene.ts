@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { BASE_WIDTH } from "../config/GameConfig";
+import { BASE_WIDTH, BASE_HEIGHT } from "../config/GameConfig";
 import { TextMenu } from "../ui/components/TextMenu";
 import { addBackdrop } from "../ui/Backdrop";
 
@@ -10,7 +10,16 @@ export class MainMenuScene extends Phaser.Scene {
   }
 
   create(): void {
-    addBackdrop(this, 0.55);
+    // AI-generated title key-art (the band on the drowned pier); fall back to
+    // the shared backdrop if it somehow isn't loaded. A soft top scrim keeps
+    // the wordmark legible over the art.
+    if (this.textures.exists("bg_title")) {
+      this.add.image(BASE_WIDTH / 2, BASE_HEIGHT / 2, "bg_title").setDepth(-10);
+      this.add.rectangle(0, 0, BASE_WIDTH, 92, 0x05060a, 0.42).setOrigin(0, 0).setDepth(-9);
+      this.add.rectangle(0, 96, BASE_WIDTH, BASE_HEIGHT - 96, 0x05060a, 0.3).setOrigin(0, 0).setDepth(-9);
+    } else {
+      addBackdrop(this, 0.55);
+    }
 
     this.add
       .text(BASE_WIDTH / 2, 34, "THE DROWNED", {
