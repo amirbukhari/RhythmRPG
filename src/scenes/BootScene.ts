@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import battleAbyssUrl from "../../assets/backgrounds/battle_abyss.png";
+import titleUrl from "../../assets/backgrounds/bg_title.png";
 import battleConductorUrl from "../../assets/backgrounds/battle_conductor.png";
 import causticsUrl from "../../assets/backgrounds/caustics.png";
 import arenaShallowsUrl from "../../assets/backgrounds/arena_shallows.png";
@@ -74,6 +75,7 @@ export class BootScene extends Phaser.Scene {
 
   preload(): void {
     this.load.image("bg_battle_abyss", battleAbyssUrl);
+    this.load.image("bg_title", titleUrl);
     this.load.image("bg_battle_conductor", battleConductorUrl);
     this.load.image("caustics", causticsUrl);
     for (const [key, url] of Object.entries(ARENA_URLS)) this.load.image(key, url);
