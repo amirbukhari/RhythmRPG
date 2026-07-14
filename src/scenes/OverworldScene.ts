@@ -549,7 +549,12 @@ export class OverworldScene extends Phaser.Scene {
     // the standing foe hands over to the live fight
     for (const o of this.nodeFoeVisuals.get(marker.nodeId) ?? []) (o as Phaser.GameObjects.Sprite).setVisible(false);
     this.fight = new WorldFight(
-      { scene: this, playerSprite: this.player },
+      {
+        scene: this,
+        playerSprite: this.player,
+        isWorldWalkable: (px, py) =>
+          isWalkable(this.walkable, { col: Math.floor(px / TILE_SIZE), row: Math.floor(py / TILE_SIZE) }),
+      },
       marker.nodeId,
       encounterId,
       marker.col * TILE_SIZE + TILE_SIZE / 2,

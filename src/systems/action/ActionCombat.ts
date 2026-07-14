@@ -84,6 +84,14 @@ export interface FrameInput {
   onBeat: boolean; // was this press inside the on-beat window (§8.3)
 }
 
+/** An impassable axis-aligned box (world-fight terrain: water, rock). */
+export interface Obstacle {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 export interface Arena {
   width: number;
   height: number;
@@ -92,6 +100,8 @@ export interface Arena {
   focus: number;
   outcome: "ongoing" | "victory" | "defeat";
   log: string[];
+  /** Impassable terrain inside the arena (in-world fights, PRD v7.13). */
+  obstacles?: Obstacle[];
 }
 
 const FACING_VEC: Record<Facing, Vec> = {
@@ -137,6 +147,40 @@ function facingFromMove(move: Vec, current: Facing): Facing {
 function clampToArena(f: Fighter, w: number, h: number): void {
   f.pos.x = Math.max(f.radius, Math.min(w - f.radius, f.pos.x));
   f.pos.y = Math.max(f.radius, Math.min(h - f.radius, f.pos.y));
+}
+
+/** Push a fighter's centre out of any obstacle box along the axis of least
+ * penetration (and kill that velocity component) -- terrain in in-world
+ * fights (water, rock) is impassable for every fighter. Exported for tests. */
+export function resolveObstacles(f: Fighter, obstacles: Obstacle[] | undefined): void {
+  if (!obstacles) return;
+  for (const o of obstacles) {
+    const nx = Math.max(o.x, Math.min(o.x + o.w, f.pos.x));
+    const ny = Math.max(o.y, Math.min(o.y + o.h, f.pos.y));
+    const dx = f.pos.x - nx;
+    const dy = f.pos.y - ny;
+    const d2 = dx * dx + dy * dy;
+    if (d2 >= f.radius * f.radius) continue;
+    if (d2 > 1e-6) {
+      // centre outside the box: push out along the contact normal
+      const d = Math.sqrt(d2);
+      f.pos.x = nx + (dx / d) * f.radius;
+      f.pos.y = ny + (dy / d) * f.radius;
+    } else {
+      // centre inside the box: exit along the smallest penetration axis
+      const left = f.pos.x - o.x;
+      const right = o.x + o.w - f.pos.x;
+      const top = f.pos.y - o.y;
+      const bottom = o.y + o.h - f.pos.y;
+      const m = Math.min(left, right, top, bottom);
+      if (m === left) f.pos.x = o.x - f.radius;
+      else if (m === right) f.pos.x = o.x + o.w + f.radius;
+      else if (m === top) f.pos.y = o.y - f.radius;
+      else f.pos.y = o.y + o.h + f.radius;
+    }
+    if (Math.abs(f.pos.x - nx) > Math.abs(f.pos.y - ny)) f.vel.x = 0;
+    else f.vel.y = 0;
+  }
 }
 
 // --- construction ----------------------------------------------------------
@@ -387,6 +431,7 @@ export function step(a: Arena, input: FrameInput, dt: number): Arena {
     f.pos.x += f.vel.x * dt;
     f.pos.y += f.vel.y * dt;
     clampToArena(f, a.width, a.height);
+    resolveObstacles(f, a.obstacles);
 
     f.iframes = Math.max(0, f.iframes - dt);
     f.dashCd = Math.max(0, f.dashCd - dt);

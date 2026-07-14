@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   circlesOverlap,
+  resolveObstacles,
   knockbackSpeed,
   hitstunSeconds,
   onBeatMultiplier,
@@ -188,5 +189,29 @@ describe("depth mechanics (PRD §8.2)", () => {
     e.state = "attack";
     tick(a, {});
     expect(p.hp).toBeLessThan(hpBefore); // not parried
+  });
+});
+
+describe("terrain obstacles (in-world fights, PRD v7.13)", () => {
+  it("a fighter walking into an obstacle is pushed back out", () => {
+    const a = createArena(320, 180, [50]);
+    a.obstacles = [{ x: 200, y: 0, w: 16, h: 180 }]; // a water column
+    const p = player(a);
+    p.pos = { x: 190, y: 90 };
+    for (let i = 0; i < 120; i++) tick(a, { move: { x: 1, y: 0 } });
+    // blocked at the column's left edge (centre + radius <= 200), never inside
+    expect(p.pos.x).toBeLessThanOrEqual(200 - p.radius + 0.001);
+  });
+
+  it("resolveObstacles ejects a centre that ends up inside a box along the nearest face", () => {
+    const f = createFighter("t", "player", { x: 12, y: 50 }, 100);
+    resolveObstacles(f, [{ x: 10, y: 0, w: 40, h: 100 }]);
+    expect(f.pos.x).toBe(10 - f.radius); // left face was nearest
+  });
+
+  it("fighters clear of obstacles are untouched", () => {
+    const f = createFighter("t", "player", { x: 100, y: 50 }, 100);
+    resolveObstacles(f, [{ x: 10, y: 0, w: 40, h: 100 }]);
+    expect(f.pos).toEqual({ x: 100, y: 50 });
   });
 });
