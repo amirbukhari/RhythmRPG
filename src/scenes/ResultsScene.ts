@@ -57,10 +57,20 @@ export class ResultsScene extends Phaser.Scene {
             label: `Take: ${RELICS[relicId]?.name ?? relicId} -- ${RELICS[relicId]?.description ?? ""}`,
             onSelect: () => this.chooseRelic(relicId),
           }))
-        : [{ label: "Continue", onSelect: () => this.scene.start("OverworldScene") }];
+        : [{ label: "Continue", onSelect: () => this.continueOut() }];
 
     if (this.menu) this.menu.setItems(items);
     else this.menu = new TextMenu(this, 16, BASE_HEIGHT - 60, items, 14);
+  }
+
+  /** The final boss's victory continues into the ending, exactly once. */
+  private continueOut(): void {
+    if (GameContext.campaignJustCompleted) {
+      GameContext.campaignJustCompleted = false;
+      this.scene.start("FinaleScene");
+    } else {
+      this.scene.start("OverworldScene");
+    }
   }
 
   private chooseRelic(relicId: string): void {

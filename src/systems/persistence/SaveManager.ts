@@ -23,6 +23,8 @@ export interface SaveProfile {
   analyticsConsent: boolean;
   /** Discoverable environmental-lore fragments found in the explorable world (PRD §8.8.2). Ids like "echo_0". */
   echoesFound: string[];
+  /** Epoch ms of the first campaign completion (the Conductor's fall). Absent until then. */
+  campaignCompletedAt?: number;
 }
 
 export function createDefaultSaveProfile(slotId: string, startNodeId: string): SaveProfile {

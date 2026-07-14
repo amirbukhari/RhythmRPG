@@ -87,6 +87,7 @@ export class WorldFight {
   private prevGroove = 0;
   private grooveWasFull = false;
   private wasWindup = new Set<string>();
+  private deadHandled = new Set<string>();
   // Boss phases (§8.7): HP thresholds -> escalation + song-section jumps.
   private phaseThresholds: { hpThreshold: number; section?: string }[] = [];
   private phaseIdx = 0;
@@ -421,10 +422,33 @@ export class WorldFight {
     const p = getPlayer(this.arena);
     if (this.prevPlayerHp >= 0 && p.hp < this.prevPlayerHp - 0.01) this.sfx?.hurt();
     this.prevPlayerHp = p.hp;
-    if (p.state === "dash" && !this.wasDashing) this.sfx?.dash();
+    const reduced = Boolean(settings?.reducedMotion);
+    if (p.state === "dash" && !this.wasDashing) {
+      this.sfx?.dash();
+      // dash after-images: two teal ghosts of the leader, fading fast
+      if (!reduced) {
+        for (let i = 0; i < 2; i++) {
+          const ghost = this.scene.add
+            .image(this.playerSprite.x, this.playerSprite.y, this.playerSprite.texture.key, this.playerSprite.frame.name)
+            .setFlipX(this.playerSprite.flipX)
+            .setScale(this.playerSprite.scaleX, this.playerSprite.scaleY)
+            .setTint(0x49c6bd)
+            .setAlpha(0.45 - i * 0.15)
+            .setDepth(4.5);
+          this.scene.tweens.add({ targets: ghost, alpha: 0, duration: 180 + i * 90, onComplete: () => ghost.destroy() });
+        }
+      }
+    }
     this.wasDashing = p.state === "dash";
     if (this.arena.log.length > this.prevLogLen) {
-      if (this.arena.log[this.arena.log.length - 1] === "parry!") this.sfx?.parry();
+      if (this.arena.log[this.arena.log.length - 1] === "parry!") {
+        this.sfx?.parry();
+        // parry burst: an expanding cyan ring at the player (§11.5 VFX)
+        if (!reduced) {
+          const ring = this.scene.add.circle(this.playerSprite.x, this.playerSprite.y - 6, 7).setStrokeStyle(2, 0x9fe8e0, 1).setDepth(9);
+          this.scene.tweens.add({ targets: ring, scale: 3, alpha: 0, duration: 260, onComplete: () => ring.destroy() });
+        }
+      }
       this.prevLogLen = this.arena.log.length;
     }
 
@@ -526,9 +550,26 @@ export class WorldFight {
       const wx = this.rect.x + e.pos.x;
       const wy = this.rect.y + e.pos.y;
       if (e.state === "dead") {
-        s.setAlpha(0.1);
-        this.auras.get(e.id)?.setAlpha(0);
-        this.shadows.get(e.id)?.setAlpha(0);
+        // death dissolve (§11.5 VFX): one burst + a sink-and-fade, once
+        if (!this.deadHandled.has(e.id)) {
+          this.deadHandled.add(e.id);
+          this.auras.get(e.id)?.setAlpha(0);
+          this.shadows.get(e.id)?.setAlpha(0);
+          if (!reduced) {
+            for (let i = 0; i < 3; i++) {
+              const spark = this.scene.add
+                .image(s.x + (i - 1) * 6, s.y - 10 - i * 4, "spark")
+                .setBlendMode(Phaser.BlendModes.ADD)
+                .setDepth(9)
+                .setScale(0.3)
+                .setTint(this.accents.get(e.id) ?? 0xfff4d0);
+              this.scene.tweens.add({ targets: spark, scale: 1.3, alpha: 0, angle: 70, duration: 380 + i * 80, onComplete: () => spark.destroy() });
+            }
+            this.scene.tweens.add({ targets: s, alpha: 0.08, y: s.y + 3, duration: 550 });
+          } else {
+            s.setAlpha(0.08);
+          }
+        }
         continue;
       }
       s.setPosition(Math.round(wx), Math.round(wy)).setDepth(4.6 + e.pos.y / 1000);
@@ -674,6 +715,11 @@ export class WorldFight {
               profile.unlockedSkills.push(skillId);
               newlyUnlockedSkills.push(skillId);
             }
+          }
+          // The FINAL boss: route the results screen into the ending.
+          if (node.next.length === 0) {
+            GameContext.campaignJustCompleted = true;
+            profile.campaignCompletedAt ??= Date.now();
           }
         }
       }

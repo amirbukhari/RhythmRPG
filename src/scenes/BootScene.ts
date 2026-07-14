@@ -37,6 +37,7 @@ const ENV_URLS = import.meta.glob("../../assets/sprites/env/*/*.png", {
   import: "default",
 }) as Record<string, string>;
 import uiPanelUrl from "../../assets/ui/panel.png";
+import wordmarkUrl from "../../assets/ui/wordmark.png";
 import uiPanelBossUrl from "../../assets/ui/panel_boss.png";
 import uiIconsUrl from "../../assets/ui/icons.png";
 import glowUrl from "../../assets/fx/glow.png";
@@ -91,6 +92,7 @@ export class BootScene extends Phaser.Scene {
     this.load.spritesheet("hero_warrior_attack", warriorAttackUrl, { frameWidth: 24, frameHeight: 24 });
     this.load.image("ui_panel", uiPanelUrl);
     this.load.image("ui_panel_boss", uiPanelBossUrl);
+    this.load.image("wordmark", wordmarkUrl);
     this.load.spritesheet("ui_icons", uiIconsUrl, { frameWidth: 10, frameHeight: 10 });
     this.load.image("glow", glowUrl);
     this.load.image("spark", sparkUrl);

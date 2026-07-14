@@ -6,7 +6,7 @@
 |---|---|
 | Document title | *The Drowned Chorus* — Browser Rhythm-Action RPG PRD |
 | Working codename | Project Meterfall (historical; the game is titled *The Drowned Chorus*) |
-| Status | **Active v8.3** — v8.0: enterprise rewrite per the [PRD audit](./prd-audit-2026-07-14.md); v8.1: P1 beat truth; v8.2: P2+P3 (four-tier judgment, ultimate, phased boss, Sightread, §9.3 parity) + mobile hardening; v8.3: battle SFX, relics regression fixed, content hygiene, **retired code deleted** (8-scene stack, all shipped). Next: §11.5 manifest burn-down, then P5 hardening (§20.3). |
+| Status | **Active v8.5** — v8.0: enterprise rewrite per the [PRD audit](./prd-audit-2026-07-14.md); v8.1: P1 beat truth; v8.2: P2+P3 (four-tier judgment, ultimate, phased boss, Sightread, §9.3 parity) + mobile hardening; v8.3: SFX/relics/hygiene/retired-code deletion; v8.4: landforms; v8.5: **the ending (FinaleScene)**, the hand-lettered wordmark, combat-VFX batch. Next: animation-state depth + P5 hardening (§20.3). |
 | Owner | Amir Bukhari |
 | Author | Amir Bukhari (compiled from concept notes, deep research, and live-play feedback) |
 | Created | 2026-07-08 |
@@ -33,6 +33,7 @@ and [`docs/design/aaa-audit.md`](../design/aaa-audit.md).
 | 7.6–7.9 | 2026-07-13→14 | Lyric-only foe roster (luchadors culled); **real six-track Inhalants soundtrack** replaces synth placeholder; foes stand in the world; save-obelisks; fresh AI band cast + follower conga. |
 | 7.10–7.15 | 2026-07-14 | Honest AAA art audit + P0–P2 burn-down (designed floors, coherent kits, real HUD, water/ground/value); **fights happen in the world** (`WorldFight`, separate battle scenes retired from the trigger path); de-pixelation; arena venues composed into the world; landform direction logged. |
 | **8.0** | **2026-07-14** | **Enterprise rewrite of this document** per the PRD audit. Decisions made: judged beat must derive from the audible track via authored beat maps (§8.3/§10.3); four judgment tiers reaffirmed as spec; ultimate/Groove-spend reaffirmed v1-mandatory; cast re-specified as the band (leader-playable v1, switching v2); boss re-specified as a phased in-world fight keyed to authored song sections (§8.7); §9.3 accessibility reaffirmed with shipped-path gaps tracked; touch input brought in scope with platform tiering (§7.1/§9.2); §8.6 curriculum rewritten post-luchador; analytics/KPIs re-based on measurable events; §11 rewritten to the AI-art + recorded-soundtrack reality; §20 re-cut as of 2026-07-14. |
+| **8.5** | **2026-07-14** | **The game has an ending — plus the hand-lettered wordmark and a combat-VFX batch.** **(1) Finale:** felling the Conductor now routes Results → the new `FinaleScene` — three staged lines in the echo voice ("The hall falls silent. / Then — not silence. Rain, far above. / The chorus rests. The band plays on."), the wordmark, band + song credits over *Sunshine Sally*, and a choice of returning to the still-open world or the menu; completion stamps `campaignCompletedAt` on the save; covered by `finale.spec.ts`. **(2) Wordmark (AAA audit M1 closed):** `tools/pixelart/wordmark.py` — every glyph hand-lettered as a 7×9 bitmap (heavy 2px stems, per-letter sway, drip pixels off the baseline, deep-teal underlight), deterministic PNG; replaces the monospace headline on the menu and anchors the finale. **(3) VFX batch (§11.5):** parry burst ring, dash after-images, per-foe accent-colored death dissolve (burst + sink-and-fade) — all reduced-motion aware. 103 unit / 16 e2e / typecheck / build green; menu + finale screenshot-verified. |
 | **8.4** | **2026-07-14** | **The landform pass (v7.15 direction realized).** New AI-generated landform kit (`tools/pixelart/landformkit.py`, pinned-camera + cleanup pipeline, retry-hardened): per region one **colossal outcrop** (sea stack, amber-lit salt cliff, plum spire cluster, weathered crag, black marble shard) and one **canopy tree** (drowned cypress, petrified crown, pennant oak, twisted dead tree, kelp willow), 10 pieces in `assets/sprites/env/<biome>/` (auto-loaded by the env glob). `OverworldScene.placeLandforms()`: deterministic low-frequency cell scatter (multi-candidate jitter; clear of markers/echoes/spawn/roadside grass rules), ~19 forms across the map. **Canopies draw ABOVE the player layer (depth 6.5) and alpha-fade to 0.35 while the player walks beneath** — footprint-sized trigger, verified programmatically + screenshot. Three off-brief generations (attic pieces drew buildings; hall willow shredded by the island filter) were re-prompted — the review-and-reroll discipline the v7.10 audit established. 103 unit / 15 e2e / typecheck / build green. |
 | **8.3** | **2026-07-14** | **P4 first pass — feel, hygiene, and the retired code is gone.** **(1) Battle SFX** (procedural first fill of §11.2's SFX pack, `SfxPlayer.ts`): hits (brighter on-beat), player hurt, parry ring, dash whoosh, ultimate boom — all from sim state transitions, volume on the SFX slider. **(2) Relics regression fixed:** post-pivot, relics were selectable/persisted but mechanically inert (`applyRelics` only ran in the retired path — the §12 "pivot regression" risk, caught in cleanup); re-targeted to the action arena (focus_loop: +2 opening Focus; counter_charm: opening guard i-frames; groove_amp: +20 banked Groove) and applied at fight start. **(3) Content hygiene:** `mid_biome_2_luchadores_*` → `pit_pack_*`, track `mid_biome_2_clave_01` → `pit_below_01` (son-clave accent *data* kept — it's a rhythm term, §3). **(4) Retired code deleted** (gate #7 permanently satisfied; §18 Q5 answered: deleted outright, git history is the archive): `BattleScene`, `ActionBattleScene`, `CombatController`, `JudgmentSystem`, `PhraseTiming`, `MeterSequence`, `Forecast`, `BeatmapSonifier`, their 65 unit tests and 7 legacy e2e cases; scene stack is 8 scenes, all shipped. Suite now 103 unit / 15 e2e — every remaining test covers the product. |
 | **8.2** | **2026-07-14** | **Roadmaps P2 + P3 shipped — combat completion & accessibility parity — plus mobile-boot hardening.** **P2:** the four §8.3 judgment tiers are live in the shipped fight (graded windows vs the playing song's grid, tier popups in the HUD, per-tier analytics; multipliers/Groove/i-frames/parry windows all tier-scaled in the sim); the **ultimate** (§8.5) spends the full Groove meter (player-centred burst, armored startup, screen shake, `ultimate_used`); the **in-world Conductor fight is phased** (§8.7): HP thresholds advance movements, playback jumps to the bound beat-aligned *Quotience* section (28.19s / 74.30s, segmentation-derived + grid-snapped), enemy aggression escalates, phase markers on the boss bar — covered by a new `boss-phases-world.spec.ts` on the product path; **Sightread** (§8.4) ships as a settings-toggled forecast lane (upcoming grid beats + telegraphed strikes vs a now-line). **P3 (§9.3):** practice mode floors HP at 1 in the sim (no fail state), in-fight captions for musically meaningful events (telegraph direction, phase shifts, groove full, ultimate), and **all six combat bindings are remappable** (new two-page settings with an Audio & Controls page). **Mobile:** owner report "doesn't start on mobile" → gate hardened (DOM-level tap fallback, `Tone.start()` race/try-catch), production fatal-error overlay (black screens become readable reports), `es2019/safari13` build target for older WebKit, an ULT touch button, and a Pixel-5-emulation boot e2e. 168 unit tests, 22 e2e cases, typecheck/build green; fight visuals screenshot-verified. |
@@ -562,7 +563,8 @@ phases — re-targeted at §8.7's section-based phases when built).
 | SaveScene | shipped | Slot create/load/delete |
 | CalibrationScene | shipped | AV sync test + offset save (keyboard and pointer) |
 | OverworldScene (+ `overworld/WorldFight.ts`, `env/ArenaComposer.ts`) | shipped — **the product path** | The five-region world: movement, foes standing in-world, venues, obelisks, echoes, and the in-world fight controller |
-| ResultsScene | shipped | Rewards, relic choice, unlocks |
+| ResultsScene | shipped | Rewards, relic choice, unlocks; routes the final boss's victory into the finale |
+| FinaleScene | shipped (v8.5) | The ending: staged closing lines, wordmark, credits; the world stays open after |
 | SettingsOverlay | shipped | Always-available two-page settings modal |
 
 *(v8.3: the retired `BattleScene`/`ActionBattleScene` and their orphaned combat
@@ -904,8 +906,8 @@ shipped product path only** — a feature that exists solely in a retired scene 
 here, not a checkmark (the v8.0 rule; see the audit for why). Where this section and
 §1–§19 disagree about reality, this section wins; §1–§19 win about requirements.
 
-Verified this cut (v8.3): `npm test` — **103/103 unit tests** (14 files); **15 e2e
-test cases in 8 Playwright spec files** (Chromium gate, incl. `beat-truth.spec.ts`
+Verified this cut (v8.5): `npm test` — **103/103 unit tests** (14 files); **16 e2e
+test cases in 9 Playwright spec files** (Chromium gate, incl. `beat-truth.spec.ts`
 (gate 1a), `boss-phases-world.spec.ts` (gate 3, product path), and
 `mobile-boot.spec.ts`); typecheck and production build green. *(Counts dropped from
 v8.2's 168/22 because the retired turn-based path and its tests were deleted — every
@@ -950,10 +952,11 @@ remaining test covers shipped code, which is the honest number.)*
    (`mobile-boot.spec.ts`) and the boot path hardened (v8.2), but the owner-reported
    iOS failure needs a real-device check against the next deploy — the new fatal-error
    overlay will make any remaining crash readable.
-3. **Asset manifest depth (§11.5):** animation-state sets, VFX library, real recorded
-   SFX (v8.3's procedural `SfxPlayer` fills the slots as placeholder), wordmark
-   (P4; landforms shipped v8.4 — elevation shading/terracing is the remaining
-   terrain polish).
+3. **Asset manifest depth (§11.5):** character animation-state sets and real recorded
+   SFX remain (procedural `SfxPlayer` fills the slots); wordmark shipped v8.5,
+   landforms v8.4, core combat VFX (parry ring, dash ghosts, death dissolve,
+   sparks, arcs, telegraphs) v6.2–v8.5 — elevation shading/terracing is the
+   remaining terrain polish.
 4. **QA matrix on real browsers/devices (§16.1)** and the Firefox e2e root-cause
    (excluded from the gate since v4.1) (P5).
 5. **Legacy ability/role content** (`src/data/content/abilities|heroes`) remains as

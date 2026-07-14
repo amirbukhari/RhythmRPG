@@ -35,6 +35,10 @@ class GameContextImpl {
    */
   returnToNodeId: string | null = null;
 
+  /** Set by WorldFight when the FINAL boss falls; ResultsScene's Continue
+   * routes through FinaleScene exactly once, then clears it. */
+  campaignJustCompleted = false;
+
   async persistActiveProfile(): Promise<void> {
     if (!this.activeProfile) throw new Error("No active save profile to persist.");
     await this.saveManager.save(this.activeProfile);

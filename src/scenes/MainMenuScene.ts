@@ -29,28 +29,10 @@ export class MainMenuScene extends Phaser.Scene {
       addBackdrop(this, 0.55);
     }
 
-    this.add
-      .text(BASE_WIDTH / 2, 34, "THE DROWNED", {
-        fontFamily: "monospace",
-        fontSize: "22px",
-        color: "#f4efe2",
-        fontStyle: "bold",
-        stroke: "#4b2a57",
-        strokeThickness: 6,
-      })
-      .setOrigin(0.5)
-      .setShadow(0, 2, "#05060a", 4, true, true);
-    this.add
-      .text(BASE_WIDTH / 2, 58, "CHORUS", {
-        fontFamily: "monospace",
-        fontSize: "22px",
-        color: "#49c6bd",
-        fontStyle: "bold",
-        stroke: "#153a52",
-        strokeThickness: 6,
-      })
-      .setOrigin(0.5)
-      .setShadow(0, 2, "#05060a", 4, true, true);
+    // The hand-lettered wordmark (tools/pixelart/wordmark.py) -- the AAA
+    // audit's M1: a monospace headline isn't a logo. Drawn at 2x pixels in
+    // the asset; 0.5 scale lands it back on the 320x180 logical grid.
+    this.add.image(BASE_WIDTH / 2, 46, "wordmark").setScale(0.5);
     this.add
       .text(BASE_WIDTH / 2, 78, "· a rhythm of rust and tide ·", {
         fontFamily: "monospace",
