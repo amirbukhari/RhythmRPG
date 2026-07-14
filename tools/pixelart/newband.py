@@ -29,7 +29,7 @@ from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).parent))
 from generate_ai import SPRITE_PREFIX, gen_pollinations  # noqa: E402
-from import_asset import flood_key, pixelate  # noqa: E402
+from import_asset import flood_key, pixelate, smooth_downscale  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "assets" / "sprites" / "band"
@@ -223,7 +223,7 @@ def build(member: str, subject: str, seed: int) -> None:
     ar = c.width / c.height
     lh = 66
     lw = max(16, min(48, round(lh * ar)))
-    fig = pixelate(c, lw, lh, dither=False, colors=56)
+    fig = smooth_downscale(c, lw, lh)
     base = fit_to_frame(fig)
 
     outdir = OUT / member

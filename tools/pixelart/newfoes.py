@@ -22,7 +22,7 @@ from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).parent))
 from generate_ai import SPRITE_PREFIX, gen_pollinations  # noqa: E402
-from import_asset import flood_key, pixelate  # noqa: E402
+from import_asset import flood_key, pixelate, smooth_downscale  # noqa: E402
 from newband import autocrop, keep_main_island, scrub_mist, fit_to_frame, breathe, pack  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -61,7 +61,7 @@ def build(foe: str, subject: str, seed: int) -> None:
     ar = cut.width / cut.height
     lh = 66
     lw = max(16, min(48, round(lh * ar)))
-    fig = pixelate(cut, lw, lh, dither=False, colors=56)
+    fig = smooth_downscale(cut, lw, lh)
     base = fit_to_frame(fig)
     OUT.mkdir(parents=True, exist_ok=True)
     pack([base, breathe(base)]).save(OUT / f"{foe}.png")
