@@ -92,7 +92,7 @@ export class BootScene extends Phaser.Scene {
     // one colossal set-piece landmark per region (30x40 frames).
     this.load.image("fx_haze", hazeUrl);
     this.load.image("fx_godray", godrayUrl);
-    this.load.spritesheet("ow_landmarks", landmarksUrl, { frameWidth: 30, frameHeight: 40 });
+    this.load.spritesheet("ow_landmarks", landmarksUrl, { frameWidth: 64, frameHeight: 80 });
     for (const [role, url] of Object.entries(HERO_BATTLE_URLS)) {
       this.load.spritesheet(`hero_${role}`, url, { frameWidth: 20, frameHeight: 24 });
     }
