@@ -111,6 +111,12 @@ export class ActionBattleScene extends Phaser.Scene {
     // the movement's own arena (PRD §11.1.1) + its beat-pulsing story light
     const arenaDef = (this.nodeId && NODE_ARENA[this.nodeId]) || DEFAULT_ARENA;
     this.add.image(BASE_WIDTH / 2, BASE_HEIGHT / 2, arenaDef.key).setDepth(-10);
+    // Dark scrim so the busy 8-bit backdrop recedes and the combatants read
+    // (PRD §11.1.1 fight-readability). A vertical fade -- darker toward the
+    // floor where the fight happens, lighter up top to keep the set piece.
+    const scrim = this.add.graphics().setDepth(-9.5);
+    scrim.fillStyle(0x05060a, 0.34).fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
+    scrim.fillStyle(0x05060a, 0.22).fillRect(0, BASE_HEIGHT * 0.5, BASE_WIDTH, BASE_HEIGHT * 0.5);
     this.storyLight = this.add
       .image(arenaDef.light.x, arenaDef.light.y, "glow")
       .setBlendMode(Phaser.BlendModes.ADD)

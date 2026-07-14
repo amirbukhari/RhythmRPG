@@ -53,6 +53,15 @@ PALETTE_HINT = (
     "#a8431c #f0a648 #f4d27a #c22f34 #7d1b20 #49c6bd #1f6f77 #153a52 #79b855 #426e33 "
     "#8a52a0 #4b2a57 #b98fca #dcae86 #ad7552 #97a2ae #586470. "
 )
+# For cutout sprites the world/scene prefix makes the model paint a SCENE (it
+# even adds clocks). A minimal prefix + hard isolation gives a clean subject on
+# a plain white backdrop that flood_key() removes cleanly.
+SPRITE_PREFIX = (
+    "simple 8-bit pixel art game sprite, single subject, bold thick black outline, "
+    "flat limited gothic palette, dark moody colours, centered, full body, "
+    "ISOLATED on a plain solid WHITE background, no scenery, no environment, "
+    "no background details, no ground, no shadow. Subject: "
+)
 
 CA_BUNDLE = os.environ.get("SSL_CERT_FILE") or "/root/.ccr/ca-bundle.crt"
 
@@ -153,7 +162,9 @@ KEY_ENV = {"pollinations": None, "openai": "OPENAI_API_KEY", "stability": "STABI
 GEN_SIZE = {"background": (1280, 720), "boss": (768, 1024), "sprite": (768, 768), "tile": (1024, 1024)}
 
 
-def full_prompt(p: str) -> str:
+def full_prompt(p: str, kind: str = "sprite") -> str:
+    if kind in ("sprite", "boss"):
+        return SPRITE_PREFIX + p
     return STYLE_PREFIX + PALETTE_HINT + p
 
 
@@ -168,7 +179,7 @@ def one(provider: str, prompt: str, out: str, frame: str, *, frames: int = 1, gr
     fw, fh = _parse_size(frame)
     cols, rows = (_parse_size(grid) if grid else (frames, 1))
     gw, gh = GEN_SIZE.get(kind, (768, 768))
-    fp = full_prompt(prompt)
+    fp = full_prompt(prompt, kind)
     if dry_run:
         print(f"[dry-run] {provider}@{gw}x{gh} -> import -> {out} "
               f"({fw}x{fh}, {cols*rows} frame(s), {'opaque' if opaque else 'keyed'}, "
@@ -183,11 +194,17 @@ def one(provider: str, prompt: str, out: str, frame: str, *, frames: int = 1, gr
     raw_path = Path(keep_raw) if keep_raw else Path("/tmp") / (Path(out).stem + "_raw.png")
     raw_path.parent.mkdir(parents=True, exist_ok=True)
     raw_path.write_bytes(raw)
+    from PIL import Image
     if kind == "background":
         # backgrounds must read as real 8-bit pixel art, not a downscaled
         # painting: collapse to a chunky logical res + master palette + dither.
-        from PIL import Image
         img = I.pixelate(Image.open(raw_path), fw // 2, fh // 2, dither=True, upscale_w=fw, upscale_h=fh)
+    elif kind in ("sprite", "boss"):
+        # cutout on a plain white backdrop -> flood-remove the background, then
+        # pixelate the subject to the frame size (no dither -> clean sprite).
+        keyed = I.flood_key(Image.open(raw_path), tol=80)
+        one_frame = I.pixelate(keyed, fw, fh, dither=False)
+        img = one_frame if (cols * rows) <= 1 else I.pack_strip([one_frame] * (cols * rows), fw, fh)
     else:
         img = I.import_asset(raw_path, fw, fh, cols=cols, rows=rows,
                              do_quantize=quantize, do_key=not opaque, key_color=key)

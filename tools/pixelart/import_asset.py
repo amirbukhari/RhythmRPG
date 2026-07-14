@@ -75,9 +75,9 @@ def quantize(img: Image.Image, palette: list[tuple[int, int, int]] | None = None
 
 
 def key_background(img: Image.Image, tol: int = 28, key: str | None = None) -> Image.Image:
-    """Make the backdrop transparent. If `key` (e.g. '#ff00ff') is given, key
-    that colour; otherwise auto-detect the dominant corner colour. A pixel
-    within `tol` (per-channel-ish, squared) of the key becomes transparent."""
+    """Global colour key: make every pixel within `tol` of the key (or the
+    dominant corner colour) transparent. Best when the backdrop is a known flat
+    chroma; for AI images that embed the subject, prefer flood_key()."""
     img = img.convert("RGBA")
     px = img.load()
     w, h = img.size
@@ -93,11 +93,45 @@ def key_background(img: Image.Image, tol: int = 28, key: str | None = None) -> I
     for y in range(h):
         for x in range(w):
             r, g, b, a = px[x, y]
-            if a == 0:
-                continue
-            d = (r - kc[0]) ** 2 + (g - kc[1]) ** 2 + (b - kc[2]) ** 2
-            if d <= tol2:
+            if a and (r - kc[0]) ** 2 + (g - kc[1]) ** 2 + (b - kc[2]) ** 2 <= tol2:
                 px[x, y] = (0, 0, 0, 0)
+    return img
+
+
+def flood_key(img: Image.Image, tol: int = 60) -> Image.Image:
+    """Remove the background of a centred subject by flood-filling inward from
+    every border pixel: only pixels *connected to the edge* and within `tol` of
+    the local border colour go transparent. Interior colours survive even if
+    they match the backdrop (so white highlights inside a subject on a white
+    background are kept). Robust for AI-generated 'sprite on plain background'
+    images where an exact chroma key fails."""
+    img = img.convert("RGBA")
+    w, h = img.size
+    px = img.load()
+    # seed colour = mean of the four corners
+    cs = [px[0, 0], px[w - 1, 0], px[0, h - 1], px[w - 1, h - 1]]
+    kc = tuple(sum(c[i] for c in cs) // 4 for i in range(3))
+    tol2 = tol * tol * 3
+    seen = bytearray(w * h)
+    stack: list[tuple[int, int]] = []
+    for x in range(w):
+        stack.append((x, 0)); stack.append((x, h - 1))
+    for y in range(h):
+        stack.append((0, y)); stack.append((w - 1, y))
+    while stack:
+        x, y = stack.pop()
+        if x < 0 or y < 0 or x >= w or y >= h:
+            continue
+        i = y * w + x
+        if seen[i]:
+            continue
+        seen[i] = 1
+        r, g, b, _a = px[x, y]
+        if (r - kc[0]) ** 2 + (g - kc[1]) ** 2 + (b - kc[2]) ** 2 > tol2:
+            continue  # hit the subject; stop
+        px[x, y] = (0, 0, 0, 0)
+        stack.append((x + 1, y)); stack.append((x - 1, y))
+        stack.append((x, y + 1)); stack.append((x, y - 1))
     return img
 
 
@@ -114,7 +148,8 @@ def _palette_image(palette: list[tuple[int, int, int]]) -> Image.Image:
 
 def pixelate(img: Image.Image, logical_w: int, logical_h: int, *,
              palette: list[tuple[int, int, int]] | None = None, dither: bool = True,
-             upscale_w: int | None = None, upscale_h: int | None = None) -> Image.Image:
+             upscale_w: int | None = None, upscale_h: int | None = None,
+             darken: float = 0.0) -> Image.Image:
     """Turn a detailed/painterly image into real 8-bit pixel art: collapse to a
     chunky logical resolution (kills painterly micro-detail), snap to a limited
     palette with optional Floyd–Steinberg dithering, then nearest-upscale so the
@@ -122,6 +157,8 @@ def pixelate(img: Image.Image, logical_w: int, logical_h: int, *,
     img = img.convert("RGBA")
     alpha = img.getchannel("A").resize((logical_w, logical_h), Image.BILINEAR)
     small = img.convert("RGB").resize((logical_w, logical_h), Image.BILINEAR)
+    if darken > 0:
+        small = small.point(lambda v: int(v * (1.0 - darken)))
     palimg = _palette_image(palette or MASTER_RGB)
     q = small.quantize(palette=palimg, dither=Image.FLOYDSTEINBERG if dither else Image.NONE).convert("RGBA")
     q.putalpha(alpha.point(lambda a: 255 if a >= 128 else 0))
