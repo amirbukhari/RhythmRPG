@@ -969,6 +969,25 @@ remaining test covers shipped code, which is the honest number.)*
 Sightread v1, analytics parity, battle SFX first fill, the relics regression,
 content-ID hygiene, and retired-code deletion.)*
 
+### 20.2a Release-gate status (§16.2, verified this cut)
+
+| Gate | Status |
+|---|---|
+| 1. Audio-authoritative timing | ✅ Judgment never touches UI timers |
+| 1a. Beat truth — judged beat = audible track | ✅ Shipped v8.1; held by `beat-truth.spec.ts` on every push |
+| 2. Gesture-driven audio gate, no autoplay | ✅ Hardened v8.2 (DOM fallbacks, timeout-guarded resume) |
+| 3. Boss phase transitions on the audible track | ✅ Shipped v8.2; held by `boss-phases-world.spec.ts` |
+| 4. Crisp pixel scaling | ✅ Integer-scaled 320×180 |
+| 5. Every §9.3 feature on the shipped path | ✅ All rows shipped as of v8.2 (see §9.3 table) |
+| 6. IndexedDB persistence across restarts | ✅ Held by boot-flow + obelisk specs |
+| 7. No retired scene reachable | ✅ Satisfied structurally (deleted, v8.3) |
+
+All seven gates hold and the verifiable ones are enforced by CI on every push. The
+remaining §20.2 items are **owner-gated** (beat-map listening pass, real-device iOS
+check, real recorded SFX, real-browser QA matrix, Firefox root-cause environment) or
+**art-depth polish** (authored per-frame enemy states, elevation shading) — none block
+the gates above.
+
 ### 20.3 Next increment
 
 P1–P3 shipped; P4's hygiene/feel pass shipped (v8.3). Remaining P4 is the **§11.5
