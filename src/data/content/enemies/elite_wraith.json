@@ -1,7 +1,7 @@
 {
   "enemyId": "elite_wraith",
   "name": "Pearl-Tooth Wraith",
-  "maxHp": 140,
+  "maxHp": 150,
   "intents": [
     {
       "telegraph": "wraith_offbeat_slash",
@@ -20,7 +20,7 @@
     }
   ],
   "action": {
-    "aggression": 1.2,
+    "aggression": 1.1,
     "damage": 11
   }
 }

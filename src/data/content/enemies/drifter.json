@@ -1,7 +1,7 @@
 {
   "enemyId": "drifter",
   "name": "Saltmine Drifter",
-  "maxHp": 70,
+  "maxHp": 95,
   "intents": [
     {
       "telegraph": "drifter_sway",

@@ -1,7 +1,7 @@
 {
   "enemyId": "the_conductor",
   "name": "The Conductor",
-  "maxHp": 260,
+  "maxHp": 620,
   "intents": [
     {
       "telegraph": "baton_sweep",
@@ -29,6 +29,6 @@
   ],
   "action": {
     "aggression": 1.1,
-    "damage": 13
+    "damage": 15
   }
 }
