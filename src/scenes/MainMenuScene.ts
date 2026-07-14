@@ -2,6 +2,8 @@ import Phaser from "phaser";
 import { BASE_WIDTH, BASE_HEIGHT } from "../config/GameConfig";
 import { TextMenu } from "../ui/components/TextMenu";
 import { addBackdrop } from "../ui/Backdrop";
+import { music } from "../systems/audio/MusicEngine";
+import { GameContext } from "../state/GameContext";
 
 /** Start, continue, settings. See PRD §10.6. */
 export class MainMenuScene extends Phaser.Scene {
@@ -10,6 +12,12 @@ export class MainMenuScene extends Phaser.Scene {
   }
 
   create(): void {
+    // Start the procedural soundtrack (PRD §11.2). The AudioContext was
+    // unlocked in AudioGateScene, so it can play from here on.
+    music.setVolume(GameContext.activeProfile?.settings.volumeMusic ?? 0.7);
+    music.setMode("menu");
+    music.start();
+
     // AI-generated title key-art (the band on the drowned pier); fall back to
     // the shared backdrop if it somehow isn't loaded. A soft top scrim keeps
     // the wordmark legible over the art.

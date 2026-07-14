@@ -1,11 +1,16 @@
 {
   "encounterId": "mid_biome_2_luchadores_01",
   "trackId": "mid_biome_2_clave_01",
-  "enemyWave": ["luchador_grunt", "luchador_mask"],
+  "enemyWave": [
+    "elite_wraith"
+  ],
   "accentProfile": "son_clave_2_3",
   "victoryRewards": {
     "xp": 150,
     "currency": 60,
-    "relicChoices": ["counter_charm", "focus_loop"]
+    "relicChoices": [
+      "counter_charm",
+      "focus_loop"
+    ]
   }
 }

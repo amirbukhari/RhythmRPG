@@ -50,8 +50,6 @@ import mageBattleUrl from "../../assets/sprites/heroes/mage/side.png";
 import healerBattleUrl from "../../assets/sprites/heroes/healer/side.png";
 import slimeUrl from "../../assets/sprites/enemies/slime.png";
 import drifterUrl from "../../assets/sprites/enemies/drifter.png";
-import luchadorGruntUrl from "../../assets/sprites/enemies/luchador_grunt.png";
-import luchadorMaskUrl from "../../assets/sprites/enemies/luchador_mask.png";
 import eliteWraithUrl from "../../assets/sprites/enemies/elite_wraith.png";
 import conductorUrl from "../../assets/sprites/enemies/the_conductor.png";
 import conductorColossalUrl from "../../assets/sprites/enemies/conductor_colossal.png";
@@ -69,8 +67,6 @@ const HERO_BATTLE_URLS: Record<string, string> = {
 const ENEMY_URLS: Record<string, string> = {
   slime: slimeUrl,
   drifter: drifterUrl,
-  luchador_grunt: luchadorGruntUrl,
-  luchador_mask: luchadorMaskUrl,
   elite_wraith: eliteWraithUrl,
   the_conductor: conductorUrl,
 };
