@@ -27,13 +27,21 @@ test("audit: capture every screen", async ({ page }) => {
   await page.waitForTimeout(1200);
   await page.keyboard.up("d");
   await page.screenshot({ path: "test-results/audit-6-overworld-walk.png" });
-  // fight
+  // fight -- IN the world (v7.13): no separate battle scene loads
+  const waitForFight = () =>
+    page.waitForFunction(() => {
+      const scene = window.__meterfallDebug.game.scene.getScene("OverworldScene") as unknown as {
+        isFightActive(): boolean;
+        getFightArena(): unknown;
+      };
+      return scene.isFightActive() && scene.getFightArena() !== null;
+    });
   await page.evaluate(() => {
     const scene = window.__meterfallDebug.game.scene.getScene("OverworldScene") as unknown as { debugTeleportToNode(id: string): void };
     scene.debugTeleportToNode("opening_1");
   });
-  await waitForScene(page, "ActionBattleScene");
-  await page.waitForTimeout(2200);
+  await waitForFight();
+  await page.waitForTimeout(1600);
   await page.screenshot({ path: "test-results/audit-7-battle.png" });
   // attack a few times on-beat-ish
   for (let i = 0; i < 6; i++) {
@@ -41,20 +49,22 @@ test("audit: capture every screen", async ({ page }) => {
     await page.waitForTimeout(260);
   }
   await page.screenshot({ path: "test-results/audit-8-battle-attack.png" });
-  // boss arena
+  // boss fight -- restart the overworld with the frontier at the boss
   await page.evaluate(() => {
     const dbg = window.__meterfallDebug;
     dbg.GameContext.activeProfile!.campaignProgress.clearedNodeIds = ["opening_1", "mid_1", "mid_2", "mid_3"];
     dbg.GameContext.activeProfile!.campaignProgress.currentNodeId = "boss_1";
-    dbg.game.scene.getScene("ActionBattleScene").scene.start("OverworldScene");
+    dbg.GameContext.pendingEncounterId = null;
+    dbg.GameContext.pendingNodeId = null;
+    dbg.game.scene.getScene("OverworldScene").scene.restart();
   });
   await waitForScene(page, "OverworldScene");
-  await page.waitForTimeout(400);
+  await page.waitForTimeout(600);
   await page.evaluate(() => {
     const scene = window.__meterfallDebug.game.scene.getScene("OverworldScene") as unknown as { debugTeleportToNode(id: string): void };
     scene.debugTeleportToNode("boss_1");
   });
-  await waitForScene(page, "ActionBattleScene");
-  await page.waitForTimeout(2200);
+  await waitForFight();
+  await page.waitForTimeout(1600);
   await page.screenshot({ path: "test-results/audit-9-boss.png" });
 });
