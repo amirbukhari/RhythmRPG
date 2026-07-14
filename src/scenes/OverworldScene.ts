@@ -126,6 +126,13 @@ export class OverworldScene extends Phaser.Scene {
     const map = this.make.tilemap({ key: "overworld" });
     const tileset = map.addTilesetImage("overworld_tileset", "overworld_tiles")!;
     const ground = map.createLayer("ground", tileset, 0, 0)!;
+    // Design-audit-2 G1-G4: the ground is PAINTED, not stamped. The tile
+    // layer stays authoritative for collision/terrain queries but its render
+    // is replaced by the offline-painted plate (tools/overworld/paint_ground.py,
+    // 2x texel density; rock as mesas, roads as ribbons, water as bodies) so
+    // the ground lives in the same register as the AI-painted sprites.
+    ground.setVisible(false);
+    this.add.image(0, 0, "ground_plate").setOrigin(0).setScale(0.5).setDepth(0);
 
     this.walkable = [];
     for (let row = 0; row < map.height; row++) {
@@ -612,7 +619,6 @@ export class OverworldScene extends Phaser.Scene {
     // so the local kind is always (gid-1) % 4 regardless of which of the
     // five regions a tile belongs to (tools/overworld/generate_overworld_map.py).
     const localKind = (gid: number) => (gid - 1) % 4;
-    const isWaterGid = (gid: number | undefined) => gid !== undefined && localKind(gid) === 2;
     const isGrassGid = (gid: number | undefined) => gid !== undefined && localKind(gid) === 0;
 
     const keyOf = (c: number, r: number) => `${c},${r}`;
@@ -626,42 +632,17 @@ export class OverworldScene extends Phaser.Scene {
     }
 
     const shore = this.add.graphics().setDepth(1);
-    const FOAM = 0x9fe8e0;
-    const BANK = 0x14384f;
-    const isLand = (c: number, r: number) => {
-      const n = ground.getTileAt(c, r)?.index;
-      return n !== undefined && !isWaterGid(n);
-    };
 
+    // Shorelines, banks, and rock elevation are BAKED into the painted
+    // ground plate (paint_ground.py) -- runtime decoration is now only the
+    // prop scatter, with per-prop jitter so nothing sits on a perfect grid
+    // (design-audit-2 G5).
     for (let row = 0; row < map.height; row++) {
       for (let col = 0; col < map.width; col++) {
         const idx = ground.getTileAt(col, row)?.index;
         const px = col * TILE_SIZE;
         const py = row * TILE_SIZE;
-        if (isWaterGid(idx)) {
-          if (isLand(col, row - 1)) shore.fillStyle(FOAM, 0.7).fillRect(px, py, TILE_SIZE, 1).fillStyle(BANK, 0.5).fillRect(px, py + 1, TILE_SIZE, 1);
-          if (isLand(col, row + 1)) shore.fillStyle(FOAM, 0.55).fillRect(px, py + TILE_SIZE - 1, TILE_SIZE, 1);
-          if (isLand(col - 1, row)) shore.fillStyle(FOAM, 0.5).fillRect(px, py, 1, TILE_SIZE);
-          if (isLand(col + 1, row)) shore.fillStyle(FOAM, 0.5).fillRect(px + TILE_SIZE - 1, py, 1, TILE_SIZE);
-        } else if (idx !== undefined && localKind(idx) === 3) {
-          // Elevation read (v8.8, the v7.15 "hills" clause): rock is HIGH
-          // ground. A lit crown where it meets open ground above, a hard
-          // terrace lip plus a cast shadow where it drops away below, and
-          // darkened flanks -- the flat tilemap gains a third dimension for
-          // the cost of a few rects.
-          const rock = (g: number | undefined) => g !== undefined && localKind(g) === 3;
-          const above = ground.getTileAt(col, row - 1)?.index;
-          const below = ground.getTileAt(col, row + 1)?.index;
-          const left = ground.getTileAt(col - 1, row)?.index;
-          const right = ground.getTileAt(col + 1, row)?.index;
-          if (!rock(above)) shore.fillStyle(0xd8ceb6, 0.16).fillRect(px, py, TILE_SIZE, 1);
-          if (!rock(below)) {
-            shore.fillStyle(0x05060a, 0.5).fillRect(px, py + TILE_SIZE - 2, TILE_SIZE, 2);
-            shore.fillStyle(0x05060a, 0.26).fillRect(px, py + TILE_SIZE, TILE_SIZE, 3);
-          }
-          if (!rock(left)) shore.fillStyle(0x05060a, 0.24).fillRect(px, py, 1, TILE_SIZE);
-          if (!rock(right)) shore.fillStyle(0x05060a, 0.24).fillRect(px + TILE_SIZE - 1, py, 1, TILE_SIZE);
-        } else if (isGrassGid(idx) && !blocked.has(keyOf(col, row))) {
+        if (isGrassGid(idx) && !blocked.has(keyOf(col, row))) {
           const h = ((col * 73856093) ^ (row * 19349663)) >>> 0;
           // CLUSTERED scatter (AAA audit O3): real places group -- graveyards,
           // reed banks, camps -- with clearings between. A low-frequency cell
@@ -670,8 +651,8 @@ export class OverworldScene extends Phaser.Scene {
           const cellH = ((((col >> 3) + 7) * 2654435761) ^ (((row >> 3) + 3) * 40503)) >>> 0;
           const chance = cellH % 100 < 28 ? 32 : 2;
           if (h % 100 < chance) {
-            const cx = px + TILE_SIZE / 2;
-            const cy = py + TILE_SIZE + 2;
+            const cx = px + TILE_SIZE / 2 + (((h >> 5) % 11) - 5);
+            const cy = py + TILE_SIZE + 2 + (((h >> 9) % 7) - 3);
             shore.fillStyle(0x05060a, 0.28).fillEllipse(cx, cy - 1, 12, 4); // contact shadow
             // scenery sits a value-step darker than characters (audit O4)
             this.add.image(cx, cy, "ow_props", h % DECORATIVE_PROP_COUNT).setOrigin(0.5, 1).setScale(0.72).setDepth(2).setTint(0xb2b9c6);
@@ -755,23 +736,9 @@ export class OverworldScene extends Phaser.Scene {
    * light variation far larger than the 16px grid.
    */
   private softenSeamsAndDapple(map: Phaser.Tilemaps.Tilemap): void {
-    const REGION_W = 26; // tiles (tools/overworld/generate_overworld_map.py)
-    // accent per region, matching tools/pixelart/tiles.py REGION_ACCENT order
-    const accents = [0x49c6bd, 0xf0a648, 0x8a52a0, 0xa8431c, 0x4b2a57];
-    const g = this.add.graphics().setDepth(1);
-    const bandTiles = 4;
-    for (let seam = 1; seam < accents.length; seam++) {
-      const seamX = seam * REGION_W * TILE_SIZE;
-      for (let t = -bandTiles; t < bandTiles; t++) {
-        const x = seamX + t * TILE_SIZE;
-        // fade toward the seam from each side, tinting with that side's accent
-        const side = t < 0 ? seam - 1 : seam;
-        const dist = (bandTiles - Math.abs(t)) / bandTiles; // 0 at edge -> 1 at seam
-        g.fillStyle(accents[side], 0.16 * dist);
-        g.fillRect(x, 0, TILE_SIZE, map.heightInPixels);
-      }
-    }
-
+    // Region cross-fade is BAKED into the painted ground plate now
+    // (paint_ground.py blends the region bases over a wide band); only the
+    // organic shadow dapple remains a runtime layer.
     if (!GameContext.activeProfile?.settings.photosensitivitySafeMode) {
       // world-space shadow dapple: soft dark blobs, tiled large, breaking the grid
       this.add

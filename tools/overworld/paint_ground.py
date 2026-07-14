@@ -1,0 +1,267 @@
+"""Paint the overworld ground as ONE plate (design-audit-2 G1-G4).
+
+The world mixed two registers: painterly AI sprites over a hand-stamped 16px
+tile carpet -- repeated rock blobs ("chunky blocks"), copy-paste road strips,
+panel-edged water, wallpaper grass. This tool retires tile STAMPING: it reads
+the authored tile DATA (which stays authoritative for collision/terrain) and
+paints the whole ground at 32px-per-tile density as coherent masses:
+
+  * rock clusters -> single mesa landforms: organic silhouette, lit cracked
+    top, striated south cliff face, cast shadow (the HLD cliff read);
+  * roads -> one continuous worn ribbon: distance-field edges, centerline
+    wear, hash-scattered stones -- zero repetition;
+  * water -> unified bodies: shore-distance depth ramp to near-black,
+    jittered organic shorelines with foam + dark bank, sparse swells;
+  * grass -> a multi-scale value-noise field with region-blended bases
+    (bakes the seam cross-fade) and hash-placed individual motifs.
+
+Deterministic (fixed seed). Regenerate:  python3 tools/overworld/paint_ground.py
+Output: assets/tilemaps/ground_plate.png (map_w*32 x map_h*32), drawn by
+OverworldScene at 0.5 scale in place of the (now hidden) tile layer render.
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import numpy as np
+from PIL import Image, ImageFilter
+
+ROOT = Path(__file__).resolve().parents[2]
+MAP = ROOT / "assets" / "tilemaps" / "overworld.json"
+OUT = ROOT / "assets" / "tilemaps" / "ground_plate.png"
+
+S = 32  # px per tile cell (2x the runtime 16px -> denser texels, HLD register)
+RNG = np.random.default_rng(20260714)
+
+ACCENTS = [(0x49, 0xC6, 0xBD), (0xF0, 0xA6, 0x48), (0x8A, 0x52, 0xA0), (0xA8, 0x43, 0x1C), (0x4B, 0x2A, 0x57)]
+
+
+def tint(base: tuple[int, int, int], accent: tuple[int, int, int], amt: float) -> np.ndarray:
+    return np.array([b + (a - b) * amt for b, a in zip(base, accent)], dtype=np.float32)
+
+
+def value_noise(h: int, w: int, cell: int) -> np.ndarray:
+    """Smooth [0,1] noise: white noise at coarse res, bilinear upsample."""
+    gh, gw = max(2, h // cell + 2), max(2, w // cell + 2)
+    coarse = RNG.random((gh, gw), dtype=np.float32)
+    img = Image.fromarray((coarse * 255).astype(np.uint8)).resize((w, h), Image.BILINEAR)
+    return np.asarray(img, dtype=np.float32) / 255.0
+
+
+def organic_mask(tile_mask: np.ndarray, jitter: float = 0.22, blur: int = 9) -> np.ndarray:
+    """Upscale a tile-res boolean mask to pixels with soft, noise-jittered,
+    rounded edges -- the anti-'razor grid edge' operator."""
+    h, w = tile_mask.shape
+    img = Image.fromarray((tile_mask * 255).astype(np.uint8)).resize((w * S, h * S), Image.NEAREST)
+    img = img.filter(ImageFilter.BoxBlur(blur))
+    field = np.asarray(img, dtype=np.float32) / 255.0
+    n = value_noise(h * S, w * S, 14)
+    return (field + (n - 0.5) * jitter) > 0.5
+
+
+def erode(mask: np.ndarray, steps: int) -> list[np.ndarray]:
+    """mask, eroded once, eroded twice ... (4-neighbour), for distance bands."""
+    out = [mask]
+    m = mask
+    for _ in range(steps):
+        m = m & np.roll(m, 1, 0) & np.roll(m, -1, 0) & np.roll(m, 1, 1) & np.roll(m, -1, 1)
+        out.append(m)
+    return out
+
+
+def distance_bands(mask: np.ndarray, steps: int, cell: int = 4) -> np.ndarray:
+    """Approximate interior distance (in px) via erosion at reduced res."""
+    h, w = mask.shape
+    small = np.asarray(Image.fromarray((mask * 255).astype(np.uint8)).resize((w // cell, h // cell), Image.NEAREST)) > 127
+    dist = np.zeros_like(small, dtype=np.float32)
+    for i, m in enumerate(erode(small, steps)):
+        dist[m] = (i + 1) * cell
+    img = Image.fromarray((dist / dist.max().clip(1) * 255).astype(np.uint8)).resize((w, h), Image.BILINEAR)
+    return np.asarray(img, dtype=np.float32) / 255.0 * dist.max()
+
+
+def main() -> None:
+    data = json.loads(MAP.read_text())
+    W, H = data["width"], data["height"]
+    gids = np.array([l for l in data["layers"] if l.get("name") == "ground"][0]["data"], dtype=np.int32).reshape(H, W)
+    kind = (gids - 1) % 4  # 0 grass 1 path 2 water 3 rock
+    region = np.clip((gids - 1) // 4, 0, 4)
+
+    PW, PH = W * S, H * S
+    # --- region weight blend (bakes the seam cross-fade) -------------------
+    region_px = np.asarray(Image.fromarray(region.astype(np.uint8)).resize((PW, PH), Image.NEAREST))
+    weights = []
+    for r in range(5):
+        m = Image.fromarray(((region_px == r) * 255).astype(np.uint8)).filter(ImageFilter.BoxBlur(48))
+        weights.append(np.asarray(m, dtype=np.float32) / 255.0)
+    wsum = np.stack(weights).sum(0).clip(1e-3)
+
+    def blended(bases: list[np.ndarray]) -> np.ndarray:
+        acc = np.zeros((PH, PW, 3), dtype=np.float32)
+        for r in range(5):
+            acc += weights[r][..., None] * bases[r][None, None, :]
+        return acc / wsum[..., None]
+
+    # --- grass field --------------------------------------------------------
+    grass_bases = [tint((0x20, 0x2B, 0x1D), a, 0.22) for a in ACCENTS]
+    img = blended(grass_bases)
+    n_low = value_noise(PH, PW, 160)
+    n_mid = value_noise(PH, PW, 36)
+    n_hi = value_noise(PH, PW, 7)
+    img *= (1 + (n_low - 0.5) * 0.30 + (n_mid - 0.5) * 0.18 + (n_hi - 0.5) * 0.10)[..., None]
+    img[n_low < 0.36] *= 0.86  # pooled dark patches
+    grain = RNG.random((PH, PW), dtype=np.float32)
+    img *= (1 + (grain - 0.5) * 0.12)[..., None]  # per-pixel grain (HLD crunch)
+
+    canvas = img  # float32 HxWx3
+
+    def stamp_tufts() -> None:
+        """Individually hash-placed grass marks -- variation, not wallpaper."""
+        ys, xs = np.where(kind == 0)
+        for ty, tx in zip(ys, xs):
+            h = (tx * 73856093 ^ ty * 19349663) & 0xFFFFFFFF
+            if h % 100 >= 55:
+                continue
+            cx, cy = tx * S + (h >> 8) % S, ty * S + (h >> 16) % S
+            dark = canvas[cy % PH, cx % PW] * 0.72
+            lite = canvas[cy % PH, cx % PW] * 1.35
+            for k in range((h >> 4) % 3 + 1):
+                px = (cx + ((h >> (k * 5)) % 9) - 4) % PW
+                py = (cy + ((h >> (k * 3)) % 5) - 2) % PH
+                ln = 3 + (h >> k) % 4
+                for d in range(ln):
+                    yy = (py - d) % PH
+                    canvas[yy, px] = dark if d < ln - 1 else lite
+            if h % 977 == 0:  # rare accent fleck
+                canvas[cy % PH, cx % PW] = np.array(ACCENTS[region[ty, tx]], dtype=np.float32) * 0.8
+
+    stamp_tufts()
+
+    # --- path ribbon ---------------------------------------------------------
+    path_mask = organic_mask(kind == 1, jitter=0.16, blur=7)
+    d_path = distance_bands(path_mask, 6)
+    path_bases = [tint((0x5E, 0x57, 0x46), a, 0.16) for a in ACCENTS]
+    path_col = blended(path_bases) * (1 + (n_mid - 0.5) * 0.12)[..., None]
+    edge = path_mask & (d_path < 3)
+    wear = path_mask & (d_path > 7)
+    canvas[path_mask] = path_col[path_mask]
+    canvas[edge] *= 0.68
+    canvas[wear] *= 1.10
+    # hash-scattered stones (individual, lit top-left)
+    ys, xs = np.where(kind == 1)
+    for ty, tx in zip(ys, xs):
+        h = (tx * 2654435761 ^ ty * 40503) & 0xFFFFFFFF
+        if h % 100 >= 26:
+            continue
+        cx, cy = tx * S + (h >> 7) % (S - 8) + 4, ty * S + (h >> 13) % (S - 8) + 4
+        rx, ry = 2 + (h >> 3) % 3, 2 + (h >> 9) % 2
+        yy, xx = np.ogrid[-ry : ry + 1, -rx : rx + 1]
+        blob = (xx / rx) ** 2 + (yy / ry) ** 2 <= 1
+        sl = canvas[cy - ry : cy + ry + 1, cx - rx : cx + rx + 1]
+        if sl.shape[:2] != blob.shape:
+            continue
+        base = path_col[cy, cx] * 1.12
+        sl[blob] = base
+        sl[: ry + 1][blob[: ry + 1]] = base * 1.18  # top-light
+        sl[-1:][blob[-1:]] = base * 0.62  # base shadow
+
+    # --- water bodies --------------------------------------------------------
+    water_mask = organic_mask(kind == 2, jitter=0.2, blur=11)
+    d_w = distance_bands(water_mask, 12)
+    shore_bases = [tint((0x14, 0x30, 0x42), a, 0.10) for a in ACCENTS]
+    deep = np.array((0x04, 0x0C, 0x13), dtype=np.float32)
+    t = np.clip(d_w / 26.0, 0, 1)[..., None]
+    water_col = blended(shore_bases) * (1 - t) + deep[None, None, :] * t
+    water_col *= (1 + (n_mid - 0.5) * 0.08)[..., None]
+    canvas[water_mask] = water_col[water_mask]
+    # sparse swell strokes (hashed, never a repeating row pattern)
+    ys, xs = np.where(kind == 2)
+    for ty, tx in zip(ys, xs):
+        h = (tx * 83492791 ^ ty * 297121507) & 0xFFFFFFFF
+        if h % 100 >= 7:
+            continue
+        cy, cx = ty * S + (h >> 6) % S, tx * S + (h >> 12) % S
+        ln = 6 + (h >> 4) % 14
+        yy = cy % PH
+        seg = slice(cx % PW, min(PW, cx % PW + ln))
+        row = canvas[yy, seg]
+        m = water_mask[yy, seg]
+        row[m] = row[m] * 1.25
+        if h % 13 == 0:
+            canvas[yy, seg][m] = np.minimum(row[m] * 1.5, 255)
+    # shoreline: foam on the water side, dark bank on the land side
+    dil = ~(erode(~water_mask, 2)[2])
+    foam_ring = water_mask & ~erode(water_mask, 2)[2]
+    bank_ring = dil & ~water_mask
+    canvas[foam_ring] = canvas[foam_ring] * 0.45 + np.array((0x8F, 0xD8, 0xD0), dtype=np.float32) * 0.55 * 0.7
+    canvas[bank_ring] *= 0.55
+
+    # --- rock mesas (G1: the chunky-block killer) ----------------------------
+    rock_tiles = kind == 3
+    labels = np.zeros_like(rock_tiles, dtype=np.int32)
+    nxt = 0
+    for ty in range(H):
+        for tx in range(W):
+            if rock_tiles[ty, tx] and labels[ty, tx] == 0:
+                nxt += 1
+                stack = [(ty, tx)]
+                while stack:
+                    y, x = stack.pop()
+                    if 0 <= y < H and 0 <= x < W and rock_tiles[y, x] and labels[y, x] == 0:
+                        labels[y, x] = nxt
+                        stack += [(y + 1, x), (y - 1, x), (y, x + 1), (y, x - 1)]
+
+    rock_top_bases = [tint((0x39, 0x40, 0x4B), a, 0.20) for a in ACCENTS]
+    rock_top = blended(rock_top_bases)
+    crack_col = 0.5
+    for comp in range(1, nxt + 1):
+        cm = organic_mask(labels == comp, jitter=0.34, blur=8)
+        if not cm.any():
+            continue
+        below_out = cm & ~np.roll(cm, -1, 0)  # south rim of the mesa
+        # cast shadow on the ground south of the mesa
+        sh = np.roll(cm, 7, 0) & ~cm
+        canvas[sh] *= 0.66
+        # cliff face: a band above the south rim, striated and dark
+        face = np.zeros_like(cm)
+        acc = below_out.copy()
+        for _ in range(13):
+            acc = np.roll(acc, -1, 0) & cm
+            face |= acc
+        top = cm & ~face
+        col = rock_top * (1 + (n_mid - 0.5) * 0.16 + (n_hi - 0.5) * 0.14)[..., None]
+        col *= (1 + (value_noise(PH, PW, 2) - 0.5) * 0.10)[..., None]
+        canvas[top] = col[top]
+        stria = (value_noise(PH, PW, 3) > 0.55) & face
+        canvas[face] = col[face] * 0.52
+        canvas[stria] = col[stria] * 0.35
+        # lit north rim + darker west/east flanks
+        rim = cm & ~np.roll(cm, 1, 0)
+        canvas[rim] = col[rim] * 1.28 + 10
+        wflank = cm & ~np.roll(cm, 1, 1)
+        eflank = cm & ~np.roll(cm, -1, 1)
+        canvas[wflank] *= 1.12
+        canvas[eflank] *= 0.7
+        # cracks on the top surface: dark random walks
+        ys, xs = np.where(top)
+        if len(ys) > 200:
+            for k in range(min(10, len(ys) // 400 + 2)):
+                i = int(RNG.integers(0, len(ys)))
+                y, x = int(ys[i]), int(xs[i])
+                for _ in range(int(RNG.integers(12, 42))):
+                    if 0 <= y < PH and 0 <= x < PW and top[y, x]:
+                        canvas[y, x] *= crack_col
+                    y += int(RNG.integers(-1, 2))
+                    x += int(RNG.integers(-1, 2))
+
+    canvas = np.round(canvas / 9.0) * 9.0  # quantized ramps: crunchy, not airbrushed
+    out = Image.fromarray(np.clip(canvas, 0, 255).astype(np.uint8), "RGB")
+    OUT.parent.mkdir(parents=True, exist_ok=True)
+    out.save(OUT, optimize=True)
+    print(f"wrote {OUT.relative_to(ROOT)} ({out.width}x{out.height})")
+
+
+if __name__ == "__main__":
+    main()
