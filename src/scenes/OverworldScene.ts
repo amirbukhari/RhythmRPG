@@ -54,6 +54,7 @@ const ECHO_RUNE_FRAME = DECORATIVE_PROP_COUNT;
  */
 export class OverworldScene extends Phaser.Scene {
   private player!: Phaser.GameObjects.Sprite;
+  private playerShadow!: Phaser.GameObjects.Ellipse;
   private playerPos: GridPosition = { col: 0, row: 0 };
   private moving = false;
   private walkable: boolean[][] = [];
@@ -181,6 +182,8 @@ export class OverworldScene extends Phaser.Scene {
       ? { col: returnMarker.col, row: returnMarker.row }
       : { col: Math.floor(spawnObject.x! / TILE_SIZE), row: Math.floor(spawnObject.y! / TILE_SIZE) };
 
+    // Contact shadow grounds Amir like the props/foes around him.
+    this.playerShadow = this.add.ellipse(0, 0, 13, 4, 0x05060a, 0.4).setDepth(4.4);
     this.player = this.add.sprite(0, 0, "band_amir", 0);
     // Amir's frames are 48x48 with the figure ~37px tall; scaled to ~0.52 he
     // stands ~1.2 tiles against the 16px tiles (feet-anchored so he sits on
@@ -283,6 +286,7 @@ export class OverworldScene extends Phaser.Scene {
 
   update(): void {
     if (!this.player) return;
+    this.playerShadow.setPosition(this.player.x, this.player.y + 2);
     if (this.fog && !GameContext.activeProfile?.settings.reducedMotion) {
       this.fog.tilePositionX += 0.08;
       this.fog.tilePositionY -= 0.03;
