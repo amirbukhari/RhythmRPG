@@ -118,6 +118,9 @@ class Note:
     vibrato_delay: float = 0.15
     arp_pitches: tuple = ()   # extra chord tones; cycles pitch at arp_hz
     arp_hz: float = 30.0
+    # NR10-style frequency sweep (the classic LSDJ kick lives here):
+    sweep_semitones: float = 0.0   # signed; applied over sweep_s then held
+    sweep_s: float = 0.05
 
 
 @dataclass
@@ -174,6 +177,10 @@ def _render_pulse_note(note: Note, sr: int, buf: np.ndarray):
         vib = np.sin(2 * np.pi * note.vibrato_hz * t) * (note.vibrato_cents / 1200.0)
         vib *= np.clip((t - note.vibrato_delay) / 0.1, 0.0, 1.0)  # fade in
         freq_t = freq_t * np.exp2(vib)
+
+    if note.sweep_semitones:
+        bend = note.sweep_semitones * np.minimum(t / max(note.sweep_s, 1e-3), 1.0)
+        freq_t = np.maximum(freq_t * np.exp2(bend / 12.0), 64.1)
 
     phase = np.cumsum(freq_t) / sr
     pattern = DUTY_PATTERNS[note.duty]

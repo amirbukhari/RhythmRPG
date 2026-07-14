@@ -23,26 +23,35 @@ python3 render_gb.py ../../assets/audio/<song>.mp3 \
     --work-dir /tmp/gb_work_<song> --report report.json
 ```
 
-Stages (stems and transcriptions cache in `--work-dir`, so arrangement
-tweaks re-render in seconds):
+Stages (stems, transcriptions, pitch tracks, and chord tracks all cache in
+`--work-dir`, so arrangement tweaks re-render in seconds):
 
 1. Demucs (htdemucs) → vocals / bass / other / drums, driven through its
    Python API (torchaudio's file loader now needs torchcodec, so audio I/O
    goes through soundfile).
-2. basic-pitch on the pitched stems; onset detection + spectral-band rules
-   (calibrated on these stems) classify each drum hit kick/snare/hat.
-3. Arrangement: vocals → pulse 1 (50% duty lead, vibrato on held notes;
-   vocal rests are back-filled with the top line of "other" at 25% duty);
-   bass → pulse 2 (25% duty, octave-centered into the pulse register's
-   64 Hz floor); other → wave (chords collapsed to LSDJ-style arpeggios,
-   ≤4 tones at 30 Hz); drums → noise (three LFSR presets, 7-bit "metallic"
-   mode for hats).
+2. Feature extraction: pYIN monophonic f0 tracks for the vocal and bass
+   stems, basic-pitch on "other" (fill material), chroma-template chord
+   detection per half-bar with Viterbi smoothing, and onset detection +
+   spectral-band rules classifying each drum hit kick/snare/hat.
+3. `arrange.py` authors a cover rather than replaying the transcription,
+   with every event quantized to the song's own measured beat grid
+   (`src/data/content/songs/<id>.json` — the grid the game judges by):
+   vocals → pulse 1 (pYIN-traced lead, vibrato on held notes, long rests
+   back-filled from "other"); bass → pulse 2 (pYIN + chord-root fallback,
+   staccato eighths in drive sections, sustains in pads — and every kick
+   fires the classic LSDJ pitch-sweep kick here, with the bass ducking
+   around it); detected chords → wave (driving 16th arpeggios or
+   shimmer-arp pads by section energy); drums → noise (one hit per 16th,
+   snare > kick > hat priority, three LFSR presets).
 4. `gb_apu.py` renders the four channels with hardware-accurate duty
    patterns, 11-bit frequency-register pitch quantization, 4-bit 64 Hz
-   envelopes, a real 15/7-bit LFSR, and the DMG's DC-blocking output
-   high-pass — 4x oversampled, then decimated to 44.1 kHz.
-5. QA: prints beat-scale chroma cosine similarity against the original
-   (the committed six score 0.83–0.90), then encodes MP3 via lameenc.
+   envelopes, NR10-style frequency sweeps, a real 15/7-bit LFSR, and the
+   DMG's DC-blocking output high-pass — 4x oversampled, then decimated to
+   44.1 kHz.
+5. QA + encode: beat-scale chroma cosine similarity against the original
+   (the committed six score 0.84–0.88), then MP3 via lameenc with the
+   encoder delay measured by cross-correlation and trimmed to 0 samples,
+   so the decoded file stays sample-aligned with the recording.
 
 ## LSDJ project path (original)
 

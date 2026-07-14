@@ -8,21 +8,21 @@ needs LSDJ to be heard. This renderer goes all the way to sound:
       v
     Demucs htdemucs -> vocals / bass / other / drums stems
       |                                            |
-      | basic-pitch (audio->MIDI notes)            | onset detect + spectral
+      | pYIN f0 + basic-pitch + chroma chords      | onset detect + spectral
       v                                            v  band split
-    arrangement (this file):                    kick / snare / hat
-      vocals -> pulse 1  (50% duty lead, vibrato on held notes)
-      bass   -> pulse 2  (25% duty, octave-folded into GB range)
-      other  -> wave     (chords collapsed to LSDJ-style arpeggios)
-      drums  -> noise    (three LFSR presets by hit class)
+    arrange.py (the v2 cover engine):           kick / snare / hat
+      vocals -> pulse 1  (pYIN-traced lead, vibrato, instrumental fills)
+      bass   -> pulse 2  (pYIN + chord roots, staccato 8ths, sweep kicks)
+      chords -> wave     (detected progression -> authored arp patterns)
+      drums  -> noise    (grid-snapped, one hit per 16th, 3 LFSR presets)
       |
       v
     gb_apu.render_song  ->  44.1 kHz stereo  ->  MP3 (lameenc)
 
-Note timestamps are never quantized or tempo-mapped: every event lands at
-the second it occurs in the recording, so the output is sample-aligned with
-the original and the measured beat grids in src/data/content/songs/ remain
-valid for both versions.
+Everything is quantized to the song's own measured beat grid
+(src/data/content/songs/<id>.json, the grid the game judges by), so the
+render is machine-tight and stays sample-aligned with the original — the
+same beat maps judge both versions.
 
 Usage:
     python3 render_gb.py input.mp3 output.mp3 [--work-dir DIR]
@@ -42,17 +42,10 @@ import numpy as np
 import soundfile as sf
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from gb_apu import ChannelPlan, Note, NoiseHit, render_song
+import arrange
+from gb_apu import render_song
 
 STEM_NAMES = ["vocals", "bass", "drums", "other"]
-
-# Register ranges (MIDI) each channel gets folded into by octaves.
-LEAD_RANGE = (55, 89)    # G3..F6
-BASS_RANGE = (36, 62)    # C2 (the pulse register floor is 64 Hz)..D4
-WAVE_RANGE = (43, 84)    # G2..C6
-
-MIN_NOTE_LEN = 0.055
-MERGE_GAP = 0.035
 
 
 # ---------------------------------------------------------------- stems --
@@ -170,179 +163,6 @@ def classify_drums(path, cache_path):
     return hits
 
 
-# ---------------------------------------------------------- arrangement --
-def _fold_into(pitch, lo, hi):
-    while pitch < lo:
-        pitch += 12
-    while pitch > hi:
-        pitch -= 12
-    return pitch
-
-
-def _center_octave(notes, target):
-    """Shift the whole stem by octaves so its median lands near `target` —
-    per-note folding alone would break phrases that cross the range edge."""
-    if not notes:
-        return notes
-    med = float(np.median([n[0] for n in notes]))
-    shift = 12 * round((target - med) / 12.0)
-    return [[p + shift, s, e, v] for p, s, e, v in notes]
-
-
-def _vel_to_vol(vel, lo=7, hi=15):
-    return int(round(lo + (hi - lo) * min(127, vel) / 127.0))
-
-
-_PREFER_KEY = {
-    "velocity": lambda n: -n[3],
-    "low": lambda n: n[0],
-    "high": lambda n: -n[0],
-}
-
-
-def make_monophonic(notes, prefer="velocity"):
-    """Overlap-trim [pitch,start,end,vel] into a strictly monophonic line.
-
-    Later notes steal (hardware behavior). When two notes start together,
-    keep the preferred one: higher velocity, lowest pitch, or highest pitch.
-    """
-    key = _PREFER_KEY[prefer]
-    notes = sorted(notes, key=lambda n: (n[1], key(n)))
-    out = []
-    for p, s, e, v in notes:
-        if e - s <= 0:
-            continue
-        if out:
-            lp, ls, le, lv = out[-1]
-            if s < le:                     # overlaps the running note
-                if abs(s - ls) < 0.010:    # same strike: keep preferred (first)
-                    continue
-                out[-1] = [lp, ls, s, lv]  # trim the running note
-                if out[-1][2] - out[-1][1] < MIN_NOTE_LEN:
-                    out.pop()
-        out.append([p, s, e, v])
-    # merge same-pitch notes separated by a tiny gap; drop dust
-    merged = []
-    for p, s, e, v in out:
-        if merged and merged[-1][0] == p and s - merged[-1][2] <= MERGE_GAP:
-            merged[-1][2] = e
-            continue
-        merged.append([p, s, e, v])
-    return [n for n in merged if n[2] - n[1] >= MIN_NOTE_LEN]
-
-
-MIN_LEAD_VEL = 22       # basic-pitch picks up stem bleed as quiet ghost notes
-LEAD_FILL_GAP = 1.5     # vocal rests longer than this get an instrumental fill
-
-
-def arrange_lead(vocal_notes, other_notes, duration):
-    """Vocals become the pulse-1 lead. Where the vocal rests, borrow the top
-    line of the 'other' stem so the lead channel never sits idle — the
-    classic chiptune-cover arrangement move."""
-    vocal_notes = [n for n in vocal_notes if n[3] >= MIN_LEAD_VEL]
-    vocal_notes = _center_octave(vocal_notes, 72)
-    mono = make_monophonic(
-        [[_fold_into(p, *LEAD_RANGE), s, e, v] for p, s, e, v in vocal_notes])
-
-    gaps = []
-    cursor = 0.0
-    for p, s, e, v in mono + [[0, duration, duration, 0]]:
-        if s - cursor >= LEAD_FILL_GAP:
-            gaps.append((cursor, s))
-        cursor = max(cursor, e)
-
-    fills = []
-    for ga, gb in gaps:
-        inside = [[p, max(s, ga + 0.05), min(e, gb - 0.05), v]
-                  for p, s, e, v in other_notes
-                  if min(e, gb - 0.05) - max(s, ga + 0.05) >= MIN_NOTE_LEN]
-        if not inside:
-            continue
-        inside = [[_fold_into(p, *LEAD_RANGE), s, e, v] for p, s, e, v in
-                  _center_octave(inside, 74)]
-        fills.extend(make_monophonic(inside, prefer="high"))
-
-    out = [Note(start=s, end=e, pitch=p, volume=_vel_to_vol(v, 9, 15),
-                duty=0.50, vibrato_cents=22.0 if (e - s) >= 0.35 else 0.0)
-           for p, s, e, v in mono]
-    # instrumental fills: thinner duty + a step quieter, so verses with real
-    # vocals still read as the song's foreground
-    out.extend(Note(start=s, end=e, pitch=p,
-                    volume=min(13, _vel_to_vol(v, 8, 13)), duty=0.25,
-                    vibrato_cents=14.0 if (e - s) >= 0.45 else 0.0)
-               for p, s, e, v in fills)
-    return sorted(out, key=lambda n: n.start), len(fills)
-
-
-def arrange_bass(notes):
-    notes = _center_octave(notes, 45)
-    mono = make_monophonic(
-        [[_fold_into(p, *BASS_RANGE), s, e, v] for p, s, e, v in notes],
-        prefer="low")
-    return [Note(start=s, end=e, pitch=p, volume=_vel_to_vol(v, 8, 14), duty=0.25)
-            for p, s, e, v in mono]
-
-
-def arrange_wave(notes):
-    """Collapse the polyphonic 'other' stem into non-overlapping segments;
-    chords become LSDJ-style arpeggios over up to 4 tones. Sweep-based:
-    between consecutive note boundaries the active set is constant."""
-    notes = [[_fold_into(p, *WAVE_RANGE), s, e, v] for p, s, e, v in notes
-             if e - s >= MIN_NOTE_LEN]
-    if not notes:
-        return []
-    starts = sorted(range(len(notes)), key=lambda i: notes[i][1])
-    ends = sorted(range(len(notes)), key=lambda i: notes[i][2])
-    edges = sorted({round(t, 4) for n in notes for t in (n[1], n[2])})
-    active = set()
-    si = ei = 0
-    out = []
-    for a, b in zip(edges, edges[1:]):
-        while si < len(starts) and notes[starts[si]][1] <= a + 1e-6:
-            active.add(starts[si]); si += 1
-        while ei < len(ends) and notes[ends[ei]][2] <= a + 1e-6:
-            active.discard(ends[ei]); ei += 1
-        if not active or b - a < 0.045:
-            continue
-        act = sorted(active, key=lambda i: (-notes[i][3], notes[i][0]))[:4]
-        tones = sorted({notes[i][0] for i in act})
-        vol = _vel_to_vol(max(notes[i][3] for i in act), 7, 15)
-        note = Note(start=a, end=b, pitch=tones[0],
-                    arp_pitches=tuple(tones[1:]), volume=vol)
-        # extend the previous segment instead of re-striking the same voicing
-        if out and out[-1].pitch == note.pitch and out[-1].arp_pitches == note.arp_pitches \
-                and abs(out[-1].end - a) < 0.02:
-            out[-1].end = b
-        else:
-            out.append(note)
-    return out
-
-
-NOISE_PRESETS = {
-    #        vol_hi env  shift div  w7    length
-    "kick":  (15,   1,   7,    0,   False, 0.30),
-    "snare": (13,   1,   4,    0,   False, 0.26),
-    "hat":   (10,   1,   1,    0,   True,  0.07),
-}
-
-
-def arrange_noise(hits):
-    out = []
-    for t, kind, strength in hits:
-        vol_hi, env, shift, div, w7, length = NOISE_PRESETS[kind]
-        vol = max(6, int(round(vol_hi * (0.55 + 0.45 * strength))))
-        out.append(NoiseHit(start=t, volume=min(15, vol), env_period=env,
-                            clock_shift=shift, divisor_code=div,
-                            width7=w7, length=length))
-    # Hardware note-steal: a retrigger kills the previous hit's tail. The
-    # renderer paints hits independently, so without this clamp a kick's
-    # decay would resurface after a hat inside it ends.
-    out.sort(key=lambda h: h.start)
-    for h, nxt in zip(out, out[1:]):
-        h.length = min(h.length, max(0.02, nxt.start - h.start))
-    return out
-
-
 # ------------------------------------------------------------------ QA --
 def chroma_similarity(orig_path, rendered, sr):
     """Mean cosine similarity of beat-scale chroma between original and
@@ -439,20 +259,17 @@ def render(input_path, output_path, work_dir, wavetable="saw", stereo=True,
     kinds = {k: sum(1 for h in hits if h[1] == k) for k in ("kick", "snare", "hat")}
     print(f"      drums: {len(hits)} hits {kinds}")
 
-    print("[4/5] arranging four channels + APU render")
-    lead, n_fills = arrange_lead(trans["vocals"], trans["other"], duration)
-    plan = ChannelPlan(
-        pulse1=lead,
-        pulse2=arrange_bass(trans["bass"]),
-        wave=arrange_wave(trans["other"]),
-        noise=arrange_noise(hits),
-        wavetable=wavetable,
-    )
+    print("[4/5] arranging the cover (v2 engine) + APU render")
+    plan, arr_stats = arrange.build_plan(
+        name, stems, work_dir, duration, trans["other"], hits,
+        wavetable=wavetable)
     counts = dict(pulse1=len(plan.pulse1), pulse2=len(plan.pulse2),
                   wave=len(plan.wave), noise=len(plan.noise))
-    print(f"      events: {counts} (lead fills borrowed from 'other': {n_fills})")
+    print(f"      events: {counts}")
+    print(f"      arrangement: {arr_stats}")
     sr = 44100
-    audio = render_song(plan, duration, sr=sr, stereo=stereo)
+    audio = render_song(plan, duration, sr=sr, stereo=stereo,
+                        mix=(0.95, 0.90, 0.62, 0.50))
 
     print("[5/5] QA + encode")
     sim = chroma_similarity(input_path, audio, sr)
