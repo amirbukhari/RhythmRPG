@@ -68,9 +68,10 @@ test.describe("settings", () => {
     await page.keyboard.press("Enter");
     await page.waitForTimeout(120);
 
-    // Navigate to "Remap Tap" (index 3 on the controls page; selection
-    // resets to the top on a page switch).
-    for (let i = 0; i < 3; i++) {
+    // Navigate to "Remap Tap" (index 4 on the controls page -- after the
+    // Soundtrack picker and the three volume rows; selection resets to the
+    // top on a page switch).
+    for (let i = 0; i < 4; i++) {
       await page.keyboard.press("ArrowDown");
       await page.waitForTimeout(80);
     }

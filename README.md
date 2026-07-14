@@ -82,6 +82,10 @@ assets/
   sprites/overworld/  landmarks, ambient NPCs, props
   tilemaps/           the 130x34 five-region world (BFS-validated generator)
   audio/              the six Inhalants MP3s (lazy-loaded; ~45MB never loads up front)
+    gb8/              the same six songs rendered as authentic 8-bit Game Boy
+                      chiptunes (tools/gbmusic/render_gb.py) -- sample-aligned
+                      with the originals so the beat grids judge both; the
+                      Settings "Soundtrack" toggle swaps them live
   reference/          archived historical material (pre-band art, gbmusic drafts)
 
 tests/
@@ -100,8 +104,10 @@ tools/
                 cleanup/downscale passes + procedural fallbacks; regenerate
                 with python3 tools/pixelart/generate_all.py
   overworld/    deterministic five-region world generator
-  gbmusic/      HISTORICAL: audio -> Game Boy chiptune pipeline (superseded by
-                the real recorded soundtrack at PRD v7.7)
+  gbmusic/      audio -> Game Boy chiptune pipeline. render_gb.py + gb_apu.py
+                (Demucs stems -> basic-pitch -> DMG APU model) produced the
+                8-bit soundtrack in assets/audio/gb8/; the older convert.py
+                LSDJ-project path is kept for hand-tuning in the tracker
 ```
 
 ## Getting started
@@ -123,7 +129,8 @@ the foe standing at each region's venue to start its in-world fight:
 save-obelisk, read an echo. On mobile, an on-screen thumbstick and action
 buttons appear. Settings (ESC) are fully functional: assist windows, game
 speed, practice mode, captions, Sightread forecast, beat tick, reduced motion,
-volumes, calibration, and full key remapping (Audio & Controls page).
+volumes, calibration, full key remapping, and the soundtrack picker — live
+band vs. its 8-bit Game Boy renders — on the Audio & Controls page.
 
 ## Non-negotiable architecture rules
 

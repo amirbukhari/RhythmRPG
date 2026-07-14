@@ -12,6 +12,11 @@ export interface AccessibilitySettings {
   /** Sightread (§8.4): the "see the music" forecast lane -- upcoming beats
    * and telegraphed enemy strikes previewed on the fight HUD. */
   sightreadEnabled: boolean;
+  /** Play the 8-bit Game Boy renders of the soundtrack (assets/audio/gb8,
+   * from tools/gbmusic/render_gb.py) instead of the recorded tracks. The
+   * renders are sample-aligned with the originals, so the measured beat
+   * grids (§8.3) -- and therefore judgment -- are identical either way. */
+  chiptuneAudio: boolean;
   volumeMusic: number;
   volumeSfx: number;
   volumeUi: number;
@@ -27,6 +32,7 @@ export const DEFAULT_ACCESSIBILITY_SETTINGS: AccessibilitySettings = {
   practiceMode: false,
   beatTickEnabled: false,
   sightreadEnabled: false,
+  chiptuneAudio: false,
   volumeMusic: 1,
   volumeSfx: 1,
   volumeUi: 1,

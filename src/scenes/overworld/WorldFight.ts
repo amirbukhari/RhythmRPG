@@ -202,6 +202,7 @@ export class WorldFight {
     // song's playbackRate and the sim together (the grid lives in file-time,
     // so heard and judged beat cannot diverge under any speed setting).
     music.setVolume(settings.volumeMusic);
+    music.setChiptune(settings.chiptuneAudio ?? false);
     music.setRate(this.gameSpeed);
     music.setMode(this.isBoss ? "boss" : "combat");
     music.start();

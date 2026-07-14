@@ -4,6 +4,12 @@ import glassriffUrl from "../../../assets/audio/glassriff.mp3";
 import johnsAnusUrl from "../../../assets/audio/johns_anus.mp3";
 import quotienceUrl from "../../../assets/audio/quotience.mp3";
 import truckersUrl from "../../../assets/audio/truckers_for_christ.mp3";
+import gb8SunshineUrl from "../../../assets/audio/gb8/sunshine_sally.mp3";
+import gb8DeereaterUrl from "../../../assets/audio/gb8/deereater.mp3";
+import gb8GlassriffUrl from "../../../assets/audio/gb8/glassriff.mp3";
+import gb8JohnsAnusUrl from "../../../assets/audio/gb8/johns_anus.mp3";
+import gb8QuotienceUrl from "../../../assets/audio/gb8/quotience.mp3";
+import gb8TruckersUrl from "../../../assets/audio/gb8/truckers_for_christ.mp3";
 
 /**
  * The real Inhalants soundtrack. This is a music game, so the music is the real
@@ -32,6 +38,21 @@ const BOSS = quotienceUrl;
 // Combat rotates so back-to-back fights don't loop the same track.
 const COMBAT_ROTATION = [glassriffUrl, johnsAnusUrl, truckersUrl];
 
+// Every track exists in two sample-aligned versions: the band recording and
+// its 8-bit Game Boy render (tools/gbmusic/render_gb.py). Same timeline ->
+// the measured beat grids (PRD §8.3) judge both identically.
+const GB8_BY_URL: Record<string, string> = {
+  [sunshineUrl]: gb8SunshineUrl,
+  [deereaterUrl]: gb8DeereaterUrl,
+  [glassriffUrl]: gb8GlassriffUrl,
+  [johnsAnusUrl]: gb8JohnsAnusUrl,
+  [truckersUrl]: gb8TruckersUrl,
+  [quotienceUrl]: gb8QuotienceUrl,
+};
+const BAND_BY_URL: Record<string, string> = Object.fromEntries(
+  Object.entries(GB8_BY_URL).map(([band, gb8]) => [gb8, band]),
+);
+
 // url -> songId, matching src/data/content/songs/<songId>.json (PRD §8.3):
 // combat judgment resolves the playing song's beat map through this.
 const SONG_ID_BY_URL: Record<string, string> = {
@@ -42,6 +63,9 @@ const SONG_ID_BY_URL: Record<string, string> = {
   [truckersUrl]: "truckers_for_christ",
   [quotienceUrl]: "quotience",
 };
+for (const [band, gb8] of Object.entries(GB8_BY_URL)) {
+  SONG_ID_BY_URL[gb8] = SONG_ID_BY_URL[band];
+}
 
 const FADE_MS = 900;
 
@@ -53,6 +77,7 @@ class SongPlayer {
   private combatIdx = 0;
   private fadeRaf: number | null = null;
   private rate = 1;
+  private chiptune = false;
 
   /** Master music volume 0..1 (from settings). */
   setVolume(v: number): void {
@@ -61,9 +86,43 @@ class SongPlayer {
     if (this.current && this.fadeRaf === null) this.current.volume = this.volume;
   }
 
+  /**
+   * Swap between the band recordings and their 8-bit Game Boy renders
+   * (settings.chiptuneAudio). Both versions share one timeline, so a live
+   * mid-song toggle crossfades to the same file position -- the beat (and
+   * §8.3 judgment) never moves.
+   */
+  setChiptune(on: boolean): void {
+    if (on === this.chiptune) return;
+    this.chiptune = on;
+    if (!this.current) return;
+    const url = this.variant(this.currentUrl);
+    if (url === this.currentUrl) return;
+    const prev = this.current;
+    const next = this.get(url);
+    this.currentUrl = url;
+    this.current = next;
+    next.volume = 0;
+    try {
+      next.currentTime = prev.currentTime;
+    } catch {
+      /* not seekable yet -- the swapped version starts from 0 instead */
+    }
+    if (!prev.paused) {
+      const p = next.play();
+      if (p) p.catch(() => {});
+      this.crossfade(prev, next);
+    }
+  }
+
   /** Pick (and start) the song for a scene's mood. Idempotent per song. */
   setMode(mode: Mode): void {
-    this.play(this.urlFor(mode));
+    this.play(this.variant(this.urlFor(mode)));
+  }
+
+  /** The active-version URL (band or gb8) for any track URL. */
+  private variant(url: string): string {
+    return this.chiptune ? (GB8_BY_URL[url] ?? url) : (BAND_BY_URL[url] ?? url);
   }
 
   /** songId of the live song (whether or not it is currently audible). */

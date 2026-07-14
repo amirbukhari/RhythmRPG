@@ -3,6 +3,7 @@ import { GameContext } from "../state/GameContext";
 import { DEFAULT_ACCESSIBILITY_SETTINGS, type AccessibilitySettings } from "../systems/accessibility/AccessibilitySettings";
 import { BASE_WIDTH, BASE_HEIGHT } from "../config/GameConfig";
 import { TextMenu, type TextMenuItem } from "../ui/components/TextMenu";
+import { music } from "../systems/audio/SongPlayer";
 
 const SPEED_STEPS: AccessibilitySettings["gameSpeed"][] = [0.7, 0.85, 1.0];
 const VOLUME_STEPS = [0, 0.25, 0.5, 0.75, 1.0];
@@ -151,6 +152,17 @@ export class SettingsOverlay extends Phaser.Scene {
   private controlsItems(): TextMenuItem[] {
     const s = this.settings;
     const items: TextMenuItem[] = [
+      {
+        // Live A/B: SongPlayer swaps versions at the same file position, so
+        // flipping this mid-song keeps the beat (both versions share the
+        // measured grid, PRD §8.3).
+        label: `Soundtrack: ${s.chiptuneAudio ? "8-BIT GAME BOY" : "LIVE BAND"}`,
+        onSelect: () =>
+          this.update_(() => {
+            s.chiptuneAudio = !s.chiptuneAudio;
+            music.setChiptune(s.chiptuneAudio);
+          }),
+      },
       { label: `Music Volume: ${Math.round(s.volumeMusic * 100)}%`, onSelect: () => this.update_(() => (s.volumeMusic = nextInCycle(VOLUME_STEPS, s.volumeMusic))) },
       { label: `SFX Volume: ${Math.round(s.volumeSfx * 100)}%`, onSelect: () => this.update_(() => (s.volumeSfx = nextInCycle(VOLUME_STEPS, s.volumeSfx))) },
       { label: `UI Volume: ${Math.round(s.volumeUi * 100)}%`, onSelect: () => this.update_(() => (s.volumeUi = nextInCycle(VOLUME_STEPS, s.volumeUi))) },

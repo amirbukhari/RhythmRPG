@@ -120,6 +120,7 @@ export class OverworldScene extends Phaser.Scene {
       this.fight = null;
     });
     music.setVolume(profile.settings.volumeMusic);
+    music.setChiptune(profile.settings.chiptuneAudio ?? false);
     music.setMode("explore");
     music.start();
 

@@ -15,6 +15,7 @@ export class MainMenuScene extends Phaser.Scene {
     // Start the procedural soundtrack (PRD §11.2). The AudioContext was
     // unlocked in AudioGateScene, so it can play from here on.
     music.setVolume(GameContext.activeProfile?.settings.volumeMusic ?? 0.7);
+    music.setChiptune(GameContext.activeProfile?.settings.chiptuneAudio ?? false);
     music.setMode("menu");
     music.start();
 

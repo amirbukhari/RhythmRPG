@@ -68,6 +68,7 @@ export class AudioGateScene extends Phaser.Scene {
     // (which block audio until a user gesture) allow it; later scene changes
     // inherit the unlocked state. Volume comes from the active profile.
     music.setVolume(GameContext.activeProfile?.settings.volumeMusic ?? 0.7);
+    music.setChiptune(GameContext.activeProfile?.settings.chiptuneAudio ?? false);
     music.setMode("menu");
     GameContext.analytics.track("audio_gate_completed");
     this.scene.start("MainMenuScene");
