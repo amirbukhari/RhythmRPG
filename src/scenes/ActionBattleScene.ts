@@ -303,7 +303,10 @@ export class ActionBattleScene extends Phaser.Scene {
       const feetY = ry + s.displayHeight * (1 - s.originY);
       this.groundShadows.get(f.id)?.setPosition(Math.round(f.pos.x), Math.round(feetY)).setDepth(3);
       if (f.team === "player") {
-        s.setFlipX(f.facing === "left");
+        // Amir's hand-drawn art natively faces LEFT; flip for right, and keep
+        // the last side on up/down facings (his art is side-only).
+        if (f.facing === "left") s.setFlipX(false);
+        else if (f.facing === "right") s.setFlipX(true);
         // Amir's authored guitar-swing poses: windup (startup) -> swing
         // (active) -> follow-through (recovery); breathing idle otherwise.
         if (f.attack) {
