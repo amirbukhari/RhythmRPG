@@ -76,6 +76,9 @@ export class OverworldScene extends Phaser.Scene {
   private nearbyObelisk: { col: number; row: number; glow: Phaser.GameObjects.Image } | null = null;
   /** Live in-world fight (areas-not-arenas); null while exploring. */
   private fight: WorldFight | null = null;
+  /** Canopy landforms drawn ABOVE the player (PRD v7.15); they alpha-fade
+   * when the player walks beneath so the map keeps its sense of height. */
+  private canopies: Phaser.GameObjects.Image[] = [];
   /** The standing foe's visuals per node, hidden when its fight goes live. */
   private nodeFoeVisuals = new Map<string, Phaser.GameObjects.GameObject[]>();
   private interactHint!: Phaser.GameObjects.Text;
@@ -110,6 +113,7 @@ export class OverworldScene extends Phaser.Scene {
     this.moving = false;
     this.obelisks = [];
     this.fight = null;
+    this.canopies = [];
     this.nodeFoeVisuals.clear();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.fight?.destroy();
@@ -340,6 +344,14 @@ export class OverworldScene extends Phaser.Scene {
     if (!this.player) return;
     this.playerShadow.setPosition(this.player.x, this.player.y + 2);
     this.playerGlow.setPosition(this.player.x, this.player.y - 6);
+    // Canopy overhangs go translucent while the player is beneath them (the
+    // fade is legibility, not decoration -- kept under reduced motion). The
+    // trigger zone is the sprite's real footprint, not a fixed radius.
+    for (const c of this.canopies) {
+      const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, c.x, c.y - c.displayHeight * 0.5);
+      const target = d < Math.max(42, c.displayWidth * 0.65) ? 0.35 : 1;
+      c.alpha += (target - c.alpha) * Math.min(1, deltaMs / 120);
+    }
     if (this.fight) {
       // a fight is live IN the world: the sim drives the player; tile
       // movement, interactions, and the conga line pause until it resolves
@@ -646,6 +658,71 @@ export class OverworldScene extends Phaser.Scene {
             // scenery sits a value-step darker than characters (audit O4)
             this.add.image(cx, cy, "ow_props", h % DECORATIVE_PROP_COUNT).setOrigin(0.5, 1).setScale(0.72).setDepth(2).setTint(0xb2b9c6);
           }
+        }
+      }
+    }
+
+    this.placeLandforms(map, ground, shore, blocked, isGrassGid);
+  }
+
+  /**
+   * LANDSCAPE-scale forms over the scene (PRD v7.15 direction: "giant rocks
+   * and hills and trees over the scene, like Hyper Light Drifter"). Per
+   * sparse low-frequency cell: either a colossal OUTCROP that breaks the map
+   * silhouette (scenery layer, below the player) or a CANOPY tree whose
+   * crown OVERHANGS the play space -- drawn ABOVE the player layer and
+   * alpha-fading when the player walks beneath (the HLD height trick).
+   * Deterministic (same hash discipline as prop clustering), kept clear of
+   * markers/echoes/spawn and their venue circles.
+   */
+  private placeLandforms(
+    map: Phaser.Tilemaps.Tilemap,
+    ground: Phaser.Tilemaps.TilemapLayer,
+    shadowLayer: Phaser.GameObjects.Graphics,
+    blocked: Set<string>,
+    isGrassGid: (gid: number | undefined) => boolean
+  ): void {
+    const REGION_BIOMES = ["shallows", "saltmines", "pit", "attic", "hall"];
+    const REGION_W = 26; // tiles per region (generate_overworld_map.py)
+    const CELL = 8;
+    const clearOfLandmarks = (col: number, row: number): boolean => {
+      for (const t of [...this.markers, ...this.echoes]) {
+        if (Math.abs(t.col - col) <= 3 && Math.abs(t.row - row) <= 3) return false;
+      }
+      return true;
+    };
+    for (let cr = 0; cr * CELL < map.height; cr++) {
+      for (let cc = 0; cc * CELL < map.width; cc++) {
+        const ch = (((cc + 11) * 2654435761) ^ ((cr + 5) * 97002721)) >>> 0;
+        const kind = ch % 100;
+        if (kind >= 38) continue; // ~38% of cells attempt one landform
+        // several jittered candidates per cell: a busy map (roads, water,
+        // marker clearance) rejects most single throws
+        let col = -1;
+        let row = -1;
+        for (let attempt = 0; attempt < 6; attempt++) {
+          const c = cc * CELL + 1 + ((ch >> (4 + attempt * 3)) % Math.max(1, CELL - 2));
+          const r = cr * CELL + 1 + ((ch >> (6 + attempt * 3)) % Math.max(1, CELL - 2));
+          if (blocked.has(`${c},${r}`) || !clearOfLandmarks(c, r)) continue;
+          if (!isGrassGid(ground.getTileAt(c, r)?.index)) continue;
+          col = c;
+          row = r;
+          break;
+        }
+        if (col < 0) continue;
+        const biome = REGION_BIOMES[Math.min(REGION_BIOMES.length - 1, Math.floor(col / REGION_W))];
+        const canopy = kind < 16; // ~16% canopy, ~22% outcrop of cells
+        const key = `env_${biome}_landform_${canopy ? "canopy" : "outcrop"}`;
+        if (!this.textures.exists(key)) continue;
+        const x = col * TILE_SIZE + TILE_SIZE / 2;
+        const y = row * TILE_SIZE + TILE_SIZE;
+        shadowLayer.fillStyle(0x05060a, 0.3).fillEllipse(x, y - 2, canopy ? 34 : 46, 10);
+        const img = this.add.image(x, y, key).setOrigin(0.5, 1).setScale(0.8).setTint(0xb2b9c6);
+        if (canopy) {
+          img.setDepth(6.5); // above the player (5): the crown overhangs
+          this.canopies.push(img);
+        } else {
+          img.setDepth(2.5);
         }
       }
     }
