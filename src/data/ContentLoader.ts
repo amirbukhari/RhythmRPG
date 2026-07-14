@@ -11,6 +11,7 @@ import type { Enemy } from "./schemas/Enemy";
 import type { HeroClass } from "./schemas/HeroClass";
 import type { CampaignDefinition } from "./schemas/CampaignNode";
 import type { BossPhaseConfig } from "./schemas/BossPhaseConfig";
+import type { SongMap } from "./schemas/SongMap";
 
 // PRD §10.5: no encounter timing may be hardcoded in scene logic — everything
 // gameplay-relevant is loaded through here and validated against the
@@ -150,4 +151,39 @@ export function loadBossPhaseConfig(data: unknown): BossPhaseConfig {
     previousThreshold = phase.hpThreshold;
   }
   return config as BossPhaseConfig;
+}
+
+// SongMap (PRD §8.3 beat truth) -- the measured beat grid of a real recorded
+// track. Same hand-written-validator rationale as loadEnemy; the grid is
+// checked for strict monotonicity because judgment binary-searches it.
+export function loadSongMap(data: unknown): SongMap {
+  const song = data as Partial<SongMap> | null | undefined;
+  const id = song?.songId ?? "?";
+  const fail = (message: string): never => {
+    throw new ContentValidationError("songMap", id, message);
+  };
+  if (!song || typeof song !== "object") return fail("not an object");
+  if (typeof song.songId !== "string" || !song.songId) return fail("songId must be a non-empty string");
+  if (typeof song.bpm !== "number" || song.bpm < 40 || song.bpm > 240) return fail("bpm must be a number in [40, 240]");
+  if (typeof song.firstBeatOffsetMs !== "number" || song.firstBeatOffsetMs < 0) return fail("firstBeatOffsetMs must be >= 0");
+  if (typeof song.durationMs !== "number" || song.durationMs <= 0) return fail("durationMs must be > 0");
+  if (!Array.isArray(song.beatTimesMs) || song.beatTimesMs.length < 8) return fail("beatTimesMs must be an array of at least 8 beats");
+  let prev = -Infinity;
+  for (const t of song.beatTimesMs) {
+    if (typeof t !== "number" || t < 0) return fail("beatTimesMs entries must be numbers >= 0");
+    if (t <= prev) return fail("beatTimesMs must be strictly increasing");
+    prev = t;
+  }
+  if (song.beatTimesMs[0] !== song.firstBeatOffsetMs) return fail("firstBeatOffsetMs must equal beatTimesMs[0]");
+  if (prev > song.durationMs) return fail("beatTimesMs must not exceed durationMs");
+  if (song.sections !== undefined) {
+    if (!Array.isArray(song.sections)) return fail("sections must be an array");
+    for (const s of song.sections) {
+      if (typeof s.name !== "string" || !s.name) return fail("each section needs a non-empty name");
+      if (typeof s.startMs !== "number" || s.startMs < 0 || s.startMs > song.durationMs) {
+        return fail("each section needs startMs within the track");
+      }
+    }
+  }
+  return song as SongMap;
 }

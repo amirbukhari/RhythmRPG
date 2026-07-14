@@ -60,8 +60,9 @@ test.describe("settings", () => {
   test("remapping the tap key persists and is honored in battle", async () => {
     await openSettingsFromOverworld(page);
 
-    // Navigate to "Remap Tap Key" (index 9 in the fixed settings menu order).
-    for (let i = 0; i < 9; i++) {
+    // Navigate to "Remap Tap Key" (index 10 in the fixed settings menu
+    // order, after the Beat Tick row was added for PRD §9.3/§8.3).
+    for (let i = 0; i < 10; i++) {
       await page.keyboard.press("ArrowDown");
       await page.waitForTimeout(80); // avoid outrunning the menu's own input handling
     }

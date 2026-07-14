@@ -6,7 +6,7 @@
 |---|---|
 | Document title | *The Drowned Chorus* — Browser Rhythm-Action RPG PRD |
 | Working codename | Project Meterfall (historical; the game is titled *The Drowned Chorus*) |
-| Status | **Active v8.0** — full enterprise rewrite (2026-07-14). Resolves every finding in the [2026-07-14 PRD audit](./prd-audit-2026-07-14.md): the body now describes the real-time rhythm-action game actually being built (the turn-based model retired at v6.0 no longer appears as current spec), all decisions flagged by the audit are made and recorded (§8.3 beat-source decision, §8.7 boss re-spec, platform tiering incl. touch), and §20 is re-cut to reality as of today. |
+| Status | **Active v8.1** — v8.0 was the full enterprise rewrite resolving every finding in the [2026-07-14 PRD audit](./prd-audit-2026-07-14.md); v8.1 ships roadmap P1 (**beat truth**, §8.3/gate #1a): judgment now derives from the audibly playing track via measured beat-grid maps, e2e-gated. Next: P2 combat completion (§20.3). |
 | Owner | Amir Bukhari |
 | Author | Amir Bukhari (compiled from concept notes, deep research, and live-play feedback) |
 | Created | 2026-07-08 |
@@ -33,6 +33,7 @@ and [`docs/design/aaa-audit.md`](../design/aaa-audit.md).
 | 7.6–7.9 | 2026-07-13→14 | Lyric-only foe roster (luchadors culled); **real six-track Inhalants soundtrack** replaces synth placeholder; foes stand in the world; save-obelisks; fresh AI band cast + follower conga. |
 | 7.10–7.15 | 2026-07-14 | Honest AAA art audit + P0–P2 burn-down (designed floors, coherent kits, real HUD, water/ground/value); **fights happen in the world** (`WorldFight`, separate battle scenes retired from the trigger path); de-pixelation; arena venues composed into the world; landform direction logged. |
 | **8.0** | **2026-07-14** | **Enterprise rewrite of this document** per the PRD audit. Decisions made: judged beat must derive from the audible track via authored beat maps (§8.3/§10.3); four judgment tiers reaffirmed as spec; ultimate/Groove-spend reaffirmed v1-mandatory; cast re-specified as the band (leader-playable v1, switching v2); boss re-specified as a phased in-world fight keyed to authored song sections (§8.7); §9.3 accessibility reaffirmed with shipped-path gaps tracked; touch input brought in scope with platform tiering (§7.1/§9.2); §8.6 curriculum rewritten post-luchador; analytics/KPIs re-based on measurable events; §11 rewritten to the AI-art + recorded-soundtrack reality; §20 re-cut as of 2026-07-14. |
+| **8.1** | **2026-07-14** | **Roadmap P1 shipped — beat truth (§8.3, release gate #1a).** All six tracks measured (`tools/audio/measure_beats.py`, librosa beat tracking) into authored beat-grid maps (`src/data/content/songs/`, validated `SongMap` schema — full per-beat grids, since real recordings drift 8–16% off a constant BPM line); in-world fight judgment now reads the **playing element's position** through the live song's grid (`SongBeat.ts`, loop-aware, calibration/assist preserved), with the transport grid as fallback only when nothing is audible; game speed sets the song's `playbackRate` and scales the sim together (grids live in file-time, so heard and judged beat cannot diverge); the always-on sonifier click is retired from the fight and replaced by the opt-in §9.3 **Beat Tick** setting; `judgment_onbeat`/`judgment_offbeat` events fire on every attempted action, making the §5 on-beat-rate KPI live. New `beat-truth.spec.ts` e2e proves the audible path end-to-end (song map = playing song; judgment flips with audio; rate coupling at 70%). 157 unit tests (12 new), 20 e2e cases, typecheck/build green. Remaining §8.3 caveat: grids are algorithmically measured — the human listening pass is still owed. |
 
 ---
 
@@ -64,7 +65,8 @@ Three commitments define the product bar:
 
 1. **The beat the game judges is the beat the player hears** (§8.3, §10.3). A rhythm
    game whose judged beat diverges from its audible music is broken by definition; this
-   is a hard requirement and release gate, currently the #1 open engineering item (§20.2).
+   is a hard requirement and release gate — shipped in v8.1 and held by the
+   `beat-truth.spec.ts` e2e gate.
 2. **Accessibility is a day-one requirement** (§9.3), applying to the shipped combat
    path — not to a retired one.
 3. **Timing is audio-clock-authoritative** (§10.2). No gameplay judgment ever derives
@@ -301,8 +303,11 @@ judged **must be the beat of the music currently playing.** Implementation contr
 4. The beat-tick sonifier becomes an optional accessibility layer ("audible beat
    tick"), defaulting off once beat maps land.
 
-*Status: this is the #1 open engineering item — the shipped build currently judges
-against a beatmap BPM on the transport while unrelated MP3s play (§20.2 item 1).*
+*Status: **shipped (v8.1)** — all six tracks carry measured beat-grid maps
+(`src/data/content/songs/`), the in-world fight judges from the playing element's
+position through the live song's grid, game speed couples `playbackRate` + sim, and
+the `beat-truth.spec.ts` e2e gates it. The grids are algorithmically measured
+(librosa); the hand-verification listening pass is the remaining caveat (§20.2).*
 
 **Judgment tiers.** Four tiers grade each real-time action against the nearest beat.
 Off-beat actions always execute, weaker — never a whiff-by-timing:
@@ -460,7 +465,7 @@ and is maintained; mobile performance/layout polish is Tier-2 best-effort in v1.
 | Assisted timing windows | Required — precise timing is never the only viable path *(shipped, ×1.5 in-fight)* |
 | Practice mode with no fail state | Required — in the in-world fight *(open gap — §20.2)* |
 | AV calibration screen | Required *(shipped; offset verified applied in-fight)* |
-| Optional audible beat tick | Required once §8.3 beat maps land (the current always-on quiet tick becomes this setting) |
+| Optional audible beat tick | Required *(shipped v8.1: "Beat Tick (combat)" toggle, off by default; the old always-on sonifier click is retired from the fight)* |
 
 Haptics remain additive-only for any future controller pass.
 
@@ -492,12 +497,12 @@ non-negotiable and a release gate (§16.2).
 | Requirement | Implementation |
 |---|---|
 | Soundtrack playback | `SongPlayer` (`src/systems/audio/SongPlayer.ts`): six MP3s, lazy-loaded, crossfaded per scene mode (menu/explore/combat/boss), combat rotation |
-| Beat authority | Per-track **beat maps** (BPM, first-beat offset, sections) mapping the playing element's position to bar/beat — the judgment source (§8.3) *(open gap)* |
-| Scheduling clock | `TransportClock` (Tone.Transport) synchronized to the playing track |
+| Beat authority | Per-track **beat-grid maps** (`SongMap`: fitted BPM, first-beat offset, full per-beat grid, sections) — judgment reads the playing element's position through the live song's grid (`SongBeat.ts`, loop-aware) *(shipped v8.1)* |
+| Scheduling clock | `TransportClock` (Tone.Transport) — fallback judgment grid only when nothing is audible (blocked autoplay/headless); never free-running against an audible song |
 | Mobile/autoplay compliance | First `play()` fired inside the audio-gate gesture handler; rejections never break a scene |
-| Game speed | `playbackRate` and judgment clock scaled together (§8.3.3) *(open gap)* |
+| Game speed | Song `playbackRate` and sim scaled together; grids are file-time so heard/judged beat cannot diverge (§8.3.3) *(shipped v8.1)* |
 | Calibration | User-adjustable global AV offset, persisted, applied before judgment *(shipped)* |
-| Optional beat tick | `BeatmapSonifier` demoted to an opt-in accessibility layer once beat maps land |
+| Optional beat tick | `BeatTick` synth, opt-in via §9.3 setting, triggered from the live song grid *(shipped v8.1; `BeatmapSonifier` retired from the fight, serves the retired path only)* |
 
 ### 10.4 Audio startup requirement
 
@@ -641,10 +646,12 @@ player walks beneath).
 | Boss | *Quotience* |
 
 **Per-track deliverables (v1):** the audio file plus an **authored beat map** —
-measured BPM, first-beat offset, and named bar-aligned sections (§8.3) — hand-verified
-against the recording. The boss track additionally requires per-phase section bindings
-(§8.7). A battle SFX pack (hits, parry, dash, UI) completes the audio content set.
-*(Beat maps are the #1 open item — §20.2.)*
+measured BPM, first-beat offset, the full beat grid, and named bar-aligned sections
+(§8.3) — hand-verified against the recording. The boss track additionally requires
+per-phase section bindings (§8.7). A battle SFX pack (hits, parry, dash, UI) completes
+the audio content set. *(Status v8.1: all six beat-grid maps shipped and validated
+(`tools/audio/measure_beats.py` → `src/data/content/songs/`); the human listening pass
+over the measured grids and the §8.7 boss sections remain — §20.2.)*
 
 **Explicitly retired:** the DAW-stem/tempo-map pipeline spec and the
 `tools/gbmusic/` chiptune production path (demo-master slicing, `.lsdsng` drafts,
@@ -668,7 +675,7 @@ information never relies on color alone. Once §8.3 tiers land, judgment feedbac
 |---|---|---|
 | Playable band (4 members × idle/run/attack strips, derived from one base pose each) | `assets/sprites/band/{amir,bassist,vocalist,drummer}/` | Shipped (v7.9 AI-generated cast; prior hand-drawn originals archived in `assets/reference/band-original/`) |
 | Foes (slime, drifter, elite wraith) + the colossal Conductor | `assets/sprites/enemies/` | Shipped (v7.11 resprite in the band's register; Conductor native-resolution) |
-| Six-track soundtrack | `assets/audio/*.mp3` (~45 MB, lazy-loaded) | Shipped (v7.7). Beat maps not yet authored (§20.2) |
+| Six-track soundtrack + beat-grid maps | `assets/audio/*.mp3` (~45 MB, lazy-loaded) + `src/data/content/songs/*.json` | Shipped (v7.7 audio; v8.1 measured beat grids via `tools/audio/measure_beats.py`). Listening-pass verification owed (§20.2) |
 | Five-region overworld (130×34 Tiled JSON, BFS-validated reachability) + 20-tile sheet | `assets/tilemaps/`, `tools/overworld/generate_overworld_map.py` | Shipped (v7.0; ground/water/clustering/value pass v7.12; de-pixelation v7.14) |
 | Environment kits (5 biomes + shared, 28 pieces) + venue composition | `assets/sprites/env/`, `tools/pixelart/envkit.py`, `ArenaComposer.ts` | Shipped (v7.11 coherent top-down kits; v7.14 world venues) |
 | Region landmarks (5 colossal set-pieces) | `assets/sprites/overworld/landmarks.png` | Shipped (v7.1/v7.3) |
@@ -714,7 +721,7 @@ shipped. Progress tracked in §20.4.
 
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
-| **Judged beat and audible music remain two clocks** (§8.3 unbuilt) — the product's thesis is silently false at release | Certain until built | Critical | §8.3 is release gate #1a; beat-map authoring + sync is the top §20.3 increment; QA soak measures heard-vs-judged drift (§16.1) |
+| **Judged beat and audible music drift back into two clocks** (§8.3 regression — e.g. a new scene bypassing `SongBeat`, or beat maps not re-measured after a track swap) | Low (shipped v8.1) | Critical | `beat-truth.spec.ts` e2e gates #1a on every push; `measure_beats.py` re-run is part of any track change; QA soak measures heard-vs-judged drift (§16.1) |
 | **Pivot regressions:** features that existed in a retired path read as "done" while missing from the shipped path (already happened twice: Groove-spend, practice mode) | High | High | v8.0 rule: §20 tracks status **per the shipped path only**; retired scenes scheduled for deletion (§10.6); every §9.3 item re-verified in-fight each release |
 | Beat maps authored inaccurately (wrong BPM/offset) make on-beat play feel arbitrary | Medium | High | Hand-verification protocol per track (tap-test + waveform check); calibration screen absorbs residual device latency; drift instrumentation in QA |
 | Visual-timer judgment code creeps in under pressure | Medium | High | Hard rule §10.2 + lint/test flagging timer APIs in judgment paths; QA soak under forced render load |
@@ -747,12 +754,13 @@ is re-based on the **shipped path**:
 
 **Live today:** `audio_gate_completed`, `calibration_completed`, `battle_started`,
 `encounter_cleared`, `encounter_failed`, `assist_mode_enabled`, `save_loaded`,
-`echo_found`.
+`echo_found`, `obelisk_rest`, and (v8.1) `judgment_onbeat` / `judgment_offbeat` —
+fired for every attempted fight action, judged against the playing song's grid.
 
-**Required with pending features (§20.2):** `judgment_onbeat` / `judgment_offbeat`
-(binary, ships with beat-map sync; upgraded to per-tier `judgment_perfect|great|good|off`
-when §8.3 tiers land), `ultimate_used` (with §8.5 spend), `boss_phase_reached` (with
-§8.7), `sightread_enabled` (with §8.4 forecast), `obelisk_rested`.
+**Required with pending features (§20.2):** per-tier
+`judgment_perfect|great|good|off` (upgrades the binary pair when §8.3 tiers land),
+`ultimate_used` (with §8.5 spend), `boss_phase_reached` (with §8.7),
+`sightread_enabled` (with §8.4 forecast).
 
 **Retired-path events removed from spec:** `ability_used`, `sightread_used` (phrase-model
 semantics).
@@ -878,9 +886,10 @@ shipped product path only** — a feature that exists solely in a retired scene 
 here, not a checkmark (the v8.0 rule; see the audit for why). Where this section and
 §1–§19 disagree about reality, this section wins; §1–§19 win about requirements.
 
-Verified this cut: `npm test` — **145/145 unit tests** (16 files); **18 e2e test cases
-in 7 Playwright spec files** (Chromium gate); typecheck and production build green;
-findings cross-checked in [`prd-audit-2026-07-14.md`](./prd-audit-2026-07-14.md).
+Verified this cut (v8.1): `npm test` — **157/157 unit tests** (18 files); **20 e2e
+test cases in 8 Playwright spec files** (Chromium gate, incl. the new
+`beat-truth.spec.ts` gate-1a spec); typecheck and production build green; findings
+cross-checked in [`prd-audit-2026-07-14.md`](./prd-audit-2026-07-14.md).
 
 ### 20.1 Built, tested, and verified on the shipped path
 
@@ -892,7 +901,8 @@ findings cross-checked in [`prd-audit-2026-07-14.md`](./prd-audit-2026-07-14.md)
 | Save-obelisks (§8.8.5) | Beside every fight node; rest persists through the real IndexedDB save (e2e-proven, no fight trigger) |
 | **In-world fights (§8.2)** | `WorldFight`: camera-locked room of the actual overworld; sim obstacles from impassable tiles (`resolveObstacles`, unit-tested); venues (biome floor + set pieces) composed into the map with a guaranteed fightable circle; rewards → results → in-place return; e2e asserts no battle scene loads |
 | Action sim (§8.2) | 8-dir momentum, dash i-frames + on-beat extension, light/heavy frame data with active hitboxes, hitstun, damage-%-scaled knockback, player DI, on-beat parry (off-beat = punishable), rhythm-gated cancel combos, Focus special, enemy telegraph AI — 13+ dedicated unit tests |
-| Timing plumbing (§8.3, partial) | Judgment on `TransportClock`, never UI timers; calibration offset applied before judgment; assist ×1.5 applied; game speed scales the judgment clock |
+| **Beat truth (§8.3, gate #1a — v8.1)** | All six tracks measured into validated beat-grid maps (`SongMap`, full per-beat grids — real recordings drift 8–16% off a constant BPM line, so the grid judges, not a line); fight judgment reads the **playing element's position** through the live song's grid (loop-aware, calibration + assist preserved); transport grid is fallback only when nothing is audible; game speed couples song `playbackRate` + sim; opt-in Beat Tick replaces the retired always-on sonifier click; `judgment_onbeat/offbeat` fire per attempted action. E2e-proven on the audible path (`beat-truth.spec.ts`): song map = playing song, judgment flips with the audio, rate coupling at 70%. |
+| Timing plumbing (§8.3) | Judgment never touches UI timers; calibration offset applied before judgment; assist ×1.5 applied |
 | Soundtrack playback (§11.2) | Six real tracks, lazy-loaded (`preload="none"`), scene-mode crossfade, combat rotation, gesture-primed for mobile autoplay |
 | Band cast (§8.4) | Four AI-generated members in one register, per-member idle/run/attack derived from a base pose; the band walks the world as a conga; leader fights with their real sprite |
 | Art (§11.1) | AI-pipeline backdrops/foes/band/landmarks/props/kits; designed floors + coherent pinned-camera kits + menacing resprites + framed HUD (v7.11); ground/water/clustering/value pass (v7.12); 1.5× legibility re-render (v7.13); quantization-free downscale + world venues (v7.14) — all screenshot-verified |
@@ -905,23 +915,24 @@ findings cross-checked in [`prd-audit-2026-07-14.md`](./prd-audit-2026-07-14.md)
 
 ### 20.2 Open gaps (ranked; per the shipped path)
 
-1. **Beat truth (§8.3, gate #1a) — the defining gap.** The judged beat is a beatmap
-   BPM on the transport; the audible MP3s have no beat maps and no sync. Game speed
-   scales judgment but not `playbackRate`. Deliverable: six authored beat maps +
-   playing-position-derived judgment + speed coupling (roadmap P1).
-2. **Four judgment tiers (§8.3):** shipped fight is binary ±90 ms. Perfect/Great/Good
-   grading + HUD feedback + tiered events (roadmap P2).
-3. **Ultimate/Groove spend (§8.5):** Groove accumulates, nothing spends it
+1. **Four judgment tiers (§8.3):** shipped fight is binary ±90 ms (now against the
+   real song grid). Perfect/Great/Good grading + HUD feedback + per-tier events
+   (roadmap P2).
+2. **Ultimate/Groove spend (§8.5):** Groove accumulates, nothing spends it
    (`ActionCombat.ts` "ultimate is future") — the v5.1 regression reintroduced by the
    pivot (P2).
-4. **Phased in-world boss (§8.7):** shipped boss fight has boss music/bar, no phases;
-   the legacy 3-phase logic lives only in the retired path, as does its e2e (P2).
-5. **§9.3 gaps in the shipped fight:** practice mode, captions for musically
+3. **Phased in-world boss (§8.7):** shipped boss fight has boss music/bar, no phases;
+   the legacy 3-phase logic lives only in the retired path, as does its e2e. Needs
+   *Quotience* section bindings on its beat map (P2).
+4. **§9.3 gaps in the shipped fight:** practice mode, captions for musically
    meaningful events, remappable combat bindings (currently hardcoded
    `W,A,S,D,J,K,L,I,SHIFT,SPACE`) (P3).
-6. **Sightread forecast (§8.4):** absent from the shipped path (P2).
-7. **Analytics parity (§14):** judgment/ultimate/boss-phase/sightread/obelisk events
-   pending their features; four §5 KPIs blocked on them.
+5. **Sightread forecast (§8.4):** absent from the shipped path (P2).
+6. **Beat-map listening pass (§8.3/§11.2):** the six grids are algorithmically
+   measured (librosa; 84–92% constant-tempo stability, hence grid-based judgment);
+   a human tap-along verification per track is still owed (P2, cheap).
+7. **Analytics parity (§14):** per-tier judgment, ultimate, boss-phase, and sightread
+   events pending their features (binary judgment + obelisk events are live).
 8. **Content hygiene:** legacy encounter/track IDs (`*_luchadores_*`, `*_clave_*`)
    around correct contents; legacy role JSONs; retired scenes (`BattleScene`,
    `ActionBattleScene`) still registered pending coverage migration (P4).
@@ -932,10 +943,12 @@ findings cross-checked in [`prd-audit-2026-07-14.md`](./prd-audit-2026-07-14.md)
 
 ### 20.3 Next increment
 
-Execute roadmap P1 (§15): author and hand-verify beat maps for all six tracks, derive
-judgment from the playing track, couple game speed, and demote the sonifier to an
-opt-in tick. Everything else in §20.2 stacks behind it — combat depth (P2) built on an
-untrue beat would be polishing the wrong clock.
+P1 (beat truth) shipped in v8.1. Next is roadmap P2 — combat completion on the now-true
+beat: the §8.3 four-tier grade (+ HUD feedback and per-tier events), the §8.5 ultimate
+spend, the §8.7 phased in-world boss (author *Quotience* section bindings on its beat
+map, drive phases from HP thresholds, jump playback to the bound section on
+transition), and the §8.4 Sightread forecast lane. The beat-map listening pass (§20.2
+item 6) can ride along with the boss-section authoring session.
 
 ### 20.4 Asset-manifest progress
 

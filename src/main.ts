@@ -12,6 +12,7 @@ import { ResultsScene } from "./scenes/ResultsScene";
 import { SettingsOverlay } from "./scenes/SettingsOverlay";
 import { GameContext } from "./state/GameContext";
 import { initTouchControls } from "./ui/TouchControls";
+import { music } from "./systems/audio/SongPlayer";
 
 // Fixed scene stack per PRD §10.6. ActionBattleScene (v6.0 real-time combat)
 // is the one the overworld launches; BattleScene (turn-based) remains
@@ -40,5 +41,5 @@ initTouchControls();
 // and manual debugging. Stripped from production builds by Vite's dead-code
 // elimination on import.meta.env.DEV -- never present in the shipped game.
 if (import.meta.env.DEV) {
-  (window as unknown as { __meterfallDebug: unknown }).__meterfallDebug = { game, GameContext };
+  (window as unknown as { __meterfallDebug: unknown }).__meterfallDebug = { game, GameContext, music };
 }

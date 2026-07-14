@@ -19,12 +19,12 @@ for regression coverage only.)*
 
 ## Start here
 
-- **[Product Requirements Document](docs/product/PRD.md)** — v8.0, the source
+- **[Product Requirements Document](docs/product/PRD.md)** — v8.1, the source
   of truth for scope, requirements, architecture, and release gates.
   **[§20 Implementation Status](docs/product/PRD.md#20-implementation-status-as-of-2026-07-14-v80-re-cut)**
   is the current build-vs-spec snapshot — read that first if you're picking
-  this up. The #1 open item is **beat truth** (PRD §8.3): syncing the judged
-  beat to the actually-playing track.
+  this up. Beat truth (§8.3) shipped in v8.1; the next increment is P2
+  combat completion (judgment tiers, ultimate, phased boss, Sightread).
 - [PRD audit (2026-07-14)](docs/product/prd-audit-2026-07-14.md) — the
   line-by-line spec-vs-build audit that drove the v8.0 rewrite.
 - [AAA art audit](docs/design/aaa-audit.md) — the screen-by-screen art review
@@ -71,7 +71,9 @@ src/
   data/
     schemas/      TS types incl. internal Enemy/HeroClass/CampaignNode/BossPhaseConfig
     content/      campaign (5 nodes, encounter pools), 9 encounters, 4 foes,
-                  beatmaps (gaining real per-track beat maps -- PRD §8.3)
+                  songs/ (the six measured beat-grid maps judgment runs on,
+                  PRD §8.3; regenerate: tools/audio/measure_beats.py),
+                  legacy beatmaps (retired path + fallback tempo)
 
 assets/
   sprites/band/       the four playable Inhalants (AI-generated, one register)
@@ -83,14 +85,16 @@ assets/
   reference/          archived historical material (pre-band art, gbmusic drafts)
 
 tests/
-  unit/         145 tests across 16 files (action sim, timing, persistence,
-                content validation, progression, retired-path coverage)
-  e2e/          7 Playwright spec files (18 tests, Chromium gate): boot/
-                calibration/persistence, overworld + in-world fight, obelisk
-                save, settings regressions, art-audit captures.
+  unit/         157 tests across 18 files (action sim, song-beat math, timing,
+                persistence, content validation, progression, retired-path coverage)
+  e2e/          8 Playwright spec files (20 tests, Chromium gate): boot/
+                calibration/persistence, overworld + in-world fight, beat truth
+                (gate #1a), obelisk save, settings regressions, art-audit captures.
                 Firefox is excluded pending root-cause (PRD §20.2)
 
 tools/
+  audio/        measure_beats.py -- librosa beat tracking over the six MP3s,
+                emits the beat-grid maps in src/data/content/songs/
   pixelart/     the art pipeline: AI generation (generate_ai.py) + import/
                 cleanup/downscale passes + procedural fallbacks; regenerate
                 with python3 tools/pixelart/generate_all.py
@@ -105,7 +109,7 @@ tools/
 npm install
 npm run dev        # Vite dev server
 npm run typecheck  # tsc --noEmit
-npm test           # vitest run -- 145 unit tests
+npm test           # vitest run -- 157 unit tests
 npm run test:e2e   # playwright test -- Chromium e2e gate
 npm run build      # production build to dist/
 ```
@@ -124,7 +128,10 @@ calibration.
 1. **Audio-clock authority (PRD §10.2):** gameplay timing judgment derives from
    `TransportClock` (`src/systems/audio/TransportClock.ts`) — never from
    `setTimeout` / `setInterval` / `requestAnimationFrame`.
-2. **Beat truth (PRD §8.3, release gate #1a — in progress):** the judged beat
-   must be the beat of the *actually playing* track, via authored per-track
-   beat maps. This is the current top engineering priority; until it lands,
-   the judged beat is a beatmap BPM that the streamed songs are not synced to.
+2. **Beat truth (PRD §8.3, release gate #1a — shipped v8.1):** the judged beat
+   IS the beat of the actually playing track — fight judgment reads the live
+   element's position through the song's measured beat grid
+   (`src/data/content/songs/`, regenerate with `tools/audio/measure_beats.py`),
+   and game speed scales `playbackRate` and the sim together. Held by the
+   `tests/e2e/beat-truth.spec.ts` gate; never judge against a clock the player
+   can't hear.

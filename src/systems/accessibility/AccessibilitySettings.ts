@@ -6,6 +6,9 @@ export interface AccessibilitySettings {
   photosensitivitySafeMode: boolean;
   captionsEnabled: boolean;
   practiceMode: boolean;
+  /** Opt-in audible metronome tick over the music in fights (PRD §9.3).
+   * Off by default: the judged beat IS the playing song's beat (§8.3). */
+  beatTickEnabled: boolean;
   volumeMusic: number;
   volumeSfx: number;
   volumeUi: number;
@@ -19,6 +22,7 @@ export const DEFAULT_ACCESSIBILITY_SETTINGS: AccessibilitySettings = {
   photosensitivitySafeMode: false,
   captionsEnabled: true,
   practiceMode: false,
+  beatTickEnabled: false,
   volumeMusic: 1,
   volumeSfx: 1,
   volumeUi: 1,

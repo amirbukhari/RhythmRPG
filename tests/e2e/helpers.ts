@@ -11,6 +11,7 @@ import type { Page } from "@playwright/test";
 type Debug = {
   game: Phaser.Game;
   GameContext: typeof import("../../src/state/GameContext").GameContext;
+  music: typeof import("../../src/systems/audio/SongPlayer").music;
 };
 
 declare global {

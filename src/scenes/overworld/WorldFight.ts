@@ -1,9 +1,11 @@
 import Phaser from "phaser";
 import { GameContext } from "../../state/GameContext";
-import { getEncounter, getBeatmap, getEnemy, getCampaignNode } from "../../data/ContentRegistry";
+import { getEncounter, getBeatmap, getEnemy, getCampaignNode, songMaps } from "../../data/ContentRegistry";
 import { TransportClock } from "../../systems/audio/TransportClock";
-import { BeatmapSonifier } from "../../systems/audio/BeatmapSonifier";
+import { BeatTick } from "../../systems/audio/BeatTick";
 import { music } from "../../systems/audio/SongPlayer";
+import { isOnBeat as songIsOnBeat, beatIndexAt } from "../../systems/audio/SongBeat";
+import type { SongMap } from "../../data/schemas/SongMap";
 import { BASE_WIDTH, BASE_HEIGHT } from "../../config/GameConfig";
 import {
   createArena,
@@ -47,9 +49,12 @@ export class WorldFight {
   private playerSprite: Phaser.GameObjects.Sprite;
   private rect: Phaser.Geom.Rectangle;
   private clock = new TransportClock();
-  private sonifier: BeatmapSonifier | null = null;
+  private tick: BeatTick | null = null;
   private arena: Arena | null = null; // null until the async clock is up
-  private beatSeconds = 0.5;
+  private beatSeconds = 0.5; // file-time seconds per beat (HUD/fallback pacing)
+  private songMap: SongMap | null = null;
+  private gameSpeed = 1;
+  private lastBeatIdx = -1;
   private encounterId: string;
   private nodeId: string | null;
   private isBoss = false;
@@ -133,19 +138,34 @@ export class WorldFight {
 
   private async start(enemyWave: string[], foeX: number, foeY: number): Promise<void> {
     const encounter = getEncounter(this.encounterId);
-    const beatmap = getBeatmap(encounter.trackId);
     const settings = GameContext.activeProfile!.settings;
-    const bpm = beatmap.bpm * settings.gameSpeed;
-    this.beatSeconds = 60 / bpm;
+    this.gameSpeed = settings.gameSpeed;
 
-    await this.clock.start(bpm);
-    if (this.finished) return; // torn down while the clock spun up
-    this.sonifier = new BeatmapSonifier(this.clock);
-    this.sonifier.setVolume(settings.volumeMusic * 0.22);
+    // BEAT TRUTH (PRD §8.3): the judged beat is the playing song's authored
+    // beat grid, read from the element's own position. Game speed scales the
+    // song's playbackRate and the sim together (the grid lives in file-time,
+    // so heard and judged beat cannot diverge under any speed setting).
     music.setVolume(settings.volumeMusic);
+    music.setRate(this.gameSpeed);
     music.setMode(this.isBoss ? "boss" : "combat");
     music.start();
-    this.sonifier.start(beatmap, bpm, this.clock.currentTime);
+    const songId = music.currentSongId();
+    this.songMap = songId ? (songMaps.get(songId) ?? null) : null;
+
+    // Fallback grid for when the song is not audible (blocked autoplay,
+    // headless test runs): the transport at the song's fitted tempo -- or,
+    // with no song map at all, the encounter's legacy beatmap tempo.
+    const fileBpm = this.songMap?.bpm ?? getBeatmap(encounter.trackId).bpm;
+    this.beatSeconds = 60 / fileBpm;
+    await this.clock.start(fileBpm * this.gameSpeed);
+    if (this.finished) return; // torn down while the clock spun up
+
+    // The always-on sonifier click is retired (it clicked a grid unrelated
+    // to the music); the audible tick is now the opt-in §9.3 assist.
+    if (settings.beatTickEnabled) {
+      this.tick = new BeatTick();
+      this.tick.setVolume(settings.volumeMusic * 0.5);
+    }
     GameContext.analytics.track("battle_started", { encounterId: this.encounterId });
 
     const enemyHps = encounter.enemyWave.map((id) => getEnemy(id).maxHp);
@@ -204,11 +224,23 @@ export class WorldFight {
   }
 
   private isOnBeat(): boolean {
-    const t = this.clock.currentTime - (GameContext.activeProfile?.calibrationOffsetMs ?? 0) / 1000;
-    const phase = ((t % this.beatSeconds) + this.beatSeconds) % this.beatSeconds;
-    const off = Math.min(phase, this.beatSeconds - phase);
+    const calibMs = GameContext.activeProfile?.calibrationOffsetMs ?? 0;
     const assist = GameContext.activeProfile?.settings.assistedTimingWindows ? 1.5 : 1;
-    return off < 0.09 * assist;
+    const window = 0.09 * assist;
+
+    // The judged beat is the audible song's beat grid (PRD §8.3). The window
+    // is in file-time, so at reduced game speed (playbackRate < 1) it is
+    // proportionally wider in real time -- slow mode really is easier.
+    const pos = music.position();
+    if (this.songMap && pos !== null) return songIsOnBeat(this.songMap, pos, calibMs, window);
+
+    // Fallback: nothing audible (blocked autoplay / headless) -- judge on
+    // the transport grid at the same tempo, as before beat maps existed.
+    const t = this.clock.currentTime - calibMs / 1000;
+    const beatSec = this.beatSeconds / this.gameSpeed; // transport runs in real time
+    const phase = ((t % beatSec) + beatSec) % beatSec;
+    const off = Math.min(phase, beatSec - phase);
+    return off < window;
   }
 
   private readInput(): FrameInput {
@@ -224,7 +256,9 @@ export class WorldFight {
     const special = JD(k.L);
     const dash = JD(k.SHIFT);
     const parry = JD(k.I);
-    const onBeat = (light || heavy || special || dash || parry) && this.isOnBeat();
+    const acted = light || heavy || special || dash || parry;
+    const onBeat = acted && this.isOnBeat();
+    if (acted) GameContext.analytics.track(onBeat ? "judgment_onbeat" : "judgment_offbeat", { encounterId: this.encounterId });
     return { move, dash, light, heavy, special, parry, onBeat };
   }
 
@@ -237,8 +271,19 @@ export class WorldFight {
   update(deltaMs: number): boolean {
     if (this.finished) return false;
     if (!this.arena) return true; // clock still starting
-    const dt = Math.min(deltaMs / 1000, 1 / 30);
+    // Game speed slows the whole fight with the slowed song (§8.3.3).
+    const dt = Math.min(deltaMs / 1000, 1 / 30) * this.gameSpeed;
     step(this.arena, this.readInput(), dt);
+    if (this.tick && this.songMap) {
+      const pos = music.position();
+      if (pos !== null) {
+        const idx = beatIndexAt(this.songMap, pos);
+        if (idx !== this.lastBeatIdx) {
+          if (idx >= 0 && this.lastBeatIdx !== -1) this.tick.trigger();
+          this.lastBeatIdx = idx;
+        }
+      }
+    }
     this.render();
     if (this.arena.outcome !== "ongoing") {
       this.finished = true;
@@ -357,7 +402,8 @@ export class WorldFight {
    * finishBattle) -> ResultsScene; restarting scenes cleans everything up. */
   private finish(outcome: "victory" | "defeat"): void {
     this.clock.stop();
-    this.sonifier?.dispose();
+    this.tick?.dispose();
+    music.setRate(1); // the world outside the fight runs (and sounds) at 1x
     const profile = GameContext.activeProfile!;
     const encounter = getEncounter(this.encounterId);
     const victory = outcome === "victory";
@@ -408,6 +454,7 @@ export class WorldFight {
   destroy(): void {
     this.finished = true;
     this.clock.stop();
-    this.sonifier?.dispose();
+    this.tick?.dispose();
+    music.setRate(1);
   }
 }

@@ -32,6 +32,17 @@ const BOSS = quotienceUrl;
 // Combat rotates so back-to-back fights don't loop the same track.
 const COMBAT_ROTATION = [glassriffUrl, johnsAnusUrl, truckersUrl];
 
+// url -> songId, matching src/data/content/songs/<songId>.json (PRD §8.3):
+// combat judgment resolves the playing song's beat map through this.
+const SONG_ID_BY_URL: Record<string, string> = {
+  [sunshineUrl]: "sunshine_sally",
+  [deereaterUrl]: "deereater",
+  [glassriffUrl]: "glassriff",
+  [johnsAnusUrl]: "johns_anus",
+  [truckersUrl]: "truckers_for_christ",
+  [quotienceUrl]: "quotience",
+};
+
 const FADE_MS = 900;
 
 class SongPlayer {
@@ -41,6 +52,7 @@ class SongPlayer {
   private volume = 0.7;
   private combatIdx = 0;
   private fadeRaf: number | null = null;
+  private rate = 1;
 
   /** Master music volume 0..1 (from settings). */
   setVolume(v: number): void {
@@ -52,6 +64,39 @@ class SongPlayer {
   /** Pick (and start) the song for a scene's mood. Idempotent per song. */
   setMode(mode: Mode): void {
     this.play(this.urlFor(mode));
+  }
+
+  /** songId of the live song (whether or not it is currently audible). */
+  currentSongId(): string | null {
+    return this.current ? (SONG_ID_BY_URL[this.currentUrl] ?? null) : null;
+  }
+
+  /**
+   * FILE-TIME position (seconds) of the audibly playing song, or null when
+   * nothing is actually sounding (no song, paused/blocked, or not enough
+   * data buffered). Judgment (PRD §8.3) reads the beat from this -- callers
+   * must fall back to the transport grid on null, never assume audio.
+   */
+  position(): number | null {
+    const a = this.current;
+    if (!a || a.paused || a.readyState < 2 /* HAVE_CURRENT_DATA */) return null;
+    return a.currentTime;
+  }
+
+  /**
+   * Playback rate, coupled to the accessibility game-speed setting during
+   * fights (PRD §8.3.3): the judged grid lives in file-time, so slowing the
+   * song and slowing judgment are the same operation and can never diverge.
+   * Applied to every cached element so crossfades inherit it.
+   */
+  setRate(rate: number): void {
+    this.rate = Math.max(0.5, Math.min(1.5, rate));
+    for (const a of this.cache.values()) {
+      a.playbackRate = this.rate;
+      // Keep the band's pitch while slowed (default in modern browsers;
+      // set explicitly where the property exists).
+      if ("preservesPitch" in a) (a as HTMLAudioElement & { preservesPitch: boolean }).preservesPitch = true;
+    }
   }
 
   /** Compatibility with the old MusicEngine API -- setMode already starts. */
@@ -86,6 +131,7 @@ class SongPlayer {
       a.loop = true;
       a.preload = "none"; // only fetched when it first plays -> boot stays light
       a.volume = 0;
+      a.playbackRate = this.rate;
       this.cache.set(url, a);
     }
     return a;

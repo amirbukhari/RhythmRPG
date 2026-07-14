@@ -9,6 +9,12 @@ export type AnalyticsEvent =
   | "ability_used"
   | "judgment_perfect"
   | "judgment_miss"
+  // Action combat (PRD §8.3/§14): every attempted fight action is judged
+  // against the playing song's beat grid; these two make the §5 rhythm-
+  // engagement KPI (on-beat rate) measurable. Upgraded to per-tier events
+  // when the §8.3 four-tier grade lands (P2).
+  | "judgment_onbeat"
+  | "judgment_offbeat"
   | "assist_mode_enabled"
   | "sightread_used"
   | "encounter_failed"

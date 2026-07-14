@@ -84,6 +84,7 @@ export class SettingsOverlay extends Phaser.Scene {
       { label: `Photosensitivity-Safe Mode: ${s.photosensitivitySafeMode ? "ON" : "OFF"}`, onSelect: () => this.update_(() => (s.photosensitivitySafeMode = !s.photosensitivitySafeMode)) },
       { label: `Captions: ${s.captionsEnabled ? "ON" : "OFF"}`, onSelect: () => this.update_(() => (s.captionsEnabled = !s.captionsEnabled)) },
       { label: `Practice Mode: ${s.practiceMode ? "ON" : "OFF"}`, onSelect: () => this.update_(() => (s.practiceMode = !s.practiceMode)) },
+      { label: `Beat Tick (combat): ${s.beatTickEnabled ? "ON" : "OFF"}`, onSelect: () => this.update_(() => (s.beatTickEnabled = !s.beatTickEnabled)) },
       { label: `Music Volume: ${Math.round(s.volumeMusic * 100)}%`, onSelect: () => this.update_(() => (s.volumeMusic = nextInCycle(VOLUME_STEPS, s.volumeMusic))) },
       { label: `SFX Volume: ${Math.round(s.volumeSfx * 100)}%`, onSelect: () => this.update_(() => (s.volumeSfx = nextInCycle(VOLUME_STEPS, s.volumeSfx))) },
       { label: `UI Volume: ${Math.round(s.volumeUi * 100)}%`, onSelect: () => this.update_(() => (s.volumeUi = nextInCycle(VOLUME_STEPS, s.volumeUi))) },
