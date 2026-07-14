@@ -141,8 +141,6 @@ CONDUCTOR = [
 ENEMIES = {
     "slime": (SLIME, "squash"),
     "drifter": (DRIFTER, "float"),
-    "luchador_grunt": (LUCHADOR_GRUNT, "bob"),
-    "luchador_mask": (LUCHADOR_MASK, "bob"),
     "elite_wraith": (ELITE_WRAITH, "float"),
     "the_conductor": (CONDUCTOR, "sway"),
 }

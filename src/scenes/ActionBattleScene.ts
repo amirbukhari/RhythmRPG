@@ -5,6 +5,7 @@ import { TransportClock } from "../systems/audio/TransportClock";
 import { BeatmapSonifier } from "../systems/audio/BeatmapSonifier";
 import { BASE_WIDTH, BASE_HEIGHT } from "../config/GameConfig";
 import { composeArena, ARENA_LAYOUTS } from "./env/ArenaComposer";
+import { music } from "../systems/audio/MusicEngine";
 import {
   createArena,
   step,
@@ -25,8 +26,6 @@ const ARENA_H = BASE_HEIGHT;
 const ENEMY_SCALE: Record<string, number> = {
   the_conductor: 2.9,
   elite_wraith: 2.0,
-  luchador_mask: 1.6,
-  luchador_grunt: 1.5,
   drifter: 1.5,
   slime: 1.4,
 };
@@ -54,8 +53,6 @@ const DEFAULT_ARENA = { key: "arena_shallows", light: { x: 202, y: 68, color: 0x
 const ENEMY_ACCENT: Record<string, number> = {
   the_conductor: 0xf0a648,
   elite_wraith: 0x49c6bd,
-  luchador_mask: 0xb98fca,
-  luchador_grunt: 0xc22f34,
   drifter: 0x9fe8e0,
   slime: 0x9aca43,
 };
@@ -226,7 +223,10 @@ export class ActionBattleScene extends Phaser.Scene {
     // audio clock + audible beat
     await this.clock.start(bpm);
     this.sonifier = new BeatmapSonifier(this.clock);
-    this.sonifier.setVolume(settings.volumeMusic);
+    this.sonifier.setVolume(settings.volumeMusic * 0.5);
+    music.setVolume(settings.volumeMusic);
+    music.setMode(this.isBoss ? "boss" : "combat");
+    music.start();
     this.sonifier.start(beatmap, bpm, this.clock.currentTime);
     GameContext.analytics.track("battle_started", { encounterId });
 
