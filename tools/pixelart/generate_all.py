@@ -9,6 +9,7 @@ change. See docs/design/art-bible.md for the direction behind it all.
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -47,7 +48,10 @@ def main() -> None:
     save(fx.spark(), "fx/spark.png")
     save(fx.haze(), "fx/haze.png")
     save(fx.godray(), "fx/godray.png")
-    save(landmarks.build_sheet(), "sprites/overworld/landmarks.png")
+    # Landmarks are now AI-generated (generate_ai.py, committed); the procedural
+    # sheet is kept as a fallback but does not clobber the shipped art.
+    if os.environ.get("REGEN_LANDMARKS") == "1":
+        save(landmarks.build_sheet(), "sprites/overworld/landmarks.png")
     bandmates.build_all()  # the playable band -- Amir (from provided art) + 3 authored mates
     print("all art regenerated")
 

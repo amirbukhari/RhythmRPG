@@ -544,8 +544,8 @@ export class OverworldScene extends Phaser.Scene {
     for (const [frame, col, row] of spots) {
       const x = col * TILE_SIZE + TILE_SIZE / 2;
       const y = row * TILE_SIZE + TILE_SIZE;
-      this.add.ellipse(x, y, 44, 12, 0x05060a, 0.4).setDepth(0); // grounding shadow
-      this.add.image(x, y, "ow_landmarks", frame).setOrigin(0.5, 1).setScale(2.2).setDepth(1);
+      this.add.ellipse(x, y, 48, 12, 0x05060a, 0.4).setDepth(0); // grounding shadow
+      this.add.image(x, y, "ow_landmarks", frame).setOrigin(0.5, 1).setScale(1.15).setDepth(1);
     }
   }
 
