@@ -57,6 +57,32 @@ def measure(song_id: str) -> dict:
     if len(beats) < 8:
         raise RuntimeError(f"{song_id}: beat tracker found only {len(beats)} beats")
 
+    # ONSET SNAP (v8.8): the tracker's beats ride a smoothed tempo model and
+    # can sit a few tens of ms off the actual transient the ear locks onto.
+    # Snap each beat to the strongest onset-envelope peak within +/-50ms
+    # (only when that peak clearly wins over the tracker's own position), so
+    # the judged grid lands on the hits the player actually hears.
+    hop = 512
+    env_times = librosa.times_like(onset_env, sr=sr, hop_length=hop)
+    snapped = []
+    win = 0.05
+    for b in beats:
+        lo = np.searchsorted(env_times, b - win)
+        hi = np.searchsorted(env_times, b + win)
+        if hi <= lo:
+            snapped.append(b)
+            continue
+        seg = onset_env[lo:hi]
+        k = int(np.argmax(seg))
+        at_beat = onset_env[min(len(onset_env) - 1, np.searchsorted(env_times, b))]
+        snapped.append(float(env_times[lo + k]) if seg[k] > at_beat * 1.15 else float(b))
+    beats = np.asarray(snapped)
+    # snapping can create tiny inversions when two beats chase one peak;
+    # enforce strict monotonicity (the validator requires it)
+    for i in range(1, len(beats)):
+        if beats[i] <= beats[i - 1]:
+            beats[i] = beats[i - 1] + 0.001
+
     # Stability metrics: how well does a constant-BPM line fit the real grid?
     ibis = np.diff(beats)
     med = float(np.median(ibis))

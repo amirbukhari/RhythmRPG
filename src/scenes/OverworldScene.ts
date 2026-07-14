@@ -643,6 +643,24 @@ export class OverworldScene extends Phaser.Scene {
           if (isLand(col, row + 1)) shore.fillStyle(FOAM, 0.55).fillRect(px, py + TILE_SIZE - 1, TILE_SIZE, 1);
           if (isLand(col - 1, row)) shore.fillStyle(FOAM, 0.5).fillRect(px, py, 1, TILE_SIZE);
           if (isLand(col + 1, row)) shore.fillStyle(FOAM, 0.5).fillRect(px + TILE_SIZE - 1, py, 1, TILE_SIZE);
+        } else if (idx !== undefined && localKind(idx) === 3) {
+          // Elevation read (v8.8, the v7.15 "hills" clause): rock is HIGH
+          // ground. A lit crown where it meets open ground above, a hard
+          // terrace lip plus a cast shadow where it drops away below, and
+          // darkened flanks -- the flat tilemap gains a third dimension for
+          // the cost of a few rects.
+          const rock = (g: number | undefined) => g !== undefined && localKind(g) === 3;
+          const above = ground.getTileAt(col, row - 1)?.index;
+          const below = ground.getTileAt(col, row + 1)?.index;
+          const left = ground.getTileAt(col - 1, row)?.index;
+          const right = ground.getTileAt(col + 1, row)?.index;
+          if (!rock(above)) shore.fillStyle(0xd8ceb6, 0.16).fillRect(px, py, TILE_SIZE, 1);
+          if (!rock(below)) {
+            shore.fillStyle(0x05060a, 0.5).fillRect(px, py + TILE_SIZE - 2, TILE_SIZE, 2);
+            shore.fillStyle(0x05060a, 0.26).fillRect(px, py + TILE_SIZE, TILE_SIZE, 3);
+          }
+          if (!rock(left)) shore.fillStyle(0x05060a, 0.24).fillRect(px, py, 1, TILE_SIZE);
+          if (!rock(right)) shore.fillStyle(0x05060a, 0.24).fillRect(px + TILE_SIZE - 1, py, 1, TILE_SIZE);
         } else if (isGrassGid(idx) && !blocked.has(keyOf(col, row))) {
           const h = ((col * 73856093) ^ (row * 19349663)) >>> 0;
           // CLUSTERED scatter (AAA audit O3): real places group -- graveyards,

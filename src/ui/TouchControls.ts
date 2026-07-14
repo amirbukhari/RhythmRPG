@@ -214,6 +214,22 @@ export function initTouchControls(): void {
 
   document.body.appendChild(root);
 
+  // Portrait phones letterbox the 16:9 stage into a small band -- nudge
+  // (never block) toward landscape. Pure DOM, auto-hides on rotate.
+  const hint = document.createElement("div");
+  hint.id = "rotate-hint";
+  hint.textContent = "↻ rotate for the full stage";
+  hint.style.cssText =
+    "position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:60;" +
+    "background:rgba(5,6,10,0.8);color:#9fe8e0;font:11px monospace;padding:4px 10px;" +
+    "border:1px solid rgba(73,198,189,0.4);border-radius:10px;pointer-events:none;";
+  document.body.appendChild(hint);
+  const updateHint = (): void => {
+    hint.style.display = window.innerHeight > window.innerWidth ? "block" : "none";
+  };
+  updateHint();
+  window.addEventListener("resize", updateHint);
+
   // A dropped touch (tab hidden, context lost) must not leave a key stuck down.
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
