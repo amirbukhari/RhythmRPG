@@ -18,7 +18,20 @@ type OverworldSeams = {
   getMarkerGridPosition(nodeId: string): { col: number; row: number };
   getMapRowCount(): number;
   debugTeleportToNode(nodeId: string): void;
+  isFightActive(): boolean;
+  getFightArena(): { fighters: { team: string; hp: number; state: string }[] } | null;
 };
+
+/** Waits until the in-world fight is live with its sim arena up (the audio clock start is async). */
+async function waitForFightArena(page: import("@playwright/test").Page): Promise<void> {
+  await page.waitForFunction(() => {
+    const scene = window.__meterfallDebug.game.scene.getScene("OverworldScene") as unknown as {
+      isFightActive(): boolean;
+      getFightArena(): unknown;
+    };
+    return scene.isFightActive() && scene.getFightArena() !== null;
+  });
+}
 
 async function playerGridPosition(page: import("@playwright/test").Page): Promise<{ col: number; row: number }> {
   return page.evaluate(() => {
@@ -55,14 +68,18 @@ test.describe("overworld", () => {
     expect(afterDown.row).toBeLessThan(lastRow); // the border wall is the last map row
   });
 
-  test("walking onto the unlocked first node starts its battle with the right pending state", async ({ page }) => {
+  test("walking onto the unlocked first node starts its fight IN the world with the right pending state", async ({ page }) => {
     await bootToOverworld(page);
 
     await page.evaluate(() => {
       const scene = window.__meterfallDebug.game.scene.getScene("OverworldScene") as unknown as OverworldSeams;
       scene.debugTeleportToNode("opening_1");
     });
-    await waitForScene(page, "ActionBattleScene"); // v6.0 real-time combat
+    // areas-not-arenas (PRD v7.6/v7.13): the fight is live INSIDE the
+    // overworld -- no separate battle scene may load.
+    await waitForFightArena(page);
+    expect(await isSceneActive(page, "OverworldScene")).toBe(true);
+    expect(await isSceneActive(page, "ActionBattleScene")).toBe(false);
 
     const pending = await page.evaluate(() => ({
       encounterId: window.__meterfallDebug.GameContext.pendingEncounterId,
@@ -82,7 +99,7 @@ test.describe("overworld", () => {
       scene.debugTeleportToNode("mid_2");
     });
     await page.waitForTimeout(500);
-    expect(await isSceneActive(page, "ActionBattleScene")).toBe(false);
+    expect(await page.evaluate(() => (window.__meterfallDebug.game.scene.getScene("OverworldScene") as unknown as OverworldSeams).isFightActive())).toBe(false);
     expect(await isSceneActive(page, "OverworldScene")).toBe(true);
 
     // Mark opening_1 cleared (as a won battle would) and stand on it: no re-fight.
@@ -94,7 +111,7 @@ test.describe("overworld", () => {
       scene.debugTeleportToNode("opening_1");
     });
     await page.waitForTimeout(500);
-    expect(await isSceneActive(page, "ActionBattleScene")).toBe(false);
+    expect(await page.evaluate(() => (window.__meterfallDebug.game.scene.getScene("OverworldScene") as unknown as OverworldSeams).isFightActive())).toBe(false);
     expect(await isSceneActive(page, "OverworldScene")).toBe(true);
   });
 
@@ -106,16 +123,15 @@ test.describe("overworld", () => {
       const scene = window.__meterfallDebug.game.scene.getScene("OverworldScene") as unknown as OverworldSeams;
       scene.debugTeleportToNode("opening_1");
     });
-    await waitForScene(page, "ActionBattleScene");
+    await waitForFightArena(page);
 
-    // Force the win by emptying the arena's enemy HP; the sim detects victory
-    // on the next tick and runs the real finishBattle()/reward path. Playing a
+    // Force the win by emptying the sim's enemy HP; the sim detects victory
+    // on the next tick and runs the real finish()/reward path. Playing a
     // full real-time fight with live input is the manual-verification job.
     await page.evaluate(() => {
-      const scene = window.__meterfallDebug.game.scene.getScene("ActionBattleScene") as unknown as {
-        arena: { fighters: { team: string; hp: number; state: string }[] };
-      };
-      for (const f of scene.arena.fighters) {
+      const scene = window.__meterfallDebug.game.scene.getScene("OverworldScene") as unknown as OverworldSeams;
+      const arena = scene.getFightArena()!;
+      for (const f of arena.fighters) {
         if (f.team === "enemy") {
           f.hp = 0;
           f.state = "dead";

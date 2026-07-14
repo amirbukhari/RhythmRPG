@@ -34,9 +34,9 @@ from import_asset import flood_key, pixelate  # noqa: E402
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "assets" / "sprites" / "band"
 
-FRAME = 48  # engine frame size (BootScene loads 48x48)
-FIG_H = 42  # figure height inside the frame (feet anchored near the bottom)
-FOOT_Y = 46  # baseline the feet sit on
+FRAME = 72  # engine frame size (BootScene loads 72x72; AAA legibility pass)
+FIG_H = 66  # figure height inside the frame (feet anchored near the bottom)
+FOOT_Y = 69  # baseline the feet sit on
 
 # One shared style clause so the four read as ONE band; the subject varies.
 STYLE = (
@@ -221,9 +221,9 @@ def build(member: str, subject: str, seed: int) -> None:
     c = scrub_mist(autocrop(cut))
     c = autocrop(keep_main_island(c))
     ar = c.width / c.height
-    lh = 44
+    lh = 66
     lw = max(16, min(48, round(lh * ar)))
-    fig = pixelate(c, lw, lh, dither=False, colors=28)
+    fig = pixelate(c, lw, lh, dither=False, colors=56)
     base = fit_to_frame(fig)
 
     outdir = OUT / member

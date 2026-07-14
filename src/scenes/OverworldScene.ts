@@ -10,6 +10,7 @@ import propsUrl from "../../assets/sprites/overworld/props.png";
 import npcsUrl from "../../assets/sprites/overworld/npcs.png";
 import { BASE_WIDTH, BASE_HEIGHT } from "../config/GameConfig";
 import { music } from "../systems/audio/SongPlayer";
+import { WorldFight } from "./overworld/WorldFight";
 
 const TILE_SIZE = 16;
 const STEP_DURATION_MS = 160;
@@ -72,6 +73,10 @@ export class OverworldScene extends Phaser.Scene {
   private nearbyEcho: Echo | null = null;
   private obelisks: { col: number; row: number; glow: Phaser.GameObjects.Image }[] = [];
   private nearbyObelisk: { col: number; row: number; glow: Phaser.GameObjects.Image } | null = null;
+  /** Live in-world fight (areas-not-arenas); null while exploring. */
+  private fight: WorldFight | null = null;
+  /** The standing foe's visuals per node, hidden when its fight goes live. */
+  private nodeFoeVisuals = new Map<string, Phaser.GameObjects.GameObject[]>();
   private interactHint!: Phaser.GameObjects.Text;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: Record<"W" | "A" | "S" | "D", Phaser.Input.Keyboard.Key>;
@@ -103,6 +108,12 @@ export class OverworldScene extends Phaser.Scene {
 
     this.moving = false;
     this.obelisks = [];
+    this.fight = null;
+    this.nodeFoeVisuals.clear();
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.fight?.destroy();
+      this.fight = null;
+    });
     music.setVolume(profile.settings.volumeMusic);
     music.setMode("explore");
     music.start();
@@ -202,7 +213,7 @@ export class OverworldScene extends Phaser.Scene {
     // Amir's frames are 48x48 with the figure ~37px tall; scaled to ~0.52 he
     // stands ~1.2 tiles against the 16px tiles (feet-anchored so he sits on
     // the tile centre). Idle breathes until the player moves.
-    this.player.setOrigin(0.5, 0.9).setScale(0.52);
+    this.player.setOrigin(0.5, 0.9).setScale(0.35);
     this.player.setDepth(5);
     this.player.play("leader_idle");
     this.snapPlayerToGrid();
@@ -222,7 +233,7 @@ export class OverworldScene extends Phaser.Scene {
       }
       if (!this.textures.exists(`band_${member}`)) continue;
       const shadow = this.add.ellipse(0, 0, 12, 4, 0x05060a, 0.35).setDepth(4.3);
-      const sprite = this.add.sprite(0, 0, `band_${member}`, 0).setOrigin(0.5, 0.9).setScale(0.5).setDepth(4.6);
+      const sprite = this.add.sprite(0, 0, `band_${member}`, 0).setOrigin(0.5, 0.9).setScale(0.33).setDepth(4.6);
       sprite.play(idleKey);
       sprite.setPosition(this.playerPos.col * TILE_SIZE + TILE_SIZE / 2, this.playerPos.row * TILE_SIZE + TILE_SIZE / 2);
       this.followers.push({ member, sprite, shadow });
@@ -319,10 +330,16 @@ export class OverworldScene extends Phaser.Scene {
     }
   }
 
-  update(): void {
+  update(_time: number, deltaMs: number): void {
     if (!this.player) return;
     this.playerShadow.setPosition(this.player.x, this.player.y + 2);
     this.playerGlow.setPosition(this.player.x, this.player.y - 6);
+    if (this.fight) {
+      // a fight is live IN the world: the sim drives the player; tile
+      // movement, interactions, and the conga line pause until it resolves
+      if (!this.fight.update(deltaMs)) this.fight = null;
+      return;
+    }
     for (const f of this.followers) {
       f.shadow.setPosition(f.sprite.x, f.sprite.y + 2);
       // drop a follower back to its idle when it has stopped moving
@@ -512,13 +529,15 @@ export class OverworldScene extends Phaser.Scene {
   }
 
   /**
-   * Walking onto an unlocked marker starts its battle immediately (no
-   * separate confirm key). Cleared and locked markers are walk-over no-ops:
-   * cleared nodes sit on the road onward, and v1 has no re-fighting.
+   * Walking onto an unlocked marker starts its fight IN PLACE (areas, not
+   * arenas -- PRD §8.2 v7.6): the camera locks to a screen-sized room of the
+   * actual world around the foe and the action sim runs right there. No
+   * separate battle scene loads. Cleared and locked markers are walk-over
+   * no-ops: cleared nodes sit on the road onward, and v1 has no re-fighting.
    */
   private checkEncounterTrigger(): void {
     const profile = GameContext.activeProfile;
-    if (!profile) return;
+    if (!profile || this.fight) return;
     const marker = this.markers.find((m) => m.col === this.playerPos.col && m.row === this.playerPos.row);
     if (!marker) return;
     if (nodeStatus(campaign, profile.campaignProgress, marker.nodeId) !== "unlocked") return;
@@ -527,7 +546,25 @@ export class OverworldScene extends Phaser.Scene {
     if (!encounterId) return; // camp nodes have no encounter
     GameContext.pendingEncounterId = encounterId;
     GameContext.pendingNodeId = marker.nodeId;
-    this.scene.start("ActionBattleScene"); // v6.0 real-time combat
+    // the standing foe hands over to the live fight
+    for (const o of this.nodeFoeVisuals.get(marker.nodeId) ?? []) (o as Phaser.GameObjects.Sprite).setVisible(false);
+    this.fight = new WorldFight(
+      { scene: this, playerSprite: this.player },
+      marker.nodeId,
+      encounterId,
+      marker.col * TILE_SIZE + TILE_SIZE / 2,
+      marker.row * TILE_SIZE + TILE_SIZE / 2
+    );
+  }
+
+  /** Test seam: whether an in-world fight is currently live. */
+  isFightActive(): boolean {
+    return this.fight !== null;
+  }
+
+  /** Test seam: the live fight's sim arena (null while exploring). */
+  getFightArena(): unknown {
+    return this.fight?.simArena ?? null;
   }
 
   /**
@@ -761,7 +798,7 @@ export class OverworldScene extends Phaser.Scene {
     const footY = y + TILE_SIZE / 2 - 1;
 
     // contact shadow + emissive aura ground the foe in the world
-    this.add.ellipse(x, footY, colossal ? 30 : 20, colossal ? 9 : 6, 0x05060a, 0.4).setDepth(3);
+    const foeShadow = this.add.ellipse(x, footY, colossal ? 30 : 20, colossal ? 9 : 6, 0x05060a, 0.4).setDepth(3);
     const aura = this.add
       .image(x, footY - 10, "glow")
       .setBlendMode(Phaser.BlendModes.ADD)
@@ -770,7 +807,9 @@ export class OverworldScene extends Phaser.Scene {
       .setAlpha(status === "locked" ? 0.08 : 0.3)
       .setDepth(3);
 
-    const foe = this.add.sprite(x, footY, tex, 0).setOrigin(0.5, 1).setScale(colossal ? 0.8 : 0.6).setDepth(4.5);
+    const foe = this.add.sprite(x, footY, tex, 0).setOrigin(0.5, 1).setScale(colossal ? 0.8 : 0.4).setDepth(4.5);
+    // the live fight hides these when the player walks into the foe
+    this.nodeFoeVisuals.set(marker.nodeId, [foe, aura, foeShadow]);
     if (status === "locked") {
       // past the frontier: a dark, motionless silhouette waiting in the fog
       foe.setTint(0x1a2230).setAlpha(0.9);
@@ -813,7 +852,7 @@ export class OverworldScene extends Phaser.Scene {
       .setAlpha(0.35)
       .setDepth(3);
     if (this.textures.exists("env_shared_save_obelisk")) {
-      this.add.image(x, y, "env_shared_save_obelisk").setOrigin(0.5, 1).setScale(0.55).setDepth(4);
+      this.add.image(x, y, "env_shared_save_obelisk").setOrigin(0.5, 1).setScale(0.34).setDepth(4);
     } else {
       // art not shipped yet: a simple standing stone so the save point still exists
       this.add.rectangle(x, y - 7, 6, 14, 0x2c3a4a).setDepth(4);

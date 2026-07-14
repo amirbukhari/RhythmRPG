@@ -64,11 +64,13 @@ const HERO_BATTLE_URLS: Record<string, string> = {
   mage: mageBattleUrl,
   healer: healerBattleUrl,
 };
-const ENEMY_URLS: Record<string, string> = {
-  slime: slimeUrl,
-  drifter: drifterUrl,
-  elite_wraith: eliteWraithUrl,
-  the_conductor: conductorUrl,
+// Regenerated foes (newfoes.py) ship 72x72 frames for legibility; the
+// Conductor's small sheet is legacy 48x48 (his fights use the colossal sheet).
+const ENEMY_URLS: Record<string, { url: string; frame: number }> = {
+  slime: { url: slimeUrl, frame: 72 },
+  drifter: { url: drifterUrl, frame: 72 },
+  elite_wraith: { url: eliteWraithUrl, frame: 72 },
+  the_conductor: { url: conductorUrl, frame: 48 },
 };
 
 /** Loads the asset manifest and verifies browser support. See PRD §10.6. */
@@ -101,21 +103,22 @@ export class BootScene extends Phaser.Scene {
       this.load.spritesheet(`hero_${role}`, url, { frameWidth: 20, frameHeight: 24 });
     }
     // Band sprites: `band_amir/idle.png` -> key `band_amir`; `.../run.png` ->
-    // `band_amir_run`; `.../attack.png` -> `band_amir_attack`. All 48x48.
+    // `band_amir_run`; `.../attack.png` -> `band_amir_attack`. All 72x72
+    // (newband.py legibility pass).
     for (const [path, url] of Object.entries(BAND_URLS)) {
       const m = /band\/([^/]+)\/([^/]+)\.png$/.exec(path);
       if (!m) continue;
       const [, member, anim] = m;
       const key = anim === "idle" ? `band_${member}` : `band_${member}_${anim}`;
-      this.load.spritesheet(key, url, { frameWidth: 48, frameHeight: 48 });
+      this.load.spritesheet(key, url, { frameWidth: 72, frameHeight: 72 });
     }
     // Environment kitbash pieces: `.../env/shallows/rock_a.png` -> env_shallows_rock_a
     for (const [path, url] of Object.entries(ENV_URLS)) {
       const m = /env\/([^/]+)\/([^/]+)\.png$/.exec(path);
       if (m) this.load.image(`env_${m[1]}_${m[2]}`, url);
     }
-    for (const [name, url] of Object.entries(ENEMY_URLS)) {
-      this.load.spritesheet(`enemy_${name}`, url, { frameWidth: 48, frameHeight: 48 });
+    for (const [name, spec] of Object.entries(ENEMY_URLS)) {
+      this.load.spritesheet(`enemy_${name}`, spec.url, { frameWidth: spec.frame, frameHeight: spec.frame });
     }
   }
 
