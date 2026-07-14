@@ -84,9 +84,9 @@ export class ActionBattleScene extends Phaser.Scene {
   private attackGlow!: Phaser.GameObjects.Image;
   private storyLight!: Phaser.GameObjects.Image;
   private hpBars!: Phaser.GameObjects.Graphics;
+  private plate!: Phaser.GameObjects.Graphics;
+  private dmgText!: Phaser.GameObjects.Text;
   private fx!: Phaser.GameObjects.Graphics;
-  private beatText!: Phaser.GameObjects.Text;
-  private resourceText!: Phaser.GameObjects.Text;
   private beatPulse!: Phaser.GameObjects.Arc;
 
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -121,7 +121,7 @@ export class ActionBattleScene extends Phaser.Scene {
     const layout = ARENA_LAYOUTS[arenaDef.key];
     if (layout) {
       // Intentional top-down arena kitbashed from individual environment pieces.
-      composeArena(this, layout);
+      composeArena(this, layout, arenaDef.key);
     } else {
       // Fallback: a single AI backdrop (top-down HLD-detail) + a light scrim so
       // fighters read against it.
@@ -190,26 +190,41 @@ export class ActionBattleScene extends Phaser.Scene {
       this.sprites.set(e.id, s);
     });
 
-    this.hpBars = this.add.graphics().setDepth(15);
+    this.hpBars = this.add.graphics().setDepth(21); // above HUD frames (20)
     this.fx = this.add.graphics().setDepth(6);
 
-    // HUD
-    this.add.nineslice(-6, -6, this.isBoss ? "ui_panel_boss" : "ui_panel", undefined, BASE_WIDTH + 12, 18, 5, 5, 5, 5).setOrigin(0, 0).setDepth(20);
-    this.beatText = this.add.text(6, 3, "", { fontFamily: "monospace", fontSize: "8px", color: "#79b855" }).setDepth(21);
-    this.beatPulse = this.add.circle(BASE_WIDTH - 12, 7, 3, 0x49c6bd).setDepth(21);
-    this.resourceText = this.add
-      .text(6, BASE_HEIGHT - 10, "", { fontFamily: "monospace", fontSize: "7px", color: "#d8ceb6", stroke: "#05060a", strokeThickness: 3 })
+    // --- HUD (AAA audit B4/B5): framed player plate + boss bar, no raw text
+    // strips over the arena. The old full-width top band is gone -- the arena
+    // gets the whole frame.
+    this.add.nineslice(3, BASE_HEIGHT - 33, "ui_panel", undefined, 96, 30, 5, 5, 5, 5).setOrigin(0, 0).setDepth(20).setAlpha(0.94);
+    this.add.text(9, BASE_HEIGHT - 30, "INHALANTS", { fontFamily: "monospace", fontSize: "6px", color: "#9fe8e0" }).setDepth(21);
+    this.beatPulse = this.add.circle(90, BASE_HEIGHT - 26, 3, 0x49c6bd).setDepth(21);
+    this.plate = this.add.graphics().setDepth(21);
+    this.dmgText = this.add
+      .text(92, BASE_HEIGHT - 12, "", { fontFamily: "monospace", fontSize: "6px", color: "#d8ceb6" })
+      .setOrigin(1, 1)
       .setDepth(21);
-    this.add
-      .text(BASE_WIDTH - 6, BASE_HEIGHT - 10, "WASD move · J/K atk · L special · I parry · Shift dash", {
+
+    if (this.isBoss) {
+      // top-centre boss bar with the foe's name above it (drawn in drawHpBars)
+      const bossName = getEnemy(encounter.enemyWave[0]).name.toUpperCase();
+      this.add.nineslice(BASE_WIDTH / 2 - 71, 4, "ui_panel_boss", undefined, 142, 22, 5, 5, 5, 5).setOrigin(0, 0).setDepth(20).setAlpha(0.94);
+      this.add.text(BASE_WIDTH / 2, 8, bossName, { fontFamily: "monospace", fontSize: "6px", color: "#f0a648" }).setOrigin(0.5, 0).setDepth(21);
+    }
+
+    // controls hint: teach (top of frame, clear of the plate), then get out
+    // of the way
+    const hint = this.add
+      .text(BASE_WIDTH / 2, this.isBoss ? 30 : 8, "WASD move · J/K atk · L special · I parry · Shift dash", {
         fontFamily: "monospace",
         fontSize: "7px",
         color: "#877d70",
         stroke: "#05060a",
         strokeThickness: 3,
       })
-      .setOrigin(1, 0.5)
+      .setOrigin(0.5, 0)
       .setDepth(21);
+    this.tweens.add({ targets: hint, alpha: 0, delay: 6000, duration: 900 });
 
     this.showBattleIntro(encounter.enemyWave);
 
@@ -367,13 +382,24 @@ export class ActionBattleScene extends Phaser.Scene {
     }
 
     this.drawHpBars();
-
-    const beat = Math.floor((this.clock.currentTime / this.beatSeconds) % 4) + 1;
-    this.beatText.setText(`Beat ${beat}/4`);
     this.beatPulse.setScale(this.isOnBeat() ? 1.7 : 1).setFillStyle(this.isOnBeat() ? 0xf4d27a : 0x49c6bd);
-    this.resourceText.setText(
-      `HP ${Math.ceil(p.hp)}/${p.maxHp}   Focus ${this.arena.focus}/5   Groove ${Math.round(this.arena.groove)}/100   DMG ${Math.round(p.damagePct)}%`
-    );
+    this.dmgText.setText(p.damagePct > 0.5 ? `${Math.round(p.damagePct)}%` : "");
+
+    // player plate: HP bar, Focus pips, Groove bar (drawn, not printed)
+    const g = this.plate;
+    g.clear();
+    const px0 = 9;
+    const hpY = BASE_HEIGHT - 22;
+    const hpW = 78;
+    g.fillStyle(0x05060a, 0.9).fillRect(px0 - 1, hpY - 1, hpW + 2, 5);
+    g.fillStyle(0x7d1b20, 1).fillRect(px0, hpY, hpW, 3);
+    g.fillStyle(0x49c6bd, 1).fillRect(px0, hpY, Math.max(0, Math.round((p.hp / p.maxHp) * hpW)), 3);
+    for (let i = 0; i < 5; i++) {
+      g.fillStyle(i < this.arena.focus ? 0xf4d27a : 0x2a3138, 1).fillRect(px0 + i * 7, hpY + 7, 5, 3);
+    }
+    const grW = 40;
+    g.fillStyle(0x2a3138, 1).fillRect(px0 + 38, hpY + 7, grW, 3);
+    g.fillStyle(0xb98fca, 1).fillRect(px0 + 38, hpY + 7, Math.round((this.arena.groove / 100) * grW), 3);
   }
 
   /** A fading title card naming the movement (biome) and the foe -- narrative flavor. */
@@ -399,15 +425,28 @@ export class ActionBattleScene extends Phaser.Scene {
   }
 
   private drawHpBars(): void {
+    // Player HP lives on the plate; a boss's HP lives on the top bar; only
+    // regular foes keep a small bar hugging the sprite (AAA audit B4).
     this.hpBars.clear();
-    for (const f of this.arena.fighters) {
+    const enemies = getEnemies(this.arena);
+    for (let i = 0; i < enemies.length; i++) {
+      const f = enemies[i];
       if (f.state === "dead") continue;
-      const w = f.team === "player" ? 24 : 20;
+      if (this.isBoss && i === 0) {
+        // top-centre boss bar (frame drawn once in create); bright fill on a
+        // near-black trough so the remaining HP always reads
+        const bw = 130;
+        const bx = BASE_WIDTH / 2 - bw / 2;
+        this.hpBars.fillStyle(0x1a0507, 1).fillRect(bx, 18, bw, 4);
+        this.hpBars.fillStyle(0xe04434, 1).fillRect(bx, 18, Math.max(0, Math.round((f.hp / f.maxHp) * bw)), 4);
+        continue;
+      }
+      const sprite = this.sprites.get(f.id);
+      const w = 16;
       const x = Math.round(f.pos.x - w / 2);
-      const y = Math.round(f.pos.y + HORIZON - (f.team === "player" ? 22 : 30));
-      this.hpBars.fillStyle(0x05060a, 0.8).fillRect(x - 1, y - 1, w + 2, 4);
-      this.hpBars.fillStyle(0x7d1b20, 1).fillRect(x, y, w, 2);
-      this.hpBars.fillStyle(f.team === "player" ? 0x49c6bd : 0xc22f34, 1).fillRect(x, y, Math.max(0, Math.round((f.hp / f.maxHp) * w)), 2);
+      const y = Math.round(f.pos.y + HORIZON - (sprite ? sprite.displayHeight * 0.78 : 24));
+      this.hpBars.fillStyle(0x05060a, 0.8).fillRect(x - 1, y - 1, w + 2, 3);
+      this.hpBars.fillStyle(0xc22f34, 1).fillRect(x, y, Math.max(0, Math.round((f.hp / f.maxHp) * w)), 1);
     }
   }
 

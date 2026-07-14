@@ -1,5 +1,5 @@
 import { test } from "@playwright/test";
-import { waitForScene, passAudioGate, createSaveAndCalibrate } from "./helpers";
+import { waitForScene } from "./helpers";
 
 test("audit: capture every screen", async ({ page }) => {
   await page.goto("/");
