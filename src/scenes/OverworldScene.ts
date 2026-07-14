@@ -11,6 +11,7 @@ import npcsUrl from "../../assets/sprites/overworld/npcs.png";
 import { BASE_WIDTH, BASE_HEIGHT } from "../config/GameConfig";
 import { music } from "../systems/audio/SongPlayer";
 import { WorldFight } from "./overworld/WorldFight";
+import { composeWorldVenue } from "./env/ArenaComposer";
 
 const TILE_SIZE = 16;
 const STEP_DURATION_MS = 160;
@@ -162,6 +163,11 @@ export class OverworldScene extends Phaser.Scene {
     this.softenSeamsAndDapple(map);
     this.drawLandmarks();
     this.drawNpcs(spawnTile);
+    // each fight node's authored venue -- its biome floor blended into the
+    // map + its kitbash set pieces -- stands IN the world, under the foe
+    for (const marker of this.markers) {
+      composeWorldVenue(this, marker.nodeId, marker.col * TILE_SIZE + TILE_SIZE / 2, marker.row * TILE_SIZE + TILE_SIZE / 2);
+    }
     for (const marker of this.markers) this.drawMarker(profile, marker);
     for (const echo of this.echoes) this.drawEcho(echo);
 
@@ -548,17 +554,26 @@ export class OverworldScene extends Phaser.Scene {
     GameContext.pendingNodeId = marker.nodeId;
     // the standing foe hands over to the live fight
     for (const o of this.nodeFoeVisuals.get(marker.nodeId) ?? []) (o as Phaser.GameObjects.Sprite).setVisible(false);
+    const nodeX = marker.col * TILE_SIZE + TILE_SIZE / 2;
+    const nodeY = marker.row * TILE_SIZE + TILE_SIZE / 2;
     this.fight = new WorldFight(
       {
         scene: this,
         playerSprite: this.player,
-        isWorldWalkable: (px, py) =>
-          isWalkable(this.walkable, { col: Math.floor(px / TILE_SIZE), row: Math.floor(py / TILE_SIZE) }),
+        // the venue floor (composeWorldVenue) covers the ground around the
+        // node, so that circle is always fightable even where the map tiles
+        // underneath are water/rock -- every fight gets a real room
+        isWorldWalkable: (px, py) => {
+          const dx = px - nodeX;
+          const dy = py - nodeY;
+          if (dx * dx + dy * dy < 64 * 64) return true;
+          return isWalkable(this.walkable, { col: Math.floor(px / TILE_SIZE), row: Math.floor(py / TILE_SIZE) });
+        },
       },
       marker.nodeId,
       encounterId,
-      marker.col * TILE_SIZE + TILE_SIZE / 2,
-      marker.row * TILE_SIZE + TILE_SIZE / 2
+      nodeX,
+      nodeY
     );
   }
 

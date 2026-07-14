@@ -176,6 +176,19 @@ def pixelate(img: Image.Image, logical_w: int, logical_h: int, *,
     return q
 
 
+def smooth_downscale(img: Image.Image, target_w: int, target_h: int) -> Image.Image:
+    """De-pixelation pass (owner: "pull back the pixelation even more"): a
+    clean LANCZOS downscale with NO palette quantization. At in-game sizes the
+    320x180 canvas still renders chunky screen pixels, so the retro feel
+    survives while every sprite keeps its full colour detail and stays
+    legible. Alpha is preserved as a hard mask."""
+    img = img.convert("RGBA")
+    out = img.resize((target_w, target_h), Image.LANCZOS)
+    a = out.getchannel("A").point(lambda v: 255 if v >= 96 else 0)
+    out.putalpha(a)
+    return out
+
+
 def downscale(img: Image.Image, target_w: int, target_h: int) -> Image.Image:
     """Resize down to the target pixel size. LANCZOS for the area average
     (quantize afterward restores crisp flat colours)."""

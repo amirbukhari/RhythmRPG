@@ -26,7 +26,7 @@ from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).parent))
 from generate_ai import SPRITE_PREFIX, gen_pollinations  # noqa: E402
-from import_asset import flood_key, pixelate  # noqa: E402
+from import_asset import flood_key, pixelate, smooth_downscale  # noqa: E402
 from newband import autocrop, keep_main_island  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -107,7 +107,7 @@ def build(biome: str, piece: str, style: str, subject: str, lh: int, seed: int) 
     cut = autocrop(keep_main_island(flood_key(src, tol=60)))
     ar = cut.width / cut.height
     lw = max(8, round(lh * ar))
-    fig = pixelate(cut, lw, lh, dither=False, colors=64)
+    fig = smooth_downscale(cut, lw, lh)
     outdir = OUT / biome
     outdir.mkdir(parents=True, exist_ok=True)
     fig.save(outdir / f"{piece}.png")

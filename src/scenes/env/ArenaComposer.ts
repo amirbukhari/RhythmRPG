@@ -40,7 +40,7 @@ export interface ArenaLayout {
  * attic boards, marble checker) -> speckle -> radial centre light + edge
  * falloff. Deterministic per arena key.
  */
-function paintFloor(scene: Phaser.Scene, key: string, layout: ArenaLayout): string {
+function paintFloor(scene: Phaser.Scene, key: string, layout: ArenaLayout, edgeFade = false): string {
   const texKey = `floor_${key}`;
   if (scene.textures.exists(texKey)) return texKey;
   const W = BASE_WIDTH;
@@ -143,12 +143,15 @@ function paintFloor(scene: Phaser.Scene, key: string, layout: ArenaLayout): stri
         g = bg + (dg - bg) * Math.min(1, -t);
         b = bb + (db - bb) * Math.min(1, -t);
       }
-      const m = 1 + lightBoost - edge;
+      // opaque arenas darken at the edge; world venues FADE at the edge so
+      // the terrain blends into the surrounding map (the fight's "room" is
+      // part of the world, not a pasted slab)
+      const m = 1 + lightBoost - (edgeFade ? 0 : edge);
       const i = (y * W + x) * 4;
       d[i] = Math.max(0, Math.min(255, r * m));
       d[i + 1] = Math.max(0, Math.min(255, g * m));
       d[i + 2] = Math.max(0, Math.min(255, b * m));
-      d[i + 3] = 255;
+      d[i + 3] = edgeFade ? Math.round(255 * Math.max(0, Math.min(1, (1.02 - rad) * 2.6))) : 255;
     }
   }
   ctx.putImageData(img, 0, 0);
@@ -198,6 +201,52 @@ export function composeArena(scene: Phaser.Scene, layout: ArenaLayout, key = "ar
       .setScale(s)
       .setFlipX(!!p.flip)
       .setDepth(p.fg ? 9 : 1 + p.y / 400);
+  }
+}
+
+// Which authored venue dresses each fight node's spot IN the world.
+export const NODE_VENUE: Record<string, string> = {
+  opening_1: "arena_shallows",
+  mid_1: "arena_saltmines",
+  mid_2: "arena_pit",
+  mid_3: "arena_attic",
+  boss_1: "arena_hall",
+};
+
+/**
+ * Dresses a fight node's spot IN the overworld with its authored venue
+ * (owner: "what happened to the terrains you made for the boss fights? I
+ * just wanted you to put those in the world"): the biome floor is painted
+ * as an edge-faded patch blended into the surrounding map, and the kitbash
+ * set pieces stand around the spot in world space. The fight then happens
+ * on this exact ground (WorldFight locks its room here).
+ */
+export function composeWorldVenue(scene: Phaser.Scene, nodeId: string, cx: number, cy: number): void {
+  const key = NODE_VENUE[nodeId];
+  const layout = key ? ARENA_LAYOUTS[key] : undefined;
+  if (!key || !layout) return;
+  const floorKey = paintFloor(scene, `${key}_world`, layout, true);
+  scene.add.image(cx, cy, floorKey).setDepth(1.5).setAlpha(0.92);
+  // kit pieces, offset from the layout's arena space onto the node's spot
+  const ox = cx - BASE_WIDTH / 2;
+  const oy = cy - BASE_HEIGHT * 0.56;
+  for (const p of layout.pieces) {
+    if (/save_obelisk/.test(p.key)) continue; // the overworld places its own
+    if (!scene.textures.exists(p.key)) continue;
+    const s = (p.scale ?? 1) * 0.55; // world proportion for the 1.6x hi-res kit art
+    const px = ox + p.x;
+    const py = oy + p.y;
+    if (p.shadow !== false) scene.add.ellipse(px, py, 20 * s, 6 * s, 0x05060a, 0.35).setDepth(2.4);
+    if (/campfire|lantern|lamp/.test(p.key)) {
+      scene.add
+        .image(px, py - 6, "glow")
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setTint(0xf0a648)
+        .setScale(0.35)
+        .setAlpha(0.45)
+        .setDepth(2.6);
+    }
+    scene.add.image(px, py, p.key).setOrigin(0.5, 1).setScale(s).setFlipX(!!p.flip).setDepth(2.5 + py / 100000);
   }
 }
 
