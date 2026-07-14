@@ -14,6 +14,14 @@ export class ResultsScene extends Phaser.Scene {
   }
 
   create(): void {
+    // Phaser reuses one persistent Scene instance across stop/start cycles
+    // (same class of bug fixed in SettingsOverlay at v4.2): a menu kept from
+    // a previous visit references already-destroyed Text objects, and
+    // setItems() on it throws mid-create, soft-locking the scene. Found by
+    // the P5 soak spec on the second Results visit of a session (lose a
+    // fight, then finish another one).
+    this.menu = null;
+
     const result = GameContext.lastBattleResult;
     GameContext.lastBattleResult = null;
 
