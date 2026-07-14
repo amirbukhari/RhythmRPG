@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { GameContext } from "../state/GameContext";
-import { campaign, getCampaignNode } from "../data/ContentRegistry";
+import { campaign, getCampaignNode, getEncounter } from "../data/ContentRegistry";
 import { resolveEncounterId } from "../systems/progression/CampaignSelection";
 import { nodeStatus, type NodeStatus } from "../systems/progression/CampaignReachability";
 import { stepTarget, isWalkable, type Direction, type GridPosition } from "../systems/overworld/OverworldMovement";
@@ -15,6 +15,13 @@ const TILE_SIZE = 16;
 const STEP_DURATION_MS = 160;
 const MARKER_COLORS: Record<NodeStatus, number> = { cleared: 0x44cc66, unlocked: 0xffe066, locked: 0x444444 };
 const NODE_TYPE_LABEL: Record<string, string> = { battle: "B", elite: "E", boss: "!", camp: "C" };
+// Emissive accent per foe for its overworld aura (mirrors ActionBattleScene).
+const FOE_ACCENT: Record<string, number> = {
+  the_conductor: 0xf0a648,
+  elite_wraith: 0x49c6bd,
+  drifter: 0x9fe8e0,
+  slime: 0x9aca43,
+};
 
 interface Marker {
   nodeId: string;
@@ -57,6 +64,8 @@ export class OverworldScene extends Phaser.Scene {
   private echoCountText!: Phaser.GameObjects.Text;
   private echoPanel: Phaser.GameObjects.Container | null = null;
   private nearbyEcho: Echo | null = null;
+  private obelisks: { col: number; row: number; glow: Phaser.GameObjects.Image }[] = [];
+  private nearbyObelisk: { col: number; row: number; glow: Phaser.GameObjects.Image } | null = null;
   private interactHint!: Phaser.GameObjects.Text;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: Record<"W" | "A" | "S" | "D", Phaser.Input.Keyboard.Key>;
@@ -87,6 +96,7 @@ export class OverworldScene extends Phaser.Scene {
     }
 
     this.moving = false;
+    this.obelisks = [];
     music.setVolume(profile.settings.volumeMusic);
     music.setMode("explore");
     music.start();
@@ -278,8 +288,9 @@ export class OverworldScene extends Phaser.Scene {
       this.fog.tilePositionY -= 0.03;
     }
     this.updateNearbyEcho();
-    if (Phaser.Input.Keyboard.JustDown(this.interactKey) && this.nearbyEcho && !this.echoPanel) {
-      this.discoverEcho(this.nearbyEcho);
+    if (Phaser.Input.Keyboard.JustDown(this.interactKey) && !this.echoPanel) {
+      if (this.nearbyEcho) this.discoverEcho(this.nearbyEcho);
+      else if (this.nearbyObelisk) this.restAtObelisk(this.nearbyObelisk);
     }
     if (this.moving) return;
     const dir = this.heldDirection();
@@ -289,14 +300,25 @@ export class OverworldScene extends Phaser.Scene {
     }
   }
 
-  /** Finds the closest undiscovered echo within one tile of the player and shows/hides the "E: read" prompt. */
+  /** Finds the closest interactable within one tile of the player (an
+   * undiscovered echo, else a save-obelisk) and points the "E:" prompt at it. */
   private updateNearbyEcho(): void {
     this.nearbyEcho =
       this.echoes.find(
         (e) => !this.echoFoundIds.has(e.id) && Math.abs(e.col - this.playerPos.col) <= 1 && Math.abs(e.row - this.playerPos.row) <= 1
       ) ?? null;
+    this.nearbyObelisk =
+      this.obelisks.find((o) => Math.abs(o.col - this.playerPos.col) <= 1 && Math.abs(o.row - this.playerPos.row) <= 1) ?? null;
     if (this.nearbyEcho) {
-      this.interactHint.setPosition(this.nearbyEcho.col * TILE_SIZE + TILE_SIZE / 2, this.nearbyEcho.row * TILE_SIZE - 4).setVisible(true);
+      this.interactHint
+        .setText("E: read")
+        .setPosition(this.nearbyEcho.col * TILE_SIZE + TILE_SIZE / 2, this.nearbyEcho.row * TILE_SIZE - 4)
+        .setVisible(true);
+    } else if (this.nearbyObelisk) {
+      this.interactHint
+        .setText("E: rest")
+        .setPosition(this.nearbyObelisk.col * TILE_SIZE + TILE_SIZE / 2, this.nearbyObelisk.row * TILE_SIZE - 8)
+        .setVisible(true);
     } else {
       this.interactHint.setVisible(false);
     }
@@ -607,20 +629,141 @@ export class OverworldScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * Areas, not arenas (PRD §8.2 v7.6): a fight node is not an abstract map
+   * pin -- the foe itself STANDS in the world at its place, and the player
+   * stumbles into it. Locked foes wait as dark silhouettes past the frontier;
+   * cleared places keep only a faint released-soul ember. Camp nodes (no
+   * encounter) keep the plain marker. Every fight node also gets a
+   * save-obelisk placed on a nearby walkable tile (§8.8: rest + save before
+   * the fight).
+   */
   private drawMarker(profile: NonNullable<typeof GameContext.activeProfile>, marker: Marker): void {
     const status = nodeStatus(campaign, profile.campaignProgress, marker.nodeId);
     const x = marker.col * TILE_SIZE + TILE_SIZE / 2;
     const y = marker.row * TILE_SIZE + TILE_SIZE / 2;
     const node = getCampaignNode(marker.nodeId);
+    const reduced = profile.settings.reducedMotion;
 
-    const circle = this.add.circle(x, y, node.type === "boss" ? 8 : 6, MARKER_COLORS[status]);
-    this.add
-      .text(x, y, NODE_TYPE_LABEL[node.type] ?? "?", { fontFamily: "monospace", fontSize: "7px", color: "#000000" })
-      .setOrigin(0.5);
+    // Representative foe: the first enemy of the node's first pool encounter.
+    const encounterId = node.encounterPool?.[0];
+    const foeId = encounterId ? getEncounter(encounterId).enemyWave[0] : null;
 
-    if (status === "unlocked" && !profile.settings.reducedMotion) {
-      this.tweens.add({ targets: circle, scale: 1.25, yoyo: true, repeat: -1, duration: 500 });
+    if (!foeId) {
+      // camp node: the old plain marker
+      const circle = this.add.circle(x, y, 6, MARKER_COLORS[status]);
+      this.add
+        .text(x, y, NODE_TYPE_LABEL[node.type] ?? "?", { fontFamily: "monospace", fontSize: "7px", color: "#000000" })
+        .setOrigin(0.5);
+      if (status === "unlocked" && !reduced) {
+        this.tweens.add({ targets: circle, scale: 1.25, yoyo: true, repeat: -1, duration: 500 });
+      }
+      return;
     }
+
+    this.placeObelisk(marker);
+
+    if (status === "cleared") {
+      // the foe is gone; a released-soul ember marks where it stood
+      const ember = this.add
+        .image(x, y, "glow")
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setTint(0x49c6bd)
+        .setScale(0.22)
+        .setAlpha(0.22)
+        .setDepth(2);
+      if (!reduced) this.tweens.add({ targets: ember, alpha: 0.1, yoyo: true, repeat: -1, duration: 1600 });
+      return;
+    }
+
+    const colossal = foeId === "the_conductor";
+    const tex = colossal ? "conductor_colossal" : `enemy_${foeId}`;
+    const accent = FOE_ACCENT[foeId] ?? 0xffffff;
+    const footY = y + TILE_SIZE / 2 - 1;
+
+    // contact shadow + emissive aura ground the foe in the world
+    this.add.ellipse(x, footY, colossal ? 30 : 20, colossal ? 9 : 6, 0x05060a, 0.4).setDepth(3);
+    const aura = this.add
+      .image(x, footY - 10, "glow")
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setTint(accent)
+      .setScale(colossal ? 0.9 : 0.55)
+      .setAlpha(status === "locked" ? 0.08 : 0.3)
+      .setDepth(3);
+
+    const foe = this.add.sprite(x, footY, tex, 0).setOrigin(0.5, 1).setScale(colossal ? 0.8 : 0.6).setDepth(4.5);
+    if (status === "locked") {
+      // past the frontier: a dark, motionless silhouette waiting in the fog
+      foe.setTint(0x1a2230).setAlpha(0.9);
+    } else {
+      const animKey = `ow_foe_${tex}`;
+      if (!this.anims.exists(animKey)) {
+        this.anims.create({ key: animKey, frames: this.anims.generateFrameNumbers(tex, { start: 0, end: 1 }), frameRate: 1.6, repeat: -1 });
+      }
+      foe.play(animKey);
+      if (!reduced) this.tweens.add({ targets: aura, alpha: 0.5, scale: aura.scale * 1.25, yoyo: true, repeat: -1, duration: 900 });
+    }
+  }
+
+  /**
+   * Places a save-obelisk on a walkable tile near a fight node (PRD §8.8:
+   * rest + save before the fight). Two tiles out so standing beside the
+   * obelisk never overlaps the fight-trigger tile itself.
+   */
+  private placeObelisk(marker: Marker): void {
+    const candidates: GridPosition[] = [
+      { col: marker.col - 2, row: marker.row },
+      { col: marker.col + 2, row: marker.row },
+      { col: marker.col, row: marker.row + 2 },
+      { col: marker.col, row: marker.row - 2 },
+      { col: marker.col - 2, row: marker.row + 1 },
+      { col: marker.col + 2, row: marker.row + 1 },
+    ];
+    const spot = candidates.find(
+      (c) => isWalkable(this.walkable, c) && !this.markers.some((m) => m.col === c.col && m.row === c.row)
+    );
+    if (!spot) return;
+    const x = spot.col * TILE_SIZE + TILE_SIZE / 2;
+    const y = spot.row * TILE_SIZE + TILE_SIZE - 1;
+    this.add.ellipse(x, y, 16, 5, 0x05060a, 0.4).setDepth(3);
+    const glow = this.add
+      .image(x, y - 12, "glow")
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setTint(0x49c6bd)
+      .setScale(0.4)
+      .setAlpha(0.35)
+      .setDepth(3);
+    if (this.textures.exists("env_shared_save_obelisk")) {
+      this.add.image(x, y, "env_shared_save_obelisk").setOrigin(0.5, 1).setScale(0.55).setDepth(4);
+    } else {
+      // art not shipped yet: a simple standing stone so the save point still exists
+      this.add.rectangle(x, y - 7, 6, 14, 0x2c3a4a).setDepth(4);
+    }
+    this.obelisks.push({ col: spot.col, row: spot.row, glow });
+  }
+
+  /** Rest at a save-obelisk: persist the save and acknowledge it in-world. */
+  private restAtObelisk(obelisk: { col: number; row: number; glow: Phaser.GameObjects.Image }): void {
+    void GameContext.persistActiveProfile();
+    GameContext.analytics.track("obelisk_rest");
+    if (!GameContext.activeProfile?.settings.reducedMotion) {
+      this.tweens.add({ targets: obelisk.glow, alpha: 0.9, scale: 0.9, yoyo: true, duration: 350 });
+    }
+    this.showToast("THE CHORUS RESTS", "Progress saved.");
+  }
+
+  /** A small self-dismissing framed message (same visual family as the echo panel). */
+  private showToast(title: string, body: string): void {
+    this.echoPanel?.destroy();
+    const panelW = 150;
+    const panel = this.add.nineslice(0, 0, "ui_panel", undefined, panelW, 32, 5, 5, 5, 5);
+    const t = this.add.text(0, -8, title, { fontFamily: "monospace", fontSize: "7px", color: "#49c6bd" }).setOrigin(0.5);
+    const b = this.add.text(0, 4, body, { fontFamily: "monospace", fontSize: "7px", color: "#e8e2d4" }).setOrigin(0.5);
+    this.echoPanel = this.add
+      .container(BASE_WIDTH / 2, BASE_HEIGHT - 26, [panel, t, b])
+      .setScrollFactor(0)
+      .setDepth(25);
+    this.time.delayedCall(2200, () => this.dismissEchoPanel());
   }
 
   private snapPlayerToGrid(): void {
