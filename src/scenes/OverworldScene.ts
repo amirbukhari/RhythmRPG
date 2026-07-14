@@ -433,10 +433,13 @@ export class OverworldScene extends Phaser.Scene {
   }
 
   /** Flips Amir to face the walk direction. Only horizontal moves change the
-   * flip; up/down keep the last-faced side (his art is side-only). */
+   * flip; up/down keep the last-faced side (his art is side-only). His
+   * hand-drawn sheets natively face LEFT (see the run cycle's lean), so
+   * moving right is the flipped side -- getting this backwards makes him
+   * moonwalk everywhere. */
   private faceDirection(dir: Direction): void {
-    if (dir === "left") this.player.setFlipX(true);
-    else if (dir === "right") this.player.setFlipX(false);
+    if (dir === "left") this.player.setFlipX(false);
+    else if (dir === "right") this.player.setFlipX(true);
   }
 
   /**
