@@ -9,7 +9,7 @@ import tilemapUrl from "../../assets/tilemaps/overworld.json?url";
 import propsUrl from "../../assets/sprites/overworld/props.png";
 import npcsUrl from "../../assets/sprites/overworld/npcs.png";
 import { BASE_WIDTH, BASE_HEIGHT } from "../config/GameConfig";
-import { music } from "../systems/audio/MusicEngine";
+import { music } from "../systems/audio/SongPlayer";
 
 const TILE_SIZE = 16;
 const STEP_DURATION_MS = 160;

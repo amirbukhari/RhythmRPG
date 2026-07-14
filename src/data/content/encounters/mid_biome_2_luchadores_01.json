@@ -2,7 +2,8 @@
   "encounterId": "mid_biome_2_luchadores_01",
   "trackId": "mid_biome_2_clave_01",
   "enemyWave": [
-    "elite_wraith"
+    "elite_wraith",
+    "drifter"
   ],
   "accentProfile": "son_clave_2_3",
   "victoryRewards": {

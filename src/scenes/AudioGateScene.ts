@@ -3,6 +3,7 @@ import * as Tone from "tone";
 import { GameContext } from "../state/GameContext";
 import { BASE_WIDTH, BASE_HEIGHT } from "../config/GameConfig";
 import { addBackdrop } from "../ui/Backdrop";
+import { music } from "../systems/audio/SongPlayer";
 
 /**
  * Mandatory "Press Any Key to Start Audio" gate.
@@ -40,6 +41,11 @@ export class AudioGateScene extends Phaser.Scene {
     // Web Audio contexts must be created/resumed from a user gesture (PRD
     // §10.4) -- this is that gesture. No audio is scheduled or played here.
     await Tone.start();
+    // Start the real soundtrack from INSIDE this gesture so mobile browsers
+    // (which block audio until a user gesture) allow it; later scene changes
+    // inherit the unlocked state. Volume comes from the active profile.
+    music.setVolume(GameContext.activeProfile?.settings.volumeMusic ?? 0.7);
+    music.setMode("menu");
     GameContext.analytics.track("audio_gate_completed");
     this.scene.start("MainMenuScene");
   }
