@@ -74,7 +74,7 @@ export class OverworldScene extends Phaser.Scene {
     if (!this.cache.tilemap.exists("overworld")) this.load.tilemapTiledJSON("overworld", tilemapUrl);
     // The leader (Amir) and the old-hero NPC sprites are loaded centrally in
     // BootScene (band_* and hero_*); nothing hero-related to preload here.
-    if (!this.textures.exists("ow_props")) this.load.spritesheet("ow_props", propsUrl, { frameWidth: 20, frameHeight: 24 });
+    if (!this.textures.exists("ow_props")) this.load.spritesheet("ow_props", propsUrl, { frameWidth: 24, frameHeight: 32 });
     if (!this.textures.exists("ow_npcs")) this.load.spritesheet("ow_npcs", npcsUrl, { frameWidth: 32, frameHeight: 40 });
   }
 
@@ -482,7 +482,7 @@ export class OverworldScene extends Phaser.Scene {
             const cx = px + TILE_SIZE / 2;
             const cy = py + TILE_SIZE + 2;
             shore.fillStyle(0x05060a, 0.28).fillEllipse(cx, cy - 1, 12, 4); // contact shadow
-            this.add.image(cx, cy, "ow_props", h % DECORATIVE_PROP_COUNT).setOrigin(0.5, 1).setDepth(2);
+            this.add.image(cx, cy, "ow_props", h % DECORATIVE_PROP_COUNT).setOrigin(0.5, 1).setScale(0.72).setDepth(2);
           }
         }
       }
@@ -587,7 +587,7 @@ export class OverworldScene extends Phaser.Scene {
     const x = echo.col * TILE_SIZE + TILE_SIZE / 2;
     const y = echo.row * TILE_SIZE + TILE_SIZE / 2;
     const found = this.echoFoundIds.has(echo.id);
-    this.add.image(x, y, "ow_props", ECHO_RUNE_FRAME).setOrigin(0.5, 1).setDepth(2).setAlpha(found ? 0.55 : 1);
+    this.add.image(x, y, "ow_props", ECHO_RUNE_FRAME).setOrigin(0.5, 1).setScale(0.72).setDepth(2).setAlpha(found ? 0.55 : 1);
 
     const reduced = Boolean(GameContext.activeProfile?.settings.reducedMotion);
     const glow = this.add

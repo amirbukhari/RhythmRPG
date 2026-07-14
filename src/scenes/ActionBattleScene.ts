@@ -4,6 +4,7 @@ import { getEncounter, getBeatmap, getEnemy, getCampaignNode } from "../data/Con
 import { TransportClock } from "../systems/audio/TransportClock";
 import { BeatmapSonifier } from "../systems/audio/BeatmapSonifier";
 import { BASE_WIDTH, BASE_HEIGHT } from "../config/GameConfig";
+import { composeArena, ARENA_LAYOUTS } from "./env/ArenaComposer";
 import {
   createArena,
   step,
@@ -13,8 +14,13 @@ import {
   type FrameInput,
 } from "../systems/action/ActionCombat";
 
+// Top-down HLD arena: the whole screen is the walkable field. Arenas with a
+// kitbash layout (ArenaComposer) are composed from individual environment
+// pieces; others fall back to a single backdrop image. HORIZON is 0 -- fighters
+// use the full field (kept as a named constant for the render offset).
+const HORIZON = 0;
 const ARENA_W = BASE_WIDTH;
-const ARENA_H = 168;
+const ARENA_H = BASE_HEIGHT;
 // Colossal, imposing scale contrast (HLD, PRD §11.1) -- the player is small.
 const ENEMY_SCALE: Record<string, number> = {
   the_conductor: 2.9,
@@ -74,6 +80,7 @@ export class ActionBattleScene extends Phaser.Scene {
   private sprites = new Map<string, Phaser.GameObjects.Sprite>();
   private auras = new Map<string, Phaser.GameObjects.Image>();
   private eyes = new Map<string, Phaser.GameObjects.Image>();
+  private groundShadows = new Map<string, Phaser.GameObjects.Ellipse>();
   private accents = new Map<string, number>();
   private lastEnemyHp = new Map<string, number>();
   private beatGlow!: Phaser.GameObjects.Image;
@@ -108,21 +115,29 @@ export class ActionBattleScene extends Phaser.Scene {
     const bpm = beatmap.bpm * settings.gameSpeed;
     this.beatSeconds = 60 / bpm;
 
-    // the movement's own arena (PRD §11.1.1) + its beat-pulsing story light
+    // the movement's own arena (PRD §11.1.1), now framed HLD-style: the AI
+    // scene is the distant backdrop across the top HORIZON band; the rest is a
+    // top-down walkable floor. The scene fills the whole screen behind, but a
+    // top-down floor plane is painted over the bottom 3/4 so the backdrop reads
+    // as horizon/atmosphere and the fight happens on the ground.
     const arenaDef = (this.nodeId && NODE_ARENA[this.nodeId]) || DEFAULT_ARENA;
-    this.add.image(BASE_WIDTH / 2, BASE_HEIGHT / 2, arenaDef.key).setDepth(-10);
-    // Dark scrim so the busy 8-bit backdrop recedes and the combatants read
-    // (PRD §11.1.1 fight-readability). A vertical fade -- darker toward the
-    // floor where the fight happens, lighter up top to keep the set piece.
-    const scrim = this.add.graphics().setDepth(-9.5);
-    scrim.fillStyle(0x05060a, 0.34).fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
-    scrim.fillStyle(0x05060a, 0.22).fillRect(0, BASE_HEIGHT * 0.5, BASE_WIDTH, BASE_HEIGHT * 0.5);
+    const layout = ARENA_LAYOUTS[arenaDef.key];
+    if (layout) {
+      // Intentional top-down arena kitbashed from individual environment pieces.
+      composeArena(this, layout);
+    } else {
+      // Fallback: a single AI backdrop (top-down HLD-detail) + a light scrim so
+      // fighters read against it.
+      this.add.image(BASE_WIDTH / 2, BASE_HEIGHT / 2, arenaDef.key).setDepth(-10);
+      this.add.graphics().setDepth(-9).fillStyle(0x05060a, 0.32).fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
+    }
+
     this.storyLight = this.add
       .image(arenaDef.light.x, arenaDef.light.y, "glow")
       .setBlendMode(Phaser.BlendModes.ADD)
       .setTint(arenaDef.light.color)
-      .setScale(0.5)
-      .setAlpha(0.3)
+      .setScale(0.4)
+      .setAlpha(0.28)
       .setDepth(-9);
 
     // build the sim from the encounter's enemy wave
@@ -138,7 +153,8 @@ export class ActionBattleScene extends Phaser.Scene {
     // player sprite (the party leader -- Amir, the band's guitarist). His
     // 48x48 art is scaled to sit small in the arena for the HLD size contrast.
     const p = getPlayer(this.arena);
-    const pSprite = this.add.sprite(p.pos.x, p.pos.y, "band_amir", 0).setOrigin(0.5, 0.82).setScale(0.62).setDepth(5);
+    this.groundShadows.set(p.id, this.add.ellipse(p.pos.x, p.pos.y + HORIZON, 16, 6, 0x05060a, 0.4).setDepth(3));
+    const pSprite = this.add.sprite(p.pos.x, p.pos.y + HORIZON, "band_amir", 0).setOrigin(0.5, 0.82).setScale(0.62).setDepth(5);
     if (!this.anims.exists("amir_idle")) {
       this.anims.create({
         key: "amir_idle",
@@ -162,15 +178,17 @@ export class ActionBattleScene extends Phaser.Scene {
       const accent = ENEMY_ACCENT[enemyId] ?? 0xffffff;
       this.accents.set(e.id, accent);
       this.lastEnemyHp.set(e.id, e.hp);
-      const aura = this.add.image(e.pos.x, e.pos.y, "glow").setBlendMode(ADD).setTint(accent).setDepth(3).setScale(scale * (colossal ? 1.6 : 1.1)).setAlpha(0.4);
-      const eye = this.add.image(e.pos.x, e.pos.y, "glow").setBlendMode(ADD).setTint(accent).setDepth(6).setScale(scale * 0.4).setAlpha(0.85);
+      const ey = e.pos.y + HORIZON;
+      this.groundShadows.set(e.id, this.add.ellipse(e.pos.x, ey, 22 * scale, 8 * scale, 0x05060a, 0.42).setDepth(3));
+      const aura = this.add.image(e.pos.x, ey, "glow").setBlendMode(ADD).setTint(accent).setDepth(3).setScale(scale * (colossal ? 1.6 : 1.1)).setAlpha(0.4);
+      const eye = this.add.image(e.pos.x, ey, "glow").setBlendMode(ADD).setTint(accent).setDepth(6).setScale(scale * 0.4).setAlpha(0.85);
       this.auras.set(e.id, aura);
       this.eyes.set(e.id, eye);
       const animKey = `arena_idle_${texKey}`;
       if (!this.anims.exists(animKey)) {
         this.anims.create({ key: animKey, frames: this.anims.generateFrameNumbers(texKey, { start: 0, end: 1 }), frameRate: colossal ? 1.2 : 1.6, repeat: -1 });
       }
-      const s = this.add.sprite(e.pos.x, e.pos.y, texKey, 0).setOrigin(0.5, colossal ? 0.95 : 0.85).setScale(scale).setDepth(4);
+      const s = this.add.sprite(e.pos.x, ey, texKey, 0).setOrigin(0.5, colossal ? 0.95 : 0.85).setScale(scale).setDepth(4);
       s.play(animKey);
       this.sprites.set(e.id, s);
     });
@@ -272,10 +290,13 @@ export class ActionBattleScene extends Phaser.Scene {
         s.setAlpha(0.12);
         this.auras.get(f.id)?.setAlpha(0);
         this.eyes.get(f.id)?.setAlpha(0);
+        this.groundShadows.get(f.id)?.setAlpha(0);
         continue;
       }
-      s.setPosition(Math.round(f.pos.x), Math.round(f.pos.y));
+      const ry = f.pos.y + HORIZON; // render y on the floor
+      s.setPosition(Math.round(f.pos.x), Math.round(ry));
       s.setDepth(4 + f.pos.y / 100);
+      this.groundShadows.get(f.id)?.setPosition(Math.round(f.pos.x), Math.round(ry)).setDepth(3);
       if (f.team === "player") {
         s.setFlipX(f.facing === "left");
         // Amir's authored guitar-swing poses: windup (startup) -> swing
@@ -303,34 +324,35 @@ export class ActionBattleScene extends Phaser.Scene {
       const accent = this.accents.get(e.id) ?? 0xffffff;
       const windup = e.ai?.mode === "windup";
       const enemySprite = this.sprites.get(e.id)!;
-      const headY = e.pos.y - enemySprite.displayHeight * 0.55;
+      const ery = e.pos.y + HORIZON;
+      const headY = ery - enemySprite.displayHeight * 0.55;
       aura
-        .setPosition(e.pos.x, e.pos.y - 6)
+        .setPosition(e.pos.x, ery - 6)
         .setTint(windup ? 0xc22f34 : accent)
         .setAlpha((windup ? 0.75 : 0.3) + (reduced ? 0 : 0.12 * beatWave))
         .setScale((windup ? 1.5 : 1.1) * enemySprite.scaleX);
       eye.setPosition(e.pos.x, headY).setTint(windup ? 0xffd27a : accent).setAlpha(0.7 + (reduced ? 0 : 0.25 * beatWave));
       // hit spark when this enemy's HP drops
       const prev = this.lastEnemyHp.get(e.id) ?? e.hp;
-      if (e.hp < prev - 0.01) this.spawnSpark(e.pos.x, e.pos.y - 8);
+      if (e.hp < prev - 0.01) this.spawnSpark(e.pos.x, ery - 8);
       this.lastEnemyHp.set(e.id, e.hp);
     }
 
     // fx graphics: crisp telegraph ring (kept alongside the soft glow)
     this.fx.clear();
     for (const e of getEnemies(this.arena)) {
-      if (e.ai?.mode === "windup" && e.state !== "dead") this.fx.lineStyle(2, 0xc22f34, 0.9).strokeCircle(e.pos.x, e.pos.y - 6, 15);
+      if (e.ai?.mode === "windup" && e.state !== "dead") this.fx.lineStyle(2, 0xc22f34, 0.9).strokeCircle(e.pos.x, e.pos.y + HORIZON - 6, 15);
     }
 
     // player: parry shield flash > on-beat flash > active-attack glow arc
     const p = getPlayer(this.arena);
-    this.beatGlow.setPosition(p.pos.x, p.pos.y - 4);
+    this.beatGlow.setPosition(p.pos.x, p.pos.y + HORIZON - 4);
     if (p.parryTimer > 0 && !reduced) this.beatGlow.setTint(0xeaf6ff).setScale(1.7).setAlpha(0.75);
     else this.beatGlow.setTint(0x49c6bd).setScale(1.3).setAlpha(this.isOnBeat() && !reduced ? 0.35 : 0.08);
     if (p.attack?.phase === "active") {
       const d = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[p.facing];
       const cx = p.pos.x + d[0] * p.attack.def.reach;
-      const cy = p.pos.y + d[1] * p.attack.def.reach;
+      const cy = p.pos.y + HORIZON + d[1] * p.attack.def.reach;
       this.attackGlow.setPosition(cx, cy).setTint(p.attack.onBeat ? 0xf4d27a : 0xd8ceb6).setScale((p.attack.def.radius / 32) * (p.attack.onBeat ? 1.5 : 1)).setAlpha(p.attack.onBeat ? 1 : 0.7);
     } else {
       this.attackGlow.setAlpha(0);
@@ -374,7 +396,7 @@ export class ActionBattleScene extends Phaser.Scene {
       if (f.state === "dead") continue;
       const w = f.team === "player" ? 24 : 20;
       const x = Math.round(f.pos.x - w / 2);
-      const y = Math.round(f.pos.y - (f.team === "player" ? 22 : 30));
+      const y = Math.round(f.pos.y + HORIZON - (f.team === "player" ? 22 : 30));
       this.hpBars.fillStyle(0x05060a, 0.8).fillRect(x - 1, y - 1, w + 2, 4);
       this.hpBars.fillStyle(0x7d1b20, 1).fillRect(x, y, w, 2);
       this.hpBars.fillStyle(f.team === "player" ? 0x49c6bd : 0xc22f34, 1).fillRect(x, y, Math.max(0, Math.round((f.hp / f.maxHp) * w)), 2);
