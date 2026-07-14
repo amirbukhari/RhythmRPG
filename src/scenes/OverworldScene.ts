@@ -55,6 +55,7 @@ const ECHO_RUNE_FRAME = DECORATIVE_PROP_COUNT;
 export class OverworldScene extends Phaser.Scene {
   private player!: Phaser.GameObjects.Sprite;
   private playerShadow!: Phaser.GameObjects.Ellipse;
+  private playerGlow!: Phaser.GameObjects.Image;
   private playerPos: GridPosition = { col: 0, row: 0 };
   /** The rest of Inhalants walking with Amir (visual party, PRD §7.1). */
   private followers: { member: string; sprite: Phaser.GameObjects.Sprite; shadow: Phaser.GameObjects.Ellipse }[] = [];
@@ -186,8 +187,17 @@ export class OverworldScene extends Phaser.Scene {
       ? { col: returnMarker.col, row: returnMarker.row }
       : { col: Math.floor(spawnObject.x! / TILE_SIZE), row: Math.floor(spawnObject.y! / TILE_SIZE) };
 
-    // Contact shadow grounds Amir like the props/foes around him.
+    // Contact shadow grounds Amir like the props/foes around him, and a soft
+    // teal under-glow lifts the playable characters a value step above the
+    // scenery (AAA audit O4) so the eye finds them in the dark world.
     this.playerShadow = this.add.ellipse(0, 0, 13, 4, 0x05060a, 0.4).setDepth(4.4);
+    this.playerGlow = this.add
+      .image(0, 0, "glow")
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setTint(0x49c6bd)
+      .setScale(0.32)
+      .setAlpha(0.2)
+      .setDepth(4.35);
     this.player = this.add.sprite(0, 0, "band_amir", 0);
     // Amir's frames are 48x48 with the figure ~37px tall; scaled to ~0.52 he
     // stands ~1.2 tiles against the 16px tiles (feet-anchored so he sits on
@@ -312,6 +322,7 @@ export class OverworldScene extends Phaser.Scene {
   update(): void {
     if (!this.player) return;
     this.playerShadow.setPosition(this.player.x, this.player.y + 2);
+    this.playerGlow.setPosition(this.player.x, this.player.y - 6);
     for (const f of this.followers) {
       f.shadow.setPosition(f.sprite.x, f.sprite.y + 2);
       // drop a follower back to its idle when it has stopped moving
@@ -565,11 +576,18 @@ export class OverworldScene extends Phaser.Scene {
           if (isLand(col + 1, row)) shore.fillStyle(FOAM, 0.5).fillRect(px + TILE_SIZE - 1, py, 1, TILE_SIZE);
         } else if (isGrassGid(idx) && !blocked.has(keyOf(col, row))) {
           const h = ((col * 73856093) ^ (row * 19349663)) >>> 0;
-          if (h % 100 < 11) {
+          // CLUSTERED scatter (AAA audit O3): real places group -- graveyards,
+          // reed banks, camps -- with clearings between. A low-frequency cell
+          // hash decides where clusters live; density is high inside, near
+          // zero outside.
+          const cellH = ((((col >> 3) + 7) * 2654435761) ^ (((row >> 3) + 3) * 40503)) >>> 0;
+          const chance = cellH % 100 < 28 ? 32 : 2;
+          if (h % 100 < chance) {
             const cx = px + TILE_SIZE / 2;
             const cy = py + TILE_SIZE + 2;
             shore.fillStyle(0x05060a, 0.28).fillEllipse(cx, cy - 1, 12, 4); // contact shadow
-            this.add.image(cx, cy, "ow_props", h % DECORATIVE_PROP_COUNT).setOrigin(0.5, 1).setScale(0.72).setDepth(2);
+            // scenery sits a value-step darker than characters (audit O4)
+            this.add.image(cx, cy, "ow_props", h % DECORATIVE_PROP_COUNT).setOrigin(0.5, 1).setScale(0.72).setDepth(2).setTint(0xb2b9c6);
           }
         }
       }
