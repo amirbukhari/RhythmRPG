@@ -37,10 +37,13 @@ const FIGHT_ACCENT: Record<string, number> = {
 export interface WorldFightHost {
   scene: Phaser.Scene;
   playerSprite: Phaser.GameObjects.Sprite;
+  /** Tile walkability in WORLD pixels -- impassable tiles become sim obstacles. */
+  isWorldWalkable(px: number, py: number): boolean;
 }
 
 export class WorldFight {
   private scene: Phaser.Scene;
+  private host: WorldFightHost;
   private playerSprite: Phaser.GameObjects.Sprite;
   private rect: Phaser.Geom.Rectangle;
   private clock = new TransportClock();
@@ -69,6 +72,7 @@ export class WorldFight {
 
   constructor(host: WorldFightHost, nodeId: string, encounterId: string, nodeWorldX: number, nodeWorldY: number) {
     this.scene = host.scene;
+    this.host = host;
     this.playerSprite = host.playerSprite;
     this.encounterId = encounterId;
     this.nodeId = nodeId;
@@ -146,6 +150,19 @@ export class WorldFight {
 
     const enemyHps = encounter.enemyWave.map((id) => getEnemy(id).maxHp);
     const arena = createArena(this.rect.width, this.rect.height, enemyHps);
+
+    // impassable terrain (water/rock tiles) becomes sim obstacles, one 16px
+    // box per blocked tile, so fighters fight on the actual walkable ground
+    const TILE = 16;
+    const obstacles: { x: number; y: number; w: number; h: number }[] = [];
+    for (let ty = Math.floor(this.rect.y / TILE) * TILE; ty < this.rect.bottom; ty += TILE) {
+      for (let tx = Math.floor(this.rect.x / TILE) * TILE; tx < this.rect.right; tx += TILE) {
+        if (!this.host.isWorldWalkable(tx + TILE / 2, ty + TILE / 2)) {
+          obstacles.push({ x: tx - this.rect.x, y: ty - this.rect.y, w: TILE, h: TILE });
+        }
+      }
+    }
+    arena.obstacles = obstacles;
 
     // the player fights from where they actually stand; the foe wave spawns
     // around where the foe actually stood -- the world does not rearrange
