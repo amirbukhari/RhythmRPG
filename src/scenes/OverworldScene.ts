@@ -56,6 +56,10 @@ export class OverworldScene extends Phaser.Scene {
   private player!: Phaser.GameObjects.Sprite;
   private playerShadow!: Phaser.GameObjects.Ellipse;
   private playerPos: GridPosition = { col: 0, row: 0 };
+  /** The rest of Inhalants walking with Amir (visual party, PRD §7.1). */
+  private followers: { member: string; sprite: Phaser.GameObjects.Sprite; shadow: Phaser.GameObjects.Ellipse }[] = [];
+  /** Recently vacated tiles, newest first; follower i walks history[i]. */
+  private stepHistory: GridPosition[] = [];
   private moving = false;
   private walkable: boolean[][] = [];
   private markers: Marker[] = [];
@@ -193,6 +197,27 @@ export class OverworldScene extends Phaser.Scene {
     this.player.play("leader_idle");
     this.snapPlayerToGrid();
 
+    // The rest of the band walks with Amir: bassist, vocalist, drummer trail
+    // him in a line (visual party -- the whole point is that Inhalants are the
+    // main characters, PRD §7.1). Followers are decorative: they never block
+    // tiles or trigger anything.
+    this.followers = [];
+    this.stepHistory = [];
+    for (const member of ["bassist", "vocalist", "drummer"]) {
+      const idleKey = `bm_idle_${member}`;
+      const walkKey = `bm_walk_${member}`;
+      if (this.textures.exists(`band_${member}`) && !this.anims.exists(idleKey)) {
+        this.anims.create({ key: idleKey, frames: this.anims.generateFrameNumbers(`band_${member}`, { start: 0, end: lastFrame(`band_${member}`) }), frameRate: 4, repeat: -1 });
+        this.anims.create({ key: walkKey, frames: this.anims.generateFrameNumbers(`band_${member}_run`, { start: 0, end: lastFrame(`band_${member}_run`) }), frameRate: 10, repeat: -1 });
+      }
+      if (!this.textures.exists(`band_${member}`)) continue;
+      const shadow = this.add.ellipse(0, 0, 12, 4, 0x05060a, 0.35).setDepth(4.3);
+      const sprite = this.add.sprite(0, 0, `band_${member}`, 0).setOrigin(0.5, 0.9).setScale(0.5).setDepth(4.6);
+      sprite.play(idleKey);
+      sprite.setPosition(this.playerPos.col * TILE_SIZE + TILE_SIZE / 2, this.playerPos.row * TILE_SIZE + TILE_SIZE / 2);
+      this.followers.push({ member, sprite, shadow });
+    }
+
     this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
     this.cameras.main.startFollow(this.player, true, 1, 1);
     this.cameras.main.setRoundPixels(true);
@@ -287,6 +312,13 @@ export class OverworldScene extends Phaser.Scene {
   update(): void {
     if (!this.player) return;
     this.playerShadow.setPosition(this.player.x, this.player.y + 2);
+    for (const f of this.followers) {
+      f.shadow.setPosition(f.sprite.x, f.sprite.y + 2);
+      // drop a follower back to its idle when it has stopped moving
+      if (!this.tweens.isTweening(f.sprite) && f.sprite.anims.getName() !== `bm_idle_${f.member}`) {
+        f.sprite.play(`bm_idle_${f.member}`);
+      }
+    }
     if (this.fog && !GameContext.activeProfile?.settings.reducedMotion) {
       this.fog.tilePositionX += 0.08;
       this.fog.tilePositionY -= 0.03;
@@ -421,6 +453,10 @@ export class OverworldScene extends Phaser.Scene {
     const target = stepTarget(this.playerPos, dir);
     if (!isWalkable(this.walkable, target)) return;
 
+    // the tile the leader vacates becomes the next follower waypoint
+    this.stepHistory.unshift({ ...this.playerPos });
+    if (this.stepHistory.length > 8) this.stepHistory.pop();
+
     this.moving = true;
     this.playerPos = target;
     if (this.player.anims.getName() !== "leader_walk" || !this.player.anims.isPlaying) this.player.play("leader_walk");
@@ -433,6 +469,24 @@ export class OverworldScene extends Phaser.Scene {
         this.moving = false;
         this.checkEncounterTrigger();
       },
+    });
+    this.stepFollowers();
+  }
+
+  /** Each bandmate walks to where the member ahead just was (conga line). */
+  private stepFollowers(): void {
+    this.followers.forEach((f, i) => {
+      const spot = this.stepHistory[i];
+      if (!spot) return;
+      const tx = spot.col * TILE_SIZE + TILE_SIZE / 2;
+      const ty = spot.row * TILE_SIZE + TILE_SIZE / 2;
+      if (Math.abs(f.sprite.x - tx) < 0.5 && Math.abs(f.sprite.y - ty) < 0.5) return;
+      // band art natively faces LEFT: flip when moving right
+      if (tx > f.sprite.x) f.sprite.setFlipX(true);
+      else if (tx < f.sprite.x) f.sprite.setFlipX(false);
+      const walkKey = `bm_walk_${f.member}`;
+      if (f.sprite.anims.getName() !== walkKey || !f.sprite.anims.isPlaying) f.sprite.play(walkKey);
+      this.tweens.add({ targets: f.sprite, x: tx, y: ty, duration: STEP_DURATION_MS });
     });
   }
 
