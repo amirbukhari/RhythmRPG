@@ -165,3 +165,33 @@ describe("§8.7 boss-phase aggression", () => {
     expect(timeToStrike(1.7)).toBeLessThan(timeToStrike(1));
   });
 });
+
+describe("§8.6 per-foe curriculum tuning", () => {
+  it("a foe's own aggression multiplies the arena's", () => {
+    const timeToStrike = (foeAggr?: number): number => {
+      const a = duel();
+      enemies(a)[0].aggr = foeAggr;
+      let t = 0;
+      for (let i = 0; i < 600 && !enemies(a)[0].attack; i++) {
+        tick(a, {});
+        t += 1 / 60;
+      }
+      return t;
+    };
+    expect(timeToStrike(1.6)).toBeLessThan(timeToStrike(undefined));
+    expect(timeToStrike(0.7)).toBeGreaterThan(timeToStrike(undefined));
+  });
+
+  it("a foe's strikeDamage override lands as authored", () => {
+    const hpAfterHit = (strikeDamage?: number): number => {
+      const a = duel();
+      const e = enemies(a)[0];
+      e.aggr = 2; // strike quickly
+      e.strikeDamage = strikeDamage;
+      for (let i = 0; i < 600 && player(a).hp === player(a).maxHp; i++) tick(a, {});
+      return player(a).hp;
+    };
+    // damage 20 vs default 9: the harder hitter leaves less HP
+    expect(hpAfterHit(20)).toBeLessThan(hpAfterHit(undefined));
+  });
+});

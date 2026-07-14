@@ -32,6 +32,13 @@ function keyNameFor(binding: string | undefined, fallback: string): string {
   return name in Phaser.Input.Keyboard.KeyCodes ? name : fallback;
 }
 
+const FACING_LUNGE: Record<string, { x: number; y: number }> = {
+  up: { x: 0, y: -1 },
+  down: { x: 0, y: 1 },
+  left: { x: -1, y: 0 },
+  right: { x: 1, y: 0 },
+};
+
 const TIER_LABEL: Record<Exclude<BeatTier, "off">, { text: string; color: string }> = {
   perfect: { text: "PERFECT", color: "#f4d27a" },
   great: { text: "GREAT", color: "#49c6bd" },
@@ -106,6 +113,7 @@ export class WorldFight {
   private shadows = new Map<string, Phaser.GameObjects.Ellipse>();
   private auras = new Map<string, Phaser.GameObjects.Image>();
   private accents = new Map<string, number>();
+  private enemyIds = new Map<string, string>();
   private lastEnemyHp = new Map<string, number>();
   private fx: Phaser.GameObjects.Graphics;
   private bars: Phaser.GameObjects.Graphics;
@@ -285,11 +293,16 @@ export class WorldFight {
       e.pos.y = Phaser.Math.Clamp(foeY - this.rect.y + (i % 2) * 12, 16, this.rect.height - 16);
 
       const enemyId = enemyWave[i];
+      // §8.6 curriculum: per-foe tempo/damage from authored content
+      const def = getEnemy(enemyId);
+      e.aggr = def.action?.aggression;
+      e.strikeDamage = def.action?.damage;
       const colossal = enemyId === "the_conductor";
       const tex = colossal ? "conductor_colossal" : `enemy_${enemyId}`;
       const scale = FIGHT_SCALE[enemyId] ?? 0.5;
       const accent = FIGHT_ACCENT[enemyId] ?? 0xffffff;
       this.accents.set(e.id, accent);
+      this.enemyIds.set(e.id, enemyId);
       this.lastEnemyHp.set(e.id, e.hp);
       const wx = this.rect.x + e.pos.x;
       const wy = this.rect.y + e.pos.y;
@@ -572,7 +585,28 @@ export class WorldFight {
         }
         continue;
       }
-      s.setPosition(Math.round(wx), Math.round(wy)).setDepth(4.6 + e.pos.y / 1000);
+      // Animation-state motion where per-frame art is absent (§11.5 /
+      // v7.4 spec): windup crouches (anticipation), the strike's active
+      // frames lunge and stretch toward the player (impact), recovery
+      // settles back. Squash-and-stretch on the base scale, never baked in.
+      const base = FIGHT_SCALE[this.enemyIds.get(e.id) ?? ""] ?? 0.5;
+      let sx = base;
+      let sy = base;
+      let lunge = 0;
+      if (e.ai?.mode === "windup") {
+        sx = base * 1.08;
+        sy = base * 0.9;
+      } else if (e.attack?.phase === "active") {
+        sx = base * 0.92;
+        sy = base * 1.1;
+        lunge = 4;
+      } else if (e.attack?.phase === "startup") {
+        sx = base * 1.05;
+        sy = base * 0.94;
+      }
+      const d = FACING_LUNGE[e.facing] ?? { x: 0, y: 0 };
+      s.setScale(sx, sy);
+      s.setPosition(Math.round(wx + d.x * lunge), Math.round(wy + d.y * lunge)).setDepth(4.6 + e.pos.y / 1000);
       this.shadows.get(e.id)?.setPosition(Math.round(wx), Math.round(wy));
       const windup = e.ai?.mode === "windup";
       if (windup && !this.wasWindup.has(e.id)) {

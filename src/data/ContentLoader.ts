@@ -84,6 +84,14 @@ export function loadEnemy(data: unknown): Enemy {
     }
     if (typeof intent.effect.value !== "number") return fail("each intent effect needs a numeric value");
   }
+  if (enemy.action !== undefined) {
+    if (typeof enemy.action !== "object" || enemy.action === null) return fail("action must be an object");
+    const { aggression, damage } = enemy.action;
+    if (aggression !== undefined && (typeof aggression !== "number" || aggression <= 0 || aggression > 3)) {
+      return fail("action.aggression must be a number in (0, 3]");
+    }
+    if (damage !== undefined && (typeof damage !== "number" || damage <= 0)) return fail("action.damage must be a positive number");
+  }
   return enemy as Enemy;
 }
 

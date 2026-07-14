@@ -22,4 +22,12 @@ export interface Enemy {
   name: string;
   maxHp: number;
   intents: EnemyIntent[];
+  /** Action-combat tuning (§8.6 curriculum, v8.6): how this foe fights in
+   * the real-time sim. Omitted fields use the sim defaults. */
+  action?: {
+    /** Tempo multiplier: <1 lumbers (longer telegraphs), >1 presses. */
+    aggression?: number;
+    /** Strike damage override (sim default 9). */
+    damage?: number;
+  };
 }

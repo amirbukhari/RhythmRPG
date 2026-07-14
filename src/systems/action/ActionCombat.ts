@@ -92,6 +92,11 @@ export interface Fighter {
   parryCd: number;
   attack: ActiveAttack | null;
   ai?: { mode: "approach" | "windup" | "recover"; timer: number };
+  /** Per-foe tempo multiplier (§8.6 curriculum: a slime lumbers, an elite
+   * presses). Multiplies with the arena-level boss-phase aggression. */
+  aggr?: number;
+  /** Per-foe strike damage override (§8.6: later regions hit harder). */
+  strikeDamage?: number;
 }
 
 export interface FrameInput {
@@ -424,9 +429,9 @@ function stepEnemy(a: Arena, f: Fighter, dt: number, di: Vec): void {
   }
 
   ai.timer -= dt;
-  // Boss-phase escalation (§8.7): aggression > 1 shortens telegraphs and
-  // recovers and quickens the approach -- the phase raises the tempo.
-  const aggr = a.enemyAggression ?? 1;
+  // Boss-phase escalation (§8.7) x per-foe tempo (§8.6): aggression > 1
+  // shortens telegraphs and recovers and quickens the approach.
+  const aggr = (a.enemyAggression ?? 1) * (f.aggr ?? 1);
   if (ai.mode === "approach") {
     if (dist > 26) {
       f.vel.x = (dx / dist) * 46 * aggr;
@@ -442,9 +447,10 @@ function stepEnemy(a: Arena, f: Fighter, dt: number, di: Vec): void {
     f.vel.x = 0;
     f.vel.y = 0;
     if (ai.timer <= 0) {
-      startAttack(f, ENEMY_STRIKE, "off");
+      const def = f.strikeDamage !== undefined ? { ...ENEMY_STRIKE, damage: f.strikeDamage } : ENEMY_STRIKE;
+      startAttack(f, def, "off");
       ai.mode = "recover";
-      ai.timer = (ENEMY_STRIKE.startup + ENEMY_STRIKE.active + ENEMY_STRIKE.recovery + 0.4) / aggr;
+      ai.timer = (def.startup + def.active + def.recovery + 0.4) / aggr;
     }
   } else {
     if (ai.timer <= 0) ai.mode = "approach";

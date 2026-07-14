@@ -18,5 +18,9 @@
         "value": -0.15
       }
     }
-  ]
+  ],
+  "action": {
+    "aggression": 1.2,
+    "damage": 11
+  }
 }

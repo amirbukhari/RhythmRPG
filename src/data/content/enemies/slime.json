@@ -11,5 +11,9 @@
         "target": "randomHero"
       }
     }
-  ]
+  ],
+  "action": {
+    "aggression": 0.75,
+    "damage": 7
+  }
 }
