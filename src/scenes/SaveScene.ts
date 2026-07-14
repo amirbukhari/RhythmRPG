@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import { GameContext } from "../state/GameContext";
 import { createDefaultSaveProfile } from "../systems/persistence/SaveManager";
 import { campaign } from "../data/ContentRegistry";
-import { BASE_WIDTH } from "../config/GameConfig";
+import {BASE_WIDTH, retinaCamera } from "../config/GameConfig";
 import { TextMenu } from "../ui/components/TextMenu";
 
 /** Save slot create/load/delete against IndexedDB. See PRD §10.7. */
@@ -12,6 +12,7 @@ export class SaveScene extends Phaser.Scene {
   }
 
   async create(): Promise<void> {
+    retinaCamera(this);
     this.add.text(BASE_WIDTH / 2, 20, "SELECT SAVE SLOT", { fontFamily: "monospace", fontSize: "10px", color: "#ffffff" }).setOrigin(0.5);
 
     const slots = await GameContext.saveManager.listSlots();

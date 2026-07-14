@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { GameContext } from "../state/GameContext";
 import { DEFAULT_ACCESSIBILITY_SETTINGS, type AccessibilitySettings } from "../systems/accessibility/AccessibilitySettings";
-import { BASE_WIDTH, BASE_HEIGHT } from "../config/GameConfig";
+import {BASE_WIDTH, BASE_HEIGHT, retinaCamera } from "../config/GameConfig";
 import { TextMenu, type TextMenuItem } from "../ui/components/TextMenu";
 
 const SPEED_STEPS: AccessibilitySettings["gameSpeed"][] = [0.7, 0.85, 1.0];
@@ -43,6 +43,7 @@ export class SettingsOverlay extends Phaser.Scene {
   }
 
   create(data: { returnTo: string }): void {
+    retinaCamera(this);
     // Phaser reuses one persistent Scene instance across stop/relaunch
     // cycles (create() runs again on the SAME object, it isn't
     // reconstructed) -- so every field touched after construction must be

@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { retinaCamera } from "../config/GameConfig";
 import battleAbyssUrl from "../../assets/backgrounds/battle_abyss.png";
 import titleUrl from "../../assets/backgrounds/bg_title.png";
 import battleConductorUrl from "../../assets/backgrounds/battle_conductor.png";
@@ -127,6 +128,7 @@ export class BootScene extends Phaser.Scene {
   }
 
   create(): void {
+    retinaCamera(this);
     const hasWebAudio = typeof window !== "undefined" && ("AudioContext" in window || "webkitAudioContext" in window);
     if (!hasWebAudio) {
       this.add

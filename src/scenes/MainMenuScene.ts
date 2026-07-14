@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { BASE_WIDTH, BASE_HEIGHT } from "../config/GameConfig";
+import {BASE_WIDTH, BASE_HEIGHT, retinaCamera } from "../config/GameConfig";
 import { TextMenu } from "../ui/components/TextMenu";
 import { addBackdrop } from "../ui/Backdrop";
 import { music } from "../systems/audio/SongPlayer";
@@ -12,6 +12,7 @@ export class MainMenuScene extends Phaser.Scene {
   }
 
   create(): void {
+    retinaCamera(this);
     // Start the procedural soundtrack (PRD §11.2). The AudioContext was
     // unlocked in AudioGateScene, so it can play from here on.
     music.setVolume(GameContext.activeProfile?.settings.volumeMusic ?? 0.7);

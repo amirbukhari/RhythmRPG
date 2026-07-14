@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import { TransportClock } from "../systems/audio/TransportClock";
 import { CALIBRATION_BPM, CALIBRATION_BEAT_SECONDS, CALIBRATION_TAP_COUNT, computeCalibrationOffsetMs } from "../systems/audio/Calibration";
 import { GameContext } from "../state/GameContext";
-import { BASE_WIDTH, BASE_HEIGHT } from "../config/GameConfig";
+import {BASE_WIDTH, BASE_HEIGHT, retinaCamera } from "../config/GameConfig";
 
 /** AV sync test and global timing offset save. See PRD §9.3, §10.3. */
 export class CalibrationScene extends Phaser.Scene {
@@ -19,6 +19,7 @@ export class CalibrationScene extends Phaser.Scene {
   }
 
   async create(): Promise<void> {
+    retinaCamera(this);
     const settings = GameContext.activeProfile?.settings;
     this.tapKey = settings?.keyBindings.tap ?? " ";
     // PRD §9.3/W3C photosensitivity guidance: no full-brightness flashing

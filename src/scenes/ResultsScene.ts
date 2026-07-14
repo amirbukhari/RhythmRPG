@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { GameContext } from "../state/GameContext";
 import { RELICS } from "../systems/progression/Relics";
-import { BASE_WIDTH, BASE_HEIGHT } from "../config/GameConfig";
+import {BASE_WIDTH, BASE_HEIGHT, retinaCamera } from "../config/GameConfig";
 import { TextMenu } from "../ui/components/TextMenu";
 import { addBackdrop } from "../ui/Backdrop";
 
@@ -14,6 +14,7 @@ export class ResultsScene extends Phaser.Scene {
   }
 
   create(): void {
+    retinaCamera(this);
     // Phaser reuses one persistent Scene instance across stop/start cycles
     // (same class of bug fixed in SettingsOverlay at v4.2): a menu kept from
     // a previous visit references already-destroyed Text objects, and

@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import * as Tone from "tone";
 import { GameContext } from "../state/GameContext";
-import { BASE_WIDTH, BASE_HEIGHT } from "../config/GameConfig";
+import {BASE_WIDTH, BASE_HEIGHT, retinaCamera } from "../config/GameConfig";
 import { addBackdrop } from "../ui/Backdrop";
 import { music } from "../systems/audio/SongPlayer";
 
@@ -18,6 +18,7 @@ export class AudioGateScene extends Phaser.Scene {
   }
 
   create(): void {
+    retinaCamera(this);
     addBackdrop(this, 0.45);
     this.add
       .text(BASE_WIDTH / 2, BASE_HEIGHT / 2, "PRESS ANY KEY OR CLICK TO CONTINUE", {

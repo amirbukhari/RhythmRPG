@@ -157,37 +157,39 @@ export class WorldFight {
     this.bars = this.scene.add.graphics().setDepth(8.5);
     this.attackGlow = this.scene.add.image(0, 0, "glow").setBlendMode(Phaser.BlendModes.ADD).setTint(0xf4d27a).setDepth(7).setAlpha(0);
 
-    // HUD (screen-space): the same INHALANTS plate as before + boss bar
+    // HUD: the camera is locked to this.rect for the whole fight, so
+    // screen-space UI is simply placed at rect + design offset (the retina
+    // zoom made scrollFactor-0 drift under scrolled cameras -- see
+    // OverworldScene.pinToScreen for the moving-camera variant).
+    const ox = this.rect.x;
+    const oy = this.rect.y;
     const plateBg = this.scene.add
-      .nineslice(3, BASE_HEIGHT - 33, "ui_panel", undefined, 96, 30, 5, 5, 5, 5)
+      .nineslice(ox + 3, oy + BASE_HEIGHT - 33, "ui_panel", undefined, 96, 30, 5, 5, 5, 5)
       .setOrigin(0, 0)
-      .setScrollFactor(0)
       .setDepth(20)
       .setAlpha(0.94);
     const plateName = this.scene.add
-      .text(9, BASE_HEIGHT - 30, "INHALANTS", { fontFamily: "monospace", fontSize: "6px", color: "#9fe8e0" })
-      .setScrollFactor(0)
+      .text(ox + 9, oy + BASE_HEIGHT - 30, "INHALANTS", { fontFamily: "monospace", fontSize: "6px", color: "#9fe8e0" })
       .setDepth(21);
-    this.beatPulse = this.scene.add.circle(90, BASE_HEIGHT - 26, 3, 0x49c6bd).setScrollFactor(0).setDepth(21);
-    this.plate = this.scene.add.graphics().setDepth(21).setScrollFactor(0);
+    this.beatPulse = this.scene.add.circle(ox + 90, oy + BASE_HEIGHT - 26, 3, 0x49c6bd).setDepth(21);
+    // graphics draw in design coords; positioning the object at the room's
+    // corner maps them into the visible rect
+    this.plate = this.scene.add.graphics().setDepth(21).setPosition(ox, oy);
     this.hud.push(plateBg, plateName, this.beatPulse, this.plate);
     if (this.isBoss) {
       const name = getEnemy(encounter.enemyWave[0]).name.toUpperCase();
       this.hud.push(
         this.scene.add
-          .nineslice(BASE_WIDTH / 2 - 71, 4, "ui_panel_boss", undefined, 142, 22, 5, 5, 5, 5)
+          .nineslice(ox + BASE_WIDTH / 2 - 71, oy + 4, "ui_panel_boss", undefined, 142, 22, 5, 5, 5, 5)
           .setOrigin(0, 0)
-          .setScrollFactor(0)
           .setDepth(20)
           .setAlpha(0.94),
         this.scene.add
-          .text(BASE_WIDTH / 2, 8, name, { fontFamily: "monospace", fontSize: "6px", color: "#f0a648" })
+          .text(ox + BASE_WIDTH / 2, oy + 8, name, { fontFamily: "monospace", fontSize: "6px", color: "#f0a648" })
           .setOrigin(0.5, 0)
-          .setScrollFactor(0)
           .setDepth(21)
       );
     }
-    this.bars.setScrollFactor(1); // enemy bars live in world space
 
     void this.start(encounter.enemyWave, nodeWorldX, nodeWorldY);
   }
@@ -234,14 +236,19 @@ export class WorldFight {
       .setDepth(22)
       .setAlpha(0);
     this.caption = this.scene.add
-      .text(BASE_WIDTH / 2, BASE_HEIGHT - 42, "", { fontFamily: "monospace", fontSize: "7px", color: "#d8ceb6", stroke: "#05060a", strokeThickness: 3 })
+      .text(this.rect.x + BASE_WIDTH / 2, this.rect.y + BASE_HEIGHT - 42, "", {
+        fontFamily: "monospace",
+        fontSize: "7px",
+        color: "#d8ceb6",
+        stroke: "#05060a",
+        strokeThickness: 3,
+      })
       .setOrigin(0.5, 1)
-      .setScrollFactor(0)
       .setDepth(22)
       .setAlpha(0);
     this.hud.push(this.caption);
     if (settings.sightreadEnabled) {
-      this.sightread = this.scene.add.graphics().setScrollFactor(0).setDepth(21);
+      this.sightread = this.scene.add.graphics().setDepth(21).setPosition(this.rect.x, this.rect.y);
       this.hud.push(this.sightread);
     }
 

@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { GameContext } from "../state/GameContext";
-import { BASE_WIDTH, BASE_HEIGHT } from "../config/GameConfig";
+import {BASE_WIDTH, BASE_HEIGHT, retinaCamera } from "../config/GameConfig";
 import { addBackdrop } from "../ui/Backdrop";
 import { TextMenu } from "../ui/components/TextMenu";
 import { music } from "../systems/audio/SongPlayer";
@@ -19,6 +19,7 @@ export class FinaleScene extends Phaser.Scene {
   }
 
   create(): void {
+    retinaCamera(this);
     addBackdrop(this, 0.35);
     music.setMode("menu"); // Sunshine Sally carries the credits
 

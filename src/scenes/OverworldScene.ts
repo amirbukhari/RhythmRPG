@@ -8,7 +8,7 @@ import tilesetUrl from "../../assets/tilemaps/overworld_tileset.png";
 import tilemapUrl from "../../assets/tilemaps/overworld.json?url";
 import propsUrl from "../../assets/sprites/overworld/props.png";
 import npcsUrl from "../../assets/sprites/overworld/npcs.png";
-import { BASE_WIDTH, BASE_HEIGHT } from "../config/GameConfig";
+import { BASE_WIDTH, BASE_HEIGHT, RENDER_SCALE } from "../config/GameConfig";
 import { music } from "../systems/audio/SongPlayer";
 import { WorldFight } from "./overworld/WorldFight";
 import { composeWorldVenue } from "./env/ArenaComposer";
@@ -79,6 +79,11 @@ export class OverworldScene extends Phaser.Scene {
   /** Canopy landforms drawn ABOVE the player (PRD v7.15); they alpha-fade
    * when the player walks beneath so the map keeps its sense of height. */
   private canopies: Phaser.GameObjects.Image[] = [];
+  /** Screen-space UI pinned to the camera's visible rect. Under the 2x
+   * retina zoom (RENDER_SCALE) with a scrolled follow camera, Phaser's
+   * scrollFactor-0 transform drifts, so UI is pinned to worldView per frame
+   * instead -- deterministic under any zoom. */
+  private pinned: { obj: Phaser.GameObjects.GameObject & { setPosition(x: number, y: number): unknown; active: boolean }; dx: number; dy: number }[] = [];
   /** The standing foe's visuals per node, hidden when its fight goes live. */
   private nodeFoeVisuals = new Map<string, Phaser.GameObjects.GameObject[]>();
   private interactHint!: Phaser.GameObjects.Text;
@@ -114,6 +119,7 @@ export class OverworldScene extends Phaser.Scene {
     this.obelisks = [];
     this.fight = null;
     this.canopies = [];
+    this.pinned = [];
     this.nodeFoeVisuals.clear();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.fight?.destroy();
@@ -256,6 +262,10 @@ export class OverworldScene extends Phaser.Scene {
       this.followers.push({ member, sprite, shadow });
     }
 
+    // Retina render (design-audit-3): the canvas is 2x; zooming the camera
+    // keeps every world coordinate identical while art renders at its real
+    // texel density (the follow camera centers, so no centerOn needed).
+    this.cameras.main.setZoom(RENDER_SCALE);
     this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
     this.cameras.main.startFollow(this.player, true, 1, 1);
     this.cameras.main.setRoundPixels(true);
@@ -269,16 +279,17 @@ export class OverworldScene extends Phaser.Scene {
     this.addAtmosphere();
 
     // HUD hint on a dark strip so it stays legible over the busy ground.
-    this.add.rectangle(0, 0, this.scale.width, 12, 0x05060a, 0.72).setOrigin(0, 0).setScrollFactor(0).setDepth(19);
-    this.add
-      .text(4, 3, "Arrows/WASD: move   E: interact   ESC: settings", { fontFamily: "monospace", fontSize: "7px", color: "#d8ceb6" })
-      .setScrollFactor(0)
-      .setDepth(20);
-    this.echoCountText = this.add
-      .text(BASE_WIDTH - 4, 3, "", { fontFamily: "monospace", fontSize: "7px", color: "#49c6bd" })
-      .setOrigin(1, 0)
-      .setScrollFactor(0)
-      .setDepth(20);
+    this.pinToScreen(this.add.rectangle(0, 0, BASE_WIDTH, 12, 0x05060a, 0.72).setOrigin(0, 0).setDepth(19), 0, 0);
+    this.pinToScreen(
+      this.add.text(4, 3, "Arrows/WASD: move   E: interact   ESC: settings", { fontFamily: "monospace", fontSize: "7px", color: "#d8ceb6" }).setDepth(20),
+      4,
+      3
+    );
+    this.echoCountText = this.pinToScreen(
+      this.add.text(BASE_WIDTH - 4, 3, "", { fontFamily: "monospace", fontSize: "7px", color: "#49c6bd" }).setOrigin(1, 0).setDepth(20),
+      BASE_WIDTH - 4,
+      3
+    );
     this.updateEchoCountText();
 
     // A quiet prompt near the player, shown only when an undiscovered echo is close.
@@ -301,16 +312,18 @@ export class OverworldScene extends Phaser.Scene {
   private addAtmosphere(): void {
     const reduced = Boolean(GameContext.activeProfile?.settings.reducedMotion);
     const safe = Boolean(GameContext.activeProfile?.settings.photosensitivitySafeMode);
-    const { width, height } = this.scale;
+    const width = BASE_WIDTH;
+    const height = BASE_HEIGHT;
 
     if (!safe) {
       // Drifting fog: a seamless haze tile scrolled slowly over the world for
       // depth. Screen-locked and additive at low alpha so it reads as light
       // haze, never a grey wash. Held still (just present) under reduced motion.
-      this.fog = this.add
-        .tileSprite(0, 0, width, height, "fx_haze")
-        .setOrigin(0, 0)
-        .setScrollFactor(0)
+      this.fog = this.pinToScreen(
+        this.add.tileSprite(0, 0, width, height, "fx_haze").setOrigin(0, 0),
+        0,
+        0
+      )
         .setDepth(13)
         .setBlendMode(Phaser.BlendModes.SCREEN)
         .setAlpha(reduced ? 0.05 : 0.1);
@@ -318,10 +331,7 @@ export class OverworldScene extends Phaser.Scene {
       // Raking god-ray shafts across the top -- additive, faint, evocative of
       // light falling through a drowned sky. Skipped under reduced motion.
       if (!reduced) {
-        const rays = this.add
-          .image(width / 2, 0, "fx_godray")
-          .setOrigin(0.5, 0)
-          .setScrollFactor(0)
+        const rays = this.pinToScreen(this.add.image(width / 2, 0, "fx_godray").setOrigin(0.5, 0), width / 2, 0)
           .setDepth(14)
           .setBlendMode(Phaser.BlendModes.ADD)
           .setTint(0x9fe8e0)
@@ -331,7 +341,7 @@ export class OverworldScene extends Phaser.Scene {
       }
     }
 
-    const g = this.add.graphics().setScrollFactor(0).setDepth(15);
+    const g = this.pinToScreen(this.add.graphics().setDepth(15), 0, 0);
     // cold overcast tint
     g.fillStyle(0x0b1420, 0.18).fillRect(0, 0, width, height);
     // vignette: nested translucent frames, darker toward the edge
@@ -349,6 +359,7 @@ export class OverworldScene extends Phaser.Scene {
 
   update(_time: number, deltaMs: number): void {
     if (!this.player) return;
+    this.repositionPinned();
     this.playerShadow.setPosition(this.player.x, this.player.y + 2);
     this.playerGlow.setPosition(this.player.x, this.player.y - 6);
     // Canopy overhangs go translucent while the player is beneath them (the
@@ -446,10 +457,12 @@ export class OverworldScene extends Phaser.Scene {
     const body = this.add
       .text(0, 2, echo.text, { fontFamily: "monospace", fontSize: "7px", color: "#e8e2d4", align: "center", wordWrap: { width: panelW - 16 } })
       .setOrigin(0.5, 0);
-    this.echoPanel = this.add
-      .container(BASE_WIDTH / 2, BASE_HEIGHT - 30, [panel, title, body])
-      .setScrollFactor(0)
-      .setDepth(25);
+    this.echoPanel = this.pinToScreen(
+      this.add.container(BASE_WIDTH / 2, BASE_HEIGHT - 30, [panel, title, body]).setDepth(25),
+      BASE_WIDTH / 2,
+      BASE_HEIGHT - 30
+    );
+    this.repositionPinned();
     this.time.delayedCall(3800, () => this.dismissEchoPanel());
   }
 
@@ -959,11 +972,29 @@ export class OverworldScene extends Phaser.Scene {
     const panel = this.add.nineslice(0, 0, "ui_panel", undefined, panelW, 32, 5, 5, 5, 5);
     const t = this.add.text(0, -8, title, { fontFamily: "monospace", fontSize: "7px", color: "#49c6bd" }).setOrigin(0.5);
     const b = this.add.text(0, 4, body, { fontFamily: "monospace", fontSize: "7px", color: "#e8e2d4" }).setOrigin(0.5);
-    this.echoPanel = this.add
-      .container(BASE_WIDTH / 2, BASE_HEIGHT - 26, [panel, t, b])
-      .setScrollFactor(0)
-      .setDepth(25);
+    this.echoPanel = this.pinToScreen(
+      this.add.container(BASE_WIDTH / 2, BASE_HEIGHT - 26, [panel, t, b]).setDepth(25),
+      BASE_WIDTH / 2,
+      BASE_HEIGHT - 26
+    );
+    this.repositionPinned();
     this.time.delayedCall(2200, () => this.dismissEchoPanel());
+  }
+
+  /** Pin a UI object at a design-space offset from the camera's top-left. */
+  pinToScreen<T extends Phaser.GameObjects.GameObject & { setPosition(x: number, y: number): unknown; active: boolean }>(
+    obj: T,
+    dx: number,
+    dy: number
+  ): T {
+    this.pinned.push({ obj, dx, dy });
+    return obj;
+  }
+
+  private repositionPinned(): void {
+    const v = this.cameras.main.worldView;
+    this.pinned = this.pinned.filter((p) => p.obj.active);
+    for (const p of this.pinned) p.obj.setPosition(v.x + p.dx, v.y + p.dy);
   }
 
   private snapPlayerToGrid(): void {
