@@ -149,18 +149,26 @@ def _palette_image(palette: list[tuple[int, int, int]]) -> Image.Image:
 def pixelate(img: Image.Image, logical_w: int, logical_h: int, *,
              palette: list[tuple[int, int, int]] | None = None, dither: bool = True,
              upscale_w: int | None = None, upscale_h: int | None = None,
-             darken: float = 0.0) -> Image.Image:
-    """Turn a detailed/painterly image into real 8-bit pixel art: collapse to a
-    chunky logical resolution (kills painterly micro-detail), snap to a limited
-    palette with optional Floyd–Steinberg dithering, then nearest-upscale so the
-    pixels stay crisp and blocky. Alpha is preserved as a hard mask."""
+             darken: float = 0.0, colors: int | None = None) -> Image.Image:
+    """Turn a detailed/painterly image into real pixel art: resample to a
+    logical resolution, then reduce colours -- three modes:
+      * `palette` given   -> snap to that fixed palette (cohesion, e.g. sprites);
+      * `colors` given     -> ADAPTIVE palette of N colours (keeps rich, vivid
+                              scene colour -- the Hyper Light Drifter register:
+                              detailed, many hues, NOT muddy 36-colour gothic);
+      * neither            -> the master palette.
+    Optional Floyd–Steinberg dither, then nearest-upscale so pixels stay crisp.
+    Alpha is preserved as a hard mask."""
     img = img.convert("RGBA")
     alpha = img.getchannel("A").resize((logical_w, logical_h), Image.BILINEAR)
-    small = img.convert("RGB").resize((logical_w, logical_h), Image.BILINEAR)
+    small = img.convert("RGB").resize((logical_w, logical_h), Image.LANCZOS)
     if darken > 0:
         small = small.point(lambda v: int(v * (1.0 - darken)))
-    palimg = _palette_image(palette or MASTER_RGB)
-    q = small.quantize(palette=palimg, dither=Image.FLOYDSTEINBERG if dither else Image.NONE).convert("RGBA")
+    dmode = Image.FLOYDSTEINBERG if dither else Image.NONE
+    if palette is None and colors:
+        q = small.quantize(colors=colors, method=Image.MEDIANCUT, dither=dmode).convert("RGBA")
+    else:
+        q = small.quantize(palette=_palette_image(palette or MASTER_RGB), dither=dmode).convert("RGBA")
     q.putalpha(alpha.point(lambda a: 255 if a >= 128 else 0))
     uw, uh = upscale_w or logical_w, upscale_h or logical_h
     if (uw, uh) != (logical_w, logical_h):

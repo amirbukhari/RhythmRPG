@@ -159,11 +159,11 @@ def gen_replicate(prompt: str, w: int, h: int, model: str = "black-forest-labs/f
 PROVIDERS = {"pollinations": gen_pollinations, "openai": gen_openai, "stability": gen_stability, "replicate": gen_replicate}
 KEY_ENV = {"pollinations": None, "openai": "OPENAI_API_KEY", "stability": "STABILITY_API_KEY", "replicate": "REPLICATE_API_TOKEN"}
 # what resolution to ask the API for per asset kind (bigger = more detail, then downscaled)
-GEN_SIZE = {"background": (1280, 720), "boss": (768, 1024), "sprite": (768, 768), "tile": (1024, 1024)}
+GEN_SIZE = {"background": (1280, 720), "boss": (768, 1024), "sprite": (768, 768), "tile": (1024, 1024), "piece": (768, 768)}
 
 
 def full_prompt(p: str, kind: str = "sprite") -> str:
-    if kind in ("sprite", "boss"):
+    if kind in ("sprite", "boss", "piece"):
         return SPRITE_PREFIX + p
     return STYLE_PREFIX + PALETTE_HINT + p
 
@@ -196,14 +196,18 @@ def one(provider: str, prompt: str, out: str, frame: str, *, frames: int = 1, gr
     raw_path.write_bytes(raw)
     from PIL import Image
     if kind == "background":
-        # backgrounds must read as real 8-bit pixel art, not a downscaled
-        # painting: collapse to a chunky logical res + master palette + dither.
-        img = I.pixelate(Image.open(raw_path), fw // 2, fh // 2, dither=True, upscale_w=fw, upscale_h=fh)
-    elif kind in ("sprite", "boss"):
+        # Hyper Light Drifter register: detailed pixel art, NOT chunky muddy
+        # 8-bit. Quantize at native res to a rich ADAPTIVE palette with no
+        # dither -- keeps vivid colour + fine detail, reads as crisp pixel art
+        # at the game's 3x display scale.
+        img = I.pixelate(Image.open(raw_path), fw, fh, colors=96, dither=False)
+    elif kind in ("sprite", "boss", "piece"):
         # cutout on a plain white backdrop -> flood-remove the background, then
-        # pixelate the subject to the frame size (no dither -> clean sprite).
+        # pixelate the subject to the frame size. Characters (sprite/boss) snap
+        # to the master palette for cast cohesion; environment `piece`s keep a
+        # rich adaptive palette (HLD detail) so kitbashed scenes stay vivid.
         keyed = I.flood_key(Image.open(raw_path), tol=80)
-        one_frame = I.pixelate(keyed, fw, fh, dither=False)
+        one_frame = I.pixelate(keyed, fw, fh, dither=False, colors=(64 if kind == "piece" else None))
         img = one_frame if (cols * rows) <= 1 else I.pack_strip([one_frame] * (cols * rows), fw, fh)
     else:
         img = I.import_asset(raw_path, fw, fh, cols=cols, rows=rows,

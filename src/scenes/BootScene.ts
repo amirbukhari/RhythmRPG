@@ -28,6 +28,14 @@ const BAND_URLS = import.meta.glob("../../assets/sprites/band/*/*.png", {
   query: "?url",
   import: "default",
 }) as Record<string, string>;
+
+// Kitbash environment pieces (PRD §11.1): assets/sprites/env/<biome>/<piece>.png
+// -> texture key `env_<biome>_<piece>` (used by ArenaComposer).
+const ENV_URLS = import.meta.glob("../../assets/sprites/env/*/*.png", {
+  eager: true,
+  query: "?url",
+  import: "default",
+}) as Record<string, string>;
 import uiPanelUrl from "../../assets/ui/panel.png";
 import uiPanelBossUrl from "../../assets/ui/panel_boss.png";
 import uiIconsUrl from "../../assets/ui/icons.png";
@@ -104,6 +112,11 @@ export class BootScene extends Phaser.Scene {
       const [, member, anim] = m;
       const key = anim === "idle" ? `band_${member}` : `band_${member}_${anim}`;
       this.load.spritesheet(key, url, { frameWidth: 48, frameHeight: 48 });
+    }
+    // Environment kitbash pieces: `.../env/shallows/rock_a.png` -> env_shallows_rock_a
+    for (const [path, url] of Object.entries(ENV_URLS)) {
+      const m = /env\/([^/]+)\/([^/]+)\.png$/.exec(path);
+      if (m) this.load.image(`env_${m[1]}_${m[2]}`, url);
     }
     for (const [name, url] of Object.entries(ENEMY_URLS)) {
       this.load.spritesheet(`enemy_${name}`, url, { frameWidth: 48, frameHeight: 48 });
