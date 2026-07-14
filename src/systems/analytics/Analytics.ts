@@ -15,7 +15,8 @@ export type AnalyticsEvent =
   | "encounter_cleared"
   | "boss_phase_reached"
   | "save_loaded"
-  | "echo_found";
+  | "echo_found"
+  | "obelisk_rest";
 
 export interface AnalyticsRecord {
   event: AnalyticsEvent;
