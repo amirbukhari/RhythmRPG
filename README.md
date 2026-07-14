@@ -19,13 +19,13 @@ PRD v8.3 — git history is the archive.)*
 
 ## Start here
 
-- **[Product Requirements Document](docs/product/PRD.md)** — v8.3, the source
+- **[Product Requirements Document](docs/product/PRD.md)** — v8.9, the source
   of truth for scope, requirements, architecture, and release gates.
   **[§20 Implementation Status](docs/product/PRD.md#20-implementation-status-as-of-2026-07-14-v80-re-cut)**
   is the current build-vs-spec snapshot — read that first if you're picking
-  this up. Beat truth, four-tier judgment, the ultimate, the phased in-world
-  boss, Sightread, and full §9.3 parity are shipped; next is the §11.5 art
-  manifest burn-down, then P5 hardening.
+  this up. All seven §16.2 release gates hold (CI-enforced); P5 hardening
+  (balance harness, soak) is live. Remaining §20.2 items are owner-gated
+  (listening pass, real-device iOS, recorded SFX) or artist-gated.
 - [PRD audit (2026-07-14)](docs/product/prd-audit-2026-07-14.md) — the
   line-by-line spec-vs-build audit that drove the v8.0 rewrite.
 - [AAA art audit](docs/design/aaa-audit.md) — the screen-by-screen art review
@@ -42,7 +42,7 @@ PRD v8.3 — git history is the archive.)*
 
 ```
 docs/
-  product/      PRD v8.3 (source of truth) + the 2026-07-14 PRD audit
+  product/      PRD v8.9 (source of truth) + the 2026-07-14 PRD audit
   research/     research backing the PRD
   technical/    JSON schemas for data-driven content
   design/       world bible, art bible, art-prompt catalog, AAA art audit,
@@ -85,12 +85,13 @@ assets/
   reference/          archived historical material (pre-band art, gbmusic drafts)
 
 tests/
-  unit/         103 tests across 14 files (action sim + tiers, song-beat math,
-                relics, persistence, content validation, progression)
-  e2e/          8 Playwright spec files (15 tests, Chromium gate): boot/
+  unit/         115 tests across 15 files (action sim + tiers, song-beat math,
+                relics, balance harness, persistence, content, progression)
+  e2e/          10 Playwright spec files (17 tests, Chromium gate): boot/
                 calibration/persistence, overworld + in-world fight, beat truth
-                (gate 1a), in-world boss phases (gate 3), mobile boot (Pixel-5
-                emulation), obelisk save, settings, art-audit captures.
+                (gate 1a), in-world boss phases (gate 3), the finale, mobile
+                boot (Pixel-5 emulation), a multi-minute zero-error soak,
+                obelisk save, settings, art-audit captures.
                 Firefox is excluded pending root-cause (PRD §20.2)
 
 tools/
@@ -110,7 +111,7 @@ tools/
 npm install
 npm run dev        # Vite dev server
 npm run typecheck  # tsc --noEmit
-npm test           # vitest run -- 103 unit tests
+npm test           # vitest run -- 115 unit tests
 npm run test:e2e   # playwright test -- Chromium e2e gate
 npm run build      # production build to dist/
 ```

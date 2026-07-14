@@ -106,9 +106,12 @@ class SongPlayer {
     this.rate = Math.max(0.5, Math.min(1.5, rate));
     for (const a of this.cache.values()) {
       a.playbackRate = this.rate;
-      // Keep the band's pitch while slowed (default in modern browsers;
-      // set explicitly where the property exists).
-      if ("preservesPitch" in a) (a as HTMLAudioElement & { preservesPitch: boolean }).preservesPitch = true;
+      // Keep the band's pitch while slowed. Standard property where it
+      // exists; Safari/WebKit shipped it prefixed for years, so set that
+      // too or iPhones pitch-shift the songs under game-speed assist.
+      const el = a as HTMLAudioElement & { preservesPitch?: boolean; webkitPreservesPitch?: boolean };
+      if ("preservesPitch" in el) el.preservesPitch = true;
+      if ("webkitPreservesPitch" in el) el.webkitPreservesPitch = true;
     }
   }
 

@@ -39,7 +39,7 @@ by how much of the play time the screen occupies.
 
 | # | Problem | Detail |
 |---|---|---|
-| M1 | **Monospace wordmark** | The title is system monospace with a thick stroke — not a logo. Needs authored pixel wordmark art (generate via the sprite pipeline). |
+| M1 | **Monospace wordmark** | ~~The title is system monospace with a thick stroke~~ **CLOSED (PRD v8.5):** hand-lettered pixel wordmark (`tools/pixelart/wordmark.py` — bitmap glyphs, sway, baseline drips) on the menu and finale. |
 | M2 | **Plain menu/save/calibration panels** | Functional but generic: default font, plain boxes. Lower priority than in-game screens. |
 
 ### 4. What already lands (keep, don't churn)
@@ -67,7 +67,7 @@ by how much of the play time the screen occupies.
    clustered scatter; darker desaturated water with animated caustics.
 6. **P2 — Value separation** (O4): darken scenery props ~15%, add 1px rim
    highlight to characters.
-7. **P3 — Wordmark** (M1): authored pixel logo via the sprite pipeline.
+7. **P3 — Wordmark** (M1): ✅ shipped v8.5 (hand-lettered, not AI — text rendering per the v7.12 note).
 
 Each item ships behind the usual gate: typecheck + 142 unit + full chromium
 e2e + screenshot verification, then deploy.
