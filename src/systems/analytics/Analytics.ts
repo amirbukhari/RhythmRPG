@@ -15,6 +15,12 @@ export type AnalyticsEvent =
   // when the §8.3 four-tier grade lands (P2).
   | "judgment_onbeat"
   | "judgment_offbeat"
+  // Per-tier action judgments (§8.3 four-tier grade, v8.2).
+  | "judgment_great"
+  | "judgment_good"
+  | "judgment_off"
+  | "ultimate_used"
+  | "sightread_enabled"
   | "assist_mode_enabled"
   | "sightread_used"
   | "encounter_failed"

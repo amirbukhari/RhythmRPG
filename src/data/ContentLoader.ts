@@ -144,6 +144,9 @@ export function loadBossPhaseConfig(data: unknown): BossPhaseConfig {
   let previousThreshold = Infinity;
   for (const phase of config.phases) {
     if (typeof phase.trackId !== "string" || !phase.trackId) return fail("each phase needs a non-empty trackId");
+    if (phase.section !== undefined && (typeof phase.section !== "string" || !phase.section)) {
+      return fail("phase section, when present, must be a non-empty string");
+    }
     if (typeof phase.hpThreshold !== "number" || phase.hpThreshold < 0 || phase.hpThreshold > 1) {
       return fail("each phase needs hpThreshold in [0, 1]");
     }

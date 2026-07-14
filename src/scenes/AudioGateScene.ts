@@ -33,6 +33,22 @@ export class AudioGateScene extends Phaser.Scene {
 
     this.input.keyboard?.once("keydown", () => this.startAudio());
     this.input.once("pointerdown", () => this.startAudio());
+
+    // Belt-and-suspenders for real phones (the gate is the front door and
+    // MUST never be missable): if Phaser's input pipeline drops the tap on
+    // some mobile browser, plain DOM listeners still catch it. Removed on
+    // first fire or scene shutdown.
+    const domStart = (): void => {
+      void this.startAudio();
+    };
+    for (const evt of ["pointerup", "touchend", "click"] as const) {
+      document.addEventListener(evt, domStart, { once: true, passive: true });
+    }
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      for (const evt of ["pointerup", "touchend", "click"] as const) {
+        document.removeEventListener(evt, domStart);
+      }
+    });
   }
 
   private async startAudio(): Promise<void> {
@@ -40,7 +56,14 @@ export class AudioGateScene extends Phaser.Scene {
     this.starting = true;
     // Web Audio contexts must be created/resumed from a user gesture (PRD
     // §10.4) -- this is that gesture. No audio is scheduled or played here.
-    await Tone.start();
+    // Guarded: on some mobile browsers AudioContext.resume() can hang or
+    // throw -- the gate must advance regardless (the context unlocks on a
+    // later gesture; every play()/trigger downstream is failure-tolerant).
+    try {
+      await Promise.race([Tone.start(), new Promise((resolve) => setTimeout(resolve, 2000))]);
+    } catch {
+      /* resume failed -- proceed; audio re-unlocks on the next gesture */
+    }
     // Start the real soundtrack from INSIDE this gesture so mobile browsers
     // (which block audio until a user gesture) allow it; later scene changes
     // inherit the unlocked state. Volume comes from the active profile.

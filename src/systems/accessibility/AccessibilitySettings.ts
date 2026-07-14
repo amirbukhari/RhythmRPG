@@ -9,6 +9,9 @@ export interface AccessibilitySettings {
   /** Opt-in audible metronome tick over the music in fights (PRD §9.3).
    * Off by default: the judged beat IS the playing song's beat (§8.3). */
   beatTickEnabled: boolean;
+  /** Sightread (§8.4): the "see the music" forecast lane -- upcoming beats
+   * and telegraphed enemy strikes previewed on the fight HUD. */
+  sightreadEnabled: boolean;
   volumeMusic: number;
   volumeSfx: number;
   volumeUi: number;
@@ -23,6 +26,7 @@ export const DEFAULT_ACCESSIBILITY_SETTINGS: AccessibilitySettings = {
   captionsEnabled: true,
   practiceMode: false,
   beatTickEnabled: false,
+  sightreadEnabled: false,
   volumeMusic: 1,
   volumeSfx: 1,
   volumeUi: 1,

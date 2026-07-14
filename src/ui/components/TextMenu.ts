@@ -78,8 +78,9 @@ export class TextMenu {
   }
 
   /** Replaces labels/handlers in place, preserving the current selection. */
-  setItems(items: TextMenuItem[]): void {
+  setItems(items: TextMenuItem[], resetSelection = false): void {
     this.items = items;
+    if (resetSelection) this.selectedIndex = 0;
 
     if (this.texts.length !== items.length) {
       this.texts.forEach((t) => t.destroy());

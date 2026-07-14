@@ -1,8 +1,8 @@
 {
   "encounterId": "boss_conductor_01",
   "phases": [
-    { "trackId": "boss_conductor_p1", "hpThreshold": 1.0 },
-    { "trackId": "boss_conductor_p2", "hpThreshold": 0.66 },
-    { "trackId": "boss_conductor_p3", "hpThreshold": 0.33 }
+    { "trackId": "boss_conductor_p1", "hpThreshold": 1.0, "section": "movement_1" },
+    { "trackId": "boss_conductor_p2", "hpThreshold": 0.66, "section": "movement_2" },
+    { "trackId": "boss_conductor_p3", "hpThreshold": 0.33, "section": "movement_3" }
   ]
 }

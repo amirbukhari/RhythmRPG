@@ -27,6 +27,7 @@ const KEYS: Record<string, KeySpec> = {
   L: { key: "l", code: "KeyL", keyCode: 76 },
   I: { key: "i", code: "KeyI", keyCode: 73 },
   E: { key: "e", code: "KeyE", keyCode: 69 },
+  U: { key: "u", code: "KeyU", keyCode: 85 },
   SHIFT: { key: "Shift", code: "ShiftLeft", keyCode: 16 },
 };
 
@@ -93,6 +94,8 @@ const STYLE = `
   background: radial-gradient(circle at 40% 35%, #9fe8e0, #49c6bd); }
 #touch-controls .tc-int  { right: 150px; bottom: 6px; width: 50px; height: 50px;
   background: radial-gradient(circle at 40% 35%, #79b855, #426e33); color: #f4efe2; }
+#touch-controls .tc-ult  { right: 152px; bottom: 118px; width: 44px; height: 44px;
+  background: radial-gradient(circle at 40% 35%, #e0b3f0, #b98fca); }
 @media (min-height: 520px) { #touch-controls .tc-stick { bottom: 40px; } #touch-controls .tc-actions { bottom: 40px; } }
 `;
 
@@ -186,6 +189,7 @@ export function initTouchControls(): void {
     ["tc-sp", "SP", "L"],
     ["tc-par", "PAR", "I"],
     ["tc-int", "E", "E"],
+    ["tc-ult", "ULT", "U"],
   ];
   for (const [cls, label, keyName] of buttons) {
     const btn = document.createElement("div");

@@ -13,5 +13,9 @@ export default defineConfig({
   },
   build: {
     outDir: "dist",
+    // Reach older mobile Safari/WebViews: Vite's default target (~Safari 14+)
+    // ships syntax that hard-crashes older iPhones into a silent black
+    // screen. es2019/safari13 transpiles that away at negligible size cost.
+    target: ["es2019", "safari13"],
   },
 });

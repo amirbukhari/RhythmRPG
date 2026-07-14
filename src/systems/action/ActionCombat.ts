@@ -22,14 +22,17 @@ export interface AttackDef {
   radius: number; // hitbox radius
 }
 
-/** The player's attacks (PRD §8.2). Special costs Focus; ultimate is future. */
+/** The player's attacks (PRD §8.2). Special costs Focus; Ultimate costs the
+ * full Groove meter (§8.5) -- a screen-shaking burst centred on the player. */
 export const LIGHT: AttackDef = { startup: 0.05, active: 0.08, recovery: 0.13, damage: 6, knockback: 110, reach: 15, radius: 12 };
 export const HEAVY: AttackDef = { startup: 0.19, active: 0.1, recovery: 0.28, damage: 14, knockback: 250, reach: 20, radius: 14 };
 export const SPECIAL: AttackDef = { startup: 0.12, active: 0.1, recovery: 0.22, damage: 20, knockback: 210, reach: 22, radius: 16 };
+export const ULTIMATE: AttackDef = { startup: 0.32, active: 0.18, recovery: 0.5, damage: 34, knockback: 380, reach: 0, radius: 64 };
 export const ENEMY_STRIKE: AttackDef = { startup: 0.28, active: 0.12, recovery: 0.4, damage: 9, knockback: 160, reach: 16, radius: 13 };
 
 export const SPECIAL_FOCUS_COST = 1;
 export const FOCUS_MAX = 5;
+export const ULTIMATE_GROOVE_COST = 100;
 const PARRY_WINDOW = 0.16; // active parry frames after an on-beat guard
 const PARRY_CD = 0.45;
 // A press during an attack's recovery can cancel into the next attack, but
@@ -46,11 +49,28 @@ const DASH_IFRAMES_ONBEAT = 0.22;
 const DASH_CD = 0.5;
 const DASH_CD_ONBEAT = 0.3;
 
+/** The four §8.3 judgment tiers grading a real-time action against the
+ * playing song's nearest beat. Off-beat actions still execute, weaker. */
+export type BeatTier = "perfect" | "great" | "good" | "off";
+
+/** Power multiplier per judgment tier (§8.3 table). "great" keeps the
+ * pre-tier on-beat value (1.5) so the established feel is the middle rung;
+ * "perfect" sits above it. */
+export function tierMultiplier(tier: BeatTier): number {
+  return tier === "perfect" ? 1.75 : tier === "great" ? 1.5 : tier === "good" ? 1.2 : 1;
+}
+
+/** Groove gained when a player hit lands, per the tier it was thrown at. */
+export function tierGroove(tier: BeatTier): number {
+  return tier === "perfect" ? 12 : tier === "great" ? 8 : tier === "good" ? 3 : 0;
+}
+
 export interface ActiveAttack {
   def: AttackDef;
   phase: "startup" | "active" | "recovery";
   timer: number;
-  onBeat: boolean;
+  onBeat: boolean; // tier is great-or-better (drives the strong visual read)
+  tier: BeatTier;
   hitIds: string[]; // targets already struck this swing (one hit per active window)
 }
 
@@ -80,8 +100,12 @@ export interface FrameInput {
   light: boolean;
   heavy: boolean;
   special: boolean;
+  ultimate?: boolean; // edge-triggered; consumes the full Groove meter (§8.5)
   parry: boolean;
   onBeat: boolean; // was this press inside the on-beat window (§8.3)
+  /** Full §8.3 judgment tier of this press. Optional for callers that only
+   * know the binary window (retired scene): onBeat maps to "great". */
+  tier?: BeatTier;
 }
 
 /** An impassable axis-aligned box (world-fight terrain: water, rock). */
@@ -102,6 +126,11 @@ export interface Arena {
   log: string[];
   /** Impassable terrain inside the arena (in-world fights, PRD v7.13). */
   obstacles?: Obstacle[];
+  /** Practice mode (PRD §9.3): the player cannot fall -- HP floors at 1. */
+  practice?: boolean;
+  /** Boss-phase escalation (§8.7): scales enemy tempo. 1 = base; higher =
+   * shorter telegraphs, faster approach, shorter recovers. */
+  enemyAggression?: number;
 }
 
 const FACING_VEC: Record<Facing, Vec> = {
@@ -128,9 +157,10 @@ export function hitstunSeconds(damage: number, damagePct: number): number {
   return Math.min(0.6, 0.12 + damage * 0.018 + damagePct * 0.0015);
 }
 
-/** On-beat power multiplier for an action initiated `offsetMs` from the beat. */
+/** Legacy binary view of the tier table (retired scene + old tests): the
+ * boolean on-beat window maps to the "great" tier. */
 export function onBeatMultiplier(onBeat: boolean): number {
-  return onBeat ? 1.5 : 1;
+  return tierMultiplier(onBeat ? "great" : "off");
 }
 
 export function hitboxCentre(f: Fighter, reach: number): Vec {
@@ -226,7 +256,7 @@ export function enemies(a: Arena): Fighter[] {
 
 // --- the tick --------------------------------------------------------------
 
-function applyHit(a: Arena, attacker: Fighter, def: AttackDef, target: Fighter, onBeat: boolean, di: Vec): void {
+function applyHit(a: Arena, attacker: Fighter, def: AttackDef, target: Fighter, tier: BeatTier, di: Vec): void {
   if (target.iframes > 0 || target.state === "dead") return;
   // On-beat parry: negate the hit and stagger the attacker into hitstun,
   // knocked back off the target -- defence converted into offence (PRD §8.2).
@@ -245,10 +275,12 @@ function applyHit(a: Arena, attacker: Fighter, def: AttackDef, target: Fighter, 
     a.log.push("parry!");
     return;
   }
-  const mult = onBeatMultiplier(onBeat);
+  const mult = tierMultiplier(tier);
   const dmg = def.damage * mult;
   target.hp -= dmg;
   target.damagePct += dmg;
+  // Practice mode (PRD §9.3): no fail state -- the player's HP floors at 1.
+  if (a.practice && target.team === "player" && target.hp < 1) target.hp = 1;
   // knockback direction: from attacker to target, nudged by DI (defender input)
   let dx = target.pos.x - attacker.pos.x;
   let dy = target.pos.y - attacker.pos.y;
@@ -261,9 +293,9 @@ function applyHit(a: Arena, attacker: Fighter, def: AttackDef, target: Fighter, 
   target.state = "hitstun";
   target.stateTimer = hitstunSeconds(dmg, target.damagePct);
   target.attack = null;
-  if (attacker.team === "player" && onBeat) {
-    a.groove = Math.min(100, a.groove + 8);
-    a.focus = Math.min(FOCUS_MAX, a.focus + 1);
+  if (attacker.team === "player") {
+    a.groove = Math.min(100, a.groove + tierGroove(tier));
+    if (tier === "perfect" || tier === "great") a.focus = Math.min(FOCUS_MAX, a.focus + 1);
   }
   if (target.hp <= 0) {
     target.hp = 0;
@@ -273,8 +305,9 @@ function applyHit(a: Arena, attacker: Fighter, def: AttackDef, target: Fighter, 
   }
 }
 
-function startAttack(f: Fighter, def: AttackDef, onBeat: boolean): void {
-  f.attack = { def, phase: "startup", timer: def.startup, onBeat, hitIds: [] };
+function startAttack(f: Fighter, def: AttackDef, tier: BeatTier): void {
+  const onBeat = tier === "perfect" || tier === "great";
+  f.attack = { def, phase: "startup", timer: def.startup, onBeat, tier, hitIds: [] };
   f.state = "attack";
   f.stateTimer = def.startup + def.active + def.recovery;
 }
@@ -289,7 +322,7 @@ function advanceAttack(a: Arena, f: Fighter, dt: number, di: Vec): void {
       if (other.team === f.team || other.state === "dead" || atk.hitIds.includes(other.id)) continue;
       if (circlesOverlap(centre, atk.def.radius, other.pos, other.radius)) {
         atk.hitIds.push(other.id);
-        applyHit(a, f, atk.def, other, atk.onBeat, di);
+        applyHit(a, f, atk.def, other, atk.tier, di);
       }
     }
   }
@@ -309,11 +342,13 @@ function advanceAttack(a: Arena, f: Fighter, dt: number, di: Vec): void {
 
 function stepPlayer(a: Arena, f: Fighter, input: FrameInput, dt: number): void {
   const busy = f.state === "hitstun" || f.state === "attack" || f.state === "dash";
+  const tier: BeatTier = input.tier ?? (input.onBeat ? "great" : "off");
+  const onBeat = tier === "perfect" || tier === "great";
 
-  // On-beat parry (guard): opens a brief negate-and-stagger window. Off-beat
-  // presses still spend the cooldown -- a punishable whiff (PRD §8.2).
+  // On-beat parry (guard): opens a negate-and-stagger window graded by tier.
+  // Off-beat presses still spend the cooldown -- a punishable whiff (§8.2).
   if (input.parry && !busy && f.parryCd <= 0) {
-    f.parryTimer = input.onBeat ? PARRY_WINDOW : 0.04;
+    f.parryTimer = onBeat ? PARRY_WINDOW : tier === "good" ? 0.1 : 0.04;
     f.parryCd = PARRY_CD;
     f.facing = facingFromMove(input.move, f.facing);
     return;
@@ -321,9 +356,9 @@ function stepPlayer(a: Arena, f: Fighter, input: FrameInput, dt: number): void {
 
   // A press during an attack's recovery can cancel into the next attack, but
   // only on-beat and inside the cancel window -- rhythm-gated combo strings.
-  const inCancelWindow = f.state === "attack" && f.attack?.phase === "recovery" && input.onBeat && f.attack.timer <= CANCEL_WINDOW;
+  const inCancelWindow = f.state === "attack" && f.attack?.phase === "recovery" && onBeat && f.attack.timer <= CANCEL_WINDOW;
 
-  // dash (i-frame burst) -- only from a free state
+  // dash (i-frame burst) -- only from a free state; i-frames grade by tier
   if (input.dash && !busy && f.dashCd <= 0) {
     f.facing = facingFromMove(input.move, f.facing);
     const d = input.move.x || input.move.y ? input.move : FACING_VEC[f.facing];
@@ -331,15 +366,24 @@ function stepPlayer(a: Arena, f: Fighter, input: FrameInput, dt: number): void {
     f.vel = { x: (d.x / dl) * DASH_SPEED, y: (d.y / dl) * DASH_SPEED };
     f.state = "dash";
     f.stateTimer = DASH_TIME;
-    f.iframes = input.onBeat ? DASH_IFRAMES_ONBEAT : DASH_IFRAMES;
-    f.dashCd = input.onBeat ? DASH_CD_ONBEAT : DASH_CD;
+    f.iframes = tier === "perfect" ? 0.24 : tier === "great" ? DASH_IFRAMES_ONBEAT : tier === "good" ? 0.16 : DASH_IFRAMES;
+    f.dashCd = onBeat ? DASH_CD_ONBEAT : tier === "good" ? 0.4 : DASH_CD;
+  } else if (input.ultimate && (f.state === "idle" || f.state === "run" || inCancelWindow) && a.groove >= ULTIMATE_GROOVE_COST) {
+    // ULTIMATE (§8.5): spends the FULL Groove meter for a burst centred on
+    // the player (reach 0) that hits everything in a wide radius; armored
+    // through startup+active so the verse cannot be interrupted.
+    a.groove -= ULTIMATE_GROOVE_COST;
+    f.facing = facingFromMove(input.move, f.facing);
+    startAttack(f, ULTIMATE, tier);
+    f.iframes = Math.max(f.iframes, ULTIMATE.startup + ULTIMATE.active);
+    a.log.push("ultimate!");
   } else if (input.special && (f.state === "idle" || f.state === "run" || inCancelWindow) && a.focus >= SPECIAL_FOCUS_COST) {
     a.focus -= SPECIAL_FOCUS_COST;
     f.facing = facingFromMove(input.move, f.facing);
-    startAttack(f, SPECIAL, input.onBeat);
+    startAttack(f, SPECIAL, tier);
   } else if ((input.light || input.heavy) && (f.state === "idle" || f.state === "run" || inCancelWindow)) {
     f.facing = facingFromMove(input.move, f.facing);
-    startAttack(f, input.light ? LIGHT : HEAVY, input.onBeat);
+    startAttack(f, input.light ? LIGHT : HEAVY, tier);
   } else if (f.state === "idle" || f.state === "run") {
     // free movement with momentum
     const m = input.move;
@@ -380,24 +424,27 @@ function stepEnemy(a: Arena, f: Fighter, dt: number, di: Vec): void {
   }
 
   ai.timer -= dt;
+  // Boss-phase escalation (§8.7): aggression > 1 shortens telegraphs and
+  // recovers and quickens the approach -- the phase raises the tempo.
+  const aggr = a.enemyAggression ?? 1;
   if (ai.mode === "approach") {
     if (dist > 26) {
-      f.vel.x = (dx / dist) * 46;
-      f.vel.y = (dy / dist) * 46;
+      f.vel.x = (dx / dist) * 46 * aggr;
+      f.vel.y = (dy / dist) * 46 * aggr;
       f.state = "run";
     } else {
       f.vel.x *= 0.6;
       f.vel.y *= 0.6;
       ai.mode = "windup";
-      ai.timer = 0.35; // telegraph
+      ai.timer = 0.35 / aggr; // telegraph
     }
   } else if (ai.mode === "windup") {
     f.vel.x = 0;
     f.vel.y = 0;
     if (ai.timer <= 0) {
-      startAttack(f, ENEMY_STRIKE, false);
+      startAttack(f, ENEMY_STRIKE, "off");
       ai.mode = "recover";
-      ai.timer = ENEMY_STRIKE.startup + ENEMY_STRIKE.active + ENEMY_STRIKE.recovery + 0.4;
+      ai.timer = (ENEMY_STRIKE.startup + ENEMY_STRIKE.active + ENEMY_STRIKE.recovery + 0.4) / aggr;
     }
   } else {
     if (ai.timer <= 0) ai.mode = "approach";

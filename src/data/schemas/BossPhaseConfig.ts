@@ -8,6 +8,10 @@ export interface BossPhase {
   trackId: string;
   /** Phase becomes active once the boss's HP fraction drops to/below this. Phase 0 is implicitly 1.0. */
   hpThreshold: number;
+  /** §8.7 (v8.2): named section of the boss song's SongMap this phase binds
+   * to -- on transition, playback jumps to the section's beat-aligned start
+   * and the judged grid follows (it is the same grid). */
+  section?: string;
 }
 
 export interface BossPhaseConfig {

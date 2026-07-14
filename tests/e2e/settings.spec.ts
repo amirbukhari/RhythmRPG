@@ -57,21 +57,38 @@ test.describe("settings", () => {
     await closeSettings(page, "OverworldScene");
   });
 
-  test("remapping the tap key persists and is honored in battle", async () => {
+  test("remapping keys (tap + combat bindings, §9.3) persists", async () => {
     await openSettingsFromOverworld(page);
 
-    // Navigate to "Remap Tap Key" (index 10 in the fixed settings menu
-    // order, after the Beat Tick row was added for PRD §9.3/§8.3).
-    for (let i = 0; i < 10; i++) {
+    // Enter the "Audio & Controls" subpage (index 9 on the main page).
+    for (let i = 0; i < 9; i++) {
       await page.keyboard.press("ArrowDown");
       await page.waitForTimeout(80); // avoid outrunning the menu's own input handling
+    }
+    await page.keyboard.press("Enter");
+    await page.waitForTimeout(120);
+
+    // Navigate to "Remap Tap" (index 3 on the controls page; selection
+    // resets to the top on a page switch).
+    for (let i = 0; i < 3; i++) {
+      await page.keyboard.press("ArrowDown");
+      await page.waitForTimeout(80);
     }
     await page.keyboard.press("Enter"); // begin remap capture
     await page.waitForTimeout(150); // SettingsOverlay deliberately delays attaching the capture listener by 50ms
     await page.keyboard.press("KeyZ");
-
     await page.waitForFunction(() => window.__meterfallDebug.GameContext.activeProfile?.settings.keyBindings.tap === "z");
-    const tapKey = await page.evaluate(() => window.__meterfallDebug.GameContext.activeProfile!.settings.keyBindings.tap);
-    expect(tapKey).toBe("z");
+
+    // And a COMBAT binding (the §9.3 gap this page closes): remap Light.
+    await page.keyboard.press("ArrowDown"); // -> Remap Light Attack
+    await page.waitForTimeout(80);
+    await page.keyboard.press("Enter");
+    await page.waitForTimeout(150);
+    await page.keyboard.press("KeyP");
+    await page.waitForFunction(() => window.__meterfallDebug.GameContext.activeProfile?.settings.keyBindings.light === "p");
+
+    const bindings = await page.evaluate(() => window.__meterfallDebug.GameContext.activeProfile!.settings.keyBindings);
+    expect(bindings.tap).toBe("z");
+    expect(bindings.light).toBe("p");
   });
 });

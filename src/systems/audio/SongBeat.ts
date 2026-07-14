@@ -1,4 +1,23 @@
 import type { SongMap } from "../../data/schemas/SongMap";
+import type { BeatTier } from "../action/ActionCombat";
+
+/** §8.3 judgment windows (seconds from the nearest beat), pre-assist. */
+export const TIER_WINDOWS = { perfect: 0.045, great: 0.09, good: 0.14 } as const;
+
+/** Grade a distance-from-beat into the four §8.3 tiers. `assistMultiplier`
+ * widens every window (accessibility assist, §9.3). */
+export function tierForOffset(offsetSeconds: number, assistMultiplier = 1): BeatTier {
+  const off = Math.abs(offsetSeconds);
+  if (off < TIER_WINDOWS.perfect * assistMultiplier) return "perfect";
+  if (off < TIER_WINDOWS.great * assistMultiplier) return "great";
+  if (off < TIER_WINDOWS.good * assistMultiplier) return "good";
+  return "off";
+}
+
+/** Grade a file position against the song grid (calibration applied first). */
+export function tierAt(map: SongMap, positionSeconds: number, calibrationOffsetMs: number, assistMultiplier = 1): BeatTier {
+  return tierForOffset(nearestBeatDistanceSeconds(map, positionSeconds - calibrationOffsetMs / 1000), assistMultiplier);
+}
 
 /**
  * Pure beat math over a SongMap grid (PRD §8.3 "beat truth").

@@ -17,12 +17,26 @@ function nextInCycle<T>(steps: T[], current: T): T {
  * reduced motion, photosensitivity-safe mode, game speed, assisted timing
  * windows, practice mode toggle. Mandatory day-one per PRD §9.3.
  */
+const REMAP_ACTIONS = [
+  { key: "tap", label: "Tap (menu/legacy)", fallback: "SPACE" },
+  { key: "light", label: "Light Attack", fallback: "J" },
+  { key: "heavy", label: "Heavy Attack", fallback: "K" },
+  { key: "special", label: "Special", fallback: "L" },
+  { key: "parry", label: "Parry", fallback: "I" },
+  { key: "dash", label: "Dash", fallback: "SHIFT" },
+  { key: "ultimate", label: "Ultimate", fallback: "U" },
+] as const;
+
 export class SettingsOverlay extends Phaser.Scene {
   private returnTo!: string;
   private settings!: AccessibilitySettings;
   private menu: TextMenu | null = null;
   private capturingBinding = false;
   private captureHandler?: (event: KeyboardEvent) => void;
+  /** Two-page layout: gameplay/accessibility on "main", volumes + the
+   * remappable bindings (PRD §9.3, incl. all combat actions) on "controls". */
+  private page: "main" | "controls" = "main";
+  private remapAction: string = "tap";
 
   constructor() {
     super("SettingsOverlay");
@@ -41,6 +55,8 @@ export class SettingsOverlay extends Phaser.Scene {
     this.menu = null;
     this.capturingBinding = false;
     this.captureHandler = undefined;
+    this.page = "main";
+    this.remapAction = "tap";
 
     this.returnTo = data.returnTo;
     const underlying = this.scene.get(this.returnTo);
@@ -67,9 +83,22 @@ export class SettingsOverlay extends Phaser.Scene {
     });
   }
 
-  private renderMenu(): void {
-    const s = this.settings;
+  private renderMenu(resetSelection = false): void {
+    const items = this.page === "main" ? this.mainItems() : this.controlsItems();
+    if (this.menu) {
+      this.menu.setItems(items, resetSelection);
+    } else {
+      this.menu = new TextMenu(this, 16, 24, items, 12);
+    }
+  }
 
+  private switchPage(page: "main" | "controls"): void {
+    this.page = page;
+    this.renderMenu(true);
+  }
+
+  private mainItems(): TextMenuItem[] {
+    const s = this.settings;
     const items: TextMenuItem[] = [
       { label: `Game Speed: ${Math.round(s.gameSpeed * 100)}%`, onSelect: () => this.update_(() => (s.gameSpeed = nextInCycle(SPEED_STEPS, s.gameSpeed))) },
       {
@@ -85,13 +114,15 @@ export class SettingsOverlay extends Phaser.Scene {
       { label: `Captions: ${s.captionsEnabled ? "ON" : "OFF"}`, onSelect: () => this.update_(() => (s.captionsEnabled = !s.captionsEnabled)) },
       { label: `Practice Mode: ${s.practiceMode ? "ON" : "OFF"}`, onSelect: () => this.update_(() => (s.practiceMode = !s.practiceMode)) },
       { label: `Beat Tick (combat): ${s.beatTickEnabled ? "ON" : "OFF"}`, onSelect: () => this.update_(() => (s.beatTickEnabled = !s.beatTickEnabled)) },
-      { label: `Music Volume: ${Math.round(s.volumeMusic * 100)}%`, onSelect: () => this.update_(() => (s.volumeMusic = nextInCycle(VOLUME_STEPS, s.volumeMusic))) },
-      { label: `SFX Volume: ${Math.round(s.volumeSfx * 100)}%`, onSelect: () => this.update_(() => (s.volumeSfx = nextInCycle(VOLUME_STEPS, s.volumeSfx))) },
-      { label: `UI Volume: ${Math.round(s.volumeUi * 100)}%`, onSelect: () => this.update_(() => (s.volumeUi = nextInCycle(VOLUME_STEPS, s.volumeUi))) },
       {
-        label: this.capturingBinding ? "Remap Tap Key: press any key..." : `Remap Tap Key: ${(s.keyBindings.tap ?? " ").trim() || "SPACE"}`,
-        onSelect: () => this.beginRemap(),
+        label: `Sightread Forecast: ${s.sightreadEnabled ? "ON" : "OFF"}`,
+        onSelect: () =>
+          this.update_(() => {
+            s.sightreadEnabled = !s.sightreadEnabled;
+            if (s.sightreadEnabled) GameContext.analytics.track("sightread_enabled");
+          }),
       },
+      { label: "Audio & Controls...", onSelect: () => this.switchPage("controls") },
       { label: "Recalibrate Audio/Video Sync", onSelect: () => this.recalibrate() },
       { label: "Back", onSelect: () => this.close() },
     ];
@@ -103,7 +134,7 @@ export class SettingsOverlay extends Phaser.Scene {
     // are local-only (no network), so "ON" only enables in-memory recording.
     const profile = GameContext.activeProfile;
     if (profile) {
-      items.splice(items.length - 2, 0, {
+      items.splice(items.length - 3, 0, {
         label: `Analytics (local-only): ${profile.analyticsConsent ? "ON" : "OFF"}`,
         onSelect: () =>
           this.update_(() => {
@@ -112,12 +143,27 @@ export class SettingsOverlay extends Phaser.Scene {
           }),
       });
     }
+    return items;
+  }
 
-    if (this.menu) {
-      this.menu.setItems(items);
-    } else {
-      this.menu = new TextMenu(this, 16, 24, items, 12);
-    }
+  /** Volumes + every remappable binding (§9.3): the legacy tap key plus all
+   * six combat actions the in-world fight reads. */
+  private controlsItems(): TextMenuItem[] {
+    const s = this.settings;
+    const items: TextMenuItem[] = [
+      { label: `Music Volume: ${Math.round(s.volumeMusic * 100)}%`, onSelect: () => this.update_(() => (s.volumeMusic = nextInCycle(VOLUME_STEPS, s.volumeMusic))) },
+      { label: `SFX Volume: ${Math.round(s.volumeSfx * 100)}%`, onSelect: () => this.update_(() => (s.volumeSfx = nextInCycle(VOLUME_STEPS, s.volumeSfx))) },
+      { label: `UI Volume: ${Math.round(s.volumeUi * 100)}%`, onSelect: () => this.update_(() => (s.volumeUi = nextInCycle(VOLUME_STEPS, s.volumeUi))) },
+      ...REMAP_ACTIONS.map(({ key, label, fallback }) => ({
+        label:
+          this.capturingBinding && this.remapAction === key
+            ? `Remap ${label}: press any key...`
+            : `Remap ${label}: ${((s.keyBindings[key] ?? "").trim() || fallback).toUpperCase()}`,
+        onSelect: () => this.beginRemap(key),
+      })),
+      { label: "Back", onSelect: () => this.switchPage("main") },
+    ];
+    return items;
   }
 
   private update_(mutator: () => void): void {
@@ -126,9 +172,10 @@ export class SettingsOverlay extends Phaser.Scene {
     this.renderMenu();
   }
 
-  private beginRemap(): void {
+  private beginRemap(action: string): void {
     if (this.capturingBinding) return;
     this.capturingBinding = true;
+    this.remapAction = action;
     this.renderMenu();
 
     this.captureHandler = (event: KeyboardEvent) => {
@@ -138,7 +185,7 @@ export class SettingsOverlay extends Phaser.Scene {
         this.renderMenu();
         return;
       }
-      this.settings.keyBindings.tap = event.key === " " ? " " : event.key;
+      this.settings.keyBindings[this.remapAction] = event.key === " " ? " " : event.key;
       this.capturingBinding = false;
       this.cleanupCapture();
       if (GameContext.activeProfile) void GameContext.persistActiveProfile();

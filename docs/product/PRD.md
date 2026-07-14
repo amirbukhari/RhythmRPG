@@ -6,7 +6,7 @@
 |---|---|
 | Document title | *The Drowned Chorus* — Browser Rhythm-Action RPG PRD |
 | Working codename | Project Meterfall (historical; the game is titled *The Drowned Chorus*) |
-| Status | **Active v8.1** — v8.0 was the full enterprise rewrite resolving every finding in the [2026-07-14 PRD audit](./prd-audit-2026-07-14.md); v8.1 ships roadmap P1 (**beat truth**, §8.3/gate #1a): judgment now derives from the audibly playing track via measured beat-grid maps, e2e-gated. Next: P2 combat completion (§20.3). |
+| Status | **Active v8.2** — v8.0 was the full enterprise rewrite per the [PRD audit](./prd-audit-2026-07-14.md); v8.1 shipped P1 (**beat truth**: judgment derives from the audibly playing track); v8.2 shipped P2+P3 (**four-tier judgment, ultimate, phased in-world boss on Quotience sections, Sightread, practice/captions/remap parity**) plus mobile-boot hardening. Next: P4 content & art depth (§20.3). |
 | Owner | Amir Bukhari |
 | Author | Amir Bukhari (compiled from concept notes, deep research, and live-play feedback) |
 | Created | 2026-07-08 |
@@ -33,6 +33,7 @@ and [`docs/design/aaa-audit.md`](../design/aaa-audit.md).
 | 7.6–7.9 | 2026-07-13→14 | Lyric-only foe roster (luchadors culled); **real six-track Inhalants soundtrack** replaces synth placeholder; foes stand in the world; save-obelisks; fresh AI band cast + follower conga. |
 | 7.10–7.15 | 2026-07-14 | Honest AAA art audit + P0–P2 burn-down (designed floors, coherent kits, real HUD, water/ground/value); **fights happen in the world** (`WorldFight`, separate battle scenes retired from the trigger path); de-pixelation; arena venues composed into the world; landform direction logged. |
 | **8.0** | **2026-07-14** | **Enterprise rewrite of this document** per the PRD audit. Decisions made: judged beat must derive from the audible track via authored beat maps (§8.3/§10.3); four judgment tiers reaffirmed as spec; ultimate/Groove-spend reaffirmed v1-mandatory; cast re-specified as the band (leader-playable v1, switching v2); boss re-specified as a phased in-world fight keyed to authored song sections (§8.7); §9.3 accessibility reaffirmed with shipped-path gaps tracked; touch input brought in scope with platform tiering (§7.1/§9.2); §8.6 curriculum rewritten post-luchador; analytics/KPIs re-based on measurable events; §11 rewritten to the AI-art + recorded-soundtrack reality; §20 re-cut as of 2026-07-14. |
+| **8.2** | **2026-07-14** | **Roadmaps P2 + P3 shipped — combat completion & accessibility parity — plus mobile-boot hardening.** **P2:** the four §8.3 judgment tiers are live in the shipped fight (graded windows vs the playing song's grid, tier popups in the HUD, per-tier analytics; multipliers/Groove/i-frames/parry windows all tier-scaled in the sim); the **ultimate** (§8.5) spends the full Groove meter (player-centred burst, armored startup, screen shake, `ultimate_used`); the **in-world Conductor fight is phased** (§8.7): HP thresholds advance movements, playback jumps to the bound beat-aligned *Quotience* section (28.19s / 74.30s, segmentation-derived + grid-snapped), enemy aggression escalates, phase markers on the boss bar — covered by a new `boss-phases-world.spec.ts` on the product path; **Sightread** (§8.4) ships as a settings-toggled forecast lane (upcoming grid beats + telegraphed strikes vs a now-line). **P3 (§9.3):** practice mode floors HP at 1 in the sim (no fail state), in-fight captions for musically meaningful events (telegraph direction, phase shifts, groove full, ultimate), and **all six combat bindings are remappable** (new two-page settings with an Audio & Controls page). **Mobile:** owner report "doesn't start on mobile" → gate hardened (DOM-level tap fallback, `Tone.start()` race/try-catch), production fatal-error overlay (black screens become readable reports), `es2019/safari13` build target for older WebKit, an ULT touch button, and a Pixel-5-emulation boot e2e. 168 unit tests, 22 e2e cases, typecheck/build green; fight visuals screenshot-verified. |
 | **8.1** | **2026-07-14** | **Roadmap P1 shipped — beat truth (§8.3, release gate #1a).** All six tracks measured (`tools/audio/measure_beats.py`, librosa beat tracking) into authored beat-grid maps (`src/data/content/songs/`, validated `SongMap` schema — full per-beat grids, since real recordings drift 8–16% off a constant BPM line); in-world fight judgment now reads the **playing element's position** through the live song's grid (`SongBeat.ts`, loop-aware, calibration/assist preserved), with the transport grid as fallback only when nothing is audible; game speed sets the song's `playbackRate` and scales the sim together (grids live in file-time, so heard and judged beat cannot diverge); the always-on sonifier click is retired from the fight and replaced by the opt-in §9.3 **Beat Tick** setting; `judgment_onbeat`/`judgment_offbeat` events fire on every attempted action, making the §5 on-beat-rate KPI live. New `beat-truth.spec.ts` e2e proves the audible path end-to-end (song map = playing song; judgment flips with audio; rate coupling at 70%). 157 unit tests (12 new), 20 e2e cases, typecheck/build green. Remaining §8.3 caveat: grids are algorithmically measured — the human listening pass is still owed. |
 
 ---
@@ -268,7 +269,8 @@ regression coverage only and are **retired from the product path**.
 - **Heavy** — slow startup, high knockback/damage.
 - **Special** — costs Focus; the kit's defining tool.
 - **Ultimate** — costs the full Groove meter (100); a screen-shaking verse. **v1-mandatory:**
-  Groove must be spendable, not merely accumulable (§8.5). *(Open gap — §20.2.)*
+  Groove must be spendable, not merely accumulable (§8.5). *(Shipped v8.2: player-centred
+  burst hitting everything in a wide radius, armored through startup+active, tier-scaled.)*
 - Every attack is a hitbox with frame data (startup/active/recovery), damage, a
   knockback vector, and hitstun.
 
@@ -321,8 +323,9 @@ Off-beat actions always execute, weaker — never a whiff-by-timing:
 
 Assist mode multiplies all windows ×1.5; the calibration offset (§10.3) applies
 globally before judgment. Enemy attacks telegraph and land on the beat.
-*(Status: the shipped fight currently implements a single binary ±90 ms window with
-assist and calibration correctly applied; the four-tier grade is an open gap — §20.2.)*
+*(Status: **shipped v8.2** — the four tiers grade every action against the playing
+song's grid; damage/knockback/Groove/dash-i-frames/parry windows scale per tier;
+HUD tier popups + per-tier analytics live.)*
 
 ### 8.4 The cast — Inhalants, the band
 
@@ -344,7 +347,9 @@ retired turn-based path only.)*
 **Sightread** — the realization of the concept art's "see the music" — is re-specified
 for action combat as a **forecast assist**: a HUD lane previewing the next bars' beats
 and any incoming telegraphed enemy attack. v1: available as an accessibility/HUD
-setting; v2: also an in-fiction Vocalist kit ability. *(Open gap — §20.2.)*
+setting; v2: also an in-fiction Vocalist kit ability. *(v1 shipped v8.2: the
+"Sightread Forecast" setting renders the lane — upcoming grid beats + red strike
+markers against a now-line — from the same beat grid judgment uses.)*
 
 ### 8.5 Resources and progression
 
@@ -394,9 +399,11 @@ and phase escalation is expressed through the *actual song*:
 **Release gate #3 (§16.2, re-scoped):** phase transitions execute on bar boundaries of
 the audible track without desync between heard music and judged beat.
 
-*(Status: the shipped in-world boss fight has boss music and a boss bar but no phase
-logic yet; the legacy 3-phase implementation exists only in the retired turn-based
-path. Open gap — §20.2.)*
+*(Status: **shipped v8.2** — the in-world Conductor fight advances phases on the
+authored HP thresholds, jumps playback to the bound *Quotience* sections
+(`movement_2` @ 28.19s, `movement_3` @ 74.30s — segmentation-derived, grid-snapped,
+pending the human listening pass), escalates enemy aggression per phase, and marks
+thresholds on the boss bar; `boss-phases-world.spec.ts` covers it on the product path.)*
 
 ### 8.8 Exploration — the second game
 
@@ -448,22 +455,29 @@ replace — autosave on progression.
 | **Tier 1 — release-gating** | Chrome, Edge (current stable, desktop) | Full QA matrix (§16.1) passes; automated e2e gate (Chromium) green |
 | **Tier 2 — supported, best-effort** | Firefox, Safari (desktop); Chrome/Safari (mobile, via touch controls) | Boot + core loop verified manually per release; known issues documented, non-blocking. Firefox automated coverage is disabled pending root-cause (§20.2). |
 
-Touch input (on-screen thumbstick + action buttons, `src/ui/TouchControls.ts`) ships
-and is maintained; mobile performance/layout polish is Tier-2 best-effort in v1.
+Touch input (on-screen thumbstick + action buttons incl. ultimate,
+`src/ui/TouchControls.ts`) ships and is maintained; mobile performance/layout polish is
+Tier-2 best-effort in v1. **Mobile-boot hardening (v8.2,** after an owner report of a
+phone failing at the gate**):** the audio gate has DOM-level tap fallbacks and a
+timeout-guarded `Tone.start()` (it can never hang the front door); production builds
+paint uncaught errors into a visible overlay (a phone black-screen becomes a readable
+report); the JS build target is `es2019/safari13` for older WebKit; and a
+Pixel-5-emulation e2e (`mobile-boot.spec.ts`) pins boot + tap-through + touch-layer
+mount. Real-device iOS Safari verification remains the Tier-2 manual bar.
 
 ### 9.3 Accessibility (mandatory, day-one, on the shipped combat path)
 
 | Setting | Requirement |
 |---|---|
-| Remappable controls | Required — including the in-world fight's combat bindings, not just menu/tap keys *(open gap — §20.2)* |
+| Remappable controls | Required — including the in-world fight's combat bindings *(shipped v8.2: all six combat actions remappable via Settings → Audio & Controls; fight reads the bindings with sane defaults)* |
 | Keyboard-only play, no required simultaneous presses | Required |
 | Separate volume sliders (music / SFX / UI) | Required |
-| Captions for musically meaningful events ("beat drops," "music intensifies," "attack incoming left") | Required — in the in-world fight *(open gap — §20.2)* |
+| Captions for musically meaningful events ("attack incoming left," "the music shifts," "groove full") | Required — in the in-world fight *(shipped v8.2: telegraph direction, boss phase shifts, groove/ultimate events)* |
 | Reduced motion mode | Required *(shipped, verified in-fight)* |
 | Photosensitivity-safe VFX mode | Required — no flashing above seizure-risk thresholds |
 | Game speed 70% / 85% / 100% | Required — must scale music playback and judgment together (§8.3.3) |
 | Assisted timing windows | Required — precise timing is never the only viable path *(shipped, ×1.5 in-fight)* |
-| Practice mode with no fail state | Required — in the in-world fight *(open gap — §20.2)* |
+| Practice mode with no fail state | Required — in the in-world fight *(shipped v8.2: the sim floors player HP at 1; entering a fight announces it)* |
 | AV calibration screen | Required *(shipped; offset verified applied in-fight)* |
 | Optional audible beat tick | Required *(shipped v8.1: "Beat Tick (combat)" toggle, off by default; the old always-on sonifier click is retired from the fight)* |
 
@@ -886,10 +900,11 @@ shipped product path only** — a feature that exists solely in a retired scene 
 here, not a checkmark (the v8.0 rule; see the audit for why). Where this section and
 §1–§19 disagree about reality, this section wins; §1–§19 win about requirements.
 
-Verified this cut (v8.1): `npm test` — **157/157 unit tests** (18 files); **20 e2e
-test cases in 8 Playwright spec files** (Chromium gate, incl. the new
-`beat-truth.spec.ts` gate-1a spec); typecheck and production build green; findings
-cross-checked in [`prd-audit-2026-07-14.md`](./prd-audit-2026-07-14.md).
+Verified this cut (v8.2): `npm test` — **168/168 unit tests** (19 files); **22 e2e
+test cases in 10 Playwright spec files** (Chromium gate, incl. `beat-truth.spec.ts`
+(gate 1a), `boss-phases-world.spec.ts` (gate 3, product path), and
+`mobile-boot.spec.ts`); typecheck and production build green; fight visuals
+screenshot-verified.
 
 ### 20.1 Built, tested, and verified on the shipped path
 
@@ -902,6 +917,11 @@ cross-checked in [`prd-audit-2026-07-14.md`](./prd-audit-2026-07-14.md).
 | **In-world fights (§8.2)** | `WorldFight`: camera-locked room of the actual overworld; sim obstacles from impassable tiles (`resolveObstacles`, unit-tested); venues (biome floor + set pieces) composed into the map with a guaranteed fightable circle; rewards → results → in-place return; e2e asserts no battle scene loads |
 | Action sim (§8.2) | 8-dir momentum, dash i-frames + on-beat extension, light/heavy frame data with active hitboxes, hitstun, damage-%-scaled knockback, player DI, on-beat parry (off-beat = punishable), rhythm-gated cancel combos, Focus special, enemy telegraph AI — 13+ dedicated unit tests |
 | **Beat truth (§8.3, gate #1a — v8.1)** | All six tracks measured into validated beat-grid maps (`SongMap`, full per-beat grids — real recordings drift 8–16% off a constant BPM line, so the grid judges, not a line); fight judgment reads the **playing element's position** through the live song's grid (loop-aware, calibration + assist preserved); transport grid is fallback only when nothing is audible; game speed couples song `playbackRate` + sim; opt-in Beat Tick replaces the retired always-on sonifier click; `judgment_onbeat/offbeat` fire per attempted action. E2e-proven on the audible path (`beat-truth.spec.ts`): song map = playing song, judgment flips with the audio, rate coupling at 70%. |
+| **Four-tier judgment (§8.3 — v8.2)** | Perfect/Great/Good/Off windows (±45/90/140 ms ×assist) graded against the playing song's grid; damage, knockback, Groove gain, dash i-frames, and parry windows all tier-scaled in the sim; HUD tier popups; per-tier + binary analytics |
+| **Ultimate (§8.5 — v8.2)** | Full-Groove (100) spend: player-centred burst (radius 64) hitting every foe once, armored through startup+active, tier-scaled; groove bar pulses when ready; screen shake (reduced-motion/photosensitivity aware); `ultimate_used` fires |
+| **Phased in-world boss (§8.7 — v8.2)** | HP thresholds advance movements; playback jumps to bound *Quotience* sections; enemy aggression escalates (shorter telegraphs/recovers, faster approach); boss-bar phase markers; `boss_phase_reached` fires; e2e-covered on the product path |
+| **Sightread forecast (§8.4 v1 — v8.2)** | Settings toggle renders the forecast lane: upcoming beats from the judged grid + red markers for telegraphed strikes vs a now-line |
+| **§9.3 parity in the shipped fight (v8.2)** | Practice mode (sim HP floor at 1), captions (telegraph direction, phase shifts, groove/ultimate), remappable combat bindings (all six actions, two-page settings UI) |
 | Timing plumbing (§8.3) | Judgment never touches UI timers; calibration offset applied before judgment; assist ×1.5 applied |
 | Soundtrack playback (§11.2) | Six real tracks, lazy-loaded (`preload="none"`), scene-mode crossfade, combat rotation, gesture-primed for mobile autoplay |
 | Band cast (§8.4) | Four AI-generated members in one register, per-member idle/run/attack derived from a base pose; the band walks the world as a conga; leader fights with their real sprite |
@@ -915,40 +935,33 @@ cross-checked in [`prd-audit-2026-07-14.md`](./prd-audit-2026-07-14.md).
 
 ### 20.2 Open gaps (ranked; per the shipped path)
 
-1. **Four judgment tiers (§8.3):** shipped fight is binary ±90 ms (now against the
-   real song grid). Perfect/Great/Good grading + HUD feedback + per-tier events
-   (roadmap P2).
-2. **Ultimate/Groove spend (§8.5):** Groove accumulates, nothing spends it
-   (`ActionCombat.ts` "ultimate is future") — the v5.1 regression reintroduced by the
-   pivot (P2).
-3. **Phased in-world boss (§8.7):** shipped boss fight has boss music/bar, no phases;
-   the legacy 3-phase logic lives only in the retired path, as does its e2e. Needs
-   *Quotience* section bindings on its beat map (P2).
-4. **§9.3 gaps in the shipped fight:** practice mode, captions for musically
-   meaningful events, remappable combat bindings (currently hardcoded
-   `W,A,S,D,J,K,L,I,SHIFT,SPACE`) (P3).
-5. **Sightread forecast (§8.4):** absent from the shipped path (P2).
-6. **Beat-map listening pass (§8.3/§11.2):** the six grids are algorithmically
-   measured (librosa; 84–92% constant-tempo stability, hence grid-based judgment);
-   a human tap-along verification per track is still owed (P2, cheap).
-7. **Analytics parity (§14):** per-tier judgment, ultimate, boss-phase, and sightread
-   events pending their features (binary judgment + obelisk events are live).
-8. **Content hygiene:** legacy encounter/track IDs (`*_luchadores_*`, `*_clave_*`)
+1. **Beat-map listening pass (§8.3/§11.2):** the six grids and the two Quotience
+   section boundaries are algorithmically measured (librosa; 84–92% constant-tempo
+   stability, hence grid-based judgment); a human tap-along verification per track is
+   still owed (cheap, needs ears).
+2. **Real-device mobile verification (§9.2):** the emulatable floor is e2e-pinned
+   (`mobile-boot.spec.ts`) and the boot path hardened (v8.2), but the owner-reported
+   iOS failure needs a real-device check against the next deploy — the new fatal-error
+   overlay will make any remaining crash readable.
+3. **Content hygiene:** legacy encounter/track IDs (`*_luchadores_*`, `*_clave_*`)
    around correct contents; legacy role JSONs; retired scenes (`BattleScene`,
    `ActionBattleScene`) still registered pending coverage migration (P4).
-9. **Asset manifest depth (§11.5):** animation-state sets, VFX library, SFX pack
-   (directory empty), wordmark, landforms (v7.15 direction) (P4).
-10. **QA matrix on real browsers/devices (§16.1)** and the Firefox e2e root-cause
-    (excluded from the gate since v4.1) (P5).
+4. **Asset manifest depth (§11.5):** animation-state sets, VFX library, SFX pack
+   (directory empty — fights have no hit/parry/dash sounds yet), wordmark, landforms
+   (v7.15 direction) (P4).
+5. **QA matrix on real browsers/devices (§16.1)** and the Firefox e2e root-cause
+   (excluded from the gate since v4.1) (P5).
+
+*(Closed by v8.2, previously items 1–5: four-tier judgment, ultimate spend, phased
+in-world boss, §9.3 fight parity, Sightread v1, and full analytics parity — every §14
+"pending" event except per-feature future content now fires on the shipped path.)*
 
 ### 20.3 Next increment
 
-P1 (beat truth) shipped in v8.1. Next is roadmap P2 — combat completion on the now-true
-beat: the §8.3 four-tier grade (+ HUD feedback and per-tier events), the §8.5 ultimate
-spend, the §8.7 phased in-world boss (author *Quotience* section bindings on its beat
-map, drive phases from HP thresholds, jump playback to the bound section on
-transition), and the §8.4 Sightread forecast lane. The beat-map listening pass (§20.2
-item 6) can ride along with the boss-section authoring session.
+P1–P3 are shipped (v8.1–v8.2). Next is roadmap **P4 — content & art depth**: SFX for
+the fight (the biggest feel gap now that combat is mechanically complete), content-ID
+hygiene renames, retired-scene coverage migration + deletion, then the §11.5 manifest
+burn-down (animation states, VFX, wordmark, landforms). P5 (hardening) follows.
 
 ### 20.4 Asset-manifest progress
 

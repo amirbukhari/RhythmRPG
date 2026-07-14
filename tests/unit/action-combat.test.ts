@@ -103,7 +103,7 @@ describe("arena simulation", () => {
     expect(p.iframes).toBeGreaterThan(0);
     const hpBefore = p.hp;
     // manually stage an active enemy hitbox overlapping the (still invulnerable) player
-    e.attack = { def: { ...LIGHT, reach: 0, radius: 40 }, phase: "active", timer: 0.08, onBeat: false, hitIds: [] };
+    e.attack = { def: { ...LIGHT, reach: 0, radius: 40 }, phase: "active", timer: 0.08, onBeat: false, tier: "off", hitIds: [] };
     e.state = "attack";
     tick(a, {});
     expect(p.hp).toBe(hpBefore); // i-frames negated it
@@ -167,7 +167,7 @@ describe("depth mechanics (PRD §8.2)", () => {
     expect(p.parryTimer).toBeGreaterThan(0);
     const hpBefore = p.hp;
     // stage an active enemy hitbox overlapping the player
-    e.attack = { def: { ...LIGHT, reach: 0, radius: 40, damage: 10 }, phase: "active", timer: 0.08, onBeat: false, hitIds: [] };
+    e.attack = { def: { ...LIGHT, reach: 0, radius: 40, damage: 10 }, phase: "active", timer: 0.08, onBeat: false, tier: "off", hitIds: [] };
     e.state = "attack";
     tick(a, {});
     expect(p.hp).toBe(hpBefore); // hit negated
@@ -185,7 +185,7 @@ describe("depth mechanics (PRD §8.2)", () => {
     for (let i = 0; i < 6; i++) tick(a, {}); // ~0.1s later the window is closed
     expect(p.parryTimer).toBe(0);
     const hpBefore = p.hp;
-    e.attack = { def: { ...LIGHT, reach: 0, radius: 40, damage: 10 }, phase: "active", timer: 0.08, onBeat: false, hitIds: [] };
+    e.attack = { def: { ...LIGHT, reach: 0, radius: 40, damage: 10 }, phase: "active", timer: 0.08, onBeat: false, tier: "off", hitIds: [] };
     e.state = "attack";
     tick(a, {});
     expect(p.hp).toBeLessThan(hpBefore); // not parried

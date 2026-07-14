@@ -1,10 +1,10 @@
 import Phaser from "phaser";
 import { GameContext } from "../../state/GameContext";
-import { getEncounter, getBeatmap, getEnemy, getCampaignNode, songMaps } from "../../data/ContentRegistry";
+import { getEncounter, getBeatmap, getEnemy, getCampaignNode, songMaps, bossPhaseConfigs } from "../../data/ContentRegistry";
 import { TransportClock } from "../../systems/audio/TransportClock";
 import { BeatTick } from "../../systems/audio/BeatTick";
 import { music } from "../../systems/audio/SongPlayer";
-import { isOnBeat as songIsOnBeat, beatIndexAt } from "../../systems/audio/SongBeat";
+import { tierAt, tierForOffset, beatIndexAt } from "../../systems/audio/SongBeat";
 import type { SongMap } from "../../data/schemas/SongMap";
 import { BASE_WIDTH, BASE_HEIGHT } from "../../config/GameConfig";
 import {
@@ -12,9 +12,29 @@ import {
   step,
   player as getPlayer,
   enemies as getEnemies,
+  ULTIMATE_GROOVE_COST,
   type Arena,
+  type BeatTier,
   type FrameInput,
 } from "../../systems/action/ActionCombat";
+
+/** Remappable combat actions (PRD §9.3) with their default key names. */
+type CombatAction = "light" | "heavy" | "special" | "parry" | "dash" | "ultimate";
+const DEFAULT_ACTION_KEYS: Record<CombatAction, string> = { light: "J", heavy: "K", special: "L", parry: "I", dash: "SHIFT", ultimate: "U" };
+
+/** Resolve a stored KeyboardEvent.key binding ("z", "Shift", " ") to a
+ * Phaser key name, falling back to the default when unset/unmappable. */
+function keyNameFor(binding: string | undefined, fallback: string): string {
+  if (!binding) return fallback;
+  const name = binding === " " ? "SPACE" : binding.toUpperCase();
+  return name in Phaser.Input.Keyboard.KeyCodes ? name : fallback;
+}
+
+const TIER_LABEL: Record<Exclude<BeatTier, "off">, { text: string; color: string }> = {
+  perfect: { text: "PERFECT", color: "#f4d27a" },
+  great: { text: "GREAT", color: "#49c6bd" },
+  good: { text: "GOOD", color: "#9fb0c0" },
+};
 
 /**
  * In-world combat (PRD §8.2 v7.6, owner: "the boss arenas shouldn't be
@@ -55,13 +75,25 @@ export class WorldFight {
   private songMap: SongMap | null = null;
   private gameSpeed = 1;
   private lastBeatIdx = -1;
+  private tierPopup: Phaser.GameObjects.Text | null = null;
+  private caption: Phaser.GameObjects.Text | null = null;
+  private captionUntil = 0;
+  private prevGroove = 0;
+  private grooveWasFull = false;
+  private wasWindup = new Set<string>();
+  // Boss phases (§8.7): HP thresholds -> escalation + song-section jumps.
+  private phaseThresholds: { hpThreshold: number; section?: string }[] = [];
+  private phaseIdx = 0;
+  private sightread: Phaser.GameObjects.Graphics | null = null;
   private encounterId: string;
   private nodeId: string | null;
   private isBoss = false;
   private finished = false;
 
   private cursors: Phaser.Types.Input.Keyboard.CursorKeys;
-  private keys: Record<"W" | "A" | "S" | "D" | "J" | "K" | "L" | "I" | "SHIFT" | "SPACE", Phaser.Input.Keyboard.Key>;
+  private moveKeys: Record<"W" | "A" | "S" | "D", Phaser.Input.Keyboard.Key>;
+  private spaceKey: Phaser.Input.Keyboard.Key;
+  private actionKeys: Record<CombatAction, Phaser.Input.Keyboard.Key>;
 
   private sprites = new Map<string, Phaser.GameObjects.Sprite>();
   private shadows = new Map<string, Phaser.GameObjects.Ellipse>();
@@ -95,7 +127,16 @@ export class WorldFight {
 
     const kb = this.scene.input.keyboard!;
     this.cursors = kb.createCursorKeys();
-    this.keys = kb.addKeys("W,A,S,D,J,K,L,I,SHIFT,SPACE") as WorldFight["keys"];
+    this.moveKeys = kb.addKeys("W,A,S,D") as WorldFight["moveKeys"];
+    this.spaceKey = kb.addKey("SPACE");
+    // Combat bindings are remappable (PRD §9.3); defaults J/K/L/I/SHIFT/U.
+    const bindings = GameContext.activeProfile?.settings.keyBindings ?? {};
+    this.actionKeys = Object.fromEntries(
+      (Object.keys(DEFAULT_ACTION_KEYS) as CombatAction[]).map((action) => [
+        action,
+        kb.addKey(keyNameFor(bindings[action], DEFAULT_ACTION_KEYS[action])),
+      ])
+    ) as WorldFight["actionKeys"];
 
     this.fx = this.scene.add.graphics().setDepth(8);
     this.bars = this.scene.add.graphics().setDepth(8.5);
@@ -168,8 +209,47 @@ export class WorldFight {
     }
     GameContext.analytics.track("battle_started", { encounterId: this.encounterId });
 
+    // Fight text layer: tier popups (§11.3 judgment feedback) + captions
+    // for musically meaningful events (§9.3, when enabled).
+    this.tierPopup = this.scene.add
+      .text(0, 0, "", { fontFamily: "monospace", fontSize: "8px", color: "#f4d27a", stroke: "#05060a", strokeThickness: 3 })
+      .setOrigin(0.5, 1)
+      .setDepth(22)
+      .setAlpha(0);
+    this.caption = this.scene.add
+      .text(BASE_WIDTH / 2, BASE_HEIGHT - 42, "", { fontFamily: "monospace", fontSize: "7px", color: "#d8ceb6", stroke: "#05060a", strokeThickness: 3 })
+      .setOrigin(0.5, 1)
+      .setScrollFactor(0)
+      .setDepth(22)
+      .setAlpha(0);
+    this.hud.push(this.caption);
+    if (settings.sightreadEnabled) {
+      this.sightread = this.scene.add.graphics().setScrollFactor(0).setDepth(21);
+      this.hud.push(this.sightread);
+    }
+
+    // One-time controls hint with the player's actual (possibly remapped)
+    // bindings; practice mode announces its no-fail state (§9.3).
+    const b = GameContext.activeProfile?.settings.keyBindings ?? {};
+    const keyOf = (a: CombatAction): string => keyNameFor(b[a], DEFAULT_ACTION_KEYS[a]);
+    this.showCaption(
+      `${keyOf("light")} light  ${keyOf("heavy")} heavy  ${keyOf("special")} special  ${keyOf("parry")} parry  ${keyOf("dash")} dash  ${keyOf("ultimate")} ultimate`,
+      5
+    );
+
+    // Boss phases (§8.7): HP thresholds -> aggression + song-section jumps.
+    if (this.isBoss) {
+      const config = bossPhaseConfigs.get(this.encounterId);
+      if (config) this.phaseThresholds = config.phases.map((p) => ({ hpThreshold: p.hpThreshold, section: p.section }));
+    }
+
     const enemyHps = encounter.enemyWave.map((id) => getEnemy(id).maxHp);
     const arena = createArena(this.rect.width, this.rect.height, enemyHps);
+    // Practice mode (§9.3): the sim floors player HP at 1 -- no fail state.
+    if (settings.practiceMode) {
+      arena.practice = true;
+      this.showCaption("PRACTICE — THE CHORUS HOLDS YOU UP (no fail state)", 4);
+    }
 
     // impassable terrain (water/rock tiles) becomes sim obstacles, one 16px
     // box per blocked tile, so fighters fight on the actual walkable ground
@@ -223,43 +303,83 @@ export class WorldFight {
     this.arena = arena;
   }
 
-  private isOnBeat(): boolean {
+  /** Full §8.3 four-tier judgment of "now" against the audible song's grid
+   * (file-time windows, so reduced game speed widens them in real time);
+   * transport-grid fallback when nothing is audible. */
+  private judgeTier(): BeatTier {
     const calibMs = GameContext.activeProfile?.calibrationOffsetMs ?? 0;
     const assist = GameContext.activeProfile?.settings.assistedTimingWindows ? 1.5 : 1;
-    const window = 0.09 * assist;
 
-    // The judged beat is the audible song's beat grid (PRD §8.3). The window
-    // is in file-time, so at reduced game speed (playbackRate < 1) it is
-    // proportionally wider in real time -- slow mode really is easier.
     const pos = music.position();
-    if (this.songMap && pos !== null) return songIsOnBeat(this.songMap, pos, calibMs, window);
+    if (this.songMap && pos !== null) return tierAt(this.songMap, pos, calibMs, assist);
 
     // Fallback: nothing audible (blocked autoplay / headless) -- judge on
     // the transport grid at the same tempo, as before beat maps existed.
     const t = this.clock.currentTime - calibMs / 1000;
     const beatSec = this.beatSeconds / this.gameSpeed; // transport runs in real time
     const phase = ((t % beatSec) + beatSec) % beatSec;
-    const off = Math.min(phase, beatSec - phase);
-    return off < window;
+    return tierForOffset(Math.min(phase, beatSec - phase), assist);
+  }
+
+  private isOnBeat(): boolean {
+    const tier = this.judgeTier();
+    return tier === "perfect" || tier === "great";
+  }
+
+  /** §11.3 judgment feedback: a brief tier label above the player. Off-tier
+   * presses show nothing (information, not punishment). */
+  private showTierPopup(tier: BeatTier): void {
+    if (tier === "off" || !this.tierPopup) return;
+    const p = this.arena ? getPlayer(this.arena) : null;
+    if (!p) return;
+    const label = TIER_LABEL[tier];
+    this.tierPopup
+      .setText(label.text)
+      .setColor(label.color)
+      .setPosition(Math.round(this.rect.x + p.pos.x), Math.round(this.rect.y + p.pos.y - 18))
+      .setAlpha(1);
+    this.scene.tweens.killTweensOf(this.tierPopup);
+    this.scene.tweens.add({ targets: this.tierPopup, alpha: 0, y: this.tierPopup.y - 6, duration: 420 });
+  }
+
+  /** Caption line for musically meaningful events (§9.3). The controls hint
+   * and practice notice always show; event captions require the setting. */
+  private showCaption(text: string, seconds: number): void {
+    if (!this.caption) return;
+    this.caption.setText(text).setAlpha(1);
+    this.captionUntil = this.scene.time.now + seconds * 1000;
   }
 
   private readInput(): FrameInput {
-    const k = this.keys;
-    const left = this.cursors.left.isDown || k.A.isDown;
-    const right = this.cursors.right.isDown || k.D.isDown;
-    const up = this.cursors.up.isDown || k.W.isDown;
-    const down = this.cursors.down.isDown || k.S.isDown;
+    const m = this.moveKeys;
+    const left = this.cursors.left.isDown || m.A.isDown;
+    const right = this.cursors.right.isDown || m.D.isDown;
+    const up = this.cursors.up.isDown || m.W.isDown;
+    const down = this.cursors.down.isDown || m.S.isDown;
     const move = { x: (right ? 1 : 0) - (left ? 1 : 0), y: (down ? 1 : 0) - (up ? 1 : 0) };
     const JD = Phaser.Input.Keyboard.JustDown;
-    const light = JD(k.J) || JD(k.SPACE);
-    const heavy = JD(k.K);
-    const special = JD(k.L);
-    const dash = JD(k.SHIFT);
-    const parry = JD(k.I);
-    const acted = light || heavy || special || dash || parry;
-    const onBeat = acted && this.isOnBeat();
-    if (acted) GameContext.analytics.track(onBeat ? "judgment_onbeat" : "judgment_offbeat", { encounterId: this.encounterId });
-    return { move, dash, light, heavy, special, parry, onBeat };
+    const k = this.actionKeys;
+    const light = JD(k.light) || JD(this.spaceKey);
+    const heavy = JD(k.heavy);
+    const special = JD(k.special);
+    const dash = JD(k.dash);
+    const parry = JD(k.parry);
+    const ultimate = JD(k.ultimate);
+    const acted = light || heavy || special || dash || parry || ultimate;
+    let tier: BeatTier = "off";
+    if (acted) {
+      tier = this.judgeTier();
+      // Per-tier events feed the §5 on-beat-rate KPI (binary pair kept for
+      // continuity with the pre-tier data).
+      const tierEvent = { perfect: "judgment_perfect", great: "judgment_great", good: "judgment_good", off: "judgment_off" } as const;
+      GameContext.analytics.track(tierEvent[tier], { encounterId: this.encounterId });
+      GameContext.analytics.track(tier === "perfect" || tier === "great" ? "judgment_onbeat" : "judgment_offbeat", {
+        encounterId: this.encounterId,
+      });
+      this.showTierPopup(tier);
+    }
+    const onBeat = tier === "perfect" || tier === "great";
+    return { move, dash, light, heavy, special, ultimate, parry, onBeat, tier };
   }
 
   /** Test seam: the live sim (null until the audio clock is up). */
@@ -273,6 +393,7 @@ export class WorldFight {
     if (!this.arena) return true; // clock still starting
     // Game speed slows the whole fight with the slowed song (§8.3.3).
     const dt = Math.min(deltaMs / 1000, 1 / 30) * this.gameSpeed;
+    this.prevGroove = this.arena.groove;
     step(this.arena, this.readInput(), dt);
     if (this.tick && this.songMap) {
       const pos = music.position();
@@ -284,6 +405,25 @@ export class WorldFight {
         }
       }
     }
+
+    const settings = GameContext.activeProfile?.settings;
+    // Ultimate went off this tick (§8.5): the full-Groove verse.
+    if (this.prevGroove >= ULTIMATE_GROOVE_COST && this.arena.groove <= this.prevGroove - ULTIMATE_GROOVE_COST) {
+      GameContext.analytics.track("ultimate_used", { encounterId: this.encounterId });
+      if (!settings?.reducedMotion && !settings?.photosensitivitySafeMode) this.scene.cameras.main.shake(280, 0.012);
+      if (settings?.captionsEnabled) this.showCaption("♪ ULTIMATE — THE VERSE BREAKS THE SONG", 2);
+      this.grooveWasFull = false;
+    } else if (!this.grooveWasFull && this.arena.groove >= ULTIMATE_GROOVE_COST) {
+      this.grooveWasFull = true;
+      if (settings?.captionsEnabled) this.showCaption("GROOVE FULL — ULTIMATE READY", 2.5);
+    } else if (this.arena.groove < ULTIMATE_GROOVE_COST) {
+      this.grooveWasFull = false;
+    }
+
+    this.checkBossPhase();
+    if (this.caption && this.caption.alpha > 0 && this.scene.time.now > this.captionUntil) {
+      this.caption.setAlpha(Math.max(0, this.caption.alpha - deltaMs / 300));
+    }
     this.render();
     if (this.arena.outcome !== "ongoing") {
       this.finished = true;
@@ -291,6 +431,33 @@ export class WorldFight {
       return false;
     }
     return true;
+  }
+
+  /** §8.7: advance the boss phase when its HP crosses the next authored
+   * threshold -- playback jumps to the phase's bound song section (the
+   * judged grid follows automatically: it IS the same grid), the enemy
+   * tempo escalates, and the transition is announced. */
+  private checkBossPhase(): void {
+    if (!this.isBoss || !this.arena || this.phaseIdx >= this.phaseThresholds.length - 1) return;
+    const boss = getEnemies(this.arena)[0];
+    if (!boss || boss.state === "dead") return;
+    const next = this.phaseThresholds[this.phaseIdx + 1];
+    if (boss.hp / boss.maxHp > next.hpThreshold) return;
+
+    this.phaseIdx += 1;
+    this.arena.enemyAggression = 1 + 0.35 * this.phaseIdx;
+    const section = next.section ? this.songMap?.sections?.find((s) => s.name === next.section) : undefined;
+    if (section) music.seek(section.startMs / 1000);
+    GameContext.analytics.track("boss_phase_reached", { encounterId: this.encounterId, phase: this.phaseIdx + 1 });
+    const numeral = ["I", "II", "III", "IV"][this.phaseIdx] ?? String(this.phaseIdx + 1);
+    const settings = GameContext.activeProfile?.settings;
+    if (settings?.captionsEnabled) this.showCaption(`♪ THE MUSIC SHIFTS — MOVEMENT ${numeral}`, 3);
+    if (!settings?.reducedMotion && !settings?.photosensitivitySafeMode) this.scene.cameras.main.shake(220, 0.008);
+  }
+
+  /** Test seam: current boss phase index (0-based). */
+  get bossPhaseIndex(): number {
+    return this.phaseIdx;
   }
 
   private render(): void {
@@ -345,6 +512,15 @@ export class WorldFight {
       s.setPosition(Math.round(wx), Math.round(wy)).setDepth(4.6 + e.pos.y / 1000);
       this.shadows.get(e.id)?.setPosition(Math.round(wx), Math.round(wy));
       const windup = e.ai?.mode === "windup";
+      if (windup && !this.wasWindup.has(e.id)) {
+        this.wasWindup.add(e.id);
+        if (GameContext.activeProfile?.settings.captionsEnabled) {
+          const side = e.pos.x < getPlayer(arena).pos.x ? "LEFT" : "RIGHT";
+          this.showCaption(`⚠ ATTACK INCOMING — ${side}`, 1.2);
+        }
+      } else if (!windup) {
+        this.wasWindup.delete(e.id);
+      }
       const accent = this.accents.get(e.id) ?? 0xffffff;
       this.auras
         .get(e.id)
@@ -389,12 +565,61 @@ export class WorldFight {
     for (let i = 0; i < 5; i++) g.fillStyle(i < arena.focus ? 0xf4d27a : 0x2a3138, 1).fillRect(px0 + i * 7, hpY + 7, 5, 3);
     const grW = 40;
     g.fillStyle(0x2a3138, 1).fillRect(px0 + 38, hpY + 7, grW, 3);
-    g.fillStyle(0xb98fca, 1).fillRect(px0 + 38, hpY + 7, Math.round((arena.groove / 100) * grW), 3);
+    // Groove: pulses bright when the ultimate is ready (§8.5).
+    const grooveReady = arena.groove >= ULTIMATE_GROOVE_COST;
+    const pulse = grooveReady && Math.floor(this.scene.time.now / 220) % 2 === 0;
+    g.fillStyle(pulse ? 0xf4d27a : 0xb98fca, 1).fillRect(px0 + 38, hpY + 7, Math.round((arena.groove / 100) * grW), 3);
     if (this.isBoss && foes[0] && foes[0].state !== "dead") {
       const bw = 130;
       const bx = BASE_WIDTH / 2 - bw / 2;
       g.fillStyle(0x1a0507, 1).fillRect(bx, 18, bw, 4);
       g.fillStyle(0xe04434, 1).fillRect(bx, 18, Math.max(0, Math.round((foes[0].hp / foes[0].maxHp) * bw)), 4);
+      // authored phase markers on the trough (§8.7)
+      for (let i = 1; i < this.phaseThresholds.length; i++) {
+        g.fillStyle(0x05060a, 1).fillRect(bx + Math.round(this.phaseThresholds[i].hpThreshold * bw) - 1, 17, 1, 6);
+      }
+    }
+
+    this.drawSightread(arena);
+  }
+
+  /** Sightread (§8.4): the "see the music" forecast lane -- the next ~2.5s
+   * of song beats scroll toward a now-line, with telegraphed enemy strikes
+   * marked in red so the player reads the fight before it lands. */
+  private drawSightread(arena: Arena): void {
+    if (!this.sightread) return;
+    const g = this.sightread;
+    g.clear();
+    const pos = music.position();
+    if (!this.songMap || pos === null) return;
+    const laneW = 92;
+    const laneX = BASE_WIDTH - laneW - 6;
+    const laneY = BASE_HEIGHT - 12;
+    const horizon = 2.5; // seconds of forecast, in file-time
+    g.fillStyle(0x05060a, 0.72).fillRect(laneX - 3, laneY - 5, laneW + 6, 10);
+    g.fillStyle(0xf4d27a, 1).fillRect(laneX, laneY - 4, 1, 8); // the now-line
+    // upcoming beats from the grid (loop-aware into the next pass)
+    const beats = this.songMap.beatTimesMs;
+    const posMs = pos * 1000;
+    for (let pass = 0; pass < 2; pass++) {
+      const shift = pass * this.songMap.durationMs;
+      for (const b of beats) {
+        const dt = (b + shift - posMs) / 1000;
+        if (dt < 0) continue;
+        if (dt > horizon) break;
+        const x = laneX + (dt / horizon) * laneW;
+        g.fillStyle(0x49c6bd, 0.9).fillRect(Math.round(x), laneY - 2, 1, 4);
+      }
+      if (beats.length > 0 && (beats[0] + shift - posMs) / 1000 > horizon) break;
+    }
+    // telegraphed enemy strikes: windup remainder + attack startup, sim-time
+    // (sim and song both run at gameSpeed, so the axes agree)
+    for (const e of getEnemies(arena)) {
+      if (e.state === "dead" || e.ai?.mode !== "windup") continue;
+      const dt = Math.max(0, e.ai.timer) + 0.28; // ENEMY_STRIKE startup
+      if (dt > horizon) continue;
+      const x = laneX + (dt / horizon) * laneW;
+      g.fillStyle(0xc22f34, 1).fillRect(Math.round(x) - 1, laneY - 4, 3, 8);
     }
   }
 

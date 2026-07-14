@@ -84,6 +84,19 @@ class SongPlayer {
   }
 
   /**
+   * Jump the live song to a file position (seconds) -- §8.7 boss phase
+   * transitions bind to beat-aligned section starts of the boss track.
+   */
+  seek(seconds: number): void {
+    if (!this.current) return;
+    try {
+      this.current.currentTime = Math.max(0, seconds);
+    } catch {
+      /* not seekable yet -- the phase still escalates, just without the jump */
+    }
+  }
+
+  /**
    * Playback rate, coupled to the accessibility game-speed setting during
    * fights (PRD §8.3.3): the judged grid lives in file-time, so slowing the
    * song and slowing judgment are the same operation and can never diverge.
