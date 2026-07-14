@@ -1,90 +1,107 @@
-# Product Requirements Document — Project Meterfall
+# Product Requirements Document — *The Drowned Chorus*
 
 ## Document Control
 
 | Field | Value |
 |---|---|
-| Document title | Project Meterfall — Browser Rhythm RPG PRD |
-| Codename | Project Meterfall |
-| Status | Draft v7.0 — **major direction change in progress**: exploration is now a first-class second game loop (§8.8 — a five-region joined explorable world, hidden paths, discoverable "echo" lore, all hand-authored), combat is a **real-time rhythm-action arena** (run-around movement, dashes/i-frames, frame-data attacks, hitstun/knockback/combos, parries, on-beat power — *Melee*-depth), and art is in the **Hyper Light Drifter** register (colossal enemies, silhouette-first, glow/bloom, story-staged arenas, native-resolution bosses). The game is *The Drowned Chorus* (world/story bible written, incl. §5a's untold stories). See §20.4 for build-vs-spec status; the v7.0 explorable world is being built against this revised spec. |
+| Document title | *The Drowned Chorus* — Browser Rhythm-Action RPG PRD |
+| Working codename | Project Meterfall (historical; the game is titled *The Drowned Chorus*) |
+| Status | **Active v8.0** — full enterprise rewrite (2026-07-14). Resolves every finding in the [2026-07-14 PRD audit](./prd-audit-2026-07-14.md): the body now describes the real-time rhythm-action game actually being built (the turn-based model retired at v6.0 no longer appears as current spec), all decisions flagged by the audit are made and recorded (§8.3 beat-source decision, §8.7 boss re-spec, platform tiering incl. touch), and §20 is re-cut to reality as of today. |
 | Owner | Amir Bukhari |
-| Author | Amir Bukhari (compiled from concept notes and deep research) |
+| Author | Amir Bukhari (compiled from concept notes, deep research, and live-play feedback) |
 | Created | 2026-07-08 |
-| Last updated | 2026-07-10 |
-| Source material | Concept screenshots (party roles, rhythm-combat premise, luchador/clave example) + [Deep Research Report](../research/deep-research-report.md) |
+| Last updated | 2026-07-14 |
+| Source material | Concept screenshots + [Deep Research Report](../research/deep-research-report.md) + Skatopia setlist lyrics + six recorded Inhalants tracks + [world bible](../design/world-bible.md) |
 | Distribution | Product, Engineering, Art, Audio, QA, Accessibility |
 | Approval required from | Product sponsor, Engineering lead, Art lead, Audio lead, QA lead *(names TBD)* |
 
 ### Revision history
 
-| Version | Date | Author | Change |
-|---|---|---|---|
-| 0.1 | 2026-07-08 | Amir Bukhari | Initial deep research synthesis from concept notes |
-| 1.0 | 2026-07-08 | Amir Bukhari | Restructured into enterprise PRD format; added KPIs, risk register, RACI, roadmap, schemas |
-| 1.1 | 2026-07-08 | Amir Bukhari | Added §11.2 gbmusic tooling note and §11.4 current asset inventory (placeholder sprites, reference audio, example chiptune output) |
-| 1.2 | 2026-07-08 | Amir Bukhari | Resolved §11.4 action item: confirmed the placeholder hero character and demo-track-via-gbmusic chiptune direction carry forward as the production basis, not disposable reference; updated §11.1/§11.2 accordingly |
-| 1.3 | 2026-07-08 | Amir Bukhari | Resolved music-sourcing question: all v1 battle tracks are sliced from the single demo master (one gbmusic run + hand-tuning pass per stage/boss-phase), not separately composed; updated §11.2 and §11.4 |
-| 1.4 | 2026-07-08 | Amir Bukhari | Made the actual slice-selection decision (algorithmic, ascending complexity per stage) and generated all 7 stage/boss-phase `.lsdsng` drafts; added `docs/design/music-direction.md` and updated §11.2/§11.4 to point to it |
-| 2.0 | 2026-07-08 | Amir Bukhari | Implemented the engine end-to-end against this spec: full scene stack, audio-clock-driven combat, all mandatory accessibility settings, data-driven content pipeline, and an audible battle-timing sonifier, all covered by 67 unit tests and live headless-browser verification. Added §20 Implementation Status documenting what's built vs. genuinely open (content volume, art, real music integration, e2e suite, QA matrix). |
-| 3.0 | 2026-07-08 | Amir Bukhari | Closed most of v2.0's gaps: built live meter changes (`MeterSequence`) and a real 3-phase boss, authored the full 5-node campaign (satisfying §15's vertical-slice exit condition for the first time), added multi-enemy targeting, a real Sightread forecast UI, functional relics and a real skill-unlock trigger, and a committed 11-spec Playwright e2e suite wired into CI. 94 unit tests. Rewrote §20 accordingly; remaining gaps are art, real music integration, and a documented e2e sandbox-flakiness caveat. |
-| 4.0 | 2026-07-08 | Amir Bukhari | Closed three of v3.0's gaps: wired the placeholder hero sprite into `BattleScene` (role-tinted, alpha/scale state for KO'd and active heroes), authored and wired a real tier-2 unlock ability per role (§8.4), and replaced `MapScene`'s text-only status list with a real visual node-graph (circles-on-a-path, connected, color-coded by cleared/unlocked/locked, type-lettered). Investigated rendering the `tools/gbmusic/` chiptune drafts to real playable audio via PyBoy and found no public audio-buffer export API in the pinned version — documented as investigated-and-deprioritized rather than pursued further; real music integration remains open. 96 unit tests; e2e suite unchanged at 11 specs. Rewrote §20 accordingly. |
-| 4.1 | 2026-07-08 | Amir Bukhari | Final re-verification for this cycle caught that the `deploy-pages.yml` CI pipeline had silently been failing at `playwright install --with-deps` on every push since `ubuntu-latest` moved to 24.04 (unsupported by the pinned Playwright version) — meaning GitHub Pages had not actually been redeploying. Fixed by pinning `ubuntu-22.04`. Fixing that surfaced the real next failure: every Firefox e2e spec fails outright in `beforeAll`/boot, in this sandbox and on real CI alike — not the "occasional sandbox flakiness" §20.2 previously described. Excluded Firefox from the CI/deploy gate (Chromium-only) pending root-cause; updated `tests/e2e/README.md` and §20.2 with the corrected, more precise finding. |
-| 4.2 | 2026-07-08 | Amir Bukhari | With Firefox excluded, CI still failed on Chromium at `settings.spec.ts`. Root-caused rather than re-labeling it environment flakiness: found and fixed two real bugs — `TextMenu` could double/triple-fire one physical keypress (Phaser's shared keyboard queue reprocesses on every subsequent keydown before flushing), and re-opening `SettingsOverlay` reused a stale menu referencing already-destroyed GameObjects, throwing and permanently soft-locking the player, because Phaser reuses one persistent Scene instance across stop/relaunch cycles and `create()` wasn't resetting state. The full Chromium e2e suite (11 specs) now passes cleanly and quickly (~38s) across repeated runs, and the deploy pipeline is green end to end. |
-| 4.3 | 2026-07-08 | Amir Bukhari | Closed the two remaining gaps that were pure engineering effort with no external blocker: (1) documented the four internal schemas (`Enemy`, `HeroClass`, `CampaignNode`, `BossPhaseConfig`) in §10.5 alongside the three PRD-canonical ones, including their runtime validation approach; (2) added real per-node encounter variety via a new `CampaignNode.encounterPool` field and a pure `resolveEncounterId()` (`src/systems/progression/CampaignSelection.ts`), authored a second `mid_2` encounter variant, and wired it through `MapScene` and content-registry validation. 102 unit tests (was 96); Chromium e2e suite re-verified passing. Reclassified §20.2's remaining items explicitly as either external-resource-blocked or pure follow-on work, and rewrote §20.3 to match. |
-| 4.4 | 2026-07-08 | Amir Bukhari | Real user report on the live deploy: unable to get past calibration at all. Root cause: `CalibrationScene` only ever accepted keyboard taps — every other mandatory, unskippable screen (`AudioGateScene`, every `TextMenu`) accepts both keyboard and pointer input, but calibration was keyboard-only with zero feedback for a player who clicked/tapped instead, a first-run-blocking bug on the very first interactive screen the game requires. Fixed by adding a `pointerdown` handler alongside the existing `keydown` one; added an e2e regression test that completes calibration via mouse clicks only. Also reworded `AudioGateScene`'s "PRESS ANY KEY TO START AUDIO" (misread as "music will play") to "PRESS ANY KEY OR CLICK TO CONTINUE" — no audio, music or otherwise, is ever played by that screen; it only unlocks the browser's AudioContext for later use. |
-| 5.0 | 2026-07-10 | Amir Bukhari | **Scope change from live-play feedback: replaced the node-select campaign map with a walkable pixel-art overworld** ("is this a text-based game? I wanted a pixel art game I could run around in") — a real tilemap hub (script-generated 4-tile tileset + Tiled-JSON 40×24 map with BFS-validated marker reachability, `tools/overworld/generate_overworld_map.py`), tile-snapped 4-directional movement with collision (pure `OverworldMovement` module, no physics engine), camera-follow, the previously-unused 8-frame run spritesheet as the walking player, node markers color-coded by cleared/unlocked/locked status (`CampaignReachability`, extracted pure from `MapScene`), walk-onto-marker battle triggering, and respawn-at-fought-node after battles (`GameContext.returnToNodeId`). `MapScene` deleted; §7.1's "no free-roam overworld" decision superseded (see revised row). Also closed §20.2's last no-external-blocker gap: every non-boss node now draws from a 2-entry `encounterPool` (boss deliberately fixed — its phase config is keyed to the specific encounter). Updated §7.1, §8.1, §10.5, §10.6, §11.4, §20. 118 unit tests (was 102); 16 Chromium e2e specs (was 11/12, including 4 new overworld specs); prior cycle's flagged Pages deploy failure confirmed transient — latest deploy verified green. |
-| 5.1 | 2026-07-10 | Amir Bukhari | Closed two spec-vs-implementation gaps found by auditing §8 requirements directly against the code (both invisible to §20's previous accounting): (1) **§8.5's "Groove … spent on ultimates" had no spend path at all** — Groove could only accumulate. Added an optional `grooveCost` to the canonical ability schema, gating/spending in `queueHeroAction`, one authored 100-Groove ultimate per role, and the command-menu wiring (5-slot kit, `(100g)` labels); §8.5 now specifies the realized design. (2) **Five authored stats (`accuracy`, `speed`, `defense`, `resist`, `targetFocus`) and enemy-applied debuffs were cosmetic** — pushed onto `statusEffects` but read by nothing (only hero `guard` was ever consulted). All are now mechanically wired with deterministic semantics documented on `StatusEffect` (no RNG miss chances, per the rhythm-clarity pillar), including a real taunt and Sightread's accuracy buff actually widening judgment windows. 129 unit tests (was 118, incl. new `combat-stats.test.ts` pinning every wiring); 16 Chromium e2e specs re-verified; ultimate flow verified live in-browser. |
-| 6.0 | 2026-07-11 | Amir Bukhari | **Direction change: real-time rhythm-action + Hyper Light Drifter art.** On direct feedback ("I need to be able to run around in battle and attack stuff… mechanics super intricate like Super Smash Bros. Melee"; "the art needs to be wayyy sicker… like Hyper Light Drifter with its colossal-feeling art and enemies"), pivoted the combat pillar from turn-based rhythm to a **real-time action arena**: 8-dir momentum movement, dash with i-frames, light/heavy/special/ultimate attacks with real frame data (startup/active/recovery), hitstun + damage-%-scaled knockback + DI, on-beat parries, and cancels/tech — with the rhythm woven in as on-beat power windows (audio-clock spine unchanged). Rewrote the art direction to the HLD register: colossal silhouette-first enemies, vivid limited palette, additive glow/bloom. Rewrote §7.3 pillars, §8.2–§8.5 combat model, §11.1 art, §7.2 scope, and the status line; the prior turn-based slice, overworld, pipeline, and CI carry forward while the new action engine and HLD art are built against this spec (see §20.4). |
-| 6.1 | 2026-07-11 | Amir Bukhari | First **playable, wired** v6.0 action-combat increment. Added the Phaser-free `src/systems/action/ActionCombat.ts` sim (8-dir momentum movement, dash cooldowns + i-frames, light/heavy frame data with active hitboxes, hitstun, damage-%-scaled knockback + player DI, on-beat power, and enemy AI: approach→telegraph→strike→recover) and `ActionBattleScene` driving it with live input (WASD move, J light, K heavy, Shift dash), the audible beat, HP/telegraph/hitbox rendering, and the real reward/campaign path → Results. **The overworld now launches the action scene** (the shipped combat path); the turn-based `BattleScene` stays registered so its regression specs still run during the pivot. 10 new action-combat unit tests (overlap, knockback scaling, on-beat power, dash i-frames negating a hit, win/lose, bounds) + overworld e2e retargeted to the action scene with a forced-victory return-flow check; fixed an async-create input race. A colossal-scale Conductor renders in the boss arena. 139 unit tests, 16 Chromium e2e specs, typecheck, build all green; arena + boss verified live. (Reconciled a parallel prototype branch: a duplicate `systems/combat/ActionCombat.ts` was superseded by this fuller `systems/action/` implementation and removed.) |
-| 6.2 | 2026-07-11 | Amir Bukhari | Deepened the action combat and pushed the art to the HLD register. **Combat depth:** a Focus special (builds from on-beat hits), an on-beat parry (negate + stagger the attacker; off-beat = punishable whiff), and rhythm-gated cancel combos (recovery→next-attack only on-beat, in-window) — sim + 3 new unit tests; scene wires L/I + a parry flash + Focus HUD. **HLD art:** additive emissive glow/bloom (`tools/pixelart/fx.py` glow/spark) — accent auras + beat-pulsing glowing eyes, red windup telegraphs, on-beat player flash, bright attack arcs, impact sparks (reduced-motion aware); enemies scaled colossal (Conductor ~2.9× the player). **Theme:** enemy display names reflavored to the world bible and a fading battle-intro card names the movement (biome) + foe. Reconciled a parallel prototype branch into one `systems/action/` implementation. 142 unit tests, 16 Chromium e2e specs, typecheck, build all green; arenas screenshot-verified. |
-| 7.15 | 2026-07-14 | Amir Bukhari | **Direction logged (next session): crazy terrain — big landscape forms over the scene.** Direct feedback: "we need more crazy terrains. like Hyper Light Drifter does giant rocks and hills and trees over the scene." Spec for the next pass: the overworld needs LANDSCAPE-scale forms, not just knee-high props — colossal rock outcrops and cliff walls that break the map silhouette, hills implied by elevation shading/terracing, and tall trees/canopies whose crowns OVERHANG the play space (drawn above the player layer, fading when the player walks beneath — the HLD trick that gives a flat top-down map its sense of height). Production path: extend `envkit.py` with a "landform" piece class (giant outcrops, cliff faces, canopy trees at 2–3× character height, generated top-down like the kits), scatter them per-region with the cluster hash, and add an overhang layer in OverworldScene (depth > player, alpha-fade within a radius of the player). Not started — logged so the next session begins here. |
-| 7.14 | 2026-07-14 | Amir Bukhari | **De-pixelation round 2 + the arena terrains live IN the world.** Direct feedback: "pull back the pixelation even moreeeee" and "what happened to the terrains you made for the boss fights? I just wanted you to put those in the world." **(1) No more palette crushing** — `smooth_downscale()` (clean LANCZOS, hard alpha, ZERO quantization) replaces the pixelate/quantize step in all three generators; band, foes, and all 27 env pieces regenerated. At in-game sizes the 320×180 canvas still renders chunky screen pixels, so the retro feel survives while sprites keep full colour detail — the band is now crisp and characterful. **(2) World venues** — `composeWorldVenue()` (ArenaComposer): each fight node's authored biome floor is painted as an EDGE-FADED patch blended into the surrounding map, and its kitbash set pieces stand around the spot in world space — the Shallows boat-wreck ring around the slime, the Hall's marble+chandelier around the Conductor. The fight then locks its room onto this exact dressed ground. **(3) Guaranteed fight room** — the venue circle (64px around the node) is always fightable terrain for the sim even where map tiles underneath are water/rock, since the venue floor visually covers them; outside it, the terrain-obstacle system (v7.13) still applies. Also: sim obstacle support (`resolveObstacles`, 3 unit tests → 145) shipped with terrain-aware fights. Screenshot-verified: Shallows + Conductor venues in-world. |
-| 7.13 | 2026-07-14 | Amir Bukhari | **Fights happen IN the world (areas-not-arenas realized) + legibility pass.** Direct feedback: "we're going toooo pixelated… I can't tell what most things are" and "the boss arenas shouldn't be different places… it should be part of the overall world." **(1) In-world combat** — `src/scenes/overworld/WorldFight.ts`: walking into a foe no longer loads a separate battle scene. The camera locks to a screen-sized room of the ACTUAL overworld around the foe and the Phaser-free action sim runs right there — same ground, roads, props, landmarks; the sim's arena is simply mapped onto a world-space rectangle. The standing foe hands over to the live wave; the player fights from where they stand; the leader's real sprite runs/attacks; HUD plate + boss bar are screen-space; victory/defeat runs the identical rewards→Results flow (scene restart cleans up). `ActionBattleScene` is retired from the trigger path (kept registered). Overworld e2e specs now assert the fight is live INSIDE OverworldScene and that no battle scene loads. **(2) Legibility** — all generated art re-rendered at ~1.5× logical resolution with richer palettes (band/foes: 72px frames, 66px figures, 56 colours; env pieces: 1.6× heights, 64 colours), engine scales compensated so on-screen sizes are unchanged: strictly more detail per screen pixel. Band members are now individually recognizable at world scale. 142 unit + full e2e green; in-world fight screenshot-verified. |
-| 7.12 | 2026-07-14 | Amir Bukhari | **Audit burn-down: P2 shipped (overworld ground/water/clustering/value).** **(O2)** Water re-authored in `tiles.py`: near-black dithered deep body, two dim swells, one rare crest fleck — and the per-region tint on water cut 0.48→0.14 (the strong tint toward the bright accent was flattening the whole body into the washed cyan "panel"). Big water now reads as depth. **(O1)** Grass calmed: tufts 7→4, no bright-white tips, per-tile flower removed (any every-tile motif repeats as wallpaper confetti across a region). **(O3)** Prop scatter is now CLUSTERED: a low-frequency 8×8-tile cell hash places clusters (~28% of cells, 32% density inside, 2% outside) so props group into graveyards/reed-banks with real clearings between. **(O4)** Value separation: scenery props tinted a step darker (0xb2b9c6) while playable characters get a soft teal under-glow — the eye finds the band in the dark world (the red guitar finally pops). Screenshot-verified via audit captures; 142 unit + 17 e2e green. P3 (authored wordmark) deferred: AI image models render text unreliably, needs a lettered-by-hand approach. |
-| 7.11 | 2026-07-14 | Amir Bukhari | **Audit burn-down: P0 + P1 shipped.** Executed the top of the v7.10 audit list. **(B1) Designed floors**: `ArenaComposer.paintFloor()` renders a per-biome canvas floor — low-frequency tone blotches → biome motif (Shallows wet-sand tide ripples; Salt-Mines vertical boards+grain; Pit trampled fighting-ring circles; Attic staggered floorboards; Hall marble checker+veins) → speckle → radial fight-light + edge falloff. No more void. **(B2) Coherent kits**: `tools/pixelart/envkit.py` regenerated all 27 environment pieces across the 5 biomes + shared obelisk with the camera PINNED ("seen from above, top-down three-quarter, like a Hyper Light Drifter prop"), one shared per-biome style clause, per-piece logical heights (shared scale), and the newband cleanup passes. The old mixed-perspective pieces (side-view boat, grass islands underwater) are gone. **(B3) Menacing foes**: `tools/pixelart/newfoes.py` resprited slime/drifter/elite_wraith in the band's exact register (rot-ooze with pearl teeth; kelp-tangled drowned drifter; pearl-crowned wraith); Conductor untouched per the audit. **(B4/B5) Real HUD**: framed INHALANTS plate bottom-left (drawn HP bar, 5 Focus pips, Groove bar, beat pip, DMG%), top-centre framed boss bar with the foe's name (bright fill on a black trough, above HUD frames), tighter enemy mini-bars hugging sprites, controls hint auto-fades after 6s, full-width top band deleted — the arena gets the whole frame. Verified via re-run audit captures; 142 unit + 17 e2e + typecheck green. Next: P2 overworld ground/water/value, P3 wordmark. |
-| 7.10 | 2026-07-14 | Amir Bukhari | **The honest AAA gap audit.** Direct feedback on the deployed build: "there's so much wrong. this is not AAA standard." Response: stop whack-a-mole iteration; audit the whole game screen-by-screen like a real art review and burn down a ranked list. Added [`docs/design/aaa-audit.md`](../design/aaa-audit.md) (with `tests/e2e/audit.spec.ts` reproducing every capture): **battle scene is the worst offender** — void-flat arena centre (B1), incoherent piece kits mixing perspectives/biomes (grass islands underwater, side-view boat on a top-down floor — root cause: camera/scale never pinned in the generation prompts) (B2), goofy pre-pipeline enemy sprites out of register with the new band (B3), floating HP bars (B4), raw-text HUD (B5); **overworld** — wallpaper ground (O1), water that reads as a UI panel (O2), prop confetti instead of clustering (O3), everything the same dark value (O4); **menu** — monospace wordmark isn't a logo (M1). What already lands and must not churn: the colossal Conductor, the band's style register, the real soundtrack, the in-world foes/obelisks/conga systems. Prioritized: P0 arena floors + coherent top-down piece kits; P1 enemy resprite in the band's register + a real battle HUD; P2 overworld ground/water/value separation; P3 wordmark. Execution starts with P0. |
-| 7.9 | 2026-07-14 | Amir Bukhari | **Fresh band cast + the band walks together; moonwalk fixed.** Direct feedback: "get rid of the main character we have and just start fresh with new band characters." Built `tools/pixelart/newband.py`: four NEW AI-generated playable Inhalants (lead guitarist with rusted red guitar + teal mohawk; tall hooded bassist; mic-raised long-coat vocalist; snare-strapped marching drummer) in one shared drowned-gothic style clause, generated via the proven Pollinations sprite path with new cleanup passes (**mist-scrub** — flux insists on fog at a gothic figure's feet — and **largest-island filtering** for floating fragments), then each member's idle(2f)/run(4f)/attack(3f) strips are **derived procedurally from the one base pose** (breath settle, bob+lean+leg-scissor run, windup/lunge/recover attack) so identity stays rock-solid across frames. Same `assets/sprites/band/` slots, so zero engine changes; prior art preserved under `assets/reference/band-original/`. Also: **(a) the whole band now walks the overworld** — bassist/vocalist/drummer trail the leader in a conga line (decorative followers, never block/trigger); **(b) fixed the moonwalk** — the art faces left natively but both scenes flipped it as if right-facing, so the player ran one way facing the other; **(c)** overworld player + followers get contact shadows. 142 unit + 17 e2e green; band verified walking and in-arena. |
-| 7.8 | 2026-07-14 | Amir Bukhari | **Foes stand in the world; save-obelisks live.** First shipped slice of areas-not-arenas (v7.6 §8.2): fight nodes are no longer abstract colored circles — the node's actual foe **stands in the overworld at its place** (its real sprite, idle-animated, accent aura, contact shadow; the Conductor uses his colossal sheet), so the player walks up to and stumbles into *the boss itself*. Locked foes past the frontier wait as dark motionless silhouettes; cleared places keep a faint released-soul ember. And per §8.8: every fight node now has a **save-obelisk** placed on a walkable tile two tiles out — standing beside it prompts `E: rest`, which persists the save in-world ("THE CHORUS RESTS — Progress saved") without touching the fight trigger. New e2e spec (`obelisk.spec.ts`) proves the rest persists through the real IndexedDB SaveManager and does not start the fight. The remaining structural work (retiring the separate `ActionBattleScene` load entirely) stays tracked in §20.4. |
-| 7.7 | 2026-07-14 | Amir Bukhari | **The real Inhalants tracks are the soundtrack now; deploy unblocked; combat polish.** Amir handed over six real recorded songs. Replaced the procedural `MusicEngine` (Tone.js synth loop, v7.6) with `src/systems/audio/SongPlayer.ts`: the six MP3s stream via `HTMLAudioElement`, **lazy-loaded per scene** (`preload="none"`, only the live song is ever fetched, so boot stays light despite ~45MB on disk) and crossfaded on scene change. Mode→song: menu = *Sunshine Sally*, explore = *Deereater*, combat rotates *Glassriff*/*John's Anus*/*Truckers for Christ*, boss = *Quotience*. First play is primed from inside the audio-gate tap so mobile autoplay allows it; the beatmap sonifier drops to a quiet rhythm-cue tick (×0.22) so it no longer clashes with the music. Also: **(a)** fixed the blocked deploy — the v7.6 luchador cull had reduced the mid-2 multi-enemy encounter to a single foe, breaking the target-select e2e; restored it to a lyric-appropriate wraith+drifter pack (minion packs are fine — the "one boss per area" rule is about *bosses*). **(b)** Grounded action-combat shadows at each sprite's actual feet (origin isn't the bottom edge, so they had floated at the waist). Verified: 142 unit tests, full chromium e2e, typecheck, and Pages-subpath boot all green. |
-| 7.6 | 2026-07-13 | Amir Bukhari | **Real music at last; lyric-only foes; areas-not-arenas direction.** Direct feedback: "what happened to the music — there's still no music, it's literally a music game… only 1 boss per area… get rid of any bosses not relevant to the lyrics, like the luchador… why are we doing arenas instead of areas the player just stumbles into with the bosses there." Executed: **(1) Music (§11.2 realized).** The prior "audio" was just synth blips on the beat (`BeatmapSonifier`) — no actual music, and the demo track is a gitignored 22-min file. Built `src/systems/audio/MusicEngine.ts`: a real **procedural soundtrack** synthesised with Tone.js (already a dep) — an A-minor i–VI–III–VII loop of bass, pad chords, a chiptune arpeggio, and drums, played on `Tone.Transport` (the same clock the rhythm combat runs on) with intensity layered by scene (menu/explore = pad+bass; combat = +drums+arp; boss = denser). No audio file shipped; it plays everywhere and the beat *is* the music. **(2) Lyric-only roster.** Removed the **luchadors** (`luchador_grunt`/`luchador_mask` — a leftover from the old concept screenshot's clave example, not the Skatopia lyrics); kept the lyric foes (rot **slime**, the pearl-toothed **wraith**, the drowned **drifter**, the **Conductor**), and reconciled the affected encounters/beatmaps. **(3) Areas, not arenas (direction, §8.2/§8.6).** The target is a continuous Sekiro/HLD world the player *stumbles into* — each area holds **one** boss, encountered in place, with a save-obelisk before it — rather than a node-graph that loads a separate battle scene. The kitbash composer (§11.1) already builds those areas; unifying exploration and combat into one continuous space (retiring the separate `ActionBattleScene` load) is the next major structural task, tracked in §20.4. |
-| 7.5 | 2026-07-13 | Amir Bukhari | **Kitbash environments — stop AI-generating whole scenes.** Direct feedback: "you need to generate all the individual pieces separately and then place them in the scene like a kitbash… trying to AI-generate the whole environment in one image is [wrong]… the environment needs to be intentional." Correct: a single AI image of a scene is uncontrollable concept art, not a playable, readable arena. New pipeline (§11.1): generate a **library of individual, isolated top-down environment pieces** (rocks, ruined pillars, reeds, lanterns, a boat wreck, a campfire save-point — `generate_ai.py --kind piece`, rich adaptive palette) and **kitbash them into intentional layouts** (`src/scenes/env/ArenaComposer.ts`: a calm PROCEDURAL top-down ground canvas + hand-placed pieces + a central light-pool combat zone, pieces depth-sorted behind the fighters). The Shallows arena is rebuilt this way (kit under `assets/sprites/env/shallows/`); the whole-scene AI backdrops become the fallback for not-yet-kitbashed arenas. Combat is now full-screen top-down (§8.2, HORIZON=0). Remaining biome kits, the overworld kitbash, and the campfire-as-save-point interaction tracked in §20.4. |
-| 7.4 | 2026-07-13 | Amir Bukhari | **Top-down HLD combat framing + Sekiro-style world structure.** Direct feedback: "backdrops literally need to be backdrops? should it not be 3/4 walkable, 1/4 backdrop? how does Hyper Light Drifter do it — is it 2.5D?… animations for all characters and objects… it should be like Sekiro where you walk everywhere but unlock areas and save at an obelisk before the fight." Answer + spec: **HLD is top-down 2D (not 2.5D)** — you fight in the same walkable field you explore. Reframed the action arena (§8.2) accordingly: the AI scene is now a **distant backdrop band across the top ~¼ (horizon)** and the bottom **~¾ is a top-down walkable floor** (depth grid, side vignette, central light pool, per-fighter ground shadows) — the sim already ran in a 2D field, so this is a render reframe (fighters offset onto the floor). Added to the spec: **(a)** every character/enemy/interactive object should carry idle + state animations, not static frames (§11.5 animation-state standard reinforced; in-engine idle motion where per-frame art is absent); **(b)** a **Sekiro-like world loop** (§8.1/§8.8) — one continuous walk-everywhere world, **areas gated/unlocked** by progress (the campaign frontier already does this), and a **save obelisk before each fight** (interact to save + rest, §8.8) rather than autosave-only. Implemented the combat reframe first; obelisk save-points, area-gating polish, and per-object animation tracked in §20.4. |
-| 7.3 | 2026-07-13 | Amir Bukhari | **AAA asset scope — the manifest, not a sample.** Direct feedback: "fix the PRD so you'd have as many prompts as a AAA game would have… what we have here is not enough." Correct — ~30 asset slots is prototype breadth. Added **§11.5 AAA art asset manifest**: an **animation-state standard** (playable characters ≥22 states each, enemies ≥6, boss per-phase) and a full production manifest across playable band, ~18 enemies, boss(es), 5-biome autotiling tilesets, props/destructibles, landmarks, parallax backgrounds, a VFX library, a complete UI kit, NPCs, and items — **~575 named asset slots / thousands of frames**. Added acceptance criteria (8)–(10) (every row filled with real art; every character/enemy has its full state set; every biome a full tileset+parallax+props). Expanded [`docs/design/art-prompts.md`](../design/art-prompts.md) to a per-slot prompt catalog kept 1:1 with the manifest. |
-| 7.2 | 2026-07-13 | Amir Bukhari | **Art-quality overhaul — kill the noise tiles; set an honest AAA standard.** Direct feedback: "this is NOT a AAA level pixel art game at all… implement an enterprise AAA game." Root-caused to the pipeline, not the effects layer: every tile was a per-pixel **RNG noise fill** (`grass()` etc. in `tiles.py`) and sprites were tiny hand-typed ASCII grids — reads as mud/static, a hard ceiling far below AAA. Added acceptance criterion §11.1 (7) (**designed surfaces, not noise**: light source + shading ramp + ordered dithering + hand-placed motifs) and an **honest ceiling note**: hand-coded art tops out at competent-indie; true HLD-tier needs real art assets in the same `assets/` slots (as the provided **Amir** guitarist already proves). Implemented the overhaul: redesigned tiles (grass/path/water/rock) as intentional pixel art, and lifted the crudest procedural sprites/props toward the one real-asset bar. Real-asset integration is the flagged path beyond the ceiling. Tracked in §20.4. |
-| 7.1 | 2026-07-13 | Amir Bukhari | **The band is the cast; the world got its atmosphere.** On direct feedback ("the main characters should be the band members of Inhalants… where are the sprite sheets I gave of the guitarist — that needs to be the main character… make another guitarist, vocalist, and drummer with different move-set animations in the same style"), made the four playable slots the band: **Amir** — the provided hand-drawn guitarist art (`assets/sprites/heroes/placeholder/`) — is conformed into clean 48×48 idle/run/guitar-swing strips and is now the playable lead in the overworld and the action arena; a bassist, vocalist, and drummer are authored to match his palette/proportions with distinct instrument silhouettes + attack move sets (`tools/pixelart/bandmates.py`). The four generated pre-band adventurers become **world NPCs**. Roles/abilities/stats are unchanged (a re-skin via new `HeroClass.spriteId`), so combat and all 142 unit tests are untouched. Also delivered the **AAA overworld atmosphere pass** the standing environment goal called for: seamless drifting fog + raking god-ray shafts (`fx.py`), one colossal set-piece landmark per region (`landmarks.py` — drowned ship, salt headframe, carnival wheel, leaning tenement, Conductor's spire), contact-shadow grounding on props, and the existing vignette/region-tint — all reduced-motion/photosensitivity aware. Verified in-browser across all five regions + both battle and overworld; typecheck, 142 unit tests, build, and the overworld e2e specs green. Open: whether the other three members become swappable/co-op in the single-avatar arena (flagged to the owner). |
-| 7.0 | 2026-07-11 | Amir Bukhari | **Exploration is the second game — the "hub" framing was the bug.** Direct feedback: "this isn't an enterprise game... where's the crazy explorable environment with a crazy detailed world with secret backstories for the player to explore." Root-caused against the spec itself, not just the build: §7.1 called the overworld a "hub," §7.2 explicitly excluded "exploration... and secrets," §8.1's loop had one non-combat verb ("walk onto a marker"), and §11.1.1 put every untold story *inside* battle arenas the player can't walk through or revisit — the PRD was describing a menu with grass texture and forbidding the game being asked for. Rewrote §7.1 (scope shape), §7.3 (two new pillars: "the world is the second game," "untold stories are found, not told"), §8.1 (two interleaved loops: critical path + world), and added **§8.8 Exploration**: a five-region joined world map (one region per movement, each in its arena's visual language) substantially larger than the old hub specifically to hold secrets; **echoes** (§8.8.2) — discoverable, collectible environmental-story fragments surfacing world-bible §5a's lore one line at a time, found not told, persisted per save; and **hidden paths/secret pockets** (§8.8.3) gating optional relic/echo rewards, explicitly hand-authored, never procedural. §10.7 and the overworld-foreshadowing rule (§11.1.1) updated to point at §8.8. Implementation tracked in §20.4. |
-| 6.3 | 2026-07-11 | Amir Bukhari | **Environments spec: every arena is a place with an untold story.** On direct feedback ("the environments suck… make the settings super interesting and like there's background stories that are untold"), added §11.1.1: generic shared backdrops are out of spec; each of the five movements is fought inside a specific staged place whose 2–4 set pieces wordlessly imply a past event (drowned village green with one boat still straining at its rope; salt-mine gallery of miners calcified mid-listen; sunken carnival ring with ropes snapped outward; the Attic of Teeth with claw marks inside the door; the Conductor's hall of blank pages and stopped melting clocks). Canonical staging/lore in world-bible §5a (never surfaced as in-game text). Design rules: postcard test, fight-readability, a beat-pulsing story light per arena, one palette / five dominant hues, overworld foreshadowing. Implementation of the five painters tracked in §20.4. |
-| 5.3 | 2026-07-10 | Amir Bukhari | **Real art pass, from the lyrics.** Acting on direct feedback ("make all the pixel art sprite sheets… make this game absolutely beautiful and use these lyrics to inspire the art"), derived a full art direction from the uploaded Skatopia setlist lyrics ("the drowned chorus" — gothic, drowned, clockwork body-horror as *beautiful* moody pixel art) and built it. Added an in-code pixel-art pipeline (`tools/pixelart/`: one master palette + grid→PNG render/outline/pack; `generate_all.py` regenerates everything deterministically) and authored: four **distinct** hero classes (down/side/up walk cycles), six lyric-themed enemies incl. the Conductor boss (idle-animated), a seamlessly-tiling overworld tileset, two painted 320×180 battle backdrops, and a titled main menu — replacing every tinted-placeholder/colored-circle. Overhauled `BattleScene` (backdrop + party + animated wave + reflowed HUD), gave `OverworldScene` real directional hero art + a mood vignette, and put the shared abyss backdrop behind the menu/gate/results scenes. Wrote `docs/design/art-bible.md`; updated §11.1/§11.4/§20. All authored in code — no external art, no image generation. 129 unit tests, 16 Chromium e2e specs, typecheck, build all green; every scene screenshot-verified in-browser. |
-| 5.2 | 2026-07-10 | Amir Bukhari | Same audit, third find: §14's analytics were consent-gated (off by default, correctly privacy-first) but **no UI existed for a player to ever grant consent**, so the entire event set was unreachable in real play. Added an "Analytics (local-only)" toggle to SettingsOverlay writing the persisted `SaveProfile.analyticsConsent` (shown only with an active profile; v1 analytics remain in-memory/no-network). Verified live end to end: toggle ON → events record → consent survives reload+load. |
+Entries are one-line summaries in chronological order. Full narratives for every
+revision — including the direct owner feedback that drove each pivot — are preserved
+verbatim in this file's git history (`git log --follow -p docs/product/PRD.md`) and,
+for the v7.x cycle, in [`docs/product/prd-audit-2026-07-14.md`](./prd-audit-2026-07-14.md)
+and [`docs/design/aaa-audit.md`](../design/aaa-audit.md).
+
+| Version | Date | Change |
+|---|---|---|
+| 0.1–1.4 | 2026-07-08 | Initial synthesis → enterprise PRD structure; music tooling (`gbmusic`) and demo-master slicing decisions. |
+| 2.0–4.4 | 2026-07-08 | Turn-based engine built end-to-end vs. spec; campaign, boss, relics, accessibility, e2e/CI; multiple root-caused input/CI fixes. |
+| 5.0–5.3 | 2026-07-10 | Walkable overworld replaces node menu; Groove-spend + full stat wiring; analytics consent UI; first full lyric-derived art pass. |
+| 6.0–6.3 | 2026-07-11 | **Pivot: real-time rhythm-action combat** (frame data, hitstun, knockback, DI, parry, cancels) + HLD-register art; action sim + scene shipped; story-staged arena spec. |
+| 7.0–7.5 | 2026-07-11→13 | **Pivot: exploration is a second game loop** — five-region world, echoes, secrets; band cast (Inhalants) playable; AI art pipeline replaces code-only constraint; AAA asset manifest; kitbash environments; top-down combat framing; touch controls. |
+| 7.6–7.9 | 2026-07-13→14 | Lyric-only foe roster (luchadors culled); **real six-track Inhalants soundtrack** replaces synth placeholder; foes stand in the world; save-obelisks; fresh AI band cast + follower conga. |
+| 7.10–7.15 | 2026-07-14 | Honest AAA art audit + P0–P2 burn-down (designed floors, coherent kits, real HUD, water/ground/value); **fights happen in the world** (`WorldFight`, separate battle scenes retired from the trigger path); de-pixelation; arena venues composed into the world; landform direction logged. |
+| **8.0** | **2026-07-14** | **Enterprise rewrite of this document** per the PRD audit. Decisions made: judged beat must derive from the audible track via authored beat maps (§8.3/§10.3); four judgment tiers reaffirmed as spec; ultimate/Groove-spend reaffirmed v1-mandatory; cast re-specified as the band (leader-playable v1, switching v2); boss re-specified as a phased in-world fight keyed to authored song sections (§8.7); §9.3 accessibility reaffirmed with shipped-path gaps tracked; touch input brought in scope with platform tiering (§7.1/§9.2); §8.6 curriculum rewritten post-luchador; analytics/KPIs re-based on measurable events; §11 rewritten to the AI-art + recorded-soundtrack reality; §20 re-cut as of 2026-07-14. |
 
 ---
 
 ## 1. Executive Summary
 
-Project Meterfall is a **single-player, browser-based, pixel-art rhythm RPG**. Players command a fixed four-hero party — warrior, tank, mage, healer — through turn-based battles in which each action is executed as a timed phrase against an authored musical track. The product is derived from a set of concept screenshots that established the core hook (rhythm-driven combat tied to battle music, a four-role party, a final boss with shifting time signatures, and a "see the music" spell concept) but left every production-critical decision — platform, monetization, scope, timing architecture, accessibility posture — undefined.
+*The Drowned Chorus* is a **single-player, browser-based, top-down rhythm-action RPG**.
+The player leads Inhalants — a four-piece band (Amir on lead guitar, plus Bassist,
+Vocalist, and Drummer) — through one continuous, hand-authored drowned world of five
+joined regions. Exploration is a first-class game loop: hidden paths, secret pockets,
+and discoverable "echo" lore fragments reward leaving the road. Combat happens **in the
+world**: walking into a foe locks the camera to a room of the actual overworld and runs
+a real-time action fight there — 8-directional momentum movement, dashes with i-frames,
+frame-data attacks, hitstun and damage-scaled knockback, on-beat parries — with the
+rhythm woven in as **on-beat power**: actions timed to the beat of the *actually
+playing* music are empowered. The soundtrack is six real recorded Inhalants tracks; the
+art direction is the *Hyper Light Drifter* register (colossal silhouette-first enemies,
+vivid limited palette, additive glow on near-black depths), produced through an
+AI-generation + deterministic-import pipeline.
 
-This PRD closes those gaps. It fixes v1 as a **desktop-browser, single-player, non-monetized, ~2–3 hour campaign**, built on **TypeScript + Phaser + Tone.js + Web Audio API**, with **audio-clock-authoritative timing** (never UI timers) and **accessibility treated as a first-class, day-one requirement** rather than a stretch goal. It corrects one music-theory error in the source concept (son clave is a rhythmic pattern, not a time signature, and is implemented as an accent layer over a base meter) and converts the "hidden rhythm" idea into a baseline-readable beat UI with forecast-granting abilities layered on top, in line with published accessibility guidance for rhythm/timing-based games.
+The product began (v1.0, 2026-07-08) as a turn-based rhythm RPG derived from concept
+screenshots; two owner-driven direction changes (v6.0 real-time action combat, v7.0
+first-class exploration) produced the current shape. This document specifies the
+**current target**: it is the single source of truth for requirements, and §20 is the
+single source of truth for build status against them. Where a legacy system still
+exists in the repository (the turn-based `BattleScene` and its subsystems), it is
+explicitly marked *retired* here and is not part of the shipped product path.
 
-The document below is organized so each function — product, engineering, art/audio, QA, accessibility — can work from a single source of truth: goals and metrics, functional and non-functional requirements, technical architecture, content specs, delivery phases, risk register, and release gates.
+Three commitments define the product bar:
+
+1. **The beat the game judges is the beat the player hears** (§8.3, §10.3). A rhythm
+   game whose judged beat diverges from its audible music is broken by definition; this
+   is a hard requirement and release gate, currently the #1 open engineering item (§20.2).
+2. **Accessibility is a day-one requirement** (§9.3), applying to the shipped combat
+   path — not to a retired one.
+3. **Timing is audio-clock-authoritative** (§10.2). No gameplay judgment ever derives
+   from UI timers.
 
 ---
 
 ## 2. Background and Problem Statement
 
-The product originates from three concept screenshots, not a formal brief. Those screenshots reliably establish:
+The product originates from three concept screenshots (2026-07-08) that established a
+rhythm-combat hook, a four-role party, meter-change boss design, a "see the music"
+forecast concept, and a browser/pixel-art delivery target — but left every
+production-critical decision undefined. The initial PRD (v1.0) fixed those decisions
+for a turn-based design, and the game was built against it.
 
-- A turn-based RPG where attacks are performed via rhythm-based input combinations tied to battle music.
-- A four-role party: warrior, healer, tank, mage.
-- Most encounters in 4/4, with a final boss that changes time signature.
-- A "see the music" spell concept to anticipate pattern/meter changes.
-- Enemy variety, with a named example: luchador enemies tied to a 2–3 / 3–2 clave-style rhythm.
-- A browser delivery target, 8-bit/pixel-art aesthetic, original soundtrack, and "sick movesets."
+Live play then falsified two core framing assumptions, and the owner redirected:
 
-They do **not** establish: game name, narrative setting, campaign length, monetization, multiplayer status, target devices, exact timing rules, save architecture, or default beat-UI visibility. Left unresolved, these gaps would stall engineering with recurring product questions mid-build. This PRD exists to resolve them once, with rationale, so implementation can proceed without re-litigating product decisions.
+- **v6.0 (2026-07-11):** menu-driven turn-based combat was replaced by a real-time
+  action arena in the *Super Smash Bros. Melee* depth register, with the rhythm layer
+  re-expressed as on-beat empowerment.
+- **v7.0 (2026-07-11):** the "overworld as hub between fights" framing was identified
+  as the root cause of a flat game; exploration became a first-class second loop with a
+  five-region world, hidden paths, and environmental lore.
 
-### Why this matters now
+Subsequent v7.x cycles delivered the real soundtrack, the band cast, in-world fights,
+and an honest AAA art audit and burn-down. This v8.0 document is the consolidation:
+one spec describing the current target, with history preserved but no longer
+masquerading as current requirements.
 
-Rhythm-combat hybrids are a proven, evidence-backed genre (see §4), but they fail commercially and accessibility-wise when timing is hidden, imprecise, or unreadable. Browsers additionally impose hard technical constraints (audio autoplay restrictions, main-thread timer drift) that must be designed around from day one rather than retrofitted. Fixing these decisions now, before a single scene is built, is materially cheaper than discovering them during a vertical slice.
+### Why this document matters now
+
+The 2026-07-14 audit found the PRD body ~15 revisions behind its own history, spec'ing
+retired systems as current and missing decisions the build had already forced. An
+out-of-date PRD is worse than none: it re-litigates settled decisions and hides real
+gaps (several v1-mandatory features existed only in the retired combat path). v8.0
+restores the contract: **§1–§19 are authoritative for what is required; §20 is
+authoritative for what exists.**
 
 ---
 
@@ -92,14 +109,15 @@ Rhythm-combat hybrids are a proven, evidence-backed genre (see §4), but they fa
 
 | Finding | Source basis | Design consequence |
 |---|---|---|
-| Rhythm-combat hybrids succeed when timing is legible, not hidden | Official product descriptions of *Crypt of the NecroDancer*, *Cadence of Hyrule* (on-screen beat bar), *Hi-Fi RUSH* | Ship a baseline-readable beat UI for all players; do not gate timing info behind a spell |
-| Clave is a rhythmic pattern spanning two bars, not a time signature | Berklee / Open Music Theory / University of Puget Sound music-theory references | Luchador/clave enemies are implemented as accent maps over a base meter (4/4 or cut time); true meter changes are reserved for boss design |
-| Browser JS timers (`setTimeout`, `setInterval`, `requestAnimationFrame`) drift tens of ms under main-thread load | web.dev audio scheduling guidance | All gameplay judgment must be computed against the Web Audio hardware clock / Tone.Transport, never UI timers |
-| Web Audio must be started from a user gesture; browsers suspend audio on load | MDN Web Audio documentation | Mandatory "Press Any Key to Start Audio" gate before any menu is interactive |
-| IndexedDB is the correct client-side store for structured, offline-capable data | MDN storage documentation | Local save profiles use IndexedDB, not `localStorage` |
-| Precise timing must not be the only path to success; cues need multi-sensory representation | Xbox Accessibility Guidelines (XAG 103/104/110), Game Accessibility Guidelines, W3C guidance on real-time pressure and photosensitivity | Baseline beat UI, captions for musically meaningful events, speed/assist options, and practice mode are mandatory v1 features, not backlog items |
+| Rhythm-combat hybrids succeed when timing is legible, not hidden | Product descriptions of *Crypt of the NecroDancer*, *Cadence of Hyrule*, *Hi-Fi RUSH* | Baseline-readable beat UI for all players; on-beat windows judged against the audible track (§8.3); telegraphs land on the beat |
+| Browser JS timers drift tens of ms under main-thread load | web.dev audio scheduling guidance | All judgment computed against the audio clock (§10.2), never `setTimeout`/`rAF` |
+| Web Audio must start from a user gesture | MDN Web Audio documentation | Mandatory audio gate before any menu is interactive (§10.4); first music `play()` is called inside the gate's gesture handler |
+| IndexedDB is the correct client-side store for structured offline data | MDN storage documentation | Local save profiles use IndexedDB (§10.7) |
+| Precise timing must not be the only path to success; cues need multi-sensory representation | Xbox Accessibility Guidelines (XAG 103/104/110), Game Accessibility Guidelines, W3C | Assist windows, captions, speed options, practice mode are mandatory v1 features on the shipped combat path (§9.3) |
+| *Historical:* son clave is a rhythmic pattern, not a time signature | Berklee / Open Music Theory references | Shaped the retired turn-based clave-accent design (v1–v5). The luchador/clave content was culled at v7.6 as off-theme; the finding remains valid guidance for any future accent-pattern design. |
 
-Full citations and source excerpts are preserved in the [deep research report](../research/deep-research-report.md), which this PRD supersedes as the authoritative product spec while remaining the reference appendix for rationale.
+Full citations in the [deep research report](../research/deep-research-report.md),
+which this PRD supersedes as product spec.
 
 ---
 
@@ -107,47 +125,56 @@ Full citations and source excerpts are preserved in the [deep research report](.
 
 ### 4.1 Business / project goals
 
-1. Ship a complete, polished, playable vertical slice of a rhythm RPG that faithfully realizes the source concept.
-2. Prove the audio-clock-driven combat architecture is technically viable in-browser at production quality.
-3. Produce a design that is accessible by default, avoiding a costly post-launch accessibility retrofit.
+1. Ship a complete, polished, playable rhythm-action RPG that realizes the current
+   direction (real-time on-beat combat inside an explorable authored world).
+2. Prove browser-delivered, audio-clock-driven action combat at production quality.
+3. Be accessible by default — on the shipped path, verified per release (§16).
 
 ### 4.2 Product goals
 
-1. Deliver a 2–3 hour single-player campaign that teaches rhythm mechanics progressively, from straight 4/4 to a live-meter-change final boss.
-2. Make the four hero roles feel mechanically distinct through phrase design (combo length, downbeat timing, syncopation, forecast).
-3. Establish a data-driven content pipeline (beatmaps, abilities, encounters) so content team can author fights without engineering involvement per-encounter.
+1. Deliver a 2–3 hour campaign across five regions, each with one boss encountered
+   in-place, with exploration content (echoes, secrets) beyond the critical path.
+2. Make on-beat play *feel* powerful and *be* powerful: the audible music, the judged
+   beat, enemy telegraphs, and player empowerment are one coherent system (§8.3).
+3. Keep the content pipeline data-driven (§10.5): fights, beat maps, and rewards
+   authored as data, not scene code.
 
 ### 4.3 Non-goals (v1)
 
-Multiplayer, monetization, mobile/touch support, user-generated beatmaps, imported-MP3 gameplay, procedural music generation, voice acting, open-world exploration, controller haptics as a required channel.
+Multiplayer, monetization, user-generated content, imported-song gameplay, live beat
+detection, voice acting, dialogue trees/quest-givers (§8.8.4), loot-driven progression,
+controller haptics as a required channel, band-member switching mid-fight (v2 target,
+§8.4), native/store distribution.
 
 ---
 
 ## 5. Success Metrics / KPIs
 
-| Category | Metric | Target |
-|---|---|---|
-| Core loop health | % of players completing the opening biome (tutorial) | ≥ 80% |
-| Retention | % of players who complete the full campaign after starting boss biome | ≥ 50% |
-| Difficulty calibration | Miss rate on Perfect/Great judgments in opening biome | < 25% average, trending down across session |
-| Accessibility adoption | % of sessions using at least one assist setting (speed, assisted window, remap) | Tracked, no target — informs whether assists are discoverable |
-| Forecast mechanic usage | % of healer-equipped parties using Sightread in boss fights | ≥ 60% (validates the mechanic is understood, not ignored) |
-| Technical stability | Judgment drift incidents (measured vs. audio clock) during QA soak | 0 tolerated at release |
-| Boss showcase | % of final-boss attempts reaching Phase 3 | Tracked to validate mid-boss difficulty curve |
-| Browser compatibility | Pass rate across Chrome/Edge/Firefox/Safari current stable | 100% of release-gate test matrix |
+Every KPI below is measurable from events that fire on the **shipped** game path
+(§14). KPIs that depended on retired-path events were removed or re-based at v8.0.
 
-These map directly to the analytics events defined in §14.
+| Category | Metric | Source events | Target |
+|---|---|---|---|
+| Core loop health | % of players clearing the first fight (Shallows) | `battle_started`, `encounter_cleared` | ≥ 80% |
+| Retention | % of players reaching the Conductor after clearing region 1 | `encounter_cleared` per node | ≥ 50% |
+| Rhythm engagement | On-beat rate (on-beat actions / judged actions) in region 1 | `judgment_onbeat`, `judgment_offbeat` (§14) | ≥ 40% average, trending up across a session |
+| Exploration loop | % of completing players who found ≥ 3 echoes | `echo_found` | ≥ 50% (validates the second loop is discovered) |
+| Accessibility adoption | % of sessions using ≥ 1 assist setting | `assist_mode_enabled` | Tracked, no target — informs discoverability |
+| Boss difficulty | % of Conductor attempts reaching phase 3 | `boss_phase_reached` (§8.7, pending build) | Tracked to tune the curve |
+| Technical stability | Judged-beat vs. audible-beat drift in QA soak | QA instrumentation (§16.1) | ≤ 30 ms sustained; 0 desync incidents at release |
+| Browser compatibility | Tier-1 matrix pass rate (§9.2) | Release-gate test matrix | 100% Tier 1; Tier 2 tracked, non-blocking |
 
 ---
 
 ## 6. Target Users and Personas
 
-| Persona | Profile | What they need from Meterfall |
+| Persona | Profile | What they need |
 |---|---|---|
-| **Rhythm-genre fan** | Plays rhythm games (Cadence of Hyrule, NecroDancer, Hi-Fi RUSH); wants a fresh hybrid | Legible timing windows, satisfying feedback on Perfect hits, meaningful mechanical depth by the final boss |
-| **RPG-first player, rhythm-curious** | Primarily plays turn-based RPGs; wary of reflex-heavy genres | Untimed command phase, generous judgment windows in story mode, practice mode with no fail state |
-| **Player with disabilities relevant to timing/audio** | Needs alternatives to precise real-time input or audio-only cues | Assisted timing windows, remappable controls, captions for musically meaningful events, reduced motion / photosensitivity-safe mode |
-| **Content/production team member (internal)** | Authors encounters, tracks, and abilities post-vertical-slice | Data-driven JSON schemas for beatmaps/abilities/encounters that don't require touching scene code |
+| **Rhythm-action fan** | Plays *Hi-Fi RUSH*, *Crypt of the NecroDancer*, character-action games | On-beat play that is audibly and mechanically real; frame-data depth (spacing, cancels, parries) that rewards mastery |
+| **Exploration-first player** | Plays *Hyper Light Drifter*, *Tunic*, *Hollow Knight* | A dense, secret-bearing world where curiosity pays off in found story, not filler collectibles |
+| **Action-curious, rhythm-wary player** | Enjoys action RPGs; anxious about timing tests | Off-beat actions still work (weaker, never punished into unplayability); assist windows, speed options, practice mode |
+| **Player with disabilities relevant to timing/audio** | Needs alternatives to precise input or audio-only cues | Visual beat UI, captions for musically meaningful events, remappable controls, reduced-motion/photosensitivity-safe modes — all on the shipped path |
+| **Content/production team member (internal)** | Authors fights, beat maps, art slots | Data-driven schemas (§10.5), the asset manifest + prompt catalog (§11.5), deterministic regeneration |
 
 ---
 
@@ -157,131 +184,245 @@ These map directly to the analytics events defined in §14.
 
 | Area | Decision |
 |---|---|
-| Platform | Desktop web only. Chrome, Edge, Firefox, Safari — current stable versions. No mobile/touch in v1. |
-| Delivery | Browser-first static web app. No launcher, no native wrapper. |
-| Mode | Single-player only. No co-op, PvP, or chat. |
-| Business model | None. No ads, no IAP, no login, no account creation. |
-| Save model | Local saves only, stored in IndexedDB. |
-| Scope shape | **Revised 2026-07-11 (v7.0):** a large, explorable multi-region world + battles + bosses. v5.0 replaced the node-select menu with a walkable tilemap, but scoped it as a between-battles "hub" — one small road, no reason to leave it. That was the wrong target: on direct feedback ("where's the crazy explorable environment with a crazy detailed world with secret backstories for the player to explore"), exploration is now a **first-class second game loop**, not connective tissue between fights. The world is one large, densely authored map (five joined regions, one per movement — see §8.8) with hidden paths, secret pockets off the critical path, and discoverable environmental lore (echoes, §8.8.2) — the untold stories of §11.1.1 are no longer locked inside battle arenas the player can only glimpse mid-fight; the player walks through the *places themselves* and finds evidence of what happened there. |
-| Aesthetic | 8-bit-inspired pixel art with modern readability. |
-| Camera / layout | Side-view battles; top-down camera-follow overworld hub (v5.0); static/parallax battle backgrounds. |
-| Narrative | Light, character-driven framing. Minimal text burden. |
-| Session target | 10–20 minute sessions; 2–3 hour first-completion campaign. |
+| Platform | Browser web app. **Tier 1 (release-gating):** Chrome and Edge, current stable, desktop. **Tier 2 (supported, best-effort, non-gating):** Firefox and Safari desktop; Chrome/Safari on mobile via the shipped touch controls. See §9.2. *(v8.0: supersedes "desktop only / no touch" — touch controls shipped at v7.x and are retained.)* |
+| Delivery | Static web app (GitHub Pages). No launcher, no native wrapper. |
+| Mode | Single-player only. |
+| Business model | None. No ads, IAP, login, or accounts. |
+| Save model | Local saves only, in IndexedDB (§10.7). |
+| Scope shape | One continuous, hand-authored five-region world (§8.8) with the critical path (five fights, one per region, each region's boss met in-place) and a substantially larger exploration layer around it. |
+| Combat | Real-time rhythm-action, fought **in the world** (§8.2): the camera locks to a room of the actual overworld around the foe. No separate battle scenes on the shipped path. |
+| Camera / layout | Top-down, HLD-style, everywhere — one camera model for exploration and combat. |
+| Aesthetic | Pixel-art in the *Hyper Light Drifter* register (§11.1) at 320×180 logical resolution; art sourced via the AI-generation + import pipeline (§11.1). |
+| Music | Six recorded Inhalants tracks are the soundtrack (§11.2). Each shipped track carries an authored beat map; combat judgment derives from the audible track (§8.3). |
+| Narrative | Environmental only. World-bible canon (§5a/§5b) surfaces through staged scenes and echoes (§8.8.2) — never dialogue trees or lore dumps. |
+| Session target | 10–20 minute sessions; 2–3 hour first completion. |
 
 ### 7.2 Out of scope (v1)
 
-Online/netcode multiplayer (local co-op/party-switch is a later increment, not v1), user-generated beatmaps, procedural soundtrack generation, voice acting, NPCs with dialogue trees or quest-givers (the world tells its story environmentally, §8.8.2 — not through characters to talk to), controller rumble as a required channel, live beat detection from arbitrary/imported songs, monetization plumbing. (Real-time action combat is in scope as of v6.0; large-scale exploration with secrets and environmental lore is in scope as of v7.0 — both were previously excluded.)
+Online multiplayer, user-generated beat maps, live beat detection from arbitrary
+audio, voice acting, NPCs with dialogue trees or quest-givers, controller rumble as a
+required channel, monetization plumbing, band-member switching mid-fight (v2, §8.4),
+loot/gear-grind progression (§8.5).
 
-### 7.3 Product pillars (v7.0 — real-time rhythm-action + exploration)
+### 7.3 Product pillars
 
-1. **The world is the second game.** Exploration is not connective tissue between fights — it is authored content with its own pacing, secrets, and payoff. A player who only walks the critical path sees a fraction of what's there.
-2. **Movement is the game (in battle too).** Combat is a real-time action arena you run, dash, and space in — think *Hyper Light Drifter*'s kinetic clarity with *Super Smash Bros. Melee*'s mechanical depth. Every action has real frame data (startup / active / recovery); mastery is spacing, timing, cancels, and reads, not menu selection.
-3. **The chorus drives the fight.** The rhythm layer is not a minigame bolted on — the arena beats to the track. Attacks, dashes, and parries executed on-beat are *empowered* (bonus damage/knockback, extended i-frames, Groove); enemy attacks telegraph and land on the beat. Reading the music is reading the fight. This is why it is still *The Drowned Chorus*.
-4. **The untold stories are found, not told.** No dialogue trees, no quest text, no lore dumps. Every backstory (§11.1.1, world-bible §5a) is discoverable by walking somewhere and looking — an echo fragment, a staged scene, a hidden pocket off the road. The world rewards curiosity with meaning, not just loot.
-5. **Rhythm clarity before difficulty** — every mechanic must make the beat more legible, never less; the beat UI, telegraphs, and on-beat feedback are always readable.
-6. **Colossal, readable art.** Enemies are imposing and silhouette-first; the player is small against screen-filling bosses. Vivid, limited palette with emissive glow on a desaturated dark world.
-7. **Accessible depth.** Assist/story modes widen on-beat windows, a practice mode has no fail state, and reduced-motion/photosensitivity-safe modes tame effects — none of which remove the skill ceiling for players who want it.
+1. **The world is the second game.** Exploration is authored content with its own
+   pacing, secrets, and payoff — never connective tissue. A player who only walks the
+   critical path sees a fraction of what's there.
+2. **Movement is the game (in battle too).** Combat is run, dash, space, and read —
+   *Hyper Light Drifter* kinetics with *Melee*-register frame-data depth. Mastery is
+   spacing, timing, cancels, and reads, not menu selection.
+3. **The chorus drives the fight — audibly.** The beat the game judges **is the beat
+   of the playing track** (§8.3). On-beat actions are empowered; enemy attacks
+   telegraph and land on the beat. Reading the music is reading the fight.
+4. **The untold stories are found, not told.** Every backstory is discoverable by
+   walking somewhere and looking (§8.8, §11.1.1). No dialogue, no lore dumps.
+5. **Rhythm clarity before difficulty.** Every mechanic must make the beat more
+   legible, never less. Off-beat actions always still execute (weaker) — precise
+   timing is never the only path (§9.3).
+6. **Colossal, readable art.** Silhouette-first enemies that dwarf a small player;
+   vivid limited accents on desaturated darks; emissive telegraphs that keep the
+   real-time fight legible at a glance.
+7. **Accessible depth.** Assist windows, speed options, practice mode, captions, and
+   remapping — on the shipped combat path — without removing the ceiling for players
+   who want it.
 
 ---
 
 ## 8. Functional Requirements
 
-### 8.1 Core loop (v7.0 — two loops, not one)
+### 8.1 Core loop — two interleaved layers
 
-Boot → audio-gesture unlock → save slot select/create → optional AV calibration → the drowned world. From here the loop has two interleaved layers, not one:
+Boot → audio-gesture gate → save slot → optional AV calibration → the drowned world.
 
-1. **The critical path** (unchanged mechanically from v5.0): campaign nodes (battle / elite / boss) are map markers, unlocked in graph order; walking onto an unlocked marker starts its battle; clearing it rewards progression and respawns the player at that marker. This is still exactly enough to finish the game.
-2. **The world** (new, v7.0): between and around those markers is a large, densely authored, walkable region-by-region map (§8.8) that rewards leaving the road — hidden paths, secret pockets, and echoes (§8.8.2) that flesh out the untold stories of §11.1.1/world-bible §5a. None of it is required to progress; all of it is there to be found.
+1. **The critical path:** five fight nodes (battle/elite/boss), one per region, in
+   campaign order. Each node's foe **stands in the world** at its place (v7.8) — the
+   player walks up to the actual enemy, not an abstract marker. A save-obelisk stands
+   near each fight (§8.8.5). Contact starts the in-world fight (§8.2); victory grants
+   rewards (§8.5) and the world continues from that spot. This alone finishes the game.
+2. **The world:** around the path is the five-region explorable map (§8.8) — hidden
+   paths, secret pockets, and echoes. None of it is required; all of it is findable.
 
-The critical path is the spine; the world is the flesh. A player who beelines markers can finish the campaign. A player who explores finds a substantially larger, stranger game underneath it.
+### 8.2 Battle model — real-time action, fought in the world
 
-### 8.8 Exploration — the second game (v7.0)
-
-**Why this section exists.** v5.0–v6.3 treated the overworld as a "hub": a single road with no reason to step off it, and put every environmental story inside a battle arena the player only sees mid-fight and can't walk through. That is a menu with grass texture, not an explorable world, and it does not deliver "crazy detailed world with secret backstories for the player to explore." §8.8 is the fix.
-
-**8.8.1 World structure.**
-- One large, continuous map made of **five joined regions**, one per movement, in campaign order, each authored in the visual language of its arena (§11.1.1) so walking the world *is* walking toward each place, not a generic road that teleports into it: a drowned coastal approach (Shallows), a salt-crusted mine road (Salt Mines), a carnival approach thick with dead lantern strings (Pit Below), a claustrophobic building exterior around the Attic, and the flooded plaza before the Conductor's hall.
-- Regions are visually and structurally distinct (different tile dressing, different obstacle logic — see §11.1.1's "one palette, five moods") but connected on one seamless map, not separate loading-screen levels.
-- The map is substantially larger than the v5.0 hub (target: 4× or more the walkable area) specifically to hold secrets — a map with no unused space cannot hold anything to find.
-
-**8.8.2 Echoes — the found backstory.** An **echo** is a discoverable, wordless-in-dialogue environmental storytelling beat placed off the critical path: a small staged scene (a real prop arrangement, not a text popup) that a player only sees by walking somewhere non-obvious. Interacting with an echo (a context prompt, not automatic) reveals one short fragment of the untold stories already canonized in world-bible §5a — the boat that ran out of rope, the foreman's last three steps, the two lanterns the crowd voted to keep — surfaced as a single evocative line, never a lore dump. Echoes are collectible (persisted per save, §10.7) and optional; missing all of them does not block progress. A HUD counter (found/total) is the only progress signal — no map markers spoiling where they are.
-
-**8.8.3 Secrets and hidden paths.** At least one non-obvious traversal element per region: a gap in rocks that reads as passable only up close, a path that reverses field-of-view expectations (behind a waterfall/wreck, around the back of a structure), or a route only visible from a specific vantage. Secrets gate optional rewards (a relic, an echo, or both) — never critical-path content. This is deliberately hand-authored, not procedural: a secret is only a secret if someone decided where to hide it.
-
-**8.8.4 What this explicitly is not.** Not a stat/level/inventory-management layer (§7.2's "no loot-driven progression" from §8.5 still holds — secrets reward relics/echoes, not gear grinding). Not NPCs or dialogue (§7.2). Not a second combat layer (no overworld enemies/hazards in v1 — the danger is reserved for arenas). Not procedurally generated (§8.8.1's regions and §8.8.3's secrets are hand-placed so their storytelling is intentional, matching §11.1.1 rule 2).
-
-### 8.2 Battle model — real-time action arena (v6.0)
-
-> **Direction change (v6.0):** combat is now a **real-time action arena**, not turn-based. The player directly controls one hero (the party lead; switchable/co-op party members are a later increment), running around a bounded arena, spacing against enemies, and attacking in real time. Depth is in the *Super Smash Bros. Melee* register: every action has real frame data, movement has momentum and cancel windows, and mastery is spacing, timing, cancels, and reads. The prior turn-based/phrase model (v1–v5) is retired; the audio-clock spine (§10.2), content pipeline (§10.5), and campaign/overworld (§8.1) carry forward.
+**In-world fights (v7.13/v7.14, shipped).** Walking into a foe does not load a battle
+scene. The camera locks to a screen-sized room of the actual overworld around the foe;
+the Phaser-free action sim (`src/systems/action/ActionCombat.ts`) runs mapped onto that
+world-space rectangle. Impassable world tiles inside the room become sim obstacles;
+each fight node's authored biome venue (floor patch + kitbash set pieces, composed into
+the map — `ArenaComposer.composeWorldVenue`) guarantees a fightable circle around the
+foe. Victory/defeat runs the rewards → results flow and returns control in-place. The
+legacy `ActionBattleScene` and turn-based `BattleScene` remain registered for
+regression coverage only and are **retired from the product path**.
 
 **Movement.**
-- 8-directional run with acceleration/friction (momentum) and a max speed; a short skid on hard direction reversal.
-- **Dash / dodge**: a burst with **invincibility frames** on startup, committed recovery, and a short cooldown. An *on-beat* dash (§8.3) extends the i-frames and refunds cooldown — the core risk/reward of moving to the music.
-- Facing is set by aim/movement; all attacks are directional.
+- 8-directional run with acceleration/friction (momentum) and max speed.
+- **Dash/dodge:** startup i-frames, committed recovery, short cooldown. An *on-beat*
+  dash extends i-frames and refunds cooldown.
+- Facing follows movement; attacks are directional.
 
-**Attacks (per-hero moveset).**
-- **Light** — fast startup, low commitment, gatlings into a short combo within a cancel window.
-- **Heavy** — slow startup, high knockback/damage, armor on select frames.
-- **Special** — costs Focus; the hero's defining tool (e.g. the Deereater's lunge, the Esoterophobe's zone).
-- **Ultimate** — costs the full Groove meter; a screen-shaking verse loud enough to break the song.
-- Each attack is a hitbox with **frame data** (startup / active / recovery), damage, a knockback vector, and hitstun.
+**Attacks (kit).**
+- **Light** — fast startup, low commitment, gatlings into a short combo in a cancel window.
+- **Heavy** — slow startup, high knockback/damage.
+- **Special** — costs Focus; the kit's defining tool.
+- **Ultimate** — costs the full Groove meter (100); a screen-shaking verse. **v1-mandatory:**
+  Groove must be spendable, not merely accumulable (§8.5). *(Open gap — §20.2.)*
+- Every attack is a hitbox with frame data (startup/active/recovery), damage, a
+  knockback vector, and hitstun.
 
-**Hit reactions (real combos).**
-- **Hitstun**: a hit locks the victim out for frames scaled by damage — enabling true combos and juggles.
-- **Knockback**: a vector whose magnitude scales with the hit *and* the victim's accumulated **damage %** (Melee-style), so combos carry across the arena. **Directional Influence (DI)**: holding a direction during hitstun nudges the knockback vector — defender counterplay.
-- **Parry / perfect-guard**: a tight **on-beat** guard that negates a hit and staggers the attacker; the parry window opens on the beat.
+**Hit reactions.**
+- **Hitstun** scaled by damage, enabling true combos.
+- **Knockback** magnitude scales with the hit and the victim's accumulated **damage %**
+  (*Melee*-style). **DI:** the defender's held direction nudges the knockback vector.
+- **Parry / perfect-guard:** an on-beat guard that negates the hit and staggers the
+  attacker; off-beat guard is a punishable whiff.
 
-**Cancels & tech (the depth layer).** Attack→dash cancel on the beat (dash-dance pressure, whiff-punish); light→light→heavy gatling inside cancel windows; on-beat dash-out-of-pivot slides for spacing. Everything cancellable is cancellable only inside a few-frame window, rewarding precision.
+**Cancels & tech.** Attack→dash cancel on the beat; light-gatling chains inside cancel
+windows; on-beat recovery-cancel into the next attack. Everything cancellable is
+cancellable only inside a few-frame window.
 
-**Encounter flow.** Enter arena → real-time fight (defeat the wave / survive the boss's phases) → on clear, rewards (§8.5) → back to the overworld at the fought node. No turns, no mid-fight menus.
+**Encounter flow.** Contact → real-time fight (defeat the wave / survive the boss's
+phases, §8.7) → rewards (§8.5) → the world, in place. No turns, no mid-fight menus.
 
-### 8.3 Timing model — on-beat power within real time
+### 8.3 Timing model — the beat is the audible track (v8.0 decision)
 
-The four judgment tiers now grade the timing of a **real-time action relative to the nearest beat** (not a scripted phrase). On-beat actions are *empowered*; off-beat still execute, weaker:
+**Hard requirement (release gate #1a, §16.2):** the beat against which actions are
+judged **must be the beat of the music currently playing.** Implementation contract:
 
-| Tier | Window | On-beat effect |
+1. Every shipped track carries an **authored beat map**: measured BPM, first-beat
+   offset (ms into the file), and named sections (bar-aligned timestamp ranges — verse,
+   chorus, breakdown) — hand-verified against the recording, stored per §10.5.
+2. Combat judgment derives from the **playing audio element's position**
+   (`currentTime`) mapped through that beat map — not from an independent metronome.
+   The Web Audio / transport clock remains the scheduling authority (§10.2); it is
+   synchronized to the track, never free-running against it.
+3. **Game speed** (§9.3) scales the track's `playbackRate` and the judgment clock
+   together — heard music and judged beat may never diverge under any setting.
+4. The beat-tick sonifier becomes an optional accessibility layer ("audible beat
+   tick"), defaulting off once beat maps land.
+
+*Status: this is the #1 open engineering item — the shipped build currently judges
+against a beatmap BPM on the transport while unrelated MP3s play (§20.2 item 1).*
+
+**Judgment tiers.** Four tiers grade each real-time action against the nearest beat.
+Off-beat actions always execute, weaker — never a whiff-by-timing:
+
+| Tier | Window | Effect |
 |---|---:|---|
-| Perfect | ±45 ms | +full power: max bonus damage/knockback, extended dash i-frames, parry active, +Groove |
-| Great | ±90 ms | strong bonus, +Groove |
-| Good | ±140 ms | small bonus |
-| Off | outside Good | base action, no bonus, no Groove |
+| Perfect | ±45 ms | Full empowerment: max bonus damage/knockback, extended dash i-frames, parry active, +Groove (large) |
+| Great | ±90 ms | Strong bonus, +Groove |
+| Good | ±140 ms | Small bonus |
+| Off | outside Good | Base action, no bonus, no Groove |
 
-Story/assist mode widens all windows; calibration offset applies globally, before judgment (§10.3). Enemy attacks telegraph and land on the beat, so reading the music reads the fight; **Sightread** reveals the upcoming beats/telegraphs and any meter change (the "see the music" tool). Audio-clock authority is unchanged (§10.2) — all timing derives from `TransportClock`, never wall-clock.
+Assist mode multiplies all windows ×1.5; the calibration offset (§10.3) applies
+globally before judgment. Enemy attacks telegraph and land on the beat.
+*(Status: the shipped fight currently implements a single binary ±90 ms window with
+assist and calibration correctly applied; the four-tier grade is an open gap — §20.2.)*
 
-### 8.4 Party and hero movesets
+### 8.4 The cast — Inhalants, the band
 
-Each hero is an **action moveset** (not a menu of phrases): light, heavy, special (Focus), ultimate (Groove), plus a signature movement/defensive trait.
+The playable cast is the band (v7.9): **Amir** (lead guitar), **Bassist**,
+**Vocalist**, **Drummer**. The band walks the world together (followers in a conga
+line, decorative in v1).
 
-| Hero | Combat identity | Signature trait |
-|---|---|---|
-| **the Deereater** (warrior) | aggressive burst; long committal combos | a lunging gap-close on the beat |
-| **the Saltminer** (tank) | space control & armor; punishes whiffs | on-beat parry with a wide window and a stagger counter |
-| **the Esoterophobe** (mage) | zoning & disruption; controls the arena | places a lingering hex-zone that debuffs foes crossing it |
-| **Sunshine Sally** (healer) | sustain & sight; keeps the party reading the music | **Sightread** (forecast) + an on-beat heal pulse |
+- **v1 (this spec):** the player controls the leader (Amir) with one complete kit —
+  light / heavy / special / ultimate / dash / parry per §8.2.
+- **v2 (target, out of v1 scope):** each member is a distinct playable kit with a
+  signature special and trait (guitar burst zoning, bass shockwave space control,
+  vocal sustain/heal pulse, drum-roll gap-close), switchable between fights.
+
+*(v8.0 note: v6.0's song-title hero names — Deereater, Saltminer, Esoterophobe,
+Sunshine Sally — are retired as cast names; the songs are the soundtrack, not the
+characters. The four legacy role definitions (warrior/tank/mage/healer JSON) back the
+retired turn-based path only.)*
+
+**Sightread** — the realization of the concept art's "see the music" — is re-specified
+for action combat as a **forecast assist**: a HUD lane previewing the next bars' beats
+and any incoming telegraphed enemy attack. v1: available as an accessibility/HUD
+setting; v2: also an in-fiction Vocalist kit ability. *(Open gap — §20.2.)*
 
 ### 8.5 Resources and progression
 
-- **HP** (a bar) and an accumulating **damage %** that scales incoming knockback (Melee-style), so a battered fighter gets launched further.
+- **HP** (bar) and accumulating **damage %** scaling incoming knockback.
 - **Focus** — built by on-beat aggression, spent on specials.
-- **Groove** (shared) — built by on-beat play and clean combos, spent on the ultimate. Whiffing/getting hit off-beat slows Groove gain but never drains Focus.
-- Progression is deterministic, not loot-driven: each boss clear unlocks a new moveset tool per hero. Equipment limited to one relic slot per hero plus one shared party charm.
+- **Groove** (0–100) — built by on-beat play, clean combos, and parries; **spent in
+  full on the ultimate** (§8.2). A Groove meter that cannot be spent is out of spec.
+- Progression is deterministic, not loot-driven: boss clears unlock kit tools; one
+  relic slot per member plus one shared party charm; relics grant real mechanical
+  effects chosen on the results screen.
 
-### 8.6 Encounter design progression
+### 8.6 Encounter design progression (v8.0 — post-luchador curriculum)
 
-| Stage | Musical design | Mechanical purpose |
-|---|---|---|
-| Opening biome | Mostly straight 4/4 | Tutorializes timing, count-ins, role identities |
-| Mid biome 1 | 3/4 and 6/8 | Non-quadruple feel without chaos |
-| Mid biome 2 | 4/4 with clave-accent enemies (luchadors: 2–3 / 3–2 son-clave accent maps, throws/counters on accent hits) | Cross-accent recognition |
-| Mid biome 3 | Syncopated elite encounters | Forecast and defense layering |
-| Final boss | Live meter changes across authored phases | Culmination of the full system |
+One fight per region, ascending in rhythmic and mechanical intensity. Difficulty is
+expressed through **track feel (BPM/energy), enemy count, telegraph density, and
+frame-data strictness** — not meter-signature changes (retired with the turn-based
+model; see §8.7 for how the boss escalates).
 
-### 8.7 Final boss specification — "The Conductor" (internal name)
+| Region (node) | Foe(s) | Track (combat rotation/boss) | Curriculum |
+|---|---|---|---|
+| The Shallows (`opening_1`) | rot slime | combat rotation | Movement, light/heavy, first on-beat rewards; generous telegraphs |
+| The Salt Mines (`mid_1`) | drowned drifter | combat rotation | Dash timing, whiff punishment, first special |
+| The Pit Below (`mid_2`) | wraith + drifter pack | combat rotation | Multi-enemy spacing, target priority, crowd DI |
+| The Attic of Teeth (`mid_3`) | elite wraith | combat rotation | Parry as offense; cancel-window pressure; tighter telegraphs |
+| The Conductor's Hall (`boss_1`) | **the Conductor** | *Quotience* | Full system: phases, section changes, ultimate economy (§8.7) |
 
-- **Phase 1**: stable 4/4 with deceptive syncopation.
-- **Phase 2**: alternates 4/4 and 3/4 every four bars.
-- **Phase 3**: cycles 5/4, 7/8, 4/4, 3/4, with full visual forecast if Sightread is active and reduced forecast otherwise.
-- All meter changes are hard-authored in the battle beatmap — never improvised, generated, or inferred from audio.
+Foe roster is **lyric-canon only** (v7.6): slime, drifter, elite wraith, the Conductor.
+*(Content-hygiene item: encounter/track file IDs still carry legacy names —
+`mid_biome_2_luchadores_*`, `*_clave_*` — around correct contents; rename tracked in
+§20.2.)*
+
+### 8.7 Final boss — "The Conductor" (v8.0 re-spec for in-world action combat)
+
+The Conductor is fought in his hall **in the world** (§8.2), rendered at native
+colossal resolution. The fight has **three authored phases keyed to HP thresholds**,
+and phase escalation is expressed through the *actual song*:
+
+- Each phase binds to an **authored section of *Quotience*** via the track's beat map
+  (§8.3): on phase transition, playback jumps to that section's bar-aligned start, and
+  the judged beat follows — tempo/feel changes come from the recording itself, not
+  from synthetic meter arithmetic.
+- Per phase: escalating AI (attack frequency, new telegraphed patterns), tighter
+  frame data, and one arena change in the hall (story light, hazard ring).
+- All phase data is authored content (§10.5 `BossPhaseConfig` + beat-map sections) —
+  never improvised or inferred from audio at runtime.
+
+**Release gate #3 (§16.2, re-scoped):** phase transitions execute on bar boundaries of
+the audible track without desync between heard music and judged beat.
+
+*(Status: the shipped in-world boss fight has boss music and a boss bar but no phase
+logic yet; the legacy 3-phase implementation exists only in the retired turn-based
+path. Open gap — §20.2.)*
+
+### 8.8 Exploration — the second game
+
+**8.8.1 World structure.** One continuous hand-authored map (currently 130×34 tiles)
+of **five joined regions**, one per movement of the campaign, in order: the drowned
+coastal Shallows, the salt-crusted mine road, the carnival approach to the Pit, the
+claustrophobic exterior of the Attic, and the flooded plaza before the Conductor's
+hall. Regions are visually and structurally distinct (own dressing, obstacle logic,
+and accent hue — "one palette, five moods," §11.1.1) but seamlessly connected. The map
+is deliberately larger than its critical path so it can hold secrets.
+
+**8.8.2 Echoes — the found backstory.** An **echo** is a discoverable, hand-placed
+environmental-story beat off the critical path: a staged prop arrangement with a
+context-prompt interaction revealing **one evocative line** of world-bible §5a/§5b
+canon — found, never told. Echoes are collectible (persisted per save, §10.7),
+optional, and surfaced only as a found/total HUD counter — no map markers. Ten ship in
+the current world.
+
+**8.8.3 Secrets and hidden paths.** At least one non-obvious traversal element per
+region (a gap readable only up close, a route behind a wreck/structure). Secrets gate
+optional rewards (relic, echo, or both) — never critical-path content. Hand-authored,
+never procedural.
+
+**8.8.4 What this explicitly is not.** Not loot/inventory management; not NPCs or
+dialogue; not a second combat layer (no overworld enemies beyond the standing node
+foes); not procedural generation.
+
+**8.8.5 Save-obelisks.** A save-obelisk stands near each fight node (two tiles out, on
+walkable ground). Standing beside it prompts rest; resting persists the save in-world
+("THE CHORUS RESTS") without touching the fight trigger. Obelisks complement — not
+replace — autosave on progression.
 
 ---
 
@@ -289,35 +430,45 @@ Each hero is an **action moveset** (not a menu of phrases): light, heavy, specia
 
 ### 9.1 Performance
 
-- Battle scene targets 60 FPS on all supported desktop browsers.
-- Audio scheduling must remain stable under rendering stutter; combat stays rhythm-correct even during temporary frame-rate dips because **audio is authoritative, not video**.
+- 60 FPS target on Tier-1 browsers at integer-scaled 320×180.
+- Audio scheduling stays stable under render stutter: **audio is authoritative, not
+  video** — the fight stays rhythm-correct through frame drops.
+- Boot stays light: audio is lazy-loaded per scene (`preload="none"`; only the live
+  track is fetched — ~45 MB on disk never loads up front).
 
-### 9.2 Platform / compatibility
+### 9.2 Platform / compatibility tiers (v8.0)
 
-Chrome, Edge, Firefox, Safari — current stable desktop versions only, for v1.
+| Tier | Targets | Bar |
+|---|---|---|
+| **Tier 1 — release-gating** | Chrome, Edge (current stable, desktop) | Full QA matrix (§16.1) passes; automated e2e gate (Chromium) green |
+| **Tier 2 — supported, best-effort** | Firefox, Safari (desktop); Chrome/Safari (mobile, via touch controls) | Boot + core loop verified manually per release; known issues documented, non-blocking. Firefox automated coverage is disabled pending root-cause (§20.2). |
 
-### 9.3 Accessibility (mandatory, day-one)
+Touch input (on-screen thumbstick + action buttons, `src/ui/TouchControls.ts`) ships
+and is maintained; mobile performance/layout polish is Tier-2 best-effort in v1.
+
+### 9.3 Accessibility (mandatory, day-one, on the shipped combat path)
 
 | Setting | Requirement |
 |---|---|
-| Remappable controls | Required |
+| Remappable controls | Required — including the in-world fight's combat bindings, not just menu/tap keys *(open gap — §20.2)* |
 | Keyboard-only play, no required simultaneous presses | Required |
 | Separate volume sliders (music / SFX / UI) | Required |
-| Captions/subtitles for dialogue and musically meaningful events (e.g. "meter shifts," "music intensifies," "downbeat incoming," "enemy chant left") | Required |
-| Reduced motion mode | Required |
-| Photosensitivity-safe VFX mode; no flashing above seizure-risk thresholds | Required |
-| Game speed options: 70% / 85% / 100% | Required |
-| Assisted timing windows | Required — precise timing must never be the only viable path |
-| Practice mode with no fail state | Required |
-| AV calibration screen | Required |
+| Captions for musically meaningful events ("beat drops," "music intensifies," "attack incoming left") | Required — in the in-world fight *(open gap — §20.2)* |
+| Reduced motion mode | Required *(shipped, verified in-fight)* |
+| Photosensitivity-safe VFX mode | Required — no flashing above seizure-risk thresholds |
+| Game speed 70% / 85% / 100% | Required — must scale music playback and judgment together (§8.3.3) |
+| Assisted timing windows | Required — precise timing is never the only viable path *(shipped, ×1.5 in-fight)* |
+| Practice mode with no fail state | Required — in the in-world fight *(open gap — §20.2)* |
+| AV calibration screen | Required *(shipped; offset verified applied in-fight)* |
+| Optional audible beat tick | Required once §8.3 beat maps land (the current always-on quiet tick becomes this setting) |
 
-Haptics are additive-only for a future controller pass, never the sole channel for information.
+Haptics remain additive-only for any future controller pass.
 
 ### 9.4 Security / privacy
 
-- No accounts, no PII collection, no server-side storage in v1.
-- Telemetry (§14) is anonymous and/or consent-gated; consent state is itself part of the local save object.
-- All save data is local to the browser (IndexedDB); no transmission of save data off-device in v1.
+- No accounts, no PII, no server-side storage.
+- Telemetry (§14) is local-only and consent-gated via an in-game toggle; consent state
+  lives in the save profile. No network transmission of any player data in v1.
 
 ---
 
@@ -325,173 +476,237 @@ Haptics are additive-only for a future controller pass, never the sole channel f
 
 ### 10.1 Required stack
 
-**TypeScript + Phaser + Tone.js + Web Audio API.** Phaser provides actively maintained, TypeScript-supported HTML5 rendering (WebGL/Canvas) across browsers. Tone.js schedules musical events against exact time values rather than UI timers. Web Audio is the browser-native API suited to precise, dynamic game audio.
+**TypeScript + Phaser + Tone.js + Web Audio API**, built with Vite; unit tests in
+Vitest; e2e in Playwright; deployed as a static site via GitHub Actions → GitHub Pages.
 
 ### 10.2 Authoritative timing rule (hard constraint)
 
-**No gameplay judgment may be derived from `setTimeout`, `setInterval`, or `requestAnimationFrame` alone.** These may drive visuals only. The source of truth for all musical/combat state is the Web Audio hardware clock via Tone.Transport. This is non-negotiable and is a release gate (§16).
+**No gameplay judgment may be derived from `setTimeout`, `setInterval`, or
+`requestAnimationFrame` alone.** These drive visuals only. The source of truth for
+musical/combat state is the audio clock — and per §8.3, that clock must be
+synchronized to the audible track's beat map, never free-running against it. This is
+non-negotiable and a release gate (§16.2).
 
 ### 10.3 Audio subsystem requirements
 
 | Requirement | Implementation |
 |---|---|
-| Master timeline | `Tone.Transport` as global musical clock |
-| Exact event scheduling | Web Audio clock time passed into callbacks |
-| Low-latency custom analysis/click/metronome | AudioWorklet, if needed |
-| Battle music | Authored stem playback aligned to bar/beat markers |
-| State-reactive mix | Mute/unmute stems, automate parameters on phase changes |
-| Calibration | User-adjustable global AV sync offset, persisted |
+| Soundtrack playback | `SongPlayer` (`src/systems/audio/SongPlayer.ts`): six MP3s, lazy-loaded, crossfaded per scene mode (menu/explore/combat/boss), combat rotation |
+| Beat authority | Per-track **beat maps** (BPM, first-beat offset, sections) mapping the playing element's position to bar/beat — the judgment source (§8.3) *(open gap)* |
+| Scheduling clock | `TransportClock` (Tone.Transport) synchronized to the playing track |
+| Mobile/autoplay compliance | First `play()` fired inside the audio-gate gesture handler; rejections never break a scene |
+| Game speed | `playbackRate` and judgment clock scaled together (§8.3.3) *(open gap)* |
+| Calibration | User-adjustable global AV offset, persisted, applied before judgment *(shipped)* |
+| Optional beat tick | `BeatmapSonifier` demoted to an opt-in accessibility layer once beat maps land |
 
 ### 10.4 Audio startup requirement
 
-The first screen after boot is a mandatory **"Press Any Key to Start Audio"** gate whose sole job is to create/resume the `AudioContext` on a user gesture. No soundtrack autoplay is attempted before this point.
+The first screen after boot is a mandatory **"press any key or click/tap to continue"**
+gate whose sole job is to create/resume the `AudioContext` and prime the first track
+from a user gesture. No autoplay is attempted before it.
 
 ### 10.5 Data-driven content architecture
 
-All gameplay content — timing, encounters, abilities — is data-driven; no encounter timing is hardcoded in scene logic. Canonical schemas live in [`docs/technical/schemas/`](../technical/schemas/) and are mirrored as TypeScript types in `src/data/schemas/`:
+All gameplay content is data, validated at load, never hardcoded in scenes. Canonical
+JSON Schemas in [`docs/technical/schemas/`](../technical/schemas/), mirrored as
+TypeScript types in `src/data/schemas/`, ajv-validated via `ContentLoader.ts`:
 
-- `beatmap.schema.json` — track BPM, meter sequence, subdivision, timed events.
-- `ability.schema.json` — role, cost, phrase length, input pattern, timing template, effects.
-- `encounter.schema.json` — enemy wave, track binding, accent profile, rewards.
+- `beatmap.schema.json` — per-track timing data. **v8.0: extends to the authored
+  beat map of §8.3** (measured BPM, first-beat offset, named bar-aligned sections)
+  binding to a real audio file; the legacy synthetic meter-sequence/event fields
+  remain for the retired path and the sonifier.
+- `encounter.schema.json` — enemy wave, track binding, rewards.
+- `ability.schema.json` — **legacy (retired path)**: phrase-based ability definitions
+  for the turn-based model. Action-combat kits are frame-data definitions in
+  `ActionCombat.ts` today; extracting them to a validated `moveset` schema is the
+  intended follow-on once per-member kits (v2, §8.4) begin.
 
-These three are validated against a compiled ajv JSON Schema (`src/data/ContentLoader.ts`). Four further internal schemas exist alongside them in `src/data/schemas/` to make the game actually runnable — the three canonical schemas above deliberately don't specify combat stats, map topology, or boss phasing, and something has to for a turn-based battle, a node-based map (§8.1), or a multi-phase boss (§8.7) to exist at all. These are content-team-owned data (not engine code), runtime-checked at load time via hand-written shape validators rather than a compiled JSON Schema (`ContentLoader.ts`'s `loadEnemy`/`loadHeroClass`/`loadCampaign`/`loadBossPhaseConfig` — each throws a `ContentValidationError` naming the offending field on bad data, same fail-loudly-at-load-time guarantee as the ajv-validated three):
-
-- `Enemy.ts` — id/name/HP and a list of `intents` (a telegraph key matching a beatmap's `enemyTelegraph` event payload, plus a damage/debuff effect). Backs the enemy wave in an `encounter.schema.json`'s `enemyWave`.
-- `HeroClass.ts` — id/role/name, HP/Focus pools, and the ability-kit `abilityIds` list (§8.4). Backs `partyRoster()`.
-- `CampaignNode.ts` — the node-graph type (`battle | elite | camp | boss`), its bound `encounterId` (or an `encounterPool` of ids drawn from at random per visit, §8.6), and `next` node ids forming the campaign's DAG (§8.1). A `CampaignDefinition` is a `startNodeId` plus the full node list. As of v5.0 the graph renders as walk-onto markers on the overworld (`OverworldScene` + the pure `CampaignReachability` module) rather than a select menu.
-- `BossPhaseConfig.ts` — an ordered list of `{ trackId, hpThreshold }` phases (strictly decreasing thresholds) mapping a boss's HP fraction to which beatmap plays, the data backing for the live meter/tempo phase changes in §8.7.
-
-A JSON Schema file plus ajv compilation could still be added for these four if/when they need external tooling support (e.g. a future content-authoring UI validating outside the game runtime); today's hand-written validators meet the same fail-loudly bar the ajv-compiled ones do and were judged sufficient for content authored directly as hand-written JSON.
+Internal runtime-validated schemas (hand-written shape validators, fail-loudly at
+load): `Enemy.ts`, `HeroClass.ts` (legacy roles + band display data), `CampaignNode.ts`
+(node graph; `encounterPool` per non-boss node), `BossPhaseConfig.ts` (HP-threshold
+phases — re-targeted at §8.7's section-based phases when built).
 
 ### 10.6 Rendering and scene architecture
 
-- Fixed internal resolution **320×180**, 16:9 canvas, integer-multiple scaling, `image-rendering: pixelated` (no smoothing).
-- Fixed scene stack (mirrored under `src/scenes/`):
+- Fixed logical resolution **320×180**, 16:9, integer scaling, `image-rendering:
+  pixelated`. Generated art is authored at up to ~1.5× logical density (v7.13) with
+  engine scales compensating — more detail per screen pixel, same on-screen sizes.
+- Scene stack (`src/main.ts`):
 
-| Scene | Purpose |
-|---|---|
-| BootScene | Load manifest, verify browser support |
-| AudioGateScene | User gesture; create/resume audio context |
-| MainMenuScene | Start, continue, settings |
-| SaveScene | Slot create/load/delete |
-| CalibrationScene | AV sync test and offset save |
-| OverworldScene | Walkable overworld hub: tilemap, movement/collision, camera-follow, node markers, battle triggering (replaced MapScene in v5.0) |
-| BattleScene | All combat logic and UI |
-| ResultsScene | XP, relic, unlocks |
-| SettingsOverlay | Always-available settings modal |
+| Scene | Status | Purpose |
+|---|---|---|
+| BootScene | shipped | Manifest load, browser support check |
+| AudioGateScene | shipped | Gesture gate; audio context + first-track priming |
+| MainMenuScene | shipped | Start, continue, settings; title key-art |
+| SaveScene | shipped | Slot create/load/delete |
+| CalibrationScene | shipped | AV sync test + offset save (keyboard and pointer) |
+| OverworldScene (+ `overworld/WorldFight.ts`, `env/ArenaComposer.ts`) | shipped — **the product path** | The five-region world: movement, foes standing in-world, venues, obelisks, echoes, and the in-world fight controller |
+| ResultsScene | shipped | Rewards, relic choice, unlocks |
+| SettingsOverlay | shipped | Always-available settings modal |
+| ActionBattleScene | **retired from product path** | Standalone action arena (v6.1–v7.12); registered for regression coverage only |
+| BattleScene | **retired from product path** | Turn-based combat (v1–v5); registered for regression coverage only |
+
+Retired scenes are scheduled for removal once their remaining unique coverage
+(boss-phase mechanics, §8.7) is re-implemented on the product path (§20.3).
 
 ### 10.7 Storage and persistence
 
-All save data lives in **IndexedDB**: player settings, calibration offsets, campaign progress, unlocked skills, relic inventory, analytics consent state, and (v7.0) found echo ids (§8.8.2).
+All save data in **IndexedDB**: settings, calibration offset, campaign progress,
+unlocks, relics, analytics consent, found echo ids. Verified across reload and
+browser restart (release gate #6).
 
 ---
 
 ## 11. Content and UX Requirements
 
-### 11.1 Art direction — *Hyper Light Drifter* register (v6.0)
+### 11.1 Art direction — *Hyper Light Drifter* register
 
-**Target feel:** *Hyper Light Drifter*. Colossal, imposing enemies that dwarf a small, nimble player; bold, instantly-readable **silhouette-first** design; a **vivid, limited palette** — a few searing accent hues (abyssal teal, plum/magenta, ember-gold, blood) on desaturated near-black depths — with **additive glow/bloom** on eyes, weapon arcs, attack telegraphs, hazards, and the chorus's light. Dramatic scale and negative space; crunchy, deliberate, low-frame-count animation with strong anticipation/impact poses. Emissive readability is a hard requirement: every attack telegraph and hitbox-active frame must glow so the real-time fight is legible at a glance.
+**Target feel:** colossal, imposing, silhouette-first enemies dwarfing a small nimble
+player; a vivid, ruthlessly limited palette (abyssal teal, plum/magenta, ember-gold,
+blood on desaturated near-black); additive glow on eyes, arcs, telegraphs, and the
+chorus's light. Emissive readability is a hard requirement: every telegraph and
+hitbox-active frame glows so the real-time fight reads at a glance.
+
+**Sourcing (v8.0 — supersedes all "no image generation" language):** production art is
+**AI-generated through the in-repo pipeline** and deterministically imported —
+`tools/pixelart/generate_ai.py` (keyless Flux via Pollinations) → cleanup passes
+(background flood-key, largest-island filtering, mist-scrub) → `smooth_downscale()`
+(clean LANCZOS, hard alpha, **no palette quantization** since v7.14) → committed PNGs
+in `assets/` slots. Prompts are cataloged 1:1 with the manifest in
+[`docs/design/art-prompts.md`](../design/art-prompts.md); style coherence comes from
+shared per-biome/per-cast style clauses and a **pinned top-down camera clause** in
+every environment prompt (the v7.10 audit's root-cause fix). Hand-drawn or
+commissioned art drops into the same slots and always wins over generated art.
+Procedural code-drawn art (`tools/pixelart/`) remains the fallback for not-yet-generated
+slots and all deterministic regeneration plumbing.
 
 | Asset type | Spec |
 |---|---|
-| Base resolution | 320×180 (small player, screen-filling bosses) |
+| Base resolution | 320×180 logical; art authored up to ~1.5× density (§10.6) |
 | Tile size | 16×16 |
-| Player combat sprite | ~20×24, silhouette-readable |
-| Standard enemy | 48×48+; **elites/bosses 96–180px** (colossal, may exceed one screen height) |
-| Glow/bloom | additive emissive layer on eyes, edges, energy, telegraphs, and hazards |
-| Battle arenas | 320×180, layered depth (fog/atmospheric perspective), god-rays, caustics |
-| Animation | low frame count, high contrast in pose (anticipation → impact → recovery), 8–12 fps |
-| Palette policy | one global master palette, ruthlessly limited; saturated accents on desaturated darks (HLD discipline) |
+| Player sprite | small, silhouette-readable band members (individually recognizable at world scale) |
+| Standard enemy | 48×48+; elites/bosses colossal (the Conductor ~2.9× player height, native-resolution) |
+| Glow/bloom | additive emissive layer on eyes, edges, telegraphs, hazards; beat-pulsing accents |
+| Environments | designed floors and venues (§11.1.1) — no noise fills, no void centres |
+| Animation | low frame count, high pose contrast (anticipation → impact → recovery), 8–12 fps; strips derived from one base pose per character for identity stability |
+| Palette policy | master palette discipline; per-region dominant hue ("one palette, five moods") |
 
-**"Enterprise level" acceptance criteria (v6.4, extended v7.2).** Art quality is judged against these checkable standards, not vibes: (1) **no tint-swaps or upscales** — every character is bespoke authored art, and bosses are authored at native colossal resolution (never a small sprite scaled up); (2) **animation states, not static sprites** — the playable character has authored attack poses (anticipation → impact) and a hurt reaction; enemies have idle motion, a readable windup telegraph, and a hurt flash; (3) **every arena is a distinct authored place** meeting §11.1.1; (4) **a consistent light source and emissive pass** on every sprite (rim light, outline, glow); (5) **one master palette** across all assets; (6) all of it deterministic and regenerable (`generate_all.py`); (7) **(v7.2) designed surfaces, not noise** — every tile and texture is intentional pixel art with a clear light source, a shading ramp (ordered dithering between value steps, never per-pixel RNG fills), and hand-placed motifs; a tile must read as *grass / stone / water*, not static. Gaps against these criteria are tracked in §20.4 — anything not yet meeting them must be listed there, not implied shipped.
+**Acceptance criteria** (judged, not vibes): (1) no tint-swaps or upscales — bosses at
+native colossal resolution; (2) animation states, not static sprites (§11.5 standard);
+(3) every arena/venue a distinct authored place (§11.1.1); (4) consistent light source
++ emissive pass; (5) master-palette discipline; (6) deterministic regeneration
+(`generate_all.py` + committed generator scripts); (7) designed surfaces — every tile
+reads as *grass/stone/water*, never RNG static; (8)–(10) per the §11.5 manifest: every
+row filled with real art, every character/enemy carrying its full state set, every
+biome a full tileset + props. Gaps tracked in §20.4 only — never implied shipped.
 
-**Honest ceiling note (v7.2).** The art is authored in code as palette-indexed pixel grids (`tools/pixelart/`, no external art, no image generation — a project-level constraint, §11.4). This is the correct source-of-truth discipline, but it has a hard quality ceiling: hand-coded pixel art reaches *competent-indie* fidelity (well-designed 16–32px tiles, silhouette-clear sprites), **not** literal *Hyper Light Drifter* production art, which is made by dedicated pixel artists over months. Criterion (7) and the §20.4 overhaul push the procedural art to that competent-indie ceiling. Reaching true AAA/HLD-tier requires **real art assets** (professional tilesets / character packs) dropped into the same `assets/` slots — the pipeline already proves this works (the provided hand-drawn **Amir** guitarist is the one asset that reads AAA precisely because it is real art). That is the intended path beyond the ceiling, gated on the owner supplying/authorizing assets.
+### 11.1.1 Environments — every fight happens in a specific place
 
-**Realized direction (v5.3):** the art bible now exists — [`docs/design/art-bible.md`](../design/art-bible.md) — and the game ships a real, cohesive pixel-art pass built to it, derived from the Skatopia setlist lyrics ("the drowned chorus": a gothic, drowned, clockwork world). Everything is authored in code as palette-indexed pixel grids and rendered deterministically to PNG (`tools/pixelart/`, regenerate with `generate_all.py`) — four *distinct* hero classes (not one tinted sprite), six lyric-themed enemies incl. the Conductor boss, a seamlessly-tiling overworld tileset, painted battle backdrops, and a titled main menu, all sharing one master palette. This supersedes the earlier "carried-forward Amir placeholder" basis (§11.4); the Amir reference frames are retained only as historical animation-timing reference. Remaining art work is animation depth (attack/hurt frames, true 4-directional art), not a from-scratch art pass — see art-bible §6 and §20.2.
+**No generic battlefields.** Each region's fight happens at a **venue composed into
+the world itself** (v7.14): the biome's authored floor is painted as an edge-faded
+patch blended into the surrounding map, its kitbash set pieces stand around the spot
+in world space, and the fight locks its room onto that exact dressed ground. Each venue
+stages an untold story (canon in [world-bible](../design/world-bible.md) §5a) readable
+without text:
 
-### 11.1.1 Environments — every arena is a place with an untold story (v6.3)
-
-**Requirement: no generic battlefields.** A shared "moody backdrop" behind every fight is explicitly *out of spec*. Every movement of the campaign is fought **inside a specific place**, and every place carries a story the game never tells in words — the *Hyper Light Drifter* discipline of environmental storytelling: the set pieces are arranged so an attentive player reconstructs what happened here, and an inattentive one still feels that *something* did. No lore dumps, no signposts, no NPC exposition in v1. The room is the narrator.
-
-Design rules for every arena:
-
-1. **A specific place, not a theme.** "Underwater ruins" is a theme; "a village green whose ring of boats is still tied to a sunken maypole" is a place. Each arena must pass the postcard test: describe it in one sentence and it is unmistakably *this* game and *this* room.
-2. **An untold story, physically staged.** Each arena embeds 2–4 authored set pieces whose *arrangement* implies a past event (see table). The set pieces must be readable at 320×180 without text.
-3. **Fight-readable.** Storytelling lives in the backdrop and floor bands; the play-space stays uncluttered and high-contrast so hitboxes, telegraphs, and movement always read (pillar 3). Emissive accents (§11.1) may mark story focal points but never enemy-telegraph red.
-4. **The chorus is present everywhere.** Every arena visibly *responds to the music* somewhere — a story light that pulses on the beat — reinforcing pillar 2 diegetically.
-5. **One palette, five moods.** All arenas share the master palette but own a dominant hue so each movement feels like a different depth of the same drowned world.
-
-The five v1 arenas and their untold stories (canonical staging in [`docs/design/world-bible.md`](../design/world-bible.md) §5a; each backdrop is authored in `tools/pixelart/backgrounds.py` as its own painter):
-
-| Node | Arena (the place) | Dominant hue | The untold story its set pieces stage |
+| Node | The place | Hue | The untold story its set pieces stage |
 |---|---|---|---|
-| `opening_1` | **The Shallows** — a drowned village green | teal | Rooftops and a leaning chapel spire break the seafloor; a ring of little boats is still moored in a circle around a sunken maypole, and one empty boat floats *above*, still tied, straining at its rope toward the surface. The village went under mid-festival — and somebody almost got away. |
-| `mid_1` | **The Salt Mines** — a gallery of the calcified | ember/gold | Mine-cart rails run past pillars that are not pillars: they are miners **turned to salt mid-swing**, tools still raised, all facing the same tunnel mouth that now glows faintly. Whatever they saw down that tunnel, they saw it *together*, and no one was looking away. One statue near the exit faces the other way — mid-run. |
-| `mid_2` | **The Pit Below** — a sunken carnival ring | plum/magenta | A wrestling ring stands in a bowl of banked seating, strings of dead festival lanterns sagging overhead — but two lanterns still burn, and the ring's ropes are snapped **outward** on one side. The crowd's chairs are all tipped over *away* from the ring. The last match did not stay inside the ropes. |
-| `mid_3` | **The Attic of Teeth** — a locked room that should not fit indoors | blood/rust | Slanted rafters, a single bolted door high in the back wall with claw-gouges **on the inside**, walls black with layered scrawl, and a small bed made entirely of pens beside a spill of tiny bones. Someone was kept here long enough to write on every surface — and was writing *about a sound* (staves and bars are scratched among the scrawl). |
-| `boss_1` | **The Conductor's Hall** — an orchestra with no orchestra | ink + ember | Rows of empty music stands recede toward a raised podium under a bone organ; every stand holds a page, and every page is blank except the last row's, which are full. Black clocks line the walls, each stopped at a *different* time, all melting downward. He has been rehearsing an unfinished ending with players who drowned rehearsing it. |
+| `opening_1` | **The Shallows** — a drowned village green | teal | A ring of boats moored around a sunken maypole; one empty boat still straining at its rope toward the surface. The village went under mid-festival — and somebody almost got away. |
+| `mid_1` | **The Salt Mines** — a gallery of the calcified | ember/gold | Miners turned to salt mid-swing, all facing one faintly glowing tunnel mouth; one statue faces the other way — mid-run. |
+| `mid_2` | **The Pit Below** — a sunken carnival ring | plum/magenta | A ring with ropes snapped **outward**, dead lantern strings overhead — two still burning — and every chair tipped over *away* from the ring. |
+| `mid_3` | **The Attic of Teeth** — a room that should not fit indoors | blood/rust | A bolted door with claw-gouges on the *inside*, walls black with scrawl — staves and bars scratched among it — and a small bed made of pens. |
+| `boss_1` | **The Conductor's Hall** — an orchestra with no orchestra | ink + ember | Empty stands holding blank pages (the last row's are full), melting clocks each stopped at a different time. He rehearses an unfinished ending with players who drowned rehearsing it. |
 
-**Overworld (superseded by §8.8, v7.0):** the world map is no longer a thin road between arenas — it is the fully explorable five-region world of §8.8, authored in each region's own visual language so the walk *into* a place foreshadows the arena it leads to (calcified milestones thickening near the mine road, lantern strings drooping near the pit descent, etc.), carrying its own echoes and secrets rather than being connective tissue.
+Design rules: a specific place, not a theme (postcard test); story staged physically
+in 2–4 set pieces; fight-readable (story in dressing, play-space high-contrast; story
+accents never telegraph-red); a beat-pulsing story light in every venue; one palette,
+five moods. The overworld region *approaching* each venue foreshadows it in its own
+visual language (§8.8.1).
 
-**Acceptance:** each arena ships as a distinct authored backdrop (no palette-swap of a shared scene), passes the postcard test in review, and its story set pieces are identifiable in a 1× screenshot. Tracked in §20.4.
+**Landform direction (v7.15, next art pass):** landscape-scale forms — colossal
+outcrops and cliff walls that break the map silhouette, elevation shading, and canopy
+trees overhanging the play space (drawn above the player layer, alpha-fading when the
+player walks beneath).
 
-### 11.2 Music and audio content spec
+### 11.2 Music and audio content spec (v8.0 — the recorded soundtrack)
 
-Each battle track ships with: full mix preview, runtime stems (drums, bass, harmony, lead, FX), tempo map, meter map, bar markers, an authoring-only click reference (never shipped to players), and a battle SFX pack. Music is authored externally in a DAW and exported as bar-aligned stems.
+**The soundtrack is six recorded Inhalants tracks** (owner-supplied, committed in
+`assets/audio/`), streamed lazily and crossfaded by scene mode (§10.3):
 
-**Carried-forward basis:** the demo audio master (§11.4) and its Game Boy chiptune derivative are the music-direction basis, not disposable reference. [`tools/gbmusic/`](../../tools/gbmusic/README.md) — which stem-separates a mixed track into vocals/bass/drums/other and maps them onto the Game Boy's four hardware channels (pulse/pulse/wave/noise) — is the intended production path for turning this track into authentic Game Boy chiptune material: run the pipeline, then hand-tune the resulting `.lsdsng` in LSDJ, then render/record real Game Boy audio as the shippable stem set per the spec above. The DAW-authored-stems requirement still stands for tracks that don't originate from this pipeline; this is the path for tracks that do.
+| Mode | Track |
+|---|---|
+| Menu | *Sunshine Sally* |
+| Explore | *Deereater* |
+| Combat (rotates per fight) | *Glassriff* / *John's Anus* / *Truckers for Christ* |
+| Boss | *Quotience* |
 
-**Track sourcing decision:** all v1 battle tracks are sliced from this single ~22-minute demo master (`--start`/`--duration` per segment in `tools/gbmusic/convert.py`), not composed as separate new material per biome. Each stage in the §8.6 encounter progression and each final-boss phase (§8.7) gets its own slice, its own independent `gbmusic` run, and its own hand-tuning pass — they are distinct `.lsdsng` projects/renders even though they share one source recording. Meter changes for the final boss are still hand-authored in the beatmap JSON per §10.5/§8.7 regardless of which audio slice underlies them — slicing determines the audio content, not the authored meter/event data layered on top of it.
+**Per-track deliverables (v1):** the audio file plus an **authored beat map** —
+measured BPM, first-beat offset, and named bar-aligned sections (§8.3) — hand-verified
+against the recording. The boss track additionally requires per-phase section bindings
+(§8.7). A battle SFX pack (hits, parry, dash, UI) completes the audio content set.
+*(Beat maps are the #1 open item — §20.2.)*
 
-Which timestamp ranges map to which stage is recorded in [`docs/design/music-direction.md`](../design/music-direction.md): ranges were chosen algorithmically (rhythmic-density/energy scoring, ascending complexity to match the §8.6 difficulty curve), not by ear, so treat the mapping as a starting point pending a human listening pass, not a locked decision. All seven `.lsdsng` drafts exist at `tools/gbmusic/output/{opening_biome,mid_biome_1,mid_biome_2_clave,mid_biome_3_syncopated,boss_phase_1,boss_phase_2,boss_phase_3}.lsdsng`.
+**Explicitly retired:** the DAW-stem/tempo-map pipeline spec and the
+`tools/gbmusic/` chiptune production path (demo-master slicing, `.lsdsng` drafts,
+LSDJ hand-tuning) are **historical** — superseded by the real recorded soundtrack at
+v7.7. The tooling and drafts remain in-repo as archived direction work
+([`docs/design/music-direction.md`](../design/music-direction.md)); they are not v1
+deliverables and nothing ships from them.
 
-### 11.3 UX rules
+### 11.3 UX rules — the fight HUD
 
-The battle UI must always show: current measure and beat, phrase lane for the active action, next-downbeat indicator, enemy intent iconography, and clearly separated HP / Focus / Groove values. Critical information must never rely on color alone.
+The in-world fight must always show: the framed band plate (HP bar, Focus pips, Groove
+bar, damage %), a **beat indicator** pulsing with the judged beat, enemy HP hugging
+each sprite, a screen-space named boss bar in boss fights, and a controls hint that
+auto-fades. On-beat feedback must be legible (hit flash / scaled arcs). Critical
+information never relies on color alone. Once §8.3 tiers land, judgment feedback
+(Perfect/Great/Good) joins the HUD; once Sightread lands (§8.4), its forecast lane does.
 
-### 11.4 Current asset inventory (as of 2026-07-10)
-
-**Primary art source (v5.3): the in-code pixel-art pipeline.** The game's actual shipped art — heroes, enemies, tileset, battle backdrops, menu — is authored in `tools/pixelart/` and rendered to committed PNGs under `assets/sprites/`, `assets/tilemaps/`, and `assets/backgrounds/`. See [`docs/design/art-bible.md`](../design/art-bible.md) for the direction and the file-by-file breakdown. The table below is the *pre-pipeline reference material*; the "Amir" placeholder frames are now superseded by the pipeline heroes and retained only as historical animation-timing reference.
-
-**Decision (historical, 2026-07-08): this material carries forward** as the style/direction basis for production — it is not disposable placeholder to be discarded once "real" production starts. None of it meets §11.1/§11.2 delivery spec yet in its current form, and none of it counts toward the vertical-slice exit condition (§15) as-is, but it is the thing final assets are derived from, not replaced by.
+### 11.4 Current asset inventory (as of 2026-07-14)
 
 | Asset | Location | Status |
 |---|---|---|
-| 7 placeholder hero spritesheets ("Amir" run/crouch/dash/stand animations) | `assets/sprites/heroes/placeholder/` | Carries forward as the hero's visual/animation basis; the crouch-wait frame is now loaded and rendered in-engine for all four heroes (role-tinted) per §20.1, and as of v5.0 the 8-frame run strip is the animated walking player on the overworld (left = flipped right; up/down reuse the same frames — a one-strip placeholder-art limitation, not a bug). Does not yet conform to the 48×48 combat-sprite / master-palette spec in §11.1, and reusing one frame across all four roles is not final art — needs redrawing to spec, not replacing with a different character. |
-| Overworld tileset + tilemap (16×16 grass/path/water/rock tiles; 40×24 Tiled-JSON map with `ground` tile layer and `markers` object layer) | `assets/tilemaps/`, generated by `tools/overworld/generate_overworld_map.py` | New in v5.0. The map layout and marker data are real authored content (the generator BFS-validates every node marker is reachable from spawn); the tile *art* is programmatically-generated placeholder, subject to the same real-art-production blocker as everything else in this table. |
-| 2 animation reference GIFs (crouch, dash-to-run) | `assets/reference/animation-gifs/` | Carries forward as animation-timing reference for the same character; superseded by the spritesheets above wherever they overlap. |
-| Demo audio master ("AmirsMaster...WithBabyVocals.mp3", ~22 min, kept local/gitignored — see `assets/reference/README.md`) | `assets/reference/audio-demo/` | Carries forward as the sole source track for all v1 battle music. Not itself a battle-track deliverable (too long, not stem/tempo/meter-mapped) — every stage/boss-phase track is a distinct slice of this master run through `tools/gbmusic/` (§11.2), not separately composed material. |
-| Example `.lsdsng` chiptune draft (30–60s clip of the demo track, run through `tools/gbmusic/`) | `tools/gbmusic/output/amirs_master_clip_30-60s.lsdsng` | Carries forward as the first working proof of the music-direction pipeline. Machine-transcribed and untuned (see limitations in `tools/gbmusic/README.md`) — needs hand-tuning in LSDJ before it's a candidate shippable stem, but it is the direction, not a discardable prototype. |
-| 7 stage/boss-phase `.lsdsng` drafts, one per row of the table in `docs/design/music-direction.md` | `tools/gbmusic/output/{opening_biome,mid_biome_1,mid_biome_2_clave,mid_biome_3_syncopated,boss_phase_1,boss_phase_2,boss_phase_3}.lsdsng` | The full v1 battle-track set, sliced and converted per the track-sourcing decision above. Same caveats as the example draft: machine-transcribed, untuned, not yet auditioned by a human, not shippable as-is. |
+| Playable band (4 members × idle/run/attack strips, derived from one base pose each) | `assets/sprites/band/{amir,bassist,vocalist,drummer}/` | Shipped (v7.9 AI-generated cast; prior hand-drawn originals archived in `assets/reference/band-original/`) |
+| Foes (slime, drifter, elite wraith) + the colossal Conductor | `assets/sprites/enemies/` | Shipped (v7.11 resprite in the band's register; Conductor native-resolution) |
+| Six-track soundtrack | `assets/audio/*.mp3` (~45 MB, lazy-loaded) | Shipped (v7.7). Beat maps not yet authored (§20.2) |
+| Five-region overworld (130×34 Tiled JSON, BFS-validated reachability) + 20-tile sheet | `assets/tilemaps/`, `tools/overworld/generate_overworld_map.py` | Shipped (v7.0; ground/water/clustering/value pass v7.12; de-pixelation v7.14) |
+| Environment kits (5 biomes + shared, 28 pieces) + venue composition | `assets/sprites/env/`, `tools/pixelart/envkit.py`, `ArenaComposer.ts` | Shipped (v7.11 coherent top-down kits; v7.14 world venues) |
+| Region landmarks (5 colossal set-pieces) | `assets/sprites/overworld/landmarks.png` | Shipped (v7.1/v7.3) |
+| Overworld NPCs (ambient figures), props, obelisks, echo runes | `assets/sprites/` | Shipped |
+| Title key-art + framed UI kit (plates, boss bar) | `assets/`, `tools/pixelart/ui.py` | Shipped (v7.11 HUD). Authored wordmark deferred (v7.12 — needs lettered-by-hand approach) |
+| SFX pack | `assets/audio/sfx/` | **Empty — open** (§20.2) |
+| Legacy/reference: pre-band hero art, animation GIFs, gbmusic `.lsdsng` drafts, demo master (gitignored) | `assets/reference/`, `tools/gbmusic/output/` | Archived — historical direction material, no v1 deliverables |
 
-Action item for pre-production exit (§15): the art bible and music direction docs (`docs/design/`, currently stubs) should be written as spec-conformant extensions of this carried-forward material — i.e., document how the "Amir" character and the chiptune-via-`gbmusic` approach get taken to shippable quality, not propose alternatives to them.
+### 11.5 Production art asset manifest
 
-### 11.5 AAA art asset manifest (v7.3)
+The checklist the game's art is built and judged against; per-slot generation prompts
+live in [`docs/design/art-prompts.md`](../design/art-prompts.md) (kept 1:1).
 
-**Why this section exists.** Prior art scope was ~30 slots (four sprites, four tiles, a handful of enemies/backgrounds). That is *prototype* breadth, not a game. A shipped AAA pixel-art title (Blasphemous, Dead Cells, Hyper Light Drifter register) carries **hundreds of named assets and thousands of frames**: every character has a full animation state machine, every biome has a full autotiling tileset plus parallax layers and dozens of props, there are dozens of enemies each with their own state set, a multi-phase boss, a full VFX library, and a complete UI kit. This section is the **production asset manifest** — the checklist the game is built and judged against — and the per-asset generation prompts live in [`docs/design/art-prompts.md`](../design/art-prompts.md), which must stay 1:1 with this manifest. "Enough art" = this manifest filled, not a representative sample of it.
+**Animation-state standard.** Playable band members target **≥22 states** (idle,
+idle_combat, walk, run, dash, jump, fall, land, attack_1/2/3, heavy, special,
+ultimate, parry, block, hurt, death, downed, revive, victory, interact + portrait).
+Enemies target **≥6 states** (idle, move, attack, telegraph, hurt, death; ranged/elite
+add projectile/special). The boss is authored per-phase (intro, idles, attack set,
+transitions, stagger, death).
 
-**Animation-state standard.** AAA characters are not single sprites. Every **playable band member** ships **≥22 animation states**: `idle`, `idle_combat`, `walk`, `run`, `dash`, `jump`, `fall`, `land`, `attack_1/2/3` (combo), `heavy`, `special`, `ultimate`, `parry`, `block`, `hurt`, `death`, `downed`, `revive`, `victory`, `interact` — plus a dialogue **portrait**. Every **enemy** ships **≥6 states**: `idle`, `move`, `attack`, `telegraph`, `hurt`, `death` (ranged/elite add a `projectile`/`special`). The **boss** is authored per-phase with intro, per-phase idles, its full attack set, phase-transition, stagger, and death.
-
-**Manifest by category** (target counts for v1 AAA scope; each row is enumerated with a prompt in `art-prompts.md`):
-
-| Category | Scope | Approx. asset slots |
+| Category | Scope | Approx. slots |
 |---|---|---|
-| **Playable band** | 4 members × ~22 animation states + 4 portraits | ~92 |
-| **Enemies** | ~18 types across 5 biomes × 6 states (+ elite specials) | ~114 |
-| **Boss(es)** | The Conductor (3 phases, full attack set) + 1–2 mid-bosses | ~36 |
-| **Tilesets** | 5 biomes × ~9 sheets (terrain/path/water autotile w/ edges+corners, cliffs/walls, biome transitions, decal overlays, foreground occluders, animated tiles, interactive tiles) | ~45 |
-| **Environment props & destructibles** | ~12 per biome + ~10 shared interactables (chest, save-shrine, door, sign, lever, campfire, breakables) | ~70 |
-| **Landmarks** | 5 primary + ~2 secondary per biome | ~15 |
-| **Parallax backgrounds** | 5 biomes × ~4 layers (sky/far/mid/near) + 5 arena scenes + weather overlays | ~30 |
-| **VFX library** | hit sparks, light/heavy slash arcs, parry burst, dash trail, run/land dust, water splash, blood, heal/buff blooms, per-element projectiles + muzzle/impact, explosion, death dissolve, status auras (poison/burn/stun/slow/shock), chorus light | ~30 |
-| **UI kit** | title logo, main-menu illustration, HUD frame + HP/Focus/Groove bars, ability icons (4×~4), relic/item icons (~20), currency/key/consumable icons, cursor, button states, dialogue box + nameplate, world-map screen, pause panel, results screen, settings icons, bitmap font (2 weights) | ~90 |
-| **NPCs** | 4 old-hero NPCs + ~6 townsfolk/vendors/questgivers × (idle, talk, portrait) | ~30 |
-| **Items & pickups** | health orb, currency, ~15 relics, keys, consumables, map fragments | ~25 |
-| **Total** | | **~575 named asset slots** (thousands of frames) |
+| Playable band | 4 members × ~22 states + portraits | ~92 |
+| Enemies | ~18 types across 5 biomes × 6 states | ~114 |
+| Boss(es) | The Conductor (3 phases) + 1–2 mid-bosses | ~36 |
+| Tilesets | 5 biomes × ~9 sheets (autotile, cliffs, transitions, decals, occluders, animated) | ~45 |
+| Props & destructibles | ~12/biome + ~10 shared interactables | ~70 |
+| Landmarks | 5 primary + ~2 secondary per biome | ~15 |
+| Parallax/venue backgrounds | 5 biomes × ~4 layers + weather | ~30 |
+| VFX library | hit sparks, arcs, parry burst, dash trail, dust, splash, blooms, projectiles, dissolves, status auras, chorus light | ~30 |
+| UI kit | wordmark, menu illustration, HUD, icons, cursor, panels, results, settings, bitmap font | ~90 |
+| **Ambient figures** (v8.0: re-scoped from "questgivers" — §8.8.4 forbids dialogue NPCs; these are silent world-dressing characters) | 4 old-hero figures + ~6 townsfolk × (idle + portrait-less) | ~20 |
+| Items & pickups | health orb, currency, ~15 relics, keys | ~25 |
+| **Total** | | **~567 named slots** (thousands of frames) |
 
-**Sourcing (per §11.1 ceiling note).** These 575 slots are generated as real art (AI-generated per the `art-prompts.md` catalog, or commissioned) and dropped into the same `assets/` slots for wiring — the pipeline proven by the provided Amir guitarist. Hand-coded procedural art fills a slot temporarily but never counts as shipped against this manifest. Progress is tracked slot-by-slot in §20.4.
-
-**Acceptance (extends §11.1).** "AAA-complete" requires: (8) **every manifest row filled with real art**, not a procedural stand-in; (9) **every playable character and enemy has its full state set** (a static one-pose sprite is incomplete); (10) **every biome has a full autotiling tileset + parallax + prop set**, not four flat tiles. Until then, unfilled rows are listed honestly in §20.4.
+Slots are filled by the §11.1 pipeline (AI-generated per catalog, or real art dropped
+into the same slots). Procedural stand-ins fill slots temporarily and never count as
+shipped. Progress tracked in §20.4.
 
 ---
 
@@ -499,47 +714,69 @@ Action item for pre-production exit (§15): the art bible and music direction do
 
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
-| Visual-timer-based judgment code creeps in under deadline pressure, causing drift | Medium | High | Hard architectural rule (§10.2) + automated lint/test that flags `setInterval`/`rAF` in judgment-path code; QA soak test under forced render load |
-| Accessibility features treated as post-launch add-ons | Medium | High | Accessibility requirements are release gates (§16), not backlog items; tested every QA pass |
-| "Clave as fake meter" misconception re-enters content design | Low | Medium | Encounter schema requires `accentProfile` distinct from `meterSequence`; content review checklist enforces the distinction |
-| Scope creep toward open-world/multiplayer during production | Medium | High | Out-of-scope list (§7.2) is a standing reference in sprint planning; changes require PRD revision, not ad hoc addition |
-| Original soundtrack production slips and blocks encounter authoring | Medium | High | Vertical slice phase requires one complete track pipeline proven end-to-end before content production begins |
-| Browser audio-autoplay policy changes break the startup flow | Low | Medium | Audio gate is gesture-driven per current MDN guidance; browser matrix re-tested every beta cycle |
-| Cross-browser Web Audio/Tone.js timing inconsistencies | Medium | Medium | QA browser matrix (Chrome/Edge/Firefox/Safari) is a release gate; calibration screen absorbs residual device/browser latency |
+| **Judged beat and audible music remain two clocks** (§8.3 unbuilt) — the product's thesis is silently false at release | Certain until built | Critical | §8.3 is release gate #1a; beat-map authoring + sync is the top §20.3 increment; QA soak measures heard-vs-judged drift (§16.1) |
+| **Pivot regressions:** features that existed in a retired path read as "done" while missing from the shipped path (already happened twice: Groove-spend, practice mode) | High | High | v8.0 rule: §20 tracks status **per the shipped path only**; retired scenes scheduled for deletion (§10.6); every §9.3 item re-verified in-fight each release |
+| Beat maps authored inaccurately (wrong BPM/offset) make on-beat play feel arbitrary | Medium | High | Hand-verification protocol per track (tap-test + waveform check); calibration screen absorbs residual device latency; drift instrumentation in QA |
+| Visual-timer judgment code creeps in under pressure | Medium | High | Hard rule §10.2 + lint/test flagging timer APIs in judgment paths; QA soak under forced render load |
+| Accessibility slips to post-launch | Medium | High | §9.3 items are release gates (§16.2 #5), tested per pass on the shipped path |
+| AI art pipeline produces off-register or perspective-broken assets | Medium | Medium | Pinned camera/style clauses in every prompt (v7.10 root-cause fix); import cleanup passes; screenshot review against §11.1 criteria before merge |
+| Scope creep (multiplayer, switching, procedural content) mid-production | Medium | High | §7.2 is a standing reference; changes require a PRD revision row, not ad hoc addition (the v7.x touch-controls lesson — shipped without a PRD row, caught by audit) |
+| Firefox/Safari timing or boot incompatibilities discovered late | Medium | Medium | Tier-2 manual verification per release (§9.2); Firefox e2e root-cause tracked (§20.2); calibration absorbs residual latency |
+| Single-owner bus factor (one person is Product/Eng/Art/Audio/QA) | High | Medium | This PRD + §20 + the audit docs are the durable record; deterministic pipelines mean any competent contributor can regenerate and continue |
 
 ---
 
 ## 13. Dependencies and Assumptions
 
-- Assumes an internal or contracted art team can deliver pixel-art assets at the specified resolution/palette discipline.
-- Assumes original music composition/production is resourced and DAW-authored stems can be delivered on the vertical-slice timeline.
-- Assumes no requirement (regulatory or platform) for account systems or age-rating storefront compliance in v1, since there is no distribution platform fixed yet.
-- Assumes desktop-only distribution is acceptable to stakeholders for v1; mobile is explicitly deferred, not rejected long-term.
+- The six recorded tracks are cleared by the owner (band) for inclusion; no third-party
+  licensing in v1.
+- The AI image-generation endpoint (keyless Pollinations/Flux) remains reachable from
+  the build environment for asset regeneration; committed PNGs insulate players and CI
+  from any outage.
+- No regulatory/platform requirement for accounts or age-rating compliance in v1
+  (no storefront distribution yet — §18).
+- Desktop-first remains acceptable; mobile is Tier-2 best-effort (§9.2), not rejected
+  long-term.
 
 ---
 
 ## 14. Analytics and Telemetry
 
-Anonymous, local-or-consented telemetry events for v1:
+Local-only, consent-gated (in-game toggle, off by default, §9.4). The v8.0 event set
+is re-based on the **shipped path**:
 
-`audio_gate_completed`, `calibration_completed`, `battle_started`, `ability_used`, `judgment_perfect`, `judgment_miss`, `assist_mode_enabled`, `sightread_used`, `encounter_failed`, `encounter_cleared`, `boss_phase_reached`, `save_loaded`, `echo_found` (v7.0, §8.8.2 — fires when a player discovers a world echo, letting us tell whether the exploration loop is actually being used).
+**Live today:** `audio_gate_completed`, `calibration_completed`, `battle_started`,
+`encounter_cleared`, `encounter_failed`, `assist_mode_enabled`, `save_loaded`,
+`echo_found`.
 
-This event set is sufficient to tune hit windows, detect encounter difficulty spikes, and validate whether the forecast mechanic (Sightread) is used as intended — directly feeding the KPIs in §5.
+**Required with pending features (§20.2):** `judgment_onbeat` / `judgment_offbeat`
+(binary, ships with beat-map sync; upgraded to per-tier `judgment_perfect|great|good|off`
+when §8.3 tiers land), `ultimate_used` (with §8.5 spend), `boss_phase_reached` (with
+§8.7), `sightread_enabled` (with §8.4 forecast), `obelisk_rested`.
+
+**Retired-path events removed from spec:** `ability_used`, `sightread_used` (phrase-model
+semantics).
+
+This set makes every §5 KPI computable from real play.
 
 ---
 
-## 15. Delivery Plan and Roadmap
+## 15. Delivery Plan and Roadmap (re-cut 2026-07-14)
 
-Phases below are sequential from PRD approval; indicative start date assumes sign-off by 2026-07-15.
+Phases are sequential from v8.0 adoption; each exit condition is verifiable against
+§20. Durations assume the current single-owner + agent-assisted cadence.
 
-| Phase | Duration | Indicative window | Exit condition |
-|---|---:|---|---|
-| Pre-production | 4 weeks | 2026-07-15 → 2026-08-12 | Approved combat prototype, locked schemas, locked art bible |
-| Vertical slice | 6 weeks | 2026-08-12 → 2026-09-23 | One full biome, one boss, one complete track pipeline, calibration working |
-| Content production | 8 weeks | 2026-09-23 → 2026-11-18 | Full campaign content implemented and playable end-to-end |
-| Alpha | 4 weeks | 2026-11-18 → 2026-12-16 | All features complete; only bug-fixing and balance remain |
-| Beta | 3 weeks | 2026-12-16 → 2027-01-06 | Browser matrix passes, accessibility matrix passes, save stability passes |
-| Release candidate | 2 weeks | 2027-01-06 → 2027-01-20 | No blocker defects, balance approved, legal/audio asset checks complete |
+| Phase | Focus | Exit condition |
+|---|---|---|
+| **P1 — Beat truth** (~1 week) | §8.3: author beat maps for all six tracks; sync judgment to the playing track; game speed scales both; sonifier → opt-in setting | Heard-vs-judged drift ≤ 30 ms sustained in QA soak; gate #1a passes |
+| **P2 — Combat completion** (~2 weeks) | §8.3 four tiers; §8.5 ultimate spend; §8.7 phased in-world boss on song sections; §8.4 Sightread forecast lane | Boss reaches phase 3 in live play; all §8 combat requirements demonstrable in the in-world fight |
+| **P3 — Accessibility parity** (~1 week) | §9.3 gaps: practice mode, in-fight captions, combat remap | Every §9.3 row verified on the shipped path |
+| **P4 — Content & art depth** (~3 weeks) | §11.5 manifest burn-down (states, VFX, wordmark, SFX pack); §11.1.1 landforms (v7.15 direction); encounter/track ID hygiene (§8.6); retired-scene deletion | §11.1 criteria (1)–(7) pass screenshot review across all screens; no retired scenes in the build |
+| **P5 — Hardening & release** (~2 weeks) | §16.1 QA matrix on real Tier-1/Tier-2 browsers + devices; Firefox root-cause; balance; soak | All §16.2 gates green; Tier-1 matrix 100% |
+
+Explicitly deferred past v1: band-member switching (§8.4 v2), moveset schema
+extraction (§10.5), additional biome content beyond the five regions, storefront
+distribution.
 
 ---
 
@@ -549,125 +786,162 @@ Phases below are sequential from PRD approval; indicative start date assumes sig
 
 | Area | Mandatory test |
 |---|---|
-| Timing | Scheduler remains accurate under forced rendering load |
-| Browser support | Chrome, Edge, Firefox, Safari — current stable desktop |
-| Saves | Create, overwrite, delete, corruption recovery |
-| Calibration | Offset persists and applies correctly after refresh |
-| Encounter data | Invalid beatmaps fail validation before runtime |
-| Meter changes | Boss phase transitions occur on exact authored barlines |
-| Accessibility | Reduced motion, speed assist, captions, remap, contrast, practice mode |
-| Photosensitivity | No banned flashing patterns in default or boss VFX modes |
+| **Beat truth** | Instrumented heard-vs-judged beat drift on every track and speed setting, under forced render load |
+| Timing | Judgment stays audio-authoritative under stutter; calibration offset applies after refresh |
+| Browser support | Tier 1 full matrix; Tier 2 boot + core loop, incl. touch controls on a real mobile device |
+| Saves | Create, overwrite, delete, corruption recovery; obelisk rest persists; echoes persist |
+| Content | Invalid beat maps/encounters fail validation before runtime; campaign reachability check green |
+| Boss | Phase transitions land on bar boundaries of the audible track (§8.7) |
+| Accessibility | Every §9.3 row exercised **in the in-world fight** |
+| Photosensitivity | No banned flash patterns in default or boss VFX |
 
 ### 16.2 Release gates (all must be true)
 
-1. All combat timing is driven by audio-authoritative scheduling — never visual timers alone.
-2. The game boots into a user-gesture audio gate and never attempts prohibited autoplay.
-3. The final boss reliably executes authored meter changes on bar boundary without drift.
-4. Pixel art remains crisp at supported resolutions (low-res canvas + `image-rendering: pixelated`).
-5. All accessibility features in §9.3 are present, discoverable, and functional.
-6. Save data persists correctly in IndexedDB across refreshes and browser restarts.
+1. All combat timing is audio-authoritative (§10.2) — never visual timers.
+   **1a (v8.0):** the judged beat is derived from the audible track via its authored
+   beat map, on every track and every speed setting (§8.3).
+2. The game boots into a user-gesture audio gate; no prohibited autoplay.
+3. The Conductor's phase transitions execute on bar boundaries of the audible track
+   without desync (§8.7).
+4. Pixel art remains crisp at supported resolutions (integer-scaled 320×180).
+5. Every §9.3 accessibility feature is present, discoverable, and functional **on the
+   shipped combat path**.
+6. Save data persists in IndexedDB across refresh and browser restart.
+7. No retired scene is reachable by a player.
 
 ---
 
 ## 17. Stakeholders and RACI
 
+All discipline roles are currently held by the owner (with agent-assisted execution);
+the matrix defines the intended hand-off shape as the team grows.
+
 | Activity | Product | Engineering | Art | Audio | QA | Accessibility |
 |---|---|---|---|---|---|---|
 | PRD approval | A/R | C | C | C | C | C |
 | Combat/timing architecture | C | A/R | I | C | C | I |
-| Beatmap/ability/encounter schemas | C | A/R | I | C | I | I |
-| Art bible and asset pipeline | C | I | A/R | I | I | C |
-| Music/stem pipeline | C | C | I | A/R | I | C |
+| Beat-map authoring & verification (§8.3) | C | R | I | A/R | C | I |
+| Content schemas | C | A/R | I | C | I | I |
+| Art pipeline & manifest (§11.1/§11.5) | C | I | A/R | I | I | C |
 | Accessibility feature set | C | R | C | C | C | A |
-| QA matrix and release gate sign-off | C | C | I | I | A/R | C |
-
-*R = Responsible, A = Accountable, C = Consulted, I = Informed. Names to be assigned once discipline leads are confirmed.*
+| QA matrix & release gates | C | C | I | I | A/R | C |
 
 ---
 
 ## 18. Open Questions
 
-1. Final game title (Project Meterfall is a working codename only).
-2. Narrative setting and framing beyond "light, character-driven."
-3. Distribution channel post-v1 (itch.io, standalone site, storefront) — affects whether account/monetization stays permanently out of scope.
-4. Whether mobile/touch becomes a v2 target, and if so, how the timing-window model adapts to touch latency.
-5. Composer/audio production resourcing and timeline confirmation.
+1. Distribution channel post-v1 (itch.io, standalone site, storefront) — affects
+   whether accounts/monetization stay permanently out of scope.
+2. Mobile as a Tier-1 target in v2 (touch controls exist; performance/layout polish
+   and touch-latency window tuning would be the work).
+3. Band-member switching design (v2, §8.4): between-fight selection vs. mid-fight
+   tag — and whether followers gain combat presence in v1.5.
+4. Wordmark production path (v7.12: AI text rendering unreliable; needs hand-lettering).
+5. Whether the retired turn-based systems are deleted outright or extracted to a
+   separate archival branch when P4 removes them from the build.
+
+*(Resolved since v7.x: title — **The Drowned Chorus**; narrative — the world bible;
+music sourcing — the six recorded tracks.)*
 
 ---
 
 ## 19. Appendix
 
-- Full research findings, source citations, and detailed rationale: [`docs/research/deep-research-report.md`](../research/deep-research-report.md)
-- JSON schemas: [`docs/technical/schemas/`](../technical/schemas/)
+- Research: [`docs/research/deep-research-report.md`](../research/deep-research-report.md)
+- Schemas: [`docs/technical/schemas/`](../technical/schemas/)
+- Design docs: [art bible](../design/art-bible.md) · [art prompts](../design/art-prompts.md) ·
+  [world bible](../design/world-bible.md) · [AAA art audit](../design/aaa-audit.md) ·
+  [music direction (historical)](../design/music-direction.md)
+- Audits: [PRD audit 2026-07-14](./prd-audit-2026-07-14.md)
 - Glossary:
-  - **Beatmap** — the authored data file mapping a track's bars/beats/meter changes to gameplay events.
-  - **Phrase** — a 1–2 measure authored input sequence tied to a specific ability.
-  - **Groove** — the shared party ultimate-charge resource, built from accurate streaks.
-  - **Sightread** — the healer ability that forecasts upcoming beat/meter information; the implementation of the source concept's "see the music" idea.
-  - **Son clave (2–3 / 3–2)** — an Afro-Cuban rhythmic pattern spanning two bars; used here as an accent profile over a base meter, not as a time signature.
+  - **Beat map** — per-track authored timing data: measured BPM, first-beat offset,
+    named bar-aligned sections (§8.3).
+  - **On-beat** — a real-time action whose timestamp falls within a judgment window of
+    the audible track's nearest beat.
+  - **Groove** — the 0–100 shared meter built by on-beat play, spent in full on the
+    ultimate.
+  - **Focus** — the per-fight resource built by on-beat aggression, spent on specials.
+  - **Sightread** — the forecast assist previewing upcoming beats and telegraphed
+    attacks (the concept art's "see the music").
+  - **Echo** — a hand-placed, collectible environmental-story beat (§8.8.2).
+  - **Venue** — a fight node's authored biome ground + set pieces composed into the
+    world map, on which its in-world fight room locks (§11.1.1).
+  - **DI (directional influence)** — defender's held direction nudging knockback.
+  - **Phrase** *(legacy)* — the retired turn-based model's authored input sequence.
 
 ---
 
-## 20. Implementation Status (as of 2026-07-10)
+## 20. Implementation Status (as of 2026-07-14, v8.0 re-cut)
 
-This section is a factual snapshot of what exists in the repository against this PRD, kept separate from the spec itself so the spec stays a stable target while this section is expected to go stale and get re-cut periodically. Where this section and earlier sections disagree on what's "done," this section is authoritative for current reality; the numbered sections above remain authoritative for what's *required*. This is the fourth cut of this section (earlier cuts are preserved in the revision history, §0) — everything previously open that was closeable by engineering effort inside this environment is now closed; what remains open in §20.2 is blocked on external resources.
+Factual snapshot of the repository against this PRD. **Status is tracked against the
+shipped product path only** — a feature that exists solely in a retired scene is a gap
+here, not a checkmark (the v8.0 rule; see the audit for why). Where this section and
+§1–§19 disagree about reality, this section wins; §1–§19 win about requirements.
 
-### 20.1 Built, tested, and verified live
+Verified this cut: `npm test` — **145/145 unit tests** (16 files); **18 e2e test cases
+in 7 Playwright spec files** (Chromium gate); typecheck and production build green;
+findings cross-checked in [`prd-audit-2026-07-14.md`](./prd-audit-2026-07-14.md).
 
-Everything below was checked with `npm run typecheck`, `npm test` (129 unit tests passing), `npm run build`, and the Chromium e2e project (16 Playwright specs, run repeatedly), plus extensive manual live verification in headless Chrome (scripted keyboard/pointer input, screenshots, console/error inspection, and direct state manipulation via a dev-only debug hook for scenarios real-time input automation can't drive precisely, like boss HP thresholds) — not just typechecked in isolation.
+### 20.1 Built, tested, and verified on the shipped path
 
 | Area | Status |
 |---|---|
-| Full scene stack (§10.6) | All 9 scenes are real, not stubs. Verified by playing through the entire loop live, including the full 5-node campaign. |
-| Audio-clock authority (§10.2) | `TransportClock` wraps `Tone.Transport`; all judgment timing is computed from it, never `setTimeout`/`setInterval`/`requestAnimationFrame`. |
-| Timing model (§8.3) | `JudgmentSystem.judge()` implements the exact four-tier windows, story-mode and assist multipliers; `PhraseTiming` converts a `bar.beat` timing template plus the one-bar count-in into transport seconds. |
-| **Live meter changes (§8.7, release gate #3)** | `MeterSequence` answers "what bar/beat/meter is it right now" and "when's the next bar boundary" across a beatmap's full `meterSequence`, replacing an earlier flat-`meterSequence[0].num` assumption that could not represent a meter change at all. "The Conductor" boss swaps its beatmap (tempo + meter, including a live 5/4→7/8→4/4→3/4 cycle in phase 3) at the next bar boundary when its HP crosses each phase's authored threshold. 15 direct unit tests; verified live with a real 5/4 bar rendering on screen exactly as authored. |
-| Combat engine (§8.2, §8.5) | `CombatController` is a Phaser-free state machine: full turn structure, HP/Focus/Groove/streak resources, every ability effect type, practice mode with a real no-fail-state, multi-enemy target selection. |
-| **Groove-spend ultimates (§8.5, v5.1)** | One `{role}_ultimate.json` per role (100-Groove cost via a new optional `grooveCost` field in the canonical ability schema), gated and spent in `queueHeroAction`, always listed in the command menu with a `(100g)` cost label. Verified live: refused with a clear message at 0 Groove, spends the meter and runs a real timed performance at 100. Before v5.1 Groove could only ever accumulate — "spent on ultimates" existed in this spec but nothing in the game could spend it. |
-| **Real stat model (§8.4 role identities, v5.1)** | Every stat that appears in authored content is now mechanically wired (all were silent no-ops before): enemy-side `defense` (increases damage taken), `accuracy`/`speed` (deterministically reduce outgoing damage — never an RNG miss chance, per the rhythm-clarity pillar), `targetFocus` (a real taunt: redirects the enemy onto the hero who applied it); hero-side `resist` (shrinks incoming enemy debuffs), enemy-applied `enemyDebuff` (reduces the hero's outgoing damage), and `accuracy` buffs (widen that hero's judgment windows via `heroTimingWindowMultiplier`, multiplicative with the accessibility assist). Semantics documented on `StatusEffect` in `CombatController.ts`; each wiring pinned by a dedicated unit test (`combat-stats.test.ts`). This makes the Mage's §8.4 "Debuff / pattern disruption" identity and the Tank's taunt real rather than log-only. |
-| **In-engine art (§11.1, rebuilt v5.3)** | A real, cohesive pixel-art pass built to the new art bible (`docs/design/art-bible.md`) and derived from the Skatopia lyrics, all authored in code and rendered to committed PNGs (`tools/pixelart/`): four **distinct** hero classes with down/side/up walk cycles, six lyric-themed enemies (incl. the Conductor boss) with idle animation, a seamlessly-tiling overworld tileset, two painted 320×180 battle backdrops, and a titled main menu — one shared master palette throughout. `BattleScene` draws the backdrop + party + animated enemy wave (shadows, active-hero lift, KO dimming); `OverworldScene` walks real directional hero art under a vignette. Replaces the old one-tinted-sprite/colored-circle placeholders entirely. |
-| Accessibility settings (§9.3) | Every mandatory day-one setting is functionally wired, not just persisted (game speed, assisted windows, captions, reduced motion/photosensitivity, tap-key remap, recalibrate). |
-| Data-driven content pipeline (§10.5) | `ContentRegistry` validates all content against the canonical JSON Schemas (ajv) before a scene sees it, including cross-reference integrity across the full 5-node campaign, 7 enemies, and a 3-phase boss config. |
-| Content volume | Full campaign chain: opening biome (slime) → mid biome 1 (drifter, 3/4→6/8) → mid biome 2 (luchador wave, clave accents, real multi-enemy targeting) → mid biome 3 (elite wraith, syncopation) → "The Conductor" (3-phase boss). This satisfies §15's vertical-slice exit condition ("one full biome, one boss") for the first time. |
-| Sightread forecast | A real upcoming-events panel (`Forecast.upcomingEvents`, loop-aware), not a log line — matches the PRD §8.4 description. |
-| **Relics and skill unlocks, including tier-2 ability content** | `ResultsScene` presents real relic choices; chosen relics apply real mechanical effects at battle start (`Relics.ts`: +1 max focus / permanent tank guard / banked groove). Defeating a boss writes real tier-2 unlock ids to `SaveProfile.unlockedSkills`, and each role now has a real, authored 4th ability (`{role}_tier2.json`) that becomes selectable in the command stage once unlocked — the full unlock → content → usable-ability loop is real end to end, not just the trigger. |
-| Audible battle timing | `BeatmapSonifier` schedules real, meter-aware Tone.js synth hits for a beatmap's events, looped and phase-aware. Still scratch sonification, not the shipped soundtrack (§20.2). |
-| **Walkable overworld hub (v5.0, §7.1/§8.1)** | `OverworldScene`: a 40×24-tile Tiled-JSON map (script-generated tileset; layout BFS-validated for marker reachability at generation time), tile-snapped 4-directional movement with real collision (pure `OverworldMovement` module — deliberately no physics engine), camera-follow with map bounds, the 8-frame run spritesheet as the animated walking player, campaign-node markers color-coded cleared (green) / unlocked (yellow) / locked (gray) via the pure `CampaignReachability` module, walk-onto-marker battle triggering, respawn at the fought node after every battle (`GameContext.returnToNodeId`), and ESC settings. Covered by 2 new unit-test files and 4 new e2e specs (movement, collision, trigger correctness, locked/cleared no-op, return flow). Replaced `MapScene` (deleted). |
-| **Per-node encounter variety** | `CampaignNode.encounterPool` plus a pure `resolveEncounterId()` (`src/systems/progression/CampaignSelection.ts`) picks a random encounter from a node's pool each visit instead of always the same fight. As of v5.0, **all four non-boss nodes** draw from 2-entry pools (8 authored encounters total); `boss_1` is deliberately a fixed `encounterId` because its 3-phase config (§8.7) is keyed to that exact encounter. Content-registry cross-reference validation covers pool entries the same as fixed `encounterId`s. |
-| Persistence (§10.7) | `SaveManager` (IndexedDB) supports create/load/delete/list; campaign progression (current node, cleared nodes) advances correctly through the full chain. |
-| Analytics (§14) | All 12 specified events, including `boss_phase_reached`, are wired into real gameplay code paths, and as of v5.2 the player can actually grant/revoke consent: an "Analytics (local-only)" toggle in SettingsOverlay writes `SaveProfile.analyticsConsent` (persisted, consent-off by default, no network calls in v1) — previously consent defaulted off with no UI to ever enable it, leaving the whole §14 event set permanently gated in real play. Verified live: toggle → events record → consent survives a reload. |
-| `tests/e2e/` | 16 committed Playwright specs (Chromium + Firefox config): boot/calibration (keyboard and pointer)/reload persistence, battle mechanics, the boss's 3-phase mechanic, two settings-UI regressions, and the 4 overworld specs. Wired into CI. See caveat in §20.2. |
-| Deployment | `.github/workflows/deploy-pages.yml` builds, tests, typechecks, runs the e2e suite, then deploys to GitHub Pages on every push to `master`. The single `deploy-pages@v4` failure flagged at the end of the v4.4 cycle was transient (GitHub-side): the immediately following run deployed green with no changes, confirmed 2026-07-10. |
+| Five-region explorable world (§8.8) | 130×34 seamless map, five regions in campaign order, region-authored dressing/obstacles/tints, BFS-validated reachability at generation time; secret spurs per region |
+| Echoes (§8.8.2) | 10 hand-placed, E-to-interact, one-line world-bible fragments; persisted per save; HUD counter; `echo_found` fires |
+| Foes stand in the world (§8.1) | Node foes idle at their places (locked = dark silhouettes, cleared = ember); the Conductor colossal in-world |
+| Save-obelisks (§8.8.5) | Beside every fight node; rest persists through the real IndexedDB save (e2e-proven, no fight trigger) |
+| **In-world fights (§8.2)** | `WorldFight`: camera-locked room of the actual overworld; sim obstacles from impassable tiles (`resolveObstacles`, unit-tested); venues (biome floor + set pieces) composed into the map with a guaranteed fightable circle; rewards → results → in-place return; e2e asserts no battle scene loads |
+| Action sim (§8.2) | 8-dir momentum, dash i-frames + on-beat extension, light/heavy frame data with active hitboxes, hitstun, damage-%-scaled knockback, player DI, on-beat parry (off-beat = punishable), rhythm-gated cancel combos, Focus special, enemy telegraph AI — 13+ dedicated unit tests |
+| Timing plumbing (§8.3, partial) | Judgment on `TransportClock`, never UI timers; calibration offset applied before judgment; assist ×1.5 applied; game speed scales the judgment clock |
+| Soundtrack playback (§11.2) | Six real tracks, lazy-loaded (`preload="none"`), scene-mode crossfade, combat rotation, gesture-primed for mobile autoplay |
+| Band cast (§8.4) | Four AI-generated members in one register, per-member idle/run/attack derived from a base pose; the band walks the world as a conga; leader fights with their real sprite |
+| Art (§11.1) | AI-pipeline backdrops/foes/band/landmarks/props/kits; designed floors + coherent pinned-camera kits + menacing resprites + framed HUD (v7.11); ground/water/clustering/value pass (v7.12); 1.5× legibility re-render (v7.13); quantization-free downscale + world venues (v7.14) — all screenshot-verified |
+| Venues & story staging (§11.1.1) | All five places built and composed into the world with beat-pulsing story lights |
+| Persistence (§10.7) | Full save lifecycle incl. echoes, consent, calibration; verified across reload |
+| Analytics (§14) | Consent toggle + the eight "live today" events fire on the shipped path |
+| Accessibility (§9.3, partial) | Assist windows, reduced motion, photosensitivity-aware FX, volume, speed (judgment-side), calibration, keyboard+pointer gates — verified in the shipped fight. **Gaps below.** |
+| Touch controls (§9.2) | On-screen thumbstick + action buttons shipped |
+| CI/deploy | Build + typecheck + unit + Chromium e2e gate → GitHub Pages on every master push; subpath boot verified |
 
-### 20.2 Explicitly not done — real gaps, not oversights
+### 20.2 Open gaps (ranked; per the shipped path)
 
-1. **Art depth, not art existence (mostly closed in v5.3).** The long-standing "art is placeholder" gap is now substantially closed: `docs/design/art-bible.md` exists, and the game ships a real, cohesive, lyric-derived pixel-art pass — four distinct hero classes, six themed enemies incl. the boss, a real tileset, painted battle backdrops, and a titled menu, all authored in code (`tools/pixelart/`) and committed (§20.1). What remains is animation *depth*, not a from-scratch art pass: heroes reuse the side strip flipped for left and the down silhouette for up (no true 4-directional per-frame art), and enemies have a 2-frame idle but no authored attack/hurt animations. These are incremental frame-authoring passes in the existing pipeline (rerun `generate_all.py`), not an external blocker. A separately-commissioned human-artist AAA pass remains out of scope for this environment, but is no longer what stands between the game and looking genuinely good.
-2. **Music is placeholder sonification, not the real soundtrack.** `BeatmapSonifier`'s synth blips are a scratch layer for feeling the beat. The seven `tools/gbmusic/` chiptune drafts (`.lsdsng`) are authored but not wired into the game as playable audio. Rendering `.lsdsng` to a real audio buffer was investigated this cycle via PyBoy 2.4.1 against a local LSDJ ROM; PyBoy's public API (`dir(PyBoy)`) exposes no audio-buffer/WAV export, only `screen` — the only known workaround (monkey-patching `pysdl2`'s `SDL_QueueAudio`, per the reference project this pipeline was based on) was judged too fragile and version-specific to take on within this cycle. Blocked on a working Game Boy audio-rendering path existing at all, not on engineering effort against a known-good tool.
-3. **Firefox e2e coverage is disabled in CI pending root-cause.** Every Firefox spec fails in `beforeAll`/boot on both this sandbox and real CI, not an intermittent flake (details and reproduction notes in `tests/e2e/README.md`). Root cause is unconfirmed (candidates: `Tone.js`'s AudioContext unlock not firing under headless Firefox, or a Phaser/WebGL incompatibility). Firefox is excluded from the CI/deploy gate until root-caused, leaving Chromium as the sole automated gate.
-4. **QA matrix (§16) unexecuted on real browsers/devices.** Verification has been headless Chromium/Firefox via automation, not a real Chrome/Edge/Firefox/Safari desktop pass or any device/hardware testing. Blocked on access to real devices/browsers, which this sandboxed environment doesn't have.
+1. **Beat truth (§8.3, gate #1a) — the defining gap.** The judged beat is a beatmap
+   BPM on the transport; the audible MP3s have no beat maps and no sync. Game speed
+   scales judgment but not `playbackRate`. Deliverable: six authored beat maps +
+   playing-position-derived judgment + speed coupling (roadmap P1).
+2. **Four judgment tiers (§8.3):** shipped fight is binary ±90 ms. Perfect/Great/Good
+   grading + HUD feedback + tiered events (roadmap P2).
+3. **Ultimate/Groove spend (§8.5):** Groove accumulates, nothing spends it
+   (`ActionCombat.ts` "ultimate is future") — the v5.1 regression reintroduced by the
+   pivot (P2).
+4. **Phased in-world boss (§8.7):** shipped boss fight has boss music/bar, no phases;
+   the legacy 3-phase logic lives only in the retired path, as does its e2e (P2).
+5. **§9.3 gaps in the shipped fight:** practice mode, captions for musically
+   meaningful events, remappable combat bindings (currently hardcoded
+   `W,A,S,D,J,K,L,I,SHIFT,SPACE`) (P3).
+6. **Sightread forecast (§8.4):** absent from the shipped path (P2).
+7. **Analytics parity (§14):** judgment/ultimate/boss-phase/sightread/obelisk events
+   pending their features; four §5 KPIs blocked on them.
+8. **Content hygiene:** legacy encounter/track IDs (`*_luchadores_*`, `*_clave_*`)
+   around correct contents; legacy role JSONs; retired scenes (`BattleScene`,
+   `ActionBattleScene`) still registered pending coverage migration (P4).
+9. **Asset manifest depth (§11.5):** animation-state sets, VFX library, SFX pack
+   (directory empty), wordmark, landforms (v7.15 direction) (P4).
+10. **QA matrix on real browsers/devices (§16.1)** and the Firefox e2e root-cause
+    (excluded from the gate since v4.1) (P5).
 
-Previously-listed gaps now closed and no longer here: (a) the four internal schemas are documented in §10.5 (v4.3); (b) the `TextMenu`/`SettingsOverlay` input bugs were root-caused and fixed (v4.2); (c) **per-node encounter variety** — formerly item 5, the last gap with no external blocker — is closed as of v5.0 (every non-boss node has a 2-entry `encounterPool`; the boss is deliberately fixed, see §20.1). Campaign *branching* (multiple next-node choices) remains unbuilt but was always follow-on content shape, not a v1 requirement — the campaign graph, reachability logic, and overworld markers all follow `next[0]` linearly, matching the authored content. It stays tracked in §20.3. The full Chromium e2e suite and the GitHub Pages deploy pipeline are both verified green as of this revision.
+### 20.3 Next increment
 
-### 20.3 Suggested next increment
+Execute roadmap P1 (§15): author and hand-verify beat maps for all six tracks, derive
+judgment from the playing track, couple game speed, and demote the sonifier to an
+opt-in tick. Everything else in §20.2 stacks behind it — combat depth (P2) built on an
+untrue beat would be polishing the wrong clock.
 
-The vertical-slice exit condition is met, the between-battles experience is a real walkable overworld, and every gap that was closeable inside this environment (map UI → overworld, tier-2 content, schema docs, encounter variety, CI/deploy health) is closed. What's left splits into two kinds:
+### 20.4 Asset-manifest progress
 
-**Blocked on something outside this environment** (not closeable by more engineering effort alone): (1) a dedicated audio-rendering spike to get the `tools/gbmusic/` chiptune drafts playing as real audio, replacing `BeatmapSonifier` — needs either a maintained PyBoy audio-export path or a non-PyBoy Game Boy audio renderer to exist first; (2) a real art-bible pass: distinct per-class spritesheets, 4-directional overworld walk cycles, and a real tileset, gated on `docs/design/art-bible.md` and actual art production; (3) the QA matrix (§16) on real, non-headless browsers/devices; (4) the Firefox e2e root-cause (needs a maintainer with a non-sandboxed environment to bisect against, since both this sandbox and real CI show the identical failure).
-
-**Pure follow-on content, no external blocker but also no open v1 requirement**: (5) author real branching (`CampaignNode.next` already supports multiple ids, but `CampaignReachability` and progression logic only ever follow `next[0]` — letting the player actually choose a branch needs both content and divergent overworld roads/markers); (6) author a second full biome (second boss, second overworld map) to move from "one biome, one boss" toward the fuller campaign shape in §8.6; (7) overworld depth beyond the hub mechanic: camp-node content, NPCs/secrets, re-fighting cleared nodes.
-
-### 20.4 v6.0–v7.0 pivot — build status (as of 2026-07-11)
-
-The v6.0–v7.0 direction change (real-time rhythm-action combat + HLD-register art + §8.8 exploration) is **in progress against the rewritten §7/§8/§11.1 spec**. Snapshot:
-
-- **Carried forward, still real:** the Skatopia-lyric art pipeline (`tools/pixelart/`), the world/story bible (*The Drowned Chorus*), the audio-clock spine (`TransportClock`), the content pipeline and campaign graph, the framed UI skin, and the CI/deploy pipeline. The v5.0 walkable overworld is being rebuilt into the §8.8 explorable world (below), not carried forward unchanged — the old "hub" framing is exactly what v7.0 retires.
-- **v7.3 real AI art pipeline — landing, iterating:** the "not AAA" ceiling of hand-coded art is broken by generating real art in-environment. The sandbox proxy reaches **Pollinations.ai** (keyless, Flux), so `tools/pixelart/generate_ai.py` generates → `import_asset.py` (palette-quantize / edge flood-key background removal / **8-bit pixelate**: chunky logical res + master-palette Floyd–Steinberg dither) → wires into the slot. **Landed as real AI art:** all 5 arena battle backdrops, the title/main-menu key-art, all 6 enemy sprites + the colossal Conductor boss, and the 5 overworld region landmarks — each 8-bit-pixelated and cohesive. Combat readability preserved by a dark scrim + background darken (§11.1.1). **Still procedural (next targets):** overworld tiles, props, NPC sprites, the 3 non-Amir band sprites, and the UI icon kit; and the deeper manifest (§11.5) — full per-character/enemy animation states, more enemy types, parallax layers — remains to be filled. Tracked against the §11.5 manifest.
-- **v7.1 the band + overworld atmosphere — landed:** the playable party is now Inhalants — **Amir** (the provided hand-drawn guitarist, conformed to clean 48×48 idle/run/attack by `tools/pixelart/bandmates.py`) is the lead everywhere he appears (overworld + `ActionBattleScene`), with a bassist/vocalist/drummer authored to match; the four generated pre-band heroes are now world NPCs (§11.4). The four mechanical roles are unchanged (a `HeroClass.spriteId` re-skin), so combat + all 142 unit tests are untouched. The overworld got its atmosphere pass: drifting fog + god-ray shafts (`fx.py`), a colossal per-region landmark (`landmarks.py`), and contact-shadow grounding on props, over the existing vignette + region tint. Remaining: the arena renders only the leader, so making the other three members swappable/co-op in combat is an open increment (flagged to the owner).
-- **v7.0 exploration — landed:** the overworld generator (`tools/overworld/generate_overworld_map.py`) now builds one continuous 130×34 map of five joined regions (Shallows/Salt Mines/Pit/Attic/Hall, one per movement, in campaign order), each dressed with obstacle logic matching its arena (bay inlets, a flooded shaft, a circular flooded ring, rock-wall alleys, statue columns) and tinted toward that arena's accent hue (`tools/pixelart/tiles.py`, 20-tile sheet) so the five regions read as distinct moods per §11.1.1's "one palette, five moods" rule extended to §8.8.1. Ten hand-placed **echoes** (§8.8.2, text sourced from world-bible §5b) are walkable rune props: press E in range for a found-not-told lore fragment in a framed panel; found ids persist per save (`SaveProfile.echoesFound`) and surface as a HUD counter; discovery fires the new `echo_found` analytics event (§14). At least one hand-authored **secret spur** (§8.8.3) per region branches off the main road into a hidden rock-ringed pocket. A BFS reachability check at build time fails loudly if any node marker or echo is unreachable from spawn — this caught and drove the fix for three real layout bugs during development. Verified: typecheck, 142 unit tests, production build, and the full Playwright e2e suite (16/16) all pass; live-interaction verification confirmed echo discovery/persistence/HUD/panel behavior in-browser across all five regions.
-- **Landed (v6.1):** `src/systems/action/ActionCombat.ts` is the Phaser-free action-combat sim -- 8-dir acceleration/friction movement, dash cooldowns + i-frames, on-beat power vs the transport clock, light/heavy frame data (startup/active/recovery) with active hitboxes, hitstun, damage-%-scaled knockback with player DI, and enemy AI (approach → telegraph → strike → recover). `src/scenes/ActionBattleScene.ts` drives it with live input (WASD move, J light, K heavy, Shift dash), the audible beat, HP/telegraph/hitbox rendering, and the reward/campaign path → Results. **The overworld now launches this action scene** (it is the shipped combat path); the turn-based `BattleScene` stays registered so its regression specs keep running during the pivot. 10 action-combat unit tests + updated overworld e2e (incl. a forced-victory return-flow check) cover it; a colossal-scale Conductor renders in the boss arena.
-- **Depth landed (v6.2):** a Focus **special** (builds from on-beat hits, spent for a heavy burst), an on-beat **parry** (negates a hit and staggers the attacker into hitstun, converting defence to offence; off-beat parry is a punishable whiff), and rhythm-gated **cancel combos** (a recovery-frame press cancels into the next attack only on-beat, inside a short window) — all in the Phaser-free sim with unit tests. Scene wires L (special) / I (parry), a parry-shield flash, and Focus in the HUD.
-- **HLD art landed (v6.2):** colossal silhouette-first enemies (the Conductor towers ~2.9× over the small player), additive **emissive glow/bloom** (accent auras + glowing eyes pulsing on the beat, red windup telegraphs, on-beat player flash, bright attack arcs, impact sparks — all reduced-motion aware), and a fading battle-intro card naming the movement + foe. Enemy display names reflavored to the world bible.
-- **Environments landed (v6.3):** all five §11.1.1 arenas are built and wired per-node — the drowned village green (one boat straining at its rope), the salt-mine gallery of the calcified (one mid-run), the sunken carnival ring (ropes snapped outward, two lanterns burning), the Attic of Teeth (clawed door, scrawled staves, bed of pens), and the Conductor's hall (blank pages except the last row, melting stopped clocks). Each has its beat-pulsing story light; all five screenshot-verified in-game and distinct at a glance.
-- **Enterprise-art criteria closed (v6.4):** The Conductor is now **authored at native colossal resolution** (`conductor_boss.py`, ~48×68 painted pixels, fold-shaded coat / clock heart with melt drip / two-pose conducting animation) — displayed at 1.5× he stands ~105px with crisp intentional pixels, replacing the upscaled small sprite. The playable lead has **authored attack poses** (windup → swing with a motion arc, `heroes.py`) driven by the sim's real frame-data phases, plus a white hurt-flash in hitstun; all enemies now idle-animate in the arena and flash on hit. Together with the five authored arenas, per-character bespoke art, the emissive pass, and the single master palette, every §11.1 acceptance criterion is met for the shipped cast.
-- **Still being built:** the full *Melee* tech tree (wavedash-like movement, more cancel routes, DI depth tuning), multi-enemy/boss-phase parity in the arena, party-member switching, native-resolution redraws for the *non-boss* elite (the wraith still displays at 2.0× from its 48px sheet — within spec but the next craft target), and overworld foreshadowing of each arena (§11.1.1's overworld rule).
-- **Honest note:** *Melee*-grade depth (full cancel/tech tree, DI, wavedash-like movement) and a fully screen-filling animated boss are a multi-increment build; this section will be re-cut as each layer lands. The spec (§8.2–§8.5) is the target; this subsection tracks reality against it.
+Tracked slot-by-slot against §11.5 in [`docs/design/art-prompts.md`](../design/art-prompts.md)
+and the [AAA audit](../design/aaa-audit.md) burn-down (P0–P2 shipped; P3 wordmark and
+landform pass open). Filled as real (AI-pipeline or provided) art: band (4), foes (4),
+venue kits (28 pieces), landmarks (5), backdrops (5, now venue-superseded), title
+key-art, NPCs/props/obelisks. Open rows: full animation-state sets, VFX library, SFX,
+parallax layers, wordmark, remaining enemy types beyond the lyric-canon four.

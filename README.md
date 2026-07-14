@@ -1,115 +1,130 @@
-# Project Meterfall
+# The Drowned Chorus
 
-A single-player, browser-based, pixel-art rhythm RPG. Combat is turn-based; every
-action is executed as a timed phrase against an authored musical track, with a
-final boss built around live time-signature changes.
+A single-player, browser-based, top-down **rhythm-action RPG**. You lead
+Inhalants — a four-piece band — through one continuous hand-authored drowned
+world of five regions. Fights happen **in the world**: walk into a foe and the
+camera locks to a room of the actual overworld around it, where a real-time
+action fight runs — momentum movement, dashes with i-frames, frame-data
+attacks, hitstun and damage-scaled knockback, on-beat parries — with actions
+timed to the beat empowered. The soundtrack is six real recorded Inhalants
+tracks; the art is in the *Hyper Light Drifter* register.
 
 **Play it live:** https://amirbukhari.github.io/RhythmRPG/ (auto-deployed from
-`master`). The full vertical slice is playable today: a walkable pixel-art
-overworld leading through a 5-node campaign — opening biome → 3 mid-biome
-encounters (including a multi-enemy clave-accent fight) → a real 3-phase
-final boss with live meter changes — see
-[§20 of the PRD](docs/product/PRD.md#20-implementation-status-as-of-2026-07-10)
-for exactly what's built vs. still open. The game now ships a real,
-lyric-derived pixel-art pass (see the [art bible](docs/design/art-bible.md));
-real (non-scratch) audio is the big remaining external piece.
+`master`).
 
-Codename only — see [Open Questions](docs/product/PRD.md#18-open-questions) for
-naming status.
+*(Historical codename: Project Meterfall. The game began as a turn-based
+rhythm RPG and pivoted twice — to real-time action combat at PRD v6.0 and to
+first-class exploration at v7.0. The retired turn-based code remains in-repo
+for regression coverage only.)*
 
 ## Start here
 
-- **[Product Requirements Document](docs/product/PRD.md)** — the source of truth for scope, requirements, architecture, and release gates. **[§20 Implementation Status](docs/product/PRD.md#20-implementation-status-as-of-2026-07-10)** is the current build-vs-spec snapshot — read that first if you're picking this up.
-- [Deep research report](docs/research/deep-research-report.md) — rationale and citations behind the PRD's design decisions.
-- [Data schemas](docs/technical/schemas/) — beatmap, ability, and encounter JSON schemas, mirrored as TypeScript types in `src/data/schemas/`.
-- [gbmusic pipeline](tools/gbmusic/README.md) — converts a mixed audio track into a Game Boy (LSDJ) chiptune project; drafts exist but aren't wired into the game yet (PRD §20.2).
-- [Music direction](docs/design/music-direction.md) — which master-track slice feeds each battle-track stage.
+- **[Product Requirements Document](docs/product/PRD.md)** — v8.0, the source
+  of truth for scope, requirements, architecture, and release gates.
+  **[§20 Implementation Status](docs/product/PRD.md#20-implementation-status-as-of-2026-07-14-v80-re-cut)**
+  is the current build-vs-spec snapshot — read that first if you're picking
+  this up. The #1 open item is **beat truth** (PRD §8.3): syncing the judged
+  beat to the actually-playing track.
+- [PRD audit (2026-07-14)](docs/product/prd-audit-2026-07-14.md) — the
+  line-by-line spec-vs-build audit that drove the v8.0 rewrite.
+- [AAA art audit](docs/design/aaa-audit.md) — the screen-by-screen art review
+  and its burn-down status.
+- [World bible](docs/design/world-bible.md) · [art bible](docs/design/art-bible.md)
+  · [art prompts](docs/design/art-prompts.md) — narrative canon and the art
+  pipeline's per-slot catalog.
+- [Data schemas](docs/technical/schemas/) — beatmap/encounter/ability JSON
+  schemas, mirrored as TypeScript types in `src/data/schemas/`.
+- [Deep research report](docs/research/deep-research-report.md) — rationale
+  and citations behind the original design decisions.
 
 ## Repository structure
 
 ```
 docs/
-  product/      PRD (source of truth) + §20 implementation status
+  product/      PRD v8.0 (source of truth) + the 2026-07-14 PRD audit
   research/     research backing the PRD
   technical/    JSON schemas for data-driven content
-  design/       art-bible.md + music-direction.md (written); narrative bible (not yet written)
-  qa/           test plan, accessibility checklist, release-gate sign-off (not yet written)
+  design/       world bible, art bible, art-prompt catalog, AAA art audit,
+                music-direction (historical)
 
 src/
-  main.ts       Phaser app entry point, fixed scene stack, dev-only debug hook (window.__meterfallDebug)
-  config/       engine/canvas configuration
-  scenes/       all 9 scenes are real (not stubs) -- Boot/AudioGate/MainMenu/Save/
-                Calibration/Overworld/Battle/Results/SettingsOverlay
-  state/        GameContext -- cross-scene singleton (save profile, analytics, handoffs)
+  main.ts       Phaser entry, scene stack, touch-controls init, debug hook
+  scenes/       Boot / AudioGate / MainMenu / Save / Calibration / Results /
+                SettingsOverlay, and the product path:
+                OverworldScene + overworld/WorldFight.ts (in-world fights) +
+                env/ArenaComposer.ts (venues composed into the map).
+                BattleScene + ActionBattleScene are RETIRED from the product
+                path (registered for regression coverage only — PRD §10.6)
   systems/
-    audio/         TransportClock (Tone.Transport wrapper), Calibration math, BeatmapSonifier
-    combat/        CombatController, JudgmentSystem, PhraseTiming, MeterSequence (live meter
-                   changes), Forecast (Sightread) -- all unit tested, Phaser-free
+    action/        ActionCombat.ts -- the Phaser-free real-time sim (frame data,
+                   hitstun, knockback+DI, parry, cancels, obstacles)
+    audio/         SongPlayer (the six-track soundtrack), TransportClock,
+                   Calibration, BeatmapSonifier (to become an opt-in tick)
+    combat/        RETIRED turn-based systems (CombatController, JudgmentSystem,
+                   MeterSequence, Forecast) -- pending §8.7 re-implementation
     persistence/   IndexedDB SaveManager
-    accessibility/ day-one accessibility settings model, functionally wired throughout
-    analytics/     consent-gated event tracking (PRD §14)
-    progression/   Relics (real mechanical effects at battle start), CampaignSelection
-                   (encounterPool resolution), CampaignReachability (node lock/unlock status)
-    overworld/     OverworldMovement -- pure tile-step/walkability math for OverworldScene
+    accessibility/ settings model
+    analytics/     consent-gated local event tracking (PRD §14)
+    progression/   Relics, CampaignSelection, CampaignReachability
+    overworld/     OverworldMovement -- pure tile-step/walkability math
+  ui/           TouchControls (mobile), TextMenu, Backdrop
   data/
-    schemas/      TypeScript types for all schemas, including four internal ones
-                   (Enemy/HeroClass/CampaignNode/BossPhaseConfig) the PRD's three canonical
-                   schemas don't cover
-    content/      20 abilities (incl. tier-2 unlocks and Groove-spend ultimates), 7 beatmaps,
-                   9 encounters, 7 enemies, 4 hero classes, a 5-node campaign (per-visit
-                   encounter pools on every non-boss node), and a 3-phase boss config -- see PRD §20.1
-  ui/           TextMenu (shared keyboard+pointer menu) + Backdrop (shared moody abyss backdrop)
+    schemas/      TS types incl. internal Enemy/HeroClass/CampaignNode/BossPhaseConfig
+    content/      campaign (5 nodes, encounter pools), 9 encounters, 4 foes,
+                  beatmaps (gaining real per-track beat maps -- PRD §8.3)
 
 assets/
-  sprites/      hero (per-class, 4-facing) + enemy pixel-art sheets -- all authored in
-                tools/pixelart/ and rendered to committed PNGs (see docs/design/art-bible.md)
-  tilemaps/     overworld tileset (tools/pixelart/) + Tiled-JSON map (tools/overworld/)
-  backgrounds/  painted 320x180 battle backdrops (tools/pixelart/backgrounds.py)
-  audio/        music/sfx/stems (empty -- battle audio is currently a scratch Tone.js
-                sonifier, not the real soundtrack; see PRD §20.2)
-  reference/    pre-PRD reference material that carries forward as production basis (PRD §11.4)
+  sprites/band/       the four playable Inhalants (AI-generated, one register)
+  sprites/enemies/    slime, drifter, elite wraith + the colossal Conductor
+  sprites/env/        5 biome venue kits + shared pieces (28 total)
+  sprites/overworld/  landmarks, ambient NPCs, props
+  tilemaps/           the 130x34 five-region world (BFS-validated generator)
+  audio/              the six Inhalants MP3s (lazy-loaded; ~45MB never loads up front)
+  reference/          archived historical material (pre-band art, gbmusic drafts)
 
 tests/
-  unit/         129 tests: JudgmentSystem, PhraseTiming, MeterSequence, Forecast, CombatController,
-                combat stat wirings, Relics, ContentLoader/Registry, SaveManager, Analytics,
-                Calibration, CampaignSelection/Reachability, OverworldMovement
-  e2e/          16 committed Playwright specs (Chromium + Firefox) -- boot/calibration/reload,
-                battle mechanics, the boss's 3-phase mechanic, settings regressions, overworld
-                movement/collision/battle-trigger/return flow.
-                See tests/e2e/README.md for a documented sandbox-specific flakiness caveat.
+  unit/         145 tests across 16 files (action sim, timing, persistence,
+                content validation, progression, retired-path coverage)
+  e2e/          7 Playwright spec files (18 tests, Chromium gate): boot/
+                calibration/persistence, overworld + in-world fight, obelisk
+                save, settings regressions, art-audit captures.
+                Firefox is excluded pending root-cause (PRD §20.2)
 
 tools/
-  pixelart/     the art pipeline: master palette + grid->PNG render; authors every hero,
-                enemy, tile, and backdrop. Regenerate all art: python3 tools/pixelart/generate_all.py
-  gbmusic/      audio -> Game Boy (LSDJ) chiptune conversion pipeline (Python)
-  overworld/    deterministic generator for the overworld tilemap (map data / marker layout)
+  pixelart/     the art pipeline: AI generation (generate_ai.py) + import/
+                cleanup/downscale passes + procedural fallbacks; regenerate
+                with python3 tools/pixelart/generate_all.py
+  overworld/    deterministic five-region world generator
+  gbmusic/      HISTORICAL: audio -> Game Boy chiptune pipeline (superseded by
+                the real recorded soundtrack at PRD v7.7)
 ```
 
 ## Getting started
 
 ```bash
 npm install
-npm run dev        # starts Vite dev server
+npm run dev        # Vite dev server
 npm run typecheck  # tsc --noEmit
-npm test           # vitest run -- 129 unit tests
-npm run test:e2e   # playwright test -- 16 e2e specs (Chromium + Firefox)
+npm test           # vitest run -- 145 unit tests
+npm run test:e2e   # playwright test -- Chromium e2e gate
 npm run build      # production build to dist/
 ```
 
-Play through: audio-unlock gate → main menu → create a save → AV calibration
-(tap along to the pulse) → walkable pixel-art overworld (arrows/WASD to move;
-walk onto a glowing node marker to start its fight) → 5 chained encounters
-ending in a real 3-phase boss (keyboard: 1-5 picks an ability (ultimates cost the full Groove meter), arrow keys +
-1-5 pick a target when more than one enemy is alive, Space hits the beat) →
-results, with real relic and skill-unlock rewards → back on the overworld at
-the node you just fought. Settings are reachable from the main menu or with
-ESC on the overworld and are fully functional, not placeholders.
+Play through: audio-unlock gate → main menu → create a save → AV calibration →
+the drowned world. **WASD/arrows** to move (the band follows you). Walk up to
+the foe standing at each region's venue to start its in-world fight:
+**J** light, **K** heavy, **L** special (Focus), **I** parry (on-beat!),
+**Shift** dash. **E** interacts — rest at a save-obelisk, read an echo. On
+mobile, an on-screen thumbstick and action buttons appear. Settings (ESC) are
+fully functional: assist windows, game speed, reduced motion, volumes,
+calibration.
 
-## Non-negotiable architecture rule
+## Non-negotiable architecture rules
 
-All gameplay timing judgment must be derived from `TransportClock`
-(`src/systems/audio/TransportClock.ts`, wrapping `Tone.Transport`) — never from
-`setTimeout`, `setInterval`, or `requestAnimationFrame`. See PRD §10.2. This is
-enforced in practice today: `BattleScene`'s judgment, the boss's live meter
-changes (`MeterSequence`), and `BeatmapSonifier`'s audible playback all read
-from the same transport clock.
+1. **Audio-clock authority (PRD §10.2):** gameplay timing judgment derives from
+   `TransportClock` (`src/systems/audio/TransportClock.ts`) — never from
+   `setTimeout` / `setInterval` / `requestAnimationFrame`.
+2. **Beat truth (PRD §8.3, release gate #1a — in progress):** the judged beat
+   must be the beat of the *actually playing* track, via authored per-track
+   beat maps. This is the current top engineering priority; until it lands,
+   the judged beat is a beatmap BPM that the streamed songs are not synced to.

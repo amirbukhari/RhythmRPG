@@ -10,10 +10,10 @@
 > closed: every non-boss node now has a 2-entry `encounterPool`.
 >
 > **The single up-to-date snapshot of what's built vs. open is PRD §20**
-> (`docs/product/PRD.md`) — read that, not this file. What remains open
-> there is blocked on resources this environment doesn't have (real art
-> production, a Game Boy audio-rendering path, real devices/browsers for
-> the QA matrix, a non-sandboxed environment to bisect the Firefox e2e
-> failure). The original 2026-07-08 pause notes and plan are preserved in
-> git history (`git show 83794e6:HANDOFF.md`) if you need the full context
-> of how the overworld scope decision was made.
+> (`docs/product/PRD.md`) — read that, not this file. (The parenthetical
+> blocker list that used to live here is long superseded: the game has since
+> pivoted twice — see the PRD v8.0 revision history and
+> `docs/product/prd-audit-2026-07-14.md`.) The original 2026-07-08 pause
+> notes and plan are preserved in git history
+> (`git show 83794e6:HANDOFF.md`) if you need the full context of how the
+> overworld scope decision was made.
