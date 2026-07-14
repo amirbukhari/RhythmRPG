@@ -1,11 +1,52 @@
-# gbmusic — audio → Game Boy (LSDJ) chiptune pipeline
+# gbmusic — audio → Game Boy chiptune pipeline
 
-Converts a mixed audio file (e.g. an MP3 master) into a **Little Sound Dj**
-(`.lsdsng`) project, so it can be auditioned, hand-tuned, and rendered as an
-authentic Game Boy chiptune — matching the 8-bit pixel-art direction in
-[`docs/product/PRD.md`](../../docs/product/PRD.md).
+Two paths from a mixed audio file (e.g. an MP3 master) to Game Boy chiptune:
 
-Adapted from the author's own [lsdj-midi-studio](https://github.com/amirbukhari/lsdj-midi-studio)
+1. **Direct render (`render_gb.py` + `gb_apu.py`)** — separates, transcribes,
+   and then synthesizes the result through a numpy model of the DMG's APU,
+   emitting a finished, listenable MP3. **This produced the committed 8-bit
+   soundtrack in `assets/audio/gb8/`** — sample-aligned with the originals,
+   so the measured beat grids in `src/data/content/songs/` judge both
+   versions identically, and the in-game `Soundtrack: 8-BIT GAME BOY`
+   settings toggle can swap them mid-song.
+2. **LSDJ project (`convert.py`, the original path)** — emits a **Little
+   Sound Dj** (`.lsdsng`) project for hand-tuning in the tracker and
+   rendering on an emulator/real hardware. Higher ceiling, but the LSDJ ROM
+   is not redistributable, so nothing in this repo can render it to audio.
+
+## Direct render
+
+```bash
+pip install --user -r requirements.txt   # + torch CPU wheels for demucs
+python3 render_gb.py ../../assets/audio/<song>.mp3 \
+    ../../assets/audio/gb8/<song>.mp3 \
+    --work-dir /tmp/gb_work_<song> --report report.json
+```
+
+Stages (stems and transcriptions cache in `--work-dir`, so arrangement
+tweaks re-render in seconds):
+
+1. Demucs (htdemucs) → vocals / bass / other / drums, driven through its
+   Python API (torchaudio's file loader now needs torchcodec, so audio I/O
+   goes through soundfile).
+2. basic-pitch on the pitched stems; onset detection + spectral-band rules
+   (calibrated on these stems) classify each drum hit kick/snare/hat.
+3. Arrangement: vocals → pulse 1 (50% duty lead, vibrato on held notes;
+   vocal rests are back-filled with the top line of "other" at 25% duty);
+   bass → pulse 2 (25% duty, octave-centered into the pulse register's
+   64 Hz floor); other → wave (chords collapsed to LSDJ-style arpeggios,
+   ≤4 tones at 30 Hz); drums → noise (three LFSR presets, 7-bit "metallic"
+   mode for hats).
+4. `gb_apu.py` renders the four channels with hardware-accurate duty
+   patterns, 11-bit frequency-register pitch quantization, 4-bit 64 Hz
+   envelopes, a real 15/7-bit LFSR, and the DMG's DC-blocking output
+   high-pass — 4x oversampled, then decimated to 44.1 kHz.
+5. QA: prints beat-scale chroma cosine similarity against the original
+   (the committed six score 0.83–0.90), then encodes MP3 via lameenc.
+
+## LSDJ project path (original)
+
+`convert.py` is adapted from the author's own [lsdj-midi-studio](https://github.com/amirbukhari/lsdj-midi-studio)
 project, which vendors and Python-3-fixes [alexras/pylsdj](https://github.com/alexras/pylsdj)
 (MIT). That project converts **MIDI → `.lsdsng`**; this tool adds the missing
 front half — **audio → MIDI** — via stem separation + transcription, chosen
