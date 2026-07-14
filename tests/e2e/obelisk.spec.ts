@@ -36,7 +36,7 @@ test("resting at a save-obelisk persists the save and does not start the fight",
 
   // still exploring, not fighting
   expect(await page.evaluate(() => window.__meterfallDebug.game.scene.isActive("OverworldScene"))).toBe(true);
-  expect(await page.evaluate(() => window.__meterfallDebug.game.scene.isActive("ActionBattleScene"))).toBe(false);
+  expect(await page.evaluate(() => Boolean(window.__meterfallDebug.game.scene.isActive("ActionBattleScene")))).toBe(false);
 
   // the rest persisted the profile (read back through the real SaveManager)
   const persisted = await page.evaluate(async () => {

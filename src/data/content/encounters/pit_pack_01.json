@@ -1,6 +1,6 @@
 {
-  "encounterId": "mid_biome_2_luchadores_01",
-  "trackId": "mid_biome_2_clave_01",
+  "encounterId": "pit_pack_01",
+  "trackId": "pit_below_01",
   "enemyWave": [
     "elite_wraith",
     "drifter"

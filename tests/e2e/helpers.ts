@@ -21,7 +21,7 @@ declare global {
 }
 
 export async function isSceneActive(page: Page, key: string): Promise<boolean> {
-  return page.evaluate((key) => window.__meterfallDebug.game.scene.isActive(key), key);
+  return page.evaluate((key) => Boolean(window.__meterfallDebug.game.scene.isActive(key)), key);
 }
 
 export async function waitForScene(page: Page, key: string): Promise<void> {
@@ -62,20 +62,6 @@ export async function bootToOverworld(page: Page): Promise<void> {
   await createSaveAndCalibrate(page);
 }
 
-/** Jumps directly to a battle, bypassing map navigation -- for specs that test battle mechanics, not map UX. */
-export async function jumpToEncounter(page: Page, nodeId: string, encounterId: string): Promise<void> {
-  await page.evaluate(
-    ({ nodeId, encounterId }) => {
-      const dbg = window.__meterfallDebug;
-      dbg.GameContext.pendingNodeId = nodeId;
-      dbg.GameContext.pendingEncounterId = encounterId;
-      dbg.game.scene.stop("OverworldScene");
-      dbg.game.scene.start("BattleScene");
-    },
-    { nodeId, encounterId }
-  );
-  await waitForScene(page, "BattleScene");
-}
 
 /**
  * Launches SettingsOverlay in parallel over OverworldScene, exactly as
@@ -117,21 +103,3 @@ export async function closeSettings(page: Page, returnTo: string): Promise<void>
   await waitForScene(page, returnTo);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function getBattleSceneState(page: Page): Promise<any> {
-  return page.evaluate(() => {
-    const scene = window.__meterfallDebug.game.scene.getScene("BattleScene") as unknown as Record<string, unknown>;
-    const combat = scene.combat as { heroes: unknown[]; enemies: unknown[]; round: number; outcome: string; groove: number };
-    return {
-      stage: scene.stage,
-      beatmapTrackId: (scene.beatmap as { trackId: string }).trackId,
-      effectiveBpm: scene.effectiveBpm,
-      currentPhaseIndex: scene.currentPhaseIndex,
-      heroes: combat.heroes,
-      enemies: combat.enemies,
-      round: combat.round,
-      outcome: combat.outcome,
-      groove: combat.groove,
-    };
-  });
-}

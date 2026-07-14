@@ -1,4 +1,4 @@
-import type { CombatState } from "../combat/CombatController";
+import { FOCUS_MAX, player, type Arena } from "../action/ActionCombat";
 
 /**
  * PRD §8.5: "Equipment is limited to a single relic slot per hero and one
@@ -7,46 +7,46 @@ import type { CombatState } from "../combat/CombatController";
  * small typed registry rather than a full JSON content pipeline -- adding a
  * fourth relic to the ContentRegistry/schema pattern is a natural follow-up
  * once there are enough of them to warrant it (see PRD §20).
+ *
+ * v8.3: re-targeted from the retired turn-based CombatState to the action
+ * Arena -- the post-pivot build had relics selectable and persisted but
+ * mechanically inert (the §12 "pivot regression" risk, caught in cleanup).
  */
 export interface RelicDefinition {
   name: string;
   description: string;
-  /** Mutates a freshly-created CombatState once, at battle start. */
-  apply: (state: CombatState) => void;
+  /** Mutates a freshly-created Arena once, at fight start. */
+  apply: (arena: Arena) => void;
 }
 
 export const RELICS: Record<string, RelicDefinition> = {
   focus_loop: {
     name: "Focus Loop",
-    description: "+1 max Focus for every hero, filled at the start of each battle.",
-    apply: (state) => {
-      for (const hero of state.heroes) {
-        hero.maxFocus += 1;
-        hero.focus = Math.min(hero.focus + 1, hero.maxFocus);
-      }
+    description: "Enter every fight with 2 Focus already burning.",
+    apply: (arena) => {
+      arena.focus = Math.min(FOCUS_MAX, arena.focus + 2);
     },
   },
   counter_charm: {
     name: "Counter Charm",
-    description: "The tank starts every battle with a permanent 25% guard.",
-    apply: (state) => {
-      const tank = state.heroes.find((h) => h.role === "tank");
-      if (!tank) return;
-      tank.statusEffects.push({ stat: "guard", value: 0.25, remainingRounds: Number.MAX_SAFE_INTEGER, sourceAbilityId: "relic_counter_charm" });
+    description: "Start every fight steeled: brief guard the moment it begins.",
+    apply: (arena) => {
+      const p = player(arena);
+      p.iframes = Math.max(p.iframes, 1.2); // an opening breath no ambush can steal
     },
   },
   groove_amp: {
     name: "Groove Amp",
-    description: "Start every battle with 20 Groove already banked.",
-    apply: (state) => {
-      state.groove = Math.min(100, state.groove + 20);
+    description: "Start every fight with 20 Groove already banked.",
+    apply: (arena) => {
+      arena.groove = Math.min(100, arena.groove + 20);
     },
   },
 };
 
-/** Applies every relic in a save profile's inventory to a freshly-created combat state. */
-export function applyRelics(state: CombatState, relicIds: string[]): void {
+/** Applies every relic in a save profile's inventory to a freshly-created arena. */
+export function applyRelics(arena: Arena, relicIds: string[]): void {
   for (const id of relicIds) {
-    RELICS[id]?.apply(state);
+    RELICS[id]?.apply(arena);
   }
 }

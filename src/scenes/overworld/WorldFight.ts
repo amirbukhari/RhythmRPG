@@ -3,6 +3,8 @@ import { GameContext } from "../../state/GameContext";
 import { getEncounter, getBeatmap, getEnemy, getCampaignNode, songMaps, bossPhaseConfigs } from "../../data/ContentRegistry";
 import { TransportClock } from "../../systems/audio/TransportClock";
 import { BeatTick } from "../../systems/audio/BeatTick";
+import { SfxPlayer } from "../../systems/audio/SfxPlayer";
+import { applyRelics } from "../../systems/progression/Relics";
 import { music } from "../../systems/audio/SongPlayer";
 import { tierAt, tierForOffset, beatIndexAt } from "../../systems/audio/SongBeat";
 import type { SongMap } from "../../data/schemas/SongMap";
@@ -70,6 +72,10 @@ export class WorldFight {
   private rect: Phaser.Geom.Rectangle;
   private clock = new TransportClock();
   private tick: BeatTick | null = null;
+  private sfx: SfxPlayer | null = null;
+  private prevPlayerHp = -1;
+  private prevLogLen = 0;
+  private wasDashing = false;
   private arena: Arena | null = null; // null until the async clock is up
   private beatSeconds = 0.5; // file-time seconds per beat (HUD/fallback pacing)
   private songMap: SongMap | null = null;
@@ -207,6 +213,8 @@ export class WorldFight {
       this.tick = new BeatTick();
       this.tick.setVolume(settings.volumeMusic * 0.5);
     }
+    this.sfx = new SfxPlayer();
+    this.sfx.setVolume(settings.volumeSfx);
     GameContext.analytics.track("battle_started", { encounterId: this.encounterId });
 
     // Fight text layer: tier popups (§11.3 judgment feedback) + captions
@@ -245,6 +253,8 @@ export class WorldFight {
 
     const enemyHps = encounter.enemyWave.map((id) => getEnemy(id).maxHp);
     const arena = createArena(this.rect.width, this.rect.height, enemyHps);
+    // Relics (§8.5) apply their real effects at fight start.
+    applyRelics(arena, GameContext.activeProfile?.relicInventory ?? []);
     // Practice mode (§9.3): the sim floors player HP at 1 -- no fail state.
     if (settings.practiceMode) {
       arena.practice = true;
@@ -407,9 +417,21 @@ export class WorldFight {
     }
 
     const settings = GameContext.activeProfile?.settings;
+    // Battle SFX from sim state transitions (never from render state).
+    const p = getPlayer(this.arena);
+    if (this.prevPlayerHp >= 0 && p.hp < this.prevPlayerHp - 0.01) this.sfx?.hurt();
+    this.prevPlayerHp = p.hp;
+    if (p.state === "dash" && !this.wasDashing) this.sfx?.dash();
+    this.wasDashing = p.state === "dash";
+    if (this.arena.log.length > this.prevLogLen) {
+      if (this.arena.log[this.arena.log.length - 1] === "parry!") this.sfx?.parry();
+      this.prevLogLen = this.arena.log.length;
+    }
+
     // Ultimate went off this tick (§8.5): the full-Groove verse.
     if (this.prevGroove >= ULTIMATE_GROOVE_COST && this.arena.groove <= this.prevGroove - ULTIMATE_GROOVE_COST) {
       GameContext.analytics.track("ultimate_used", { encounterId: this.encounterId });
+      this.sfx?.ultimate();
       if (!settings?.reducedMotion && !settings?.photosensitivitySafeMode) this.scene.cameras.main.shake(280, 0.012);
       if (settings?.captionsEnabled) this.showCaption("♪ ULTIMATE — THE VERSE BREAKS THE SONG", 2);
       this.grooveWasFull = false;
@@ -531,9 +553,12 @@ export class WorldFight {
       if (e.state === "hitstun" && !reduced) s.setTintFill(0xffffff);
       else s.clearTint();
       const prev = this.lastEnemyHp.get(e.id) ?? e.hp;
-      if (e.hp < prev - 0.01 && !reduced) {
-        const spark = this.scene.add.image(wx, wy - 8, "spark").setBlendMode(Phaser.BlendModes.ADD).setDepth(9).setScale(0.35).setTint(0xfff4d0);
-        this.scene.tweens.add({ targets: spark, scale: 1.1, alpha: 0, angle: 40, duration: 220, onComplete: () => spark.destroy() });
+      if (e.hp < prev - 0.01) {
+        this.sfx?.hit(p.attack?.onBeat ?? false);
+        if (!reduced) {
+          const spark = this.scene.add.image(wx, wy - 8, "spark").setBlendMode(Phaser.BlendModes.ADD).setDepth(9).setScale(0.35).setTint(0xfff4d0);
+          this.scene.tweens.add({ targets: spark, scale: 1.1, alpha: 0, angle: 40, duration: 220, onComplete: () => spark.destroy() });
+        }
       }
       this.lastEnemyHp.set(e.id, e.hp);
     }
@@ -628,6 +653,7 @@ export class WorldFight {
   private finish(outcome: "victory" | "defeat"): void {
     this.clock.stop();
     this.tick?.dispose();
+    this.sfx?.dispose();
     music.setRate(1); // the world outside the fight runs (and sounds) at 1x
     const profile = GameContext.activeProfile!;
     const encounter = getEncounter(this.encounterId);
@@ -680,6 +706,7 @@ export class WorldFight {
     this.finished = true;
     this.clock.stop();
     this.tick?.dispose();
+    this.sfx?.dispose();
     music.setRate(1);
   }
 }

@@ -14,17 +14,18 @@ tracks; the art is in the *Hyper Light Drifter* register.
 
 *(Historical codename: Project Meterfall. The game began as a turn-based
 rhythm RPG and pivoted twice — to real-time action combat at PRD v6.0 and to
-first-class exploration at v7.0. The retired turn-based code remains in-repo
-for regression coverage only.)*
+first-class exploration at v7.0. The retired turn-based code was deleted at
+PRD v8.3 — git history is the archive.)*
 
 ## Start here
 
-- **[Product Requirements Document](docs/product/PRD.md)** — v8.1, the source
+- **[Product Requirements Document](docs/product/PRD.md)** — v8.3, the source
   of truth for scope, requirements, architecture, and release gates.
   **[§20 Implementation Status](docs/product/PRD.md#20-implementation-status-as-of-2026-07-14-v80-re-cut)**
   is the current build-vs-spec snapshot — read that first if you're picking
-  this up. Beat truth (§8.3) shipped in v8.1; the next increment is P2
-  combat completion (judgment tiers, ultimate, phased boss, Sightread).
+  this up. Beat truth, four-tier judgment, the ultimate, the phased in-world
+  boss, Sightread, and full §9.3 parity are shipped; next is the §11.5 art
+  manifest burn-down, then P5 hardening.
 - [PRD audit (2026-07-14)](docs/product/prd-audit-2026-07-14.md) — the
   line-by-line spec-vs-build audit that drove the v8.0 rewrite.
 - [AAA art audit](docs/design/aaa-audit.md) — the screen-by-screen art review
@@ -41,7 +42,7 @@ for regression coverage only.)*
 
 ```
 docs/
-  product/      PRD v8.0 (source of truth) + the 2026-07-14 PRD audit
+  product/      PRD v8.3 (source of truth) + the 2026-07-14 PRD audit
   research/     research backing the PRD
   technical/    JSON schemas for data-driven content
   design/       world bible, art bible, art-prompt catalog, AAA art audit,
@@ -53,15 +54,14 @@ src/
                 SettingsOverlay, and the product path:
                 OverworldScene + overworld/WorldFight.ts (in-world fights) +
                 env/ArenaComposer.ts (venues composed into the map).
-                BattleScene + ActionBattleScene are RETIRED from the product
-                path (registered for regression coverage only — PRD §10.6)
+                (The retired BattleScene/ActionBattleScene were deleted at
+                PRD v8.3 -- git history is the archive)
   systems/
     action/        ActionCombat.ts -- the Phaser-free real-time sim (frame data,
                    hitstun, knockback+DI, parry, cancels, obstacles)
-    audio/         SongPlayer (the six-track soundtrack), TransportClock,
-                   Calibration, BeatmapSonifier (to become an opt-in tick)
-    combat/        RETIRED turn-based systems (CombatController, JudgmentSystem,
-                   MeterSequence, Forecast) -- pending §8.7 re-implementation
+    audio/         SongPlayer (six-track soundtrack), SongBeat (beat-grid
+                   judgment math), TransportClock, Calibration, BeatTick
+                   (opt-in metronome), SfxPlayer (procedural battle SFX)
     persistence/   IndexedDB SaveManager
     accessibility/ settings model
     analytics/     consent-gated local event tracking (PRD §14)
@@ -85,11 +85,12 @@ assets/
   reference/          archived historical material (pre-band art, gbmusic drafts)
 
 tests/
-  unit/         157 tests across 18 files (action sim, song-beat math, timing,
-                persistence, content validation, progression, retired-path coverage)
-  e2e/          8 Playwright spec files (20 tests, Chromium gate): boot/
+  unit/         103 tests across 14 files (action sim + tiers, song-beat math,
+                relics, persistence, content validation, progression)
+  e2e/          8 Playwright spec files (15 tests, Chromium gate): boot/
                 calibration/persistence, overworld + in-world fight, beat truth
-                (gate #1a), obelisk save, settings regressions, art-audit captures.
+                (gate 1a), in-world boss phases (gate 3), mobile boot (Pixel-5
+                emulation), obelisk save, settings, art-audit captures.
                 Firefox is excluded pending root-cause (PRD §20.2)
 
 tools/
@@ -109,7 +110,7 @@ tools/
 npm install
 npm run dev        # Vite dev server
 npm run typecheck  # tsc --noEmit
-npm test           # vitest run -- 157 unit tests
+npm test           # vitest run -- 103 unit tests
 npm run test:e2e   # playwright test -- Chromium e2e gate
 npm run build      # production build to dist/
 ```
@@ -118,10 +119,11 @@ Play through: audio-unlock gate → main menu → create a save → AV calibrati
 the drowned world. **WASD/arrows** to move (the band follows you). Walk up to
 the foe standing at each region's venue to start its in-world fight:
 **J** light, **K** heavy, **L** special (Focus), **I** parry (on-beat!),
-**Shift** dash. **E** interacts — rest at a save-obelisk, read an echo. On
-mobile, an on-screen thumbstick and action buttons appear. Settings (ESC) are
-fully functional: assist windows, game speed, reduced motion, volumes,
-calibration.
+**Shift** dash, **U** ultimate (full Groove). **E** interacts — rest at a
+save-obelisk, read an echo. On mobile, an on-screen thumbstick and action
+buttons appear. Settings (ESC) are fully functional: assist windows, game
+speed, practice mode, captions, Sightread forecast, beat tick, reduced motion,
+volumes, calibration, and full key remapping (Audio & Controls page).
 
 ## Non-negotiable architecture rules
 

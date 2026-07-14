@@ -34,7 +34,7 @@ describe("ContentRegistry", () => {
     }
   });
 
-  it("gives every role a Groove-costed ultimate, keyed to match BattleScene's kit builder (PRD §8.5)", () => {
+  it("gives every role a Groove-costed ultimate, keyed to the retired turn-based kit builder (PRD §8.5)", () => {
     for (const role of ["warrior", "tank", "mage", "healer"] as const) {
       const ultimate = abilities.get(`${role}_ultimate`);
       expect(ultimate).toBeDefined();

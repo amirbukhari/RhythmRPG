@@ -6,7 +6,7 @@
 |---|---|
 | Document title | *The Drowned Chorus* — Browser Rhythm-Action RPG PRD |
 | Working codename | Project Meterfall (historical; the game is titled *The Drowned Chorus*) |
-| Status | **Active v8.2** — v8.0 was the full enterprise rewrite per the [PRD audit](./prd-audit-2026-07-14.md); v8.1 shipped P1 (**beat truth**: judgment derives from the audibly playing track); v8.2 shipped P2+P3 (**four-tier judgment, ultimate, phased in-world boss on Quotience sections, Sightread, practice/captions/remap parity**) plus mobile-boot hardening. Next: P4 content & art depth (§20.3). |
+| Status | **Active v8.3** — v8.0: enterprise rewrite per the [PRD audit](./prd-audit-2026-07-14.md); v8.1: P1 beat truth; v8.2: P2+P3 (four-tier judgment, ultimate, phased boss, Sightread, §9.3 parity) + mobile hardening; v8.3: battle SFX, relics regression fixed, content hygiene, **retired code deleted** (8-scene stack, all shipped). Next: §11.5 manifest burn-down, then P5 hardening (§20.3). |
 | Owner | Amir Bukhari |
 | Author | Amir Bukhari (compiled from concept notes, deep research, and live-play feedback) |
 | Created | 2026-07-08 |
@@ -33,6 +33,7 @@ and [`docs/design/aaa-audit.md`](../design/aaa-audit.md).
 | 7.6–7.9 | 2026-07-13→14 | Lyric-only foe roster (luchadors culled); **real six-track Inhalants soundtrack** replaces synth placeholder; foes stand in the world; save-obelisks; fresh AI band cast + follower conga. |
 | 7.10–7.15 | 2026-07-14 | Honest AAA art audit + P0–P2 burn-down (designed floors, coherent kits, real HUD, water/ground/value); **fights happen in the world** (`WorldFight`, separate battle scenes retired from the trigger path); de-pixelation; arena venues composed into the world; landform direction logged. |
 | **8.0** | **2026-07-14** | **Enterprise rewrite of this document** per the PRD audit. Decisions made: judged beat must derive from the audible track via authored beat maps (§8.3/§10.3); four judgment tiers reaffirmed as spec; ultimate/Groove-spend reaffirmed v1-mandatory; cast re-specified as the band (leader-playable v1, switching v2); boss re-specified as a phased in-world fight keyed to authored song sections (§8.7); §9.3 accessibility reaffirmed with shipped-path gaps tracked; touch input brought in scope with platform tiering (§7.1/§9.2); §8.6 curriculum rewritten post-luchador; analytics/KPIs re-based on measurable events; §11 rewritten to the AI-art + recorded-soundtrack reality; §20 re-cut as of 2026-07-14. |
+| **8.3** | **2026-07-14** | **P4 first pass — feel, hygiene, and the retired code is gone.** **(1) Battle SFX** (procedural first fill of §11.2's SFX pack, `SfxPlayer.ts`): hits (brighter on-beat), player hurt, parry ring, dash whoosh, ultimate boom — all from sim state transitions, volume on the SFX slider. **(2) Relics regression fixed:** post-pivot, relics were selectable/persisted but mechanically inert (`applyRelics` only ran in the retired path — the §12 "pivot regression" risk, caught in cleanup); re-targeted to the action arena (focus_loop: +2 opening Focus; counter_charm: opening guard i-frames; groove_amp: +20 banked Groove) and applied at fight start. **(3) Content hygiene:** `mid_biome_2_luchadores_*` → `pit_pack_*`, track `mid_biome_2_clave_01` → `pit_below_01` (son-clave accent *data* kept — it's a rhythm term, §3). **(4) Retired code deleted** (gate #7 permanently satisfied; §18 Q5 answered: deleted outright, git history is the archive): `BattleScene`, `ActionBattleScene`, `CombatController`, `JudgmentSystem`, `PhraseTiming`, `MeterSequence`, `Forecast`, `BeatmapSonifier`, their 65 unit tests and 7 legacy e2e cases; scene stack is 8 scenes, all shipped. Suite now 103 unit / 15 e2e — every remaining test covers the product. |
 | **8.2** | **2026-07-14** | **Roadmaps P2 + P3 shipped — combat completion & accessibility parity — plus mobile-boot hardening.** **P2:** the four §8.3 judgment tiers are live in the shipped fight (graded windows vs the playing song's grid, tier popups in the HUD, per-tier analytics; multipliers/Groove/i-frames/parry windows all tier-scaled in the sim); the **ultimate** (§8.5) spends the full Groove meter (player-centred burst, armored startup, screen shake, `ultimate_used`); the **in-world Conductor fight is phased** (§8.7): HP thresholds advance movements, playback jumps to the bound beat-aligned *Quotience* section (28.19s / 74.30s, segmentation-derived + grid-snapped), enemy aggression escalates, phase markers on the boss bar — covered by a new `boss-phases-world.spec.ts` on the product path; **Sightread** (§8.4) ships as a settings-toggled forecast lane (upcoming grid beats + telegraphed strikes vs a now-line). **P3 (§9.3):** practice mode floors HP at 1 in the sim (no fail state), in-fight captions for musically meaningful events (telegraph direction, phase shifts, groove full, ultimate), and **all six combat bindings are remappable** (new two-page settings with an Audio & Controls page). **Mobile:** owner report "doesn't start on mobile" → gate hardened (DOM-level tap fallback, `Tone.start()` race/try-catch), production fatal-error overlay (black screens become readable reports), `es2019/safari13` build target for older WebKit, an ULT touch button, and a Pixel-5-emulation boot e2e. 168 unit tests, 22 e2e cases, typecheck/build green; fight visuals screenshot-verified. |
 | **8.1** | **2026-07-14** | **Roadmap P1 shipped — beat truth (§8.3, release gate #1a).** All six tracks measured (`tools/audio/measure_beats.py`, librosa beat tracking) into authored beat-grid maps (`src/data/content/songs/`, validated `SongMap` schema — full per-beat grids, since real recordings drift 8–16% off a constant BPM line); in-world fight judgment now reads the **playing element's position** through the live song's grid (`SongBeat.ts`, loop-aware, calibration/assist preserved), with the transport grid as fallback only when nothing is audible; game speed sets the song's `playbackRate` and scales the sim together (grids live in file-time, so heard and judged beat cannot diverge); the always-on sonifier click is retired from the fight and replaced by the opt-in §9.3 **Beat Tick** setting; `judgment_onbeat`/`judgment_offbeat` events fire on every attempted action, making the §5 on-beat-rate KPI live. New `beat-truth.spec.ts` e2e proves the audible path end-to-end (song map = playing song; judgment flips with audio; rate coupling at 70%). 157 unit tests (12 new), 20 e2e cases, typecheck/build green. Remaining §8.3 caveat: grids are algorithmically measured — the human listening pass is still owed. |
 
@@ -561,12 +562,11 @@ phases — re-targeted at §8.7's section-based phases when built).
 | CalibrationScene | shipped | AV sync test + offset save (keyboard and pointer) |
 | OverworldScene (+ `overworld/WorldFight.ts`, `env/ArenaComposer.ts`) | shipped — **the product path** | The five-region world: movement, foes standing in-world, venues, obelisks, echoes, and the in-world fight controller |
 | ResultsScene | shipped | Rewards, relic choice, unlocks |
-| SettingsOverlay | shipped | Always-available settings modal |
-| ActionBattleScene | **retired from product path** | Standalone action arena (v6.1–v7.12); registered for regression coverage only |
-| BattleScene | **retired from product path** | Turn-based combat (v1–v5); registered for regression coverage only |
+| SettingsOverlay | shipped | Always-available two-page settings modal |
 
-Retired scenes are scheduled for removal once their remaining unique coverage
-(boss-phase mechanics, §8.7) is re-implemented on the product path (§20.3).
+*(v8.3: the retired `BattleScene`/`ActionBattleScene` and their orphaned combat
+systems were deleted outright once boss-phase coverage migrated to the product path —
+release gate #7 is satisfied structurally. Git history is the archive.)*
 
 ### 10.7 Storage and persistence
 
@@ -695,7 +695,7 @@ information never relies on color alone. Once §8.3 tiers land, judgment feedbac
 | Region landmarks (5 colossal set-pieces) | `assets/sprites/overworld/landmarks.png` | Shipped (v7.1/v7.3) |
 | Overworld NPCs (ambient figures), props, obelisks, echo runes | `assets/sprites/` | Shipped |
 | Title key-art + framed UI kit (plates, boss bar) | `assets/`, `tools/pixelart/ui.py` | Shipped (v7.11 HUD). Authored wordmark deferred (v7.12 — needs lettered-by-hand approach) |
-| SFX pack | `assets/audio/sfx/` | **Empty — open** (§20.2) |
+| SFX | `src/systems/audio/SfxPlayer.ts` (procedural; `assets/audio/sfx/` empty) | First fill shipped v8.3 (hits/hurt/parry/dash/ultimate, synthesized). Real recorded SFX remain a §11.5 manifest row (§20.2) |
 | Legacy/reference: pre-band hero art, animation GIFs, gbmusic `.lsdsng` drafts, demo master (gitignored) | `assets/reference/`, `tools/gbmusic/output/` | Archived — historical direction material, no v1 deliverables |
 
 ### 11.5 Production art asset manifest
@@ -859,8 +859,9 @@ the matrix defines the intended hand-off shape as the team grows.
 3. Band-member switching design (v2, §8.4): between-fight selection vs. mid-fight
    tag — and whether followers gain combat presence in v1.5.
 4. Wordmark production path (v7.12: AI text rendering unreliable; needs hand-lettering).
-5. Whether the retired turn-based systems are deleted outright or extracted to a
-   separate archival branch when P4 removes them from the build.
+5. ~~Whether the retired turn-based systems are deleted outright or archived~~ —
+   **answered v8.3: deleted outright; git history is the archive** (consistent with
+   how this repo has always treated superseded work).
 
 *(Resolved since v7.x: title — **The Drowned Chorus**; narrative — the world bible;
 music sourcing — the six recorded tracks.)*
@@ -900,11 +901,12 @@ shipped product path only** — a feature that exists solely in a retired scene 
 here, not a checkmark (the v8.0 rule; see the audit for why). Where this section and
 §1–§19 disagree about reality, this section wins; §1–§19 win about requirements.
 
-Verified this cut (v8.2): `npm test` — **168/168 unit tests** (19 files); **22 e2e
-test cases in 10 Playwright spec files** (Chromium gate, incl. `beat-truth.spec.ts`
+Verified this cut (v8.3): `npm test` — **103/103 unit tests** (14 files); **15 e2e
+test cases in 8 Playwright spec files** (Chromium gate, incl. `beat-truth.spec.ts`
 (gate 1a), `boss-phases-world.spec.ts` (gate 3, product path), and
-`mobile-boot.spec.ts`); typecheck and production build green; fight visuals
-screenshot-verified.
+`mobile-boot.spec.ts`); typecheck and production build green. *(Counts dropped from
+v8.2's 168/22 because the retired turn-based path and its tests were deleted — every
+remaining test covers shipped code, which is the honest number.)*
 
 ### 20.1 Built, tested, and verified on the shipped path
 
@@ -922,6 +924,8 @@ screenshot-verified.
 | **Phased in-world boss (§8.7 — v8.2)** | HP thresholds advance movements; playback jumps to bound *Quotience* sections; enemy aggression escalates (shorter telegraphs/recovers, faster approach); boss-bar phase markers; `boss_phase_reached` fires; e2e-covered on the product path |
 | **Sightread forecast (§8.4 v1 — v8.2)** | Settings toggle renders the forecast lane: upcoming beats from the judged grid + red markers for telegraphed strikes vs a now-line |
 | **§9.3 parity in the shipped fight (v8.2)** | Practice mode (sim HP floor at 1), captions (telegraph direction, phase shifts, groove/ultimate), remappable combat bindings (all six actions, two-page settings UI) |
+| **Battle SFX (v8.3)** | Procedural hits (on-beat brighter)/hurt/parry/dash/ultimate from sim state transitions; SFX volume slider honored |
+| **Relics live again (§8.5 — v8.3)** | `applyRelics` re-targeted to the action arena and applied at fight start (opening Focus / opening guard / banked Groove); the post-pivot inert-relics regression is closed and unit-pinned |
 | Timing plumbing (§8.3) | Judgment never touches UI timers; calibration offset applied before judgment; assist ×1.5 applied |
 | Soundtrack playback (§11.2) | Six real tracks, lazy-loaded (`preload="none"`), scene-mode crossfade, combat rotation, gesture-primed for mobile autoplay |
 | Band cast (§8.4) | Four AI-generated members in one register, per-member idle/run/attack derived from a base pose; the band walks the world as a conga; leader fights with their real sprite |
@@ -943,25 +947,26 @@ screenshot-verified.
    (`mobile-boot.spec.ts`) and the boot path hardened (v8.2), but the owner-reported
    iOS failure needs a real-device check against the next deploy — the new fatal-error
    overlay will make any remaining crash readable.
-3. **Content hygiene:** legacy encounter/track IDs (`*_luchadores_*`, `*_clave_*`)
-   around correct contents; legacy role JSONs; retired scenes (`BattleScene`,
-   `ActionBattleScene`) still registered pending coverage migration (P4).
-4. **Asset manifest depth (§11.5):** animation-state sets, VFX library, SFX pack
-   (directory empty — fights have no hit/parry/dash sounds yet), wordmark, landforms
-   (v7.15 direction) (P4).
-5. **QA matrix on real browsers/devices (§16.1)** and the Firefox e2e root-cause
+3. **Asset manifest depth (§11.5):** animation-state sets, VFX library, real recorded
+   SFX (v8.3's procedural `SfxPlayer` fills the slots as placeholder), wordmark,
+   landforms (v7.15 direction) (P4).
+4. **QA matrix on real browsers/devices (§16.1)** and the Firefox e2e root-cause
    (excluded from the gate since v4.1) (P5).
+5. **Legacy ability/role content** (`src/data/content/abilities|heroes`) remains as
+   validated data with no runtime consumer — earmarked as the seed of the v2
+   per-member moveset schema (§10.5), not deleted.
 
-*(Closed by v8.2, previously items 1–5: four-tier judgment, ultimate spend, phased
-in-world boss, §9.3 fight parity, Sightread v1, and full analytics parity — every §14
-"pending" event except per-feature future content now fires on the shipped path.)*
+*(Closed by v8.2–v8.3: four-tier judgment, ultimate, phased boss, §9.3 parity,
+Sightread v1, analytics parity, battle SFX first fill, the relics regression,
+content-ID hygiene, and retired-code deletion.)*
 
 ### 20.3 Next increment
 
-P1–P3 are shipped (v8.1–v8.2). Next is roadmap **P4 — content & art depth**: SFX for
-the fight (the biggest feel gap now that combat is mechanically complete), content-ID
-hygiene renames, retired-scene coverage migration + deletion, then the §11.5 manifest
-burn-down (animation states, VFX, wordmark, landforms). P5 (hardening) follows.
+P1–P3 shipped; P4's hygiene/feel pass shipped (v8.3). Remaining P4 is the **§11.5
+manifest burn-down**: the v7.15 landform art pass (colossal outcrops, canopy
+overhangs above the player layer), character animation-state depth, the VFX library,
+the hand-lettered wordmark, and real recorded SFX into the `SfxPlayer` slots. Then
+P5 hardening (real-device QA matrix, Firefox root-cause, balance, soak).
 
 ### 20.4 Asset-manifest progress
 
