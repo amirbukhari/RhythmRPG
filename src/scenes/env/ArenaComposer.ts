@@ -73,6 +73,17 @@ export function composeArena(scene: Phaser.Scene, layout: ArenaLayout): void {
     if (p.shadow !== false) {
       scene.add.ellipse(p.x, p.y, 20 * s, 7 * s, 0x05060a, 0.4).setDepth(p.fg ? 8 : -8 + p.y / 1000);
     }
+    // save points (campfire / obelisk) and lanterns get a warm/teal glow
+    if (/campfire|obelisk|lantern|lamp/.test(p.key)) {
+      const teal = /obelisk/.test(p.key);
+      scene.add
+        .image(p.x, p.y - 8 * s, "glow")
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setTint(teal ? 0x49c6bd : 0xf0a648)
+        .setScale(0.5 * s)
+        .setAlpha(0.5)
+        .setDepth(2);
+    }
     scene.add
       .image(p.x, p.y, p.key)
       .setOrigin(0.5, 1)
@@ -104,7 +115,67 @@ export const ARENA_LAYOUTS: Record<string, ArenaLayout> = {
       { key: "env_shallows_reeds", x: 305, y: 108, flip: true },
       { key: "env_shallows_reeds", x: 74, y: 172 },
       { key: "env_shallows_lantern", x: 272, y: 120 },
-      { key: "env_shallows_campfire", x: 290, y: 172 }, // save point corner
+      { key: "env_shared_save_obelisk", x: 30, y: 172 }, // save point (§8.8)
+      { key: "env_shallows_campfire", x: 290, y: 172 },
+    ],
+  },
+  arena_saltmines: {
+    groundColors: [0x2a1e0f, 0x140d05, 0x6e3316],
+    pool: 0xf0a648,
+    pieces: [
+      { key: "env_saltmines_ore_cart", x: 60, y: 62 },
+      { key: "env_saltmines_timber", x: 40, y: 120 },
+      { key: "env_saltmines_timber", x: 288, y: 72, flip: true },
+      { key: "env_saltmines_salt_crystal", x: 106, y: 36 },
+      { key: "env_saltmines_salt_crystal", x: 300, y: 150 },
+      { key: "env_saltmines_ore_rock", x: 26, y: 158 },
+      { key: "env_saltmines_ore_rock", x: 210, y: 34, flip: true },
+      { key: "env_saltmines_calcified_miner", x: 272, y: 120 },
+      { key: "env_shared_save_obelisk", x: 30, y: 172 },
+    ],
+  },
+  arena_pit: {
+    groundColors: [0x241432, 0x120a1c, 0x4b2a57],
+    pool: 0xb98fca,
+    pieces: [
+      { key: "env_pit_ticket_booth", x: 58, y: 60 },
+      { key: "env_pit_carousel_horse", x: 282, y: 72, flip: true },
+      { key: "env_pit_tent_pole", x: 34, y: 118 },
+      { key: "env_pit_plum_rubble", x: 26, y: 160 },
+      { key: "env_pit_plum_rubble", x: 300, y: 150, flip: true },
+      { key: "env_pit_rope_coil", x: 108, y: 36 },
+      { key: "env_pit_rope_coil", x: 205, y: 34 },
+      { key: "env_pit_tent_pole", x: 274, y: 128, flip: true },
+      { key: "env_shared_save_obelisk", x: 30, y: 172 },
+    ],
+  },
+  arena_attic: {
+    groundColors: [0x241a12, 0x120b06, 0x6e3316],
+    pool: 0xe07030,
+    pieces: [
+      { key: "env_attic_drawers", x: 58, y: 60 },
+      { key: "env_attic_crate_stack", x: 286, y: 74, flip: true },
+      { key: "env_attic_rocking_chair", x: 36, y: 120 },
+      { key: "env_attic_birdcage", x: 300, y: 130 },
+      { key: "env_attic_crate_stack", x: 26, y: 162 },
+      { key: "env_attic_oil_lamp", x: 108, y: 36 },
+      { key: "env_attic_oil_lamp", x: 272, y: 122 },
+      { key: "env_shared_save_obelisk", x: 30, y: 172 },
+    ],
+  },
+  arena_hall: {
+    groundColors: [0x141026, 0x0a0716, 0x3a2450],
+    pool: 0x8a52a0,
+    pieces: [
+      { key: "env_hall_plinth", x: 58, y: 60 },
+      { key: "env_hall_plinth", x: 286, y: 68, flip: true },
+      { key: "env_hall_melting_clock", x: 36, y: 122 },
+      { key: "env_hall_music_stand", x: 300, y: 128 },
+      { key: "env_hall_chandelier", x: 150, y: 34 },
+      { key: "env_hall_page_stack", x: 26, y: 162 },
+      { key: "env_hall_page_stack", x: 288, y: 168, flip: true },
+      { key: "env_hall_music_stand", x: 274, y: 120 },
+      { key: "env_shared_save_obelisk", x: 34, y: 172 },
     ],
   },
 };
