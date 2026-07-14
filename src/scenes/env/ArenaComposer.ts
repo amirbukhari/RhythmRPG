@@ -28,7 +28,132 @@ export interface ArenaLayout {
   groundColors: [number, number, number];
   /** warm accent for the central floor light-pool (the fight's focus). */
   pool?: number;
+  /** which designed floor motif to draw (AAA audit B1: no void floors). */
+  motif: "sand" | "planks" | "dust" | "boards" | "marble";
   pieces: Placement[];
+}
+
+/**
+ * Draws a DESIGNED per-biome floor into a canvas texture (AAA audit B1): the
+ * old flat fill + invisible dapple read as a void. Layers: low-frequency tone
+ * blotches -> biome motif (wet-sand ripples, mine planks, circus dust rings,
+ * attic boards, marble checker) -> speckle -> radial centre light + edge
+ * falloff. Deterministic per arena key.
+ */
+function paintFloor(scene: Phaser.Scene, key: string, layout: ArenaLayout): string {
+  const texKey = `floor_${key}`;
+  if (scene.textures.exists(texKey)) return texKey;
+  const W = BASE_WIDTH;
+  const H = BASE_HEIGHT;
+  const tex = scene.textures.createCanvas(texKey, W, H)!;
+  const ctx = tex.getContext();
+  const img = ctx.createImageData(W, H);
+  const d = img.data;
+
+  let seed = 0;
+  for (const ch of key) seed = (seed * 31 + ch.charCodeAt(0)) & 0x7fffffff;
+  const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+
+  const [base, dark, light] = layout.groundColors;
+  const toRgb = (c: number) => [(c >> 16) & 255, (c >> 8) & 255, c & 255] as const;
+  const [br, bg, bb] = toRgb(base);
+  const [dr, dg, db] = toRgb(dark);
+  const [lr, lg, lb] = toRgb(light);
+
+  // low-frequency blotches: a handful of big soft tone shifts
+  const blobs = Array.from({ length: 14 }, () => ({
+    x: rnd() * W,
+    y: rnd() * H,
+    r: 26 + rnd() * 52,
+    t: (rnd() - 0.5) * 0.5,
+  }));
+
+  const cx = W / 2;
+  const cy = H * 0.56;
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      // tone t in [-1, 1]: -1 = dark colour, +1 = light colour
+      let t = 0;
+      for (const b of blobs) {
+        const dx = x - b.x;
+        const dy = y - b.y;
+        const q = 1 - (dx * dx + dy * dy) / (b.r * b.r);
+        if (q > 0) t += b.t * q;
+      }
+      // biome motif
+      switch (layout.motif) {
+        case "sand": {
+          // tide-ripple bands drifting with x
+          const w1 = Math.sin(y * 0.55 + Math.sin(x * 0.045) * 2.2);
+          if (w1 > 0.86) t += 0.22;
+          break;
+        }
+        case "planks": {
+          // vertical mine boards with seams + grain
+          const px = (x + ((x / 26) | 0) * 7) % 26;
+          if (px < 1.2) t -= 0.5;
+          else t += Math.sin(y * 0.22 + ((x / 26) | 0) * 3.1) * 0.05;
+          break;
+        }
+        case "dust": {
+          // trampled fighting-ring circles around the centre
+          const rr = Math.hypot(x - cx, y - cy);
+          const ring = Math.abs((rr % 34) - 17);
+          if (ring < 1.1 && rr > 20 && rr < 120) t -= 0.28;
+          break;
+        }
+        case "boards": {
+          // horizontal attic floorboards, staggered ends, wood grain
+          const row = (y / 12) | 0;
+          const py = y % 12;
+          if (py < 1) t -= 0.5;
+          else {
+            const off = (row * 53) % 64;
+            if ((x + off) % 64 < 1) t -= 0.4; // board end seam
+            t += Math.sin(x * 0.18 + row * 2.7) * 0.06;
+          }
+          break;
+        }
+        case "marble": {
+          // grand-hall checker + faint veins
+          const cxk = ((x / 24) | 0) + ((y / 24) | 0);
+          t += cxk % 2 === 0 ? 0.1 : -0.12;
+          const vein = Math.sin(x * 0.12 + Math.sin(y * 0.07) * 3.5);
+          if (vein > 0.965) t += 0.3;
+          break;
+        }
+      }
+      // fine speckle
+      t += (rnd() - 0.5) * 0.16;
+
+      // radial fight-light + edge falloff
+      const dcx = (x - cx) / (W * 0.62);
+      const dcy = (y - cy) / (H * 0.72);
+      const rad = Math.sqrt(dcx * dcx + dcy * dcy);
+      const lightBoost = Math.max(0, 1 - rad) * 0.24;
+      const edge = Math.min(1, Math.max(0, (rad - 0.72) * 2.2)) * 0.5;
+
+      let r: number, g: number, b: number;
+      if (t >= 0) {
+        r = br + (lr - br) * Math.min(1, t);
+        g = bg + (lg - bg) * Math.min(1, t);
+        b = bb + (lb - bb) * Math.min(1, t);
+      } else {
+        r = br + (dr - br) * Math.min(1, -t);
+        g = bg + (dg - bg) * Math.min(1, -t);
+        b = bb + (db - bb) * Math.min(1, -t);
+      }
+      const m = 1 + lightBoost - edge;
+      const i = (y * W + x) * 4;
+      d[i] = Math.max(0, Math.min(255, r * m));
+      d[i + 1] = Math.max(0, Math.min(255, g * m));
+      d[i + 2] = Math.max(0, Math.min(255, b * m));
+      d[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  tex.refresh();
+  return texKey;
 }
 
 /**
@@ -37,35 +162,18 @@ export interface ArenaLayout {
  * environment pieces. Pieces sit BEHIND the fighters (depth < 4) unless
  * flagged `fg`, so the fight always reads.
  */
-export function composeArena(scene: Phaser.Scene, layout: ArenaLayout): void {
-  const [base, dark, light] = layout.groundColors;
-  const g = scene.add.graphics().setDepth(-10);
-  g.fillStyle(base, 1).fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
-  // deterministic ground texture: soft dark/light dapple so it isn't a flat fill
-  let seed = 1337;
-  const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
-  for (let i = 0; i < 260; i++) {
-    const x = Math.floor(rnd() * BASE_WIDTH);
-    const y = Math.floor(rnd() * BASE_HEIGHT);
-    const s = 1 + Math.floor(rnd() * 3);
-    g.fillStyle(rnd() < 0.5 ? dark : light, 0.14 + rnd() * 0.16).fillRect(x, y, s, s);
-  }
+export function composeArena(scene: Phaser.Scene, layout: ArenaLayout, key = "arena"): void {
+  // designed per-biome floor (AAA audit B1) -- never a flat void
+  const floorKey = paintFloor(scene, key, layout);
+  scene.add.image(0, 0, floorKey).setOrigin(0, 0).setDepth(-10);
   // central walkable light-pool (the fight's focus)
   scene.add
     .image(BASE_WIDTH / 2, BASE_HEIGHT * 0.56, "glow")
     .setBlendMode(Phaser.BlendModes.ADD)
     .setTint(layout.pool ?? 0x2f5f86)
     .setScale(2.4)
-    .setAlpha(0.16)
+    .setAlpha(0.14)
     .setDepth(-9.5);
-
-  // atmospheric edge vignette for depth + to frame the play space
-  const v = scene.add.graphics().setDepth(-9);
-  const band = 22;
-  v.fillStyle(0x05060a, 0.5);
-  v.fillRect(0, 0, BASE_WIDTH, band).fillRect(0, BASE_HEIGHT - band, BASE_WIDTH, band);
-  v.fillRect(0, 0, band, BASE_HEIGHT).fillRect(BASE_WIDTH - band, 0, band, BASE_HEIGHT);
-  v.fillStyle(0x05060a, 0.25).fillRect(0, band, BASE_WIDTH, 10);
 
   for (const p of layout.pieces) {
     if (!scene.textures.exists(p.key)) continue;
@@ -100,6 +208,7 @@ export function composeArena(scene: Phaser.Scene, layout: ArenaLayout): void {
  */
 export const ARENA_LAYOUTS: Record<string, ArenaLayout> = {
   arena_shallows: {
+    motif: "sand",
     groundColors: [0x123240, 0x0b2233, 0x1f6f77],
     pool: 0x2f7f8f,
     pieces: [
@@ -120,6 +229,7 @@ export const ARENA_LAYOUTS: Record<string, ArenaLayout> = {
     ],
   },
   arena_saltmines: {
+    motif: "planks",
     groundColors: [0x2a1e0f, 0x140d05, 0x6e3316],
     pool: 0xf0a648,
     pieces: [
@@ -135,6 +245,7 @@ export const ARENA_LAYOUTS: Record<string, ArenaLayout> = {
     ],
   },
   arena_pit: {
+    motif: "dust",
     groundColors: [0x241432, 0x120a1c, 0x4b2a57],
     pool: 0xb98fca,
     pieces: [
@@ -150,6 +261,7 @@ export const ARENA_LAYOUTS: Record<string, ArenaLayout> = {
     ],
   },
   arena_attic: {
+    motif: "boards",
     groundColors: [0x241a12, 0x120b06, 0x6e3316],
     pool: 0xe07030,
     pieces: [
@@ -164,6 +276,7 @@ export const ARENA_LAYOUTS: Record<string, ArenaLayout> = {
     ],
   },
   arena_hall: {
+    motif: "marble",
     groundColors: [0x141026, 0x0a0716, 0x3a2450],
     pool: 0x8a52a0,
     pieces: [
