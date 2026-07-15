@@ -13,6 +13,7 @@ import { music } from "../systems/audio/SongPlayer";
 import { WorldFight } from "./overworld/WorldFight";
 import { composeWorldVenue } from "./env/ArenaComposer";
 import dressingData from "../data/content/overworld/dressing.json";
+import { worldScaleFor } from "./env/WorldScale";
 
 const TILE_SIZE = 16;
 const STEP_DURATION_MS = 160;
@@ -708,6 +709,56 @@ export class OverworldScene extends Phaser.Scene {
     // hash-scatter system is deleted.
     this.placeAuthoredDressing(shore);
     this.placeRegionGates(map, ground, shore);
+    this.addLivingDetail(map, ground);
+  }
+
+  /**
+   * The world moves (the HLD bar: their air is alive; ours must be MORE so):
+   * teal glints pulse on open water and every canopy crown sways. All of it
+   * deterministic and skipped under reduced motion.
+   */
+  private addLivingDetail(map: Phaser.Tilemaps.Tilemap, ground: Phaser.Tilemaps.TilemapLayer): void {
+    const reduced = Boolean(GameContext.activeProfile?.settings.reducedMotion);
+    if (reduced) return;
+    // water glints: sparse hash-picked open-water tiles get a slow pulse
+    for (let row = 2; row < map.height - 2; row++) {
+      for (let col = 2; col < map.width - 2; col++) {
+        const gid = ground.getTileAt(col, row)?.index;
+        if (gid == null || (gid - 1) % 4 !== 2) continue;
+        const h = ((col * 40503) ^ (row * 2654435761)) >>> 0;
+        if (h % 100 >= 4) continue;
+        const gx = col * TILE_SIZE + ((h >> 5) % TILE_SIZE);
+        const gy = row * TILE_SIZE + ((h >> 9) % TILE_SIZE);
+        const glint = this.add
+          .image(gx, gy, "glow")
+          .setBlendMode(Phaser.BlendModes.ADD)
+          .setTint(0x9fe8e0)
+          .setScale(0.06)
+          .setAlpha(0)
+          .setDepth(1.2);
+        this.tweens.add({
+          targets: glint,
+          alpha: { from: 0, to: 0.4 },
+          scaleX: 0.1,
+          duration: 1800 + (h % 1400),
+          yoyo: true,
+          repeat: -1,
+          delay: h % 2600,
+          ease: "Sine.inOut",
+        });
+      }
+    }
+    // canopy sway: every overhanging crown breathes
+    for (const c of this.canopies) {
+      this.tweens.add({
+        targets: c,
+        angle: (c.x + c.y) % 2 === 0 ? 1.3 : -1.2,
+        duration: 4200 + ((c.x * 7 + c.y * 13) % 1800),
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.inOut",
+      });
+    }
   }
 
   /**
@@ -718,6 +769,7 @@ export class OverworldScene extends Phaser.Scene {
    * library reads as a world, not a repeating texture.
    */
   private placeAuthoredDressing(shore: Phaser.GameObjects.Graphics): void {
+    const reduced = Boolean(GameContext.activeProfile?.settings.reducedMotion);
     const file = dressingData as {
       regions: {
         region: string;
@@ -737,10 +789,13 @@ export class OverworldScene extends Phaser.Scene {
         shore
           .fillStyle(0x05060a, landform ? 0.3 : 0.28)
           .fillEllipse(x, y - 2, landform ? (canopy ? 34 : 46) : 12, landform ? 10 : 4);
+        // canonical world scale wins over the authored value (one unit for
+        // the whole world -- a chair can never outgrow a building again)
+        const scale = worldScaleFor(p.key, this.textures.get(p.key).getSourceImage().height) ?? p.scale;
         const img = this.add
           .image(x, y, p.key)
           .setOrigin(0.5, 1)
-          .setScale(p.scale)
+          .setScale(scale)
           .setFlipX(p.flip)
           .setTint(0xd6dce6)
           .setDepth(canopy ? 6.5 : landform ? 2.5 : 2);
@@ -748,13 +803,39 @@ export class OverworldScene extends Phaser.Scene {
         // emissive pieces cast their light -- the night world reads lit
         if (/lantern|crystal|tidepool|brazier|candle|torch|dockpost|votives|belljar|lamp$|geode|hourglass|campfire/.test(p.key)) {
           const teal = /tidepool|belljar|dockpost/.test(p.key);
+          const tint = teal ? 0x49c6bd : 0xf0a648;
           this.add
             .image(x, y - 6, "glow")
             .setBlendMode(Phaser.BlendModes.ADD)
-            .setTint(teal ? 0x49c6bd : 0xf0a648)
+            .setTint(tint)
             .setScale(0.4)
             .setAlpha(0.32)
             .setDepth(2.1);
+          // fireflies: 2-3 sparks orbit every flame (alive, not decorated).
+          // Deterministic per position; skipped under reduced motion.
+          if (!reduced) {
+            const h = ((p.col * 92821) ^ (p.row * 68917)) >>> 0;
+            for (let i = 0; i < 2 + (h % 2); i++) {
+              const spark = this.add
+                .image(x + ((h >> (i * 4)) % 9) - 4, y - 8 - ((h >> (i * 3)) % 6), "glow")
+                .setBlendMode(Phaser.BlendModes.ADD)
+                .setTint(tint)
+                .setScale(0.05)
+                .setAlpha(0)
+                .setDepth(5.5);
+              this.tweens.add({
+                targets: spark,
+                y: spark.y - 7 - (i * 3),
+                x: spark.x + (i % 2 === 0 ? 3 : -3),
+                alpha: { from: 0, to: 0.5 },
+                duration: 1500 + ((h >> i) % 900),
+                yoyo: true,
+                repeat: -1,
+                delay: i * 520 + (h % 400),
+                ease: "Sine.inOut",
+              });
+            }
+          }
         }
       }
     }
@@ -794,8 +875,9 @@ export class OverworldScene extends Phaser.Scene {
       const prop = GATE_PROPS[biome];
       if (prop && this.textures.exists(prop)) {
         const py = (row + 4) * TILE_SIZE;
+        const ps = worldScaleFor(prop, this.textures.get(prop).getSourceImage().height) ?? 0.7;
         shore.fillStyle(0x05060a, 0.28).fillEllipse(gx, py - 1, 12, 4);
-        this.add.image(gx, py, prop).setOrigin(0.5, 1).setScale(0.7).setDepth(2).setTint(0xd6dce6);
+        this.add.image(gx, py, prop).setOrigin(0.5, 1).setScale(ps).setDepth(2).setTint(0xd6dce6);
         this.add
           .image(gx, py - 8, "glow")
           .setBlendMode(Phaser.BlendModes.ADD)

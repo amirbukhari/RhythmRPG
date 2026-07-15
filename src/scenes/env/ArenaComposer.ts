@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { BASE_WIDTH, BASE_HEIGHT } from "../../config/GameConfig";
+import { worldScaleFor } from "./WorldScale";
 
 /**
  * Kitbashed top-down arenas (PRD §11.1 / §8.2). Instead of one AI-generated
@@ -64,7 +65,8 @@ export function composeWorldVenue(
     if (/save_obelisk/.test(p.key)) continue; // the overworld places its own
     if (!scene.textures.exists(p.key)) continue;
     if (canPlace && !canPlace(ox + p.x, oy + p.y)) continue; // no props in the lake
-    const s = (p.scale ?? 1) * 0.55; // world proportion for the 1.6x hi-res kit art
+    // canonical world scale (one unit everywhere); authored*0.55 only as fallback
+    const s = worldScaleFor(p.key, scene.textures.get(p.key).getSourceImage().height) ?? (p.scale ?? 1) * 0.55;
     const px = ox + p.x;
     const py = oy + p.y;
     if (p.shadow !== false) scene.add.ellipse(px, py, 20 * s, 6 * s, 0x05060a, 0.35).setDepth(2.4);
