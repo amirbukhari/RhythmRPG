@@ -44,6 +44,7 @@ interface Echo {
 // the echo marker is always the frame right after them.
 const DECORATIVE_PROP_COUNT = 6;
 const ECHO_RUNE_FRAME = DECORATIVE_PROP_COUNT;
+const REGION_BIOMES = ["shallows", "saltmines", "pit", "attic", "hall"];
 
 /**
  * Walkable pixel-art overworld (tilemap + tile-snapped movement + camera
@@ -79,6 +80,8 @@ export class OverworldScene extends Phaser.Scene {
   /** Canopy landforms drawn ABOVE the player (PRD v7.15); they alpha-fade
    * when the player walks beneath so the map keeps its sense of height. */
   private canopies: Phaser.GameObjects.Image[] = [];
+  /** Per-region scatter-piece texture keys (env_<biome>_scatter_*). */
+  private scatterKits: string[][] = [];
   /** Screen-space UI pinned to the camera's visible rect. Under the 2x
    * retina zoom (RENDER_SCALE) with a scrolled follow camera, Phaser's
    * scrollFactor-0 transform drifts, so UI is pinned to worldView per frame
@@ -120,6 +123,9 @@ export class OverworldScene extends Phaser.Scene {
     this.fight = null;
     this.canopies = [];
     this.pinned = [];
+    this.scatterKits = REGION_BIOMES.map((b) =>
+      this.textures.getTextureKeys().filter((k) => k.startsWith(`env_${b}_scatter_`)).sort()
+    );
     this.nodeFoeVisuals.clear();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.fight?.destroy();
@@ -667,8 +673,17 @@ export class OverworldScene extends Phaser.Scene {
             const cx = px + TILE_SIZE / 2 + (((h >> 5) % 11) - 5);
             const cy = py + TILE_SIZE + 2 + (((h >> 9) % 7) - 3);
             shore.fillStyle(0x05060a, 0.28).fillEllipse(cx, cy - 1, 12, 4); // contact shadow
-            // scenery sits a value-step darker than characters (audit O4)
-            this.add.image(cx, cy, "ow_props", h % DECORATIVE_PROP_COUNT).setOrigin(0.5, 1).setScale(0.72).setDepth(2).setTint(0xb2b9c6);
+            // Per-biome AI scatter kits (design-audit-3 B): each region
+            // decorates from its OWN 8-piece library instead of the shared
+            // 6-frame sheet that repeated one lamp across the whole world.
+            const kit = this.scatterKits[Math.min(REGION_BIOMES.length - 1, Math.floor(col / 26))];
+            if (kit.length > 0) {
+              const key = kit[(h >> 3) % kit.length];
+              // scenery sits a value-step darker than characters (audit O4)
+              this.add.image(cx, cy, key).setOrigin(0.5, 1).setScale(0.6).setDepth(2).setTint(0xb2b9c6);
+            } else {
+              this.add.image(cx, cy, "ow_props", h % DECORATIVE_PROP_COUNT).setOrigin(0.5, 1).setScale(0.72).setDepth(2).setTint(0xb2b9c6);
+            }
           }
         }
       }
@@ -694,7 +709,6 @@ export class OverworldScene extends Phaser.Scene {
     blocked: Set<string>,
     isGrassGid: (gid: number | undefined) => boolean
   ): void {
-    const REGION_BIOMES = ["shallows", "saltmines", "pit", "attic", "hall"];
     const REGION_W = 26; // tiles per region (generate_overworld_map.py)
     const CELL = 8;
     const clearOfLandmarks = (col: number, row: number): boolean => {

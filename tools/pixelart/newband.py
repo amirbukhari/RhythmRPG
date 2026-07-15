@@ -42,31 +42,31 @@ FOOT_Y = 69  # baseline the feet sit on
 STYLE = (
     "16-bit video game character sprite, bold clean silhouette, chunky pixels, "
     "flat cel shading, gothic drowned-rock musician, pale teal-tinged skin, "
-    "dark stage clothes with rust and seafoam accents, standing full body "
-    "SIDE VIEW facing LEFT, both feet visible and planted, "
+    "ONE bold saturated signature costume colour dominating the outfit, "
+    "standing full body SIDE VIEW facing LEFT, both feet visible and planted, "
     "NO fog, NO mist, NO smoke, NO ground, NO pedestal, NO base under the feet, "
 )
 
 MEMBERS: dict[str, tuple[str, int]] = {
     # member -> (subject prompt, seed)
     "amir": (
-        STYLE + "lead guitarist playing a rusted RED electric guitar slung low, "
-        "tall teal mohawk, NO hood, bare arms, leather vest",
+        STYLE + "lead guitarist playing a rusted BRIGHT RED electric guitar slung low, "
+        "tall BRIGHT TEAL mohawk, NO hood, bare arms, black leather vest with teal trim",
         11,
     ),
     "bassist": (
         STYLE + "bass guitarist with a long-necked dark bass guitar, very tall "
-        "and lanky, deep hood UP hiding the eyes",
+        "and lanky, BONE-WHITE hooded cloak with the deep hood UP hiding the eyes, pale ghostly figure",
         22,
     ),
     "vocalist": (
         STYLE + "singer holding a corroded brass microphone up to the mouth, "
-        "long drowned hair over one eye, flowing open coat, other fist raised",
+        "long drowned hair over one eye, flowing open EMBER-ORANGE greatcoat, other fist raised",
         33,
     ),
     "drummer": (
-        STYLE + "marching drummer holding two drumsticks, a single small snare "
-        "drum strapped at the waist, stocky and broad, sleeveless shirt, "
+        STYLE + "marching drummer holding two drumsticks, a single small GOLD snare "
+        "drum strapped at the waist, stocky and broad, PLUM-PURPLE sleeveless shirt, "
         "NO drum kit, NO cymbals",
         44,
     ),
