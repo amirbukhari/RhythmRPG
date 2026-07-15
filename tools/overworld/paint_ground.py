@@ -146,7 +146,10 @@ def main() -> None:
     stamp_tufts()
 
     # --- path ribbon ---------------------------------------------------------
-    path_mask = organic_mask(kind == 1, jitter=0.16, blur=7)
+    # blur 7 -> 11: the meandering road's single-tile jogs painted as hard
+    # stair-steps; the wider falloff melts each corner into a curve while a
+    # 1-tile spur (32px wide) still holds together comfortably
+    path_mask = organic_mask(kind == 1, jitter=0.18, blur=11)
     d_path = distance_bands(path_mask, 6)
     path_bases = [tint((0x5E, 0x57, 0x46), a, 0.16) for a in ACCENTS]
     path_col = blended(path_bases) * (1 + (n_mid - 0.5) * 0.12)[..., None]

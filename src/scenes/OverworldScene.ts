@@ -738,6 +738,54 @@ export class OverworldScene extends Phaser.Scene {
     }
 
     this.placeLandforms(map, ground, shore, blocked, isGrassGid);
+    this.placeRegionGates(map, ground, shore);
+  }
+
+  /**
+   * Region-entry vistas (goal: intentional): where the main road crosses a
+   * region boundary, the NEXT region announces itself -- its most iconic
+   * landform stands north of the road and one of its lit props flanks the
+   * south side, so every border crossing reads as a composed gateway instead
+   * of a tint change.
+   */
+  private placeRegionGates(map: Phaser.Tilemaps.Tilemap, ground: Phaser.Tilemaps.TilemapLayer, shore: Phaser.GameObjects.Graphics): void {
+    const GATE_PROPS: Record<string, string> = {
+      saltmines: "env_saltmines_scatter_lantern",
+      pit: "env_pit_scatter_torch",
+      attic: "env_attic_scatter_lamp",
+      hall: "env_hall_scatter_candelabra",
+    };
+    for (let k = 1; k < REGION_BIOMES.length; k++) {
+      const bcol = k * 26;
+      const rows: number[] = [];
+      for (let r = 1; r < map.height - 1; r++) {
+        const gid = ground.getTileAt(bcol, r)?.index;
+        if (gid != null && gid > 0 && (gid - 1) % 4 === 1) rows.push(r);
+      }
+      if (rows.length === 0) continue;
+      const row = rows[Math.floor(rows.length / 2)];
+      const biome = REGION_BIOMES[k];
+      const gx = bcol * TILE_SIZE + TILE_SIZE / 2;
+      const outcrop = `env_${biome}_landform_outcrop2`;
+      if (this.textures.exists(outcrop)) {
+        const oy = (row - 3) * TILE_SIZE;
+        shore.fillStyle(0x05060a, 0.3).fillEllipse(gx, oy - 2, 42, 9);
+        this.add.image(gx, oy, outcrop).setOrigin(0.5, 1).setScale(0.7).setDepth(2.5).setTint(0xb2b9c6);
+      }
+      const prop = GATE_PROPS[biome];
+      if (prop && this.textures.exists(prop)) {
+        const py = (row + 4) * TILE_SIZE;
+        shore.fillStyle(0x05060a, 0.28).fillEllipse(gx, py - 1, 12, 4);
+        this.add.image(gx, py, prop).setOrigin(0.5, 1).setScale(0.7).setDepth(2).setTint(0xb2b9c6);
+        this.add
+          .image(gx, py - 8, "glow")
+          .setBlendMode(Phaser.BlendModes.ADD)
+          .setTint(0xf0a648)
+          .setScale(0.45)
+          .setAlpha(0.38)
+          .setDepth(2.1);
+      }
+    }
   }
 
   /**
