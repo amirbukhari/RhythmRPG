@@ -275,6 +275,11 @@ export const ARENA_LAYOUTS: Record<string, ArenaLayout> = {
       { key: "env_shallows_lantern", x: 272, y: 120 },
       { key: "env_shared_save_obelisk", x: 30, y: 172 }, // save point (§8.8)
       { key: "env_shallows_campfire", x: 290, y: 172 },
+      // scatter-kit dressing (design-audit-3: venues read sparse)
+      { key: "env_shallows_scatter_anchor", x: 148, y: 174 },
+      { key: "env_shallows_scatter_skiff", x: 208, y: 176 },
+      { key: "env_shallows_scatter_piling", x: 12, y: 62 },
+      { key: "env_shallows_scatter_buoy", x: 310, y: 42 },
     ],
   },
   arena_saltmines: {
@@ -291,6 +296,10 @@ export const ARENA_LAYOUTS: Record<string, ArenaLayout> = {
       { key: "env_saltmines_ore_rock", x: 210, y: 34, flip: true },
       { key: "env_saltmines_calcified_miner", x: 272, y: 120 },
       { key: "env_shared_save_obelisk", x: 30, y: 172 },
+      { key: "env_saltmines_scatter_brazier", x: 150, y: 30 },
+      { key: "env_saltmines_scatter_geode", x: 306, y: 108 },
+      { key: "env_saltmines_scatter_sacks", x: 66, y: 172 },
+      { key: "env_saltmines_scatter_rail", x: 184, y: 176 },
     ],
   },
   arena_pit: {
@@ -307,6 +316,11 @@ export const ARENA_LAYOUTS: Record<string, ArenaLayout> = {
       { key: "env_pit_rope_coil", x: 205, y: 34 },
       { key: "env_pit_tent_pole", x: 274, y: 128, flip: true },
       { key: "env_shared_save_obelisk", x: 30, y: 172 },
+      // ring corners: the pit is a fighting ring (§8.6 pit pack flavour)
+      { key: "env_pit_scatter_torch", x: 86, y: 52 },
+      { key: "env_pit_scatter_torch", x: 234, y: 52, flip: true },
+      { key: "env_pit_scatter_drum", x: 308, y: 172 },
+      { key: "env_pit_scatter_bench", x: 150, y: 178 },
     ],
   },
   arena_attic: {
@@ -322,6 +336,10 @@ export const ARENA_LAYOUTS: Record<string, ArenaLayout> = {
       { key: "env_attic_oil_lamp", x: 108, y: 36 },
       { key: "env_attic_oil_lamp", x: 272, y: 122 },
       { key: "env_shared_save_obelisk", x: 30, y: 172 },
+      { key: "env_attic_scatter_lamp", x: 150, y: 32 },
+      { key: "env_attic_scatter_trunk", x: 308, y: 170 },
+      { key: "env_attic_scatter_rockinghorse", x: 224, y: 174 },
+      { key: "env_attic_scatter_radio", x: 12, y: 128 },
     ],
   },
   arena_hall: {
@@ -338,6 +356,12 @@ export const ARENA_LAYOUTS: Record<string, ArenaLayout> = {
       { key: "env_hall_page_stack", x: 288, y: 168, flip: true },
       { key: "env_hall_music_stand", x: 274, y: 120 },
       { key: "env_shared_save_obelisk", x: 34, y: 172 },
+      // the boss hall read sparse (design-audit-3): fallen finery rings it
+      { key: "env_hall_scatter_chandelier", x: 150, y: 176 },
+      { key: "env_hall_scatter_bust", x: 108, y: 34 },
+      { key: "env_hall_scatter_cello", x: 310, y: 96 },
+      { key: "env_hall_scatter_harp", x: 14, y: 128 },
+      { key: "env_hall_scatter_candelabra", x: 222, y: 30 },
     ],
   },
 };
