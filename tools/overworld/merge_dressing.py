@@ -57,6 +57,14 @@ def valid_tile(ri: int, col: int, row: int) -> str | None:
 
 
 def main() -> int:
+    # --append: merge a later wave INTO the existing dressing.json, counting
+    # existing key usage against the budgets and keeping >=3-tile spacing
+    # from existing anchors.
+    append = "--append" in sys.argv
+    existing: dict[str, list] = {}
+    if append and OUT.exists():
+        for r in json.loads(OUT.read_text())["regions"]:
+            existing[r["region"]] = r["placements"]
     results = json.loads(Path(sys.argv[1]).read_text())
     regions_out = []
     total, dropped = 0, 0
@@ -64,8 +72,12 @@ def main() -> int:
         region = entry["region"]
         ri = REGIONS.index(region)
         placements = (entry.get("verified") or {}).get("fixed") or entry["authored"]["placements"]
+        prior = existing.get(region, [])
+        prior_anchors = {(p["col"], p["row"]) for p in prior}
         budget: dict[str, int] = {}
-        kept = []
+        for p in prior:
+            budget[p["key"]] = budget.get(p["key"], 0) + 1
+        kept = list(prior)
         for p in placements:
             total += 1
             key = p["key"]
@@ -77,6 +89,10 @@ def main() -> int:
             err = valid_tile(ri, p["col"], p["row"])
             if err:
                 print(f"[{region}] DROP {key} @({p['col']},{p['row']}): {err}")
+                dropped += 1
+                continue
+            if append and any(max(abs(p["col"] - ac), abs(p["row"] - ar)) < 3 for ac, ar in prior_anchors):
+                print(f"[{region}] DROP {key} @({p['col']},{p['row']}): within 3 tiles of a wave-1 anchor")
                 dropped += 1
                 continue
             is_landform = "landform_" in key
@@ -99,6 +115,12 @@ def main() -> int:
             })
         regions_out.append({"region": region, "placements": kept})
         print(f"[{region}] kept {len(kept)} placements, {len(set(p['vignette'] for p in kept))} vignettes")
+    # regions untouched by this wave carry over verbatim
+    touched = {r["region"] for r in regions_out}
+    for region, prior in existing.items():
+        if region not in touched:
+            regions_out.append({"region": region, "placements": prior})
+            print(f"[{region}] carried over {len(prior)} placements")
     OUT.write_text(json.dumps({"regions": regions_out}, indent=1) + "\n")
     print(f"wrote {OUT.relative_to(ROOT)} -- kept {total - dropped}/{total}")
     return 0
