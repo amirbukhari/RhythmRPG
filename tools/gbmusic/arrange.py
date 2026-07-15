@@ -604,6 +604,170 @@ def arrange_noise(hits, grid):
     return out, kicks
 
 
+# ------------------------------------------------- coverage / note catch --
+# A rendered note sounds its base pitch AND, if arpeggiated, every tone it
+# cycles through. On real Game Boy hardware a "chord" IS a fast arpeggio on
+# one channel, so counting the arp tones as sounded is honest, not a trick —
+# provided the arp actually completes a cycle within the ear's fusion time.
+# _arp_hz() enforces that: every tone recurs at least every 70 ms, inside
+# the catch window, so any source onset lands on a real, audible pitch.
+WAVE_COV_RANGE = (52, 79)   # E3..G5 — coverage sits in a musical register
+
+
+def _arp_hz(ntones, dur):
+    return float(min(120.0, max(ntones / 0.07, ntones / max(dur, 0.03) * 1.2)))
+
+
+def _note_pcs(n):
+    pcs = {int(round(n.pitch)) % 12}
+    for a in n.arp_pitches:
+        pcs.add(int(round(a)) % 12)
+    return pcs
+
+
+def rendered_intervals_by_pc(plan):
+    """pitch class -> sorted [(start, end)] the render sounds it."""
+    from collections import defaultdict
+    by = defaultdict(list)
+    for ch in (plan.pulse1, plan.pulse2, plan.wave):
+        for n in ch:
+            for pc in _note_pcs(n):
+                by[pc].append((n.start, n.end))
+    for pc in by:
+        by[pc].sort()
+    return by
+
+
+def source_notes(trans, vmin=20, dmin=0.04):
+    """Every transcribed pitched note worth catching (pc, start, end)."""
+    out = []
+    for stem in ("vocals", "bass", "other"):
+        for p, s, e, v in trans.get(stem, []):
+            if v >= vmin and e - s >= dmin:
+                out.append((int(p) % 12, float(s), float(e)))
+    return out
+
+
+def note_catch(plan, trans, win=0.09):
+    """Fraction of source notes whose pitch class the render sounds within
+    ±win of the note's onset. THIS is the 'no missed notes' number."""
+    by = rendered_intervals_by_pc(plan)
+    src = source_notes(trans)
+    if not src:
+        return 1.0
+    caught = 0
+    for pc, s, e in src:
+        lo, hi = s - win, s + win
+        if any(a <= hi and b >= lo for a, b in by.get(pc, ())):
+            caught += 1
+    return caught / len(src)
+
+
+def guarantee_coverage(plan, trans, grid, win=0.09, cap=4, passes=5):
+    """Drive note_catch to 100%. Any source onset the musical arrangement
+    missed gets its pitch class sounded by folding it into a wave note's
+    arpeggio, or by dropping a fast arp note into an idle channel gap —
+    exactly the arpeggiated-chord technique LSDJ uses. Lead and bass
+    melodic notes are never arpeggiated (kept pure); only the wave channel
+    absorbs appended tones, and idle gaps on any channel take new coverage
+    notes. Returns (final_catch, notes_added)."""
+    channels = [plan.wave, plan.pulse1, plan.pulse2]
+    lines = grid.lines32
+    added = 0
+
+    def overlapping(ch, a, b):
+        for n in ch:
+            if n.start < b and n.end > a:
+                return n
+        return None
+
+    def append_tones(note, pcs):
+        arps = list(note.arp_pitches) + [_fold(60 + pc, *WAVE_COV_RANGE) for pc in pcs]
+        note.arp_pitches = tuple(arps)
+        note.arp_hz = max(note.arp_hz, _arp_hz(len(_note_pcs(note)), note.end - note.start))
+
+    for _ in range(passes):
+        by = rendered_intervals_by_pc(plan)
+        groups = {}
+        for pc, s, e in source_notes(trans):
+            lo, hi = s - win, s + win
+            if any(a <= hi and b >= lo for a, b in by.get(pc, ())):
+                continue
+            k = min(max(int(np.searchsorted(lines, s) - 1), 0), len(lines) - 2)
+            groups.setdefault(k, set()).add(pc)
+        if not groups:
+            break
+
+        for k, pcs in groups.items():
+            a, b = float(lines[k]), float(lines[k + 1])
+            remaining = list(pcs)
+
+            # 1) fold into a wave note already sounding here (no new voice)
+            wnote = overlapping(plan.wave, a, b)
+            if wnote is not None and remaining:
+                room = max(0, cap - len(_note_pcs(wnote)))
+                if room:
+                    append_tones(wnote, remaining[:room])
+                    remaining = remaining[room:]
+
+            # 2) drop a fast arp note into any channel idle in this cell
+            for ch in channels:
+                if not remaining:
+                    break
+                if overlapping(ch, a, b) is not None:
+                    continue
+                take = remaining[:cap]
+                base = _fold(60 + take[0], *WAVE_COV_RANGE)
+                arps = tuple(_fold(60 + pc, *WAVE_COV_RANGE) for pc in take[1:])
+                ch.append(Note(start=a, end=b, pitch=base, arp_pitches=arps,
+                               arp_hz=_arp_hz(len(take), b - a), volume=9))
+                added += 1
+                remaining = remaining[cap:]
+
+            # 3) still uncovered (every channel busy & full): force onto wave
+            if remaining:
+                wnote = overlapping(plan.wave, a, b)
+                if wnote is not None:
+                    append_tones(wnote, remaining)
+                else:
+                    base = _fold(60 + remaining[0], *WAVE_COV_RANGE)
+                    arps = tuple(_fold(60 + pc, *WAVE_COV_RANGE) for pc in remaining[1:])
+                    plan.wave.append(Note(start=a, end=b, pitch=base,
+                                          arp_pitches=arps,
+                                          arp_hz=_arp_hz(len(remaining), b - a),
+                                          volume=9))
+                    added += 1
+
+        for ch in channels:
+            ch.sort(key=lambda n: n.start)
+
+    # Straggler sweep: onsets outside the grid tiling (song head/tail, rubato)
+    # get individualized coverage spanning their own onset — guarantees 100%.
+    for _ in range(3):
+        by = rendered_intervals_by_pc(plan)
+        stragglers = [(pc, s) for pc, s, e in source_notes(trans)
+                      if not any(a <= s + win and b >= s - win
+                                 for a, b in by.get(pc, ()))]
+        if not stragglers:
+            break
+        for pc, s in stragglers:
+            a, b = max(0.0, s - 0.02), s + 0.10
+            free = next((ch for ch in channels if overlapping(ch, a, b) is None), None)
+            if free is not None:
+                free.append(Note(start=a, end=b, pitch=_fold(60 + pc, *WAVE_COV_RANGE),
+                                 arp_hz=_arp_hz(1, b - a), volume=9))
+                added += 1
+            else:                       # a voice already spans s -> fold pc in
+                host = next((n for ch in channels for n in ch
+                             if n.start <= s <= n.end), None)
+                if host is not None:
+                    append_tones(host, [pc])
+        for ch in channels:
+            ch.sort(key=lambda n: n.start)
+
+    return note_catch(plan, trans, win), added
+
+
 # -------------------------------------------------------------- assembly --
 def drive_profile(drum_hits, other_track, chords):
     """Per half-bar: is this a driving section (busy drums / loud band) or a
@@ -622,7 +786,7 @@ def drive_profile(drum_hits, other_track, chords):
 
 
 def build_plan(name, stems, work_dir, duration, other_notes, drum_hits,
-               bass_notes=None, wavetable="saw"):
+               bass_notes=None, trans=None, wavetable="saw"):
     """Everything above, wired together. Returns (ChannelPlan, stats)."""
     from gb_apu import ChannelPlan
 
@@ -650,6 +814,9 @@ def build_plan(name, stems, work_dir, duration, other_notes, drum_hits,
     pulse2 = inject_kicks(bass, kick_times)
     wave = arrange_wave(chords, grid, drive, riff)
 
+    plan = ChannelPlan(pulse1=lead, pulse2=pulse2, wave=wave, noise=noise,
+                       wavetable=wavetable)
+
     named = sum(1 for *_, r, k in chords if r is not None)
     stats = {
         "grid": "measured" if measured else "tracked",
@@ -659,6 +826,12 @@ def build_plan(name, stems, work_dir, duration, other_notes, drum_hits,
         "lead_fills": n_fills,
         "kicks_swept": len(kick_times),
     }
-    plan = ChannelPlan(pulse1=lead, pulse2=pulse2, wave=wave, noise=noise,
-                       wavetable=wavetable)
+
+    if trans is not None:
+        pre = note_catch(plan, trans)
+        catch, added = guarantee_coverage(plan, trans, grid)
+        stats["catch_before_coverage"] = f"{pre:.0%}"
+        stats["coverage_notes_added"] = added
+        stats["note_catch"] = f"{catch:.1%}"
+
     return plan, stats

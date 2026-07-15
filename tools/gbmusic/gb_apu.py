@@ -156,7 +156,7 @@ def _envelope(t: np.ndarray, volume: int, period: int, down: bool) -> np.ndarray
 
 
 def _render_pulse_note(note: Note, sr: int, buf: np.ndarray):
-    i0 = int(note.start * sr)
+    i0 = max(0, int(note.start * sr))
     i1 = min(int(note.end * sr), len(buf))
     if i1 <= i0:
         return
@@ -192,7 +192,7 @@ def _render_pulse_note(note: Note, sr: int, buf: np.ndarray):
 
 
 def _render_wave_note(note: Note, sr: int, buf: np.ndarray, table: np.ndarray):
-    i0 = int(note.start * sr)
+    i0 = max(0, int(note.start * sr))
     i1 = min(int(note.end * sr), len(buf))
     if i1 <= i0:
         return
@@ -218,7 +218,7 @@ def _render_wave_note(note: Note, sr: int, buf: np.ndarray, table: np.ndarray):
 
 
 def _render_noise_hit(hit: NoiseHit, sr: int, buf: np.ndarray):
-    i0 = int(hit.start * sr)
+    i0 = max(0, int(hit.start * sr))
     dur = hit.length
     if hit.env_period > 0:
         dur = min(dur, hit.volume * hit.env_period / FRAME_HZ + 0.01)
