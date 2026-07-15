@@ -738,8 +738,13 @@ export class OverworldScene extends Phaser.Scene {
         if (col < 0) continue;
         const biome = REGION_BIOMES[Math.min(REGION_BIOMES.length - 1, Math.floor(col / REGION_W))];
         const canopy = kind < 16; // ~16% canopy, ~22% outcrop of cells
-        const key = `env_${biome}_landform_${canopy ? "canopy" : "outcrop"}`;
-        if (!this.textures.exists(key)) continue;
+        // Each form picks among its biome's generated variants (landform_outcrop,
+        // _outcrop2, _outcrop3 / _canopy, _canopy2) so a region never repeats one
+        // silhouette wall-to-wall (design-audit-3 C).
+        const base = `env_${biome}_landform_${canopy ? "canopy" : "outcrop"}`;
+        const variants = [base, `${base}2`, `${base}3`].filter((k) => this.textures.exists(k));
+        if (variants.length === 0) continue;
+        const key = variants[(ch >> 13) % variants.length];
         const x = col * TILE_SIZE + TILE_SIZE / 2;
         const y = row * TILE_SIZE + TILE_SIZE;
         shadowLayer.fillStyle(0x05060a, 0.3).fillEllipse(x, y - 2, canopy ? 34 : 46, 10);
