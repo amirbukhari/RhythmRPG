@@ -364,6 +364,17 @@ export class OverworldScene extends Phaser.Scene {
           .setDisplaySize(width * 1.2, height);
         this.tweens.add({ targets: rays, alpha: 0.46, duration: 4200, yoyo: true, repeat: -1, ease: "Sine.inOut" });
 
+        // A second, DIAGONAL shaft slicing the whole scene (the HLD shot's
+        // signature move): rotated, wider than the screen, slow sway.
+        const slice = this.pinToScreen(this.add.image(width * 0.68, height * 0.4, "fx_godray"), width * 0.68, height * 0.4)
+          .setDepth(14)
+          .setBlendMode(Phaser.BlendModes.ADD)
+          .setTint(0xc8f0dc)
+          .setAlpha(0.16)
+          .setRotation(0.42)
+          .setDisplaySize(width * 0.9, height * 2.2);
+        this.tweens.add({ targets: slice, alpha: 0.26, rotation: 0.36, duration: 6400, yoyo: true, repeat: -1, ease: "Sine.inOut" });
+
         // Ambient light motes (the HLD comparison: their air is ALIVE) --
         // a dozen tiny additive specks drifting up-screen, screen-pinned so
         // they read wherever the camera is. Deterministic layout.
@@ -391,6 +402,11 @@ export class OverworldScene extends Phaser.Scene {
         }
       }
     }
+
+    // (A foreground corner-foliage layer was tried here -- HLD's depth
+    // trick -- but every canopy asset reads as an occluding sheet at frame
+    // scale, not a fringe. The depth layering is carried by the canopy
+    // overhangs in-world, the diagonal shaft, and the motes instead.)
 
     const g = this.pinToScreen(this.add.graphics().setDepth(15), 0, 0);
     // cold overcast tint
