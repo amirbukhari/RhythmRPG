@@ -164,6 +164,27 @@ def classify_drums(path, cache_path):
 
 
 # ------------------------------------------------------------------ QA --
+def note_catch(plan, trans):
+    """Fraction of transcribed source notes (all pitched stems) that the
+    render plays: same pitch class within 90 ms of the source onset."""
+    rendered = []
+    for ch in (plan.pulse1, plan.pulse2, plan.wave):
+        rendered.extend((n.start, n.pitch % 12) for n in ch)
+    rendered.sort()
+    starts = np.array([r[0] for r in rendered])
+    pcs = np.array([r[1] for r in rendered])
+    caught = total = 0
+    for stem in ("vocals", "bass", "other"):
+        for p, s, e, v in trans.get(stem, []):
+            if v < 20 or e - s < 0.04:
+                continue
+            total += 1
+            lo, hi = np.searchsorted(starts, [s - 0.09, s + 0.09])
+            if np.any(pcs[lo:hi] == p % 12):
+                caught += 1
+    return caught / total if total else 0.0
+
+
 def chroma_similarity(orig_path, rendered, sr):
     """Mean cosine similarity of beat-scale chroma between original and
     render — a smoke test that the transcription kept the harmony."""
@@ -262,7 +283,7 @@ def render(input_path, output_path, work_dir, wavetable="saw", stereo=True,
     print("[4/5] arranging the cover (v2 engine) + APU render")
     plan, arr_stats = arrange.build_plan(
         name, stems, work_dir, duration, trans["other"], hits,
-        wavetable=wavetable)
+        bass_notes=trans["bass"], wavetable=wavetable)
     counts = dict(pulse1=len(plan.pulse1), pulse2=len(plan.pulse2),
                   wave=len(plan.wave), noise=len(plan.noise))
     print(f"      events: {counts}")
@@ -272,6 +293,8 @@ def render(input_path, output_path, work_dir, wavetable="saw", stereo=True,
                         mix=(0.95, 0.90, 0.62, 0.50))
 
     print("[5/5] QA + encode")
+    catch = note_catch(plan, trans)
+    print(f"      note catch (source notes the render plays): {catch:.0%}")
     sim = chroma_similarity(input_path, audio, sr)
     print(f"      chroma similarity vs original: {sim:.3f}")
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)

@@ -62,14 +62,16 @@ class Grid:
         self.beats = pre[::-1] + beats + post
         lines = []
         for a, b in zip(self.beats, self.beats[1:]):
-            for k in range(4):
-                lines.append(a + (b - a) * k / 4.0)
+            for k in range(8):
+                lines.append(a + (b - a) * k / 8.0)
         lines.append(self.beats[-1])
-        self.lines16 = np.array(lines)
+        self.lines32 = np.array(lines)   # 32nd-note resolution
+        self.lines16 = self.lines32[::2]
 
     def cells(self, div=16):
-        """Non-overlapping (t0, t1) windows: div=16 -> 16ths, 8 -> 8ths."""
-        pts = self.lines16[:: (1 if div == 16 else 2)]
+        """Non-overlapping (t0, t1) windows: div in {32, 16, 8}."""
+        step = {32: 1, 16: 2, 8: 4}[div]
+        pts = self.lines32[::step]
         return list(zip(pts[:-1], pts[1:]))
 
     def half_bars(self):
@@ -79,6 +81,9 @@ class Grid:
 
     def snap16(self, t):
         return float(self.lines16[int(np.argmin(np.abs(self.lines16 - t)))])
+
+    def snap32(self, t):
+        return float(self.lines32[int(np.argmin(np.abs(self.lines32 - t)))])
 
 
 def load_grid(song_name, duration, songs_dir=None):
@@ -166,6 +171,105 @@ def notes_from_cells(summary, cells, join_semitones=0.6):
         else:
             raw.append([pv, a, b, rms])
     return [[int(round(p)), s, e, vel_of(r)] for p, s, e, r in raw]
+
+
+def segment_f0(track, grid, prob_min=0.4, min_len=0.045, jump=0.8):
+    """Frame-level f0 segmentation — catches fast runs that per-cell voting
+    flattens. A note runs while pitch stays within `jump` semitones; it
+    closes on a jump or >=2 unvoiced frames. Boundaries snap to 32nds.
+    Returns [[pitch,s,e,vel], ...]."""
+    t = np.array(track["t"])
+    m = np.array([np.nan if v is None else v for v in track["m"]])
+    p = np.array(track["p"])
+    r = np.array(track["r"])
+    voiced = ~np.isnan(m) & (p > prob_min)
+
+    segs = []
+    i, n = 0, len(t)
+    while i < n:
+        if not voiced[i]:
+            i += 1
+            continue
+        vals = [m[i]]
+        recent = [m[i]]
+        j, unv = i + 1, 0
+        while j < n and t[j] - t[i] < 3.0:
+            if voiced[j]:
+                if abs(m[j] - recent[-1]) > jump \
+                        or abs(m[j] - np.median(recent)) > 1.6:
+                    break
+                vals.append(m[j])
+                recent.append(m[j])
+                if len(recent) > 8:
+                    recent.pop(0)
+                unv = 0
+            else:
+                unv += 1
+                if unv >= 2:
+                    break
+            j += 1
+        if len(vals) >= 2:
+            segs.append((float(np.median(vals)), float(t[i]),
+                         float(t[min(j, n - 1)]),
+                         float(np.mean(r[i:j])) if j > i else float(r[i])))
+        i = j if j > i else i + 1
+
+    vel_of = _rms_to_vel([s[3] for s in segs])
+    out = []
+    for pitch, s, e, rms in segs:
+        s2, e2 = grid.snap32(s), grid.snap32(e)
+        if e2 - s2 < min_len:
+            e2 = s2 + min_len
+        if out and out[-1][2] > s2:          # keep strictly monophonic
+            out[-1][2] = s2
+            if out[-1][2] - out[-1][1] < 0.03:
+                out.pop()
+        out.append([int(round(pitch)), s2, e2, vel_of(rms)])
+    return [nt for nt in out if nt[2] - nt[1] >= 0.03]
+
+
+def riff_lines(other_notes, grid, vel_min=20):
+    """The 'other' stem split into two monophonic voices at 32nd resolution:
+    voice 0 is the most salient active note per cell (the riff), voice 1 the
+    strongest OTHER pitch sounding at the same time (the harmony under a
+    chord stab). Splitting the polyphony across two channels is how real GB
+    covers keep fast chordal writing intact."""
+    cells = grid.cells(32)
+    if not other_notes:
+        return [], []
+    notes = sorted([n for n in other_notes if n[3] >= vel_min],
+                   key=lambda n: n[1])
+    starts = np.array([n[1] for n in notes])
+
+    picks = [[], []]
+    for a, b in cells:
+        mid = (a + b) / 2
+        lo = int(np.searchsorted(starts, mid - 4.0))
+        active = [n for n in notes[lo:int(np.searchsorted(starts, mid))]
+                  if n[1] <= mid < n[2]]
+        if not active:
+            picks[0].append(None)
+            picks[1].append(None)
+            continue
+        active.sort(key=lambda n: (n[3], n[0]), reverse=True)
+        top = active[0]
+        picks[0].append(top)
+        second = next((n for n in active[1:] if n[0] % 12 != top[0] % 12), None)
+        picks[1].append(second)
+
+    lines = []
+    for line in picks:
+        out = []
+        for (a, b), n in zip(cells, line):
+            if n is None:
+                continue
+            if out and out[-1][0] == n[0] and abs(out[-1][2] - a) < 1e-6:
+                out[-1][2] = b
+                out[-1][3] = max(out[-1][3], n[3])
+            else:
+                out.append([n[0], a, b, n[3]])
+        lines.append(out)
+    return lines[0], lines[1]
 
 
 def _fold(pitch, lo, hi):
@@ -262,50 +366,50 @@ def detect_chords(path, grid, cache_path, bass_path=None):
 
 
 # ----------------------------------------------------------- lead voice --
-def arrange_lead(vocal_track, other_notes, grid):
-    """pYIN vocal line quantized to 16ths; rests >= 4 beats are filled with
-    the top line of the 'other' stem (quantized to 8ths, quieter, 25% duty)."""
-    cells16 = grid.cells(16)
-    summary = cell_summary(vocal_track, cells16)
-    mono = notes_from_cells(summary, cells16)
+def arrange_lead(vocal_track, riff, riff2, grid):
+    """The vocal line, frame-segmented (fast runs survive) and snapped to
+    32nds. In vocal rests pulse 1 plays the harmony voice of the riff when
+    one is sounding, else the riff an octave up — so chordal writing keeps
+    both voices and single lines get the classic octave double."""
+    mono = segment_f0(vocal_track, grid)
     mono = _center(mono, 74)
     mono = [[_fold(p, *LEAD_RANGE), s, e, v] for p, s, e, v in mono]
 
     beat = float(np.median(np.diff(grid.beats)))
-    min_gap = 4.0 * beat
+    min_gap = 2.0 * beat
     gaps, cursor = [], 0.0
-    end_time = grid.lines16[-1]
+    end_time = grid.lines32[-1]
     for p, s, e, v in mono + [[0, end_time, end_time, 0]]:
         if s - cursor >= min_gap:
             gaps.append((cursor, s))
         cursor = max(cursor, e)
 
+    # fill material: harmony voice where it exists, octave-up riff elsewhere
+    material = sorted(
+        [[p, s, e, v, 1] for p, s, e, v in _center(riff2, 76)] +
+        [[p + 12, s, e, v, 0] for p, s, e, v in riff],
+        key=lambda n: (n[1], -n[4]))          # harmony wins a tied start
+    fill_src = []
+    for p, s, e, v, pri in material:
+        if fill_src and s < fill_src[-1][2]:
+            if pri == 0:
+                continue                       # octave double yields
+            fill_src[-1][2] = s                # harmony steals
+        fill_src.append([p, s, e, v])
+
     fills = []
-    if other_notes:
-        cells8 = grid.cells(8)
-        for ga, gb in gaps:
-            span = [(a, b) for a, b in cells8 if a >= ga - 1e-3 and b <= gb + 1e-3]
-            cvals = []
-            for a, b in span:
-                mid = (a + b) / 2
-                active = [n for n in other_notes
-                          if n[1] <= mid < n[2] and n[3] >= 26]
-                if not active:
-                    cvals.append((None, 0.0))
-                    continue
-                top = max(active, key=lambda n: n[0])
-                cvals.append((float(top[0]), top[3] / 127.0))
-            seg = notes_from_cells(cvals, span, join_semitones=0.4)
-            seg = _center(seg, 76)
-            fills.extend([_fold(p, *FILL_RANGE), s, e, v] for p, s, e, v in seg)
+    for ga, gb in gaps:
+        for p, s, e, v in fill_src:
+            s2, e2 = max(s, ga + 0.02), min(e, gb - 0.02)
+            if e2 - s2 >= 0.03:
+                fills.append([_fold(p, *FILL_RANGE), s2, e2, v])
 
     out = [Note(start=s, end=e, pitch=p, volume=_v(v, 10, 15), duty=0.50,
                 env_period=0,
-                vibrato_cents=25.0 if (e - s) >= 2.2 * beat / 4 else 0.0,
+                vibrato_cents=25.0 if (e - s) >= 1.2 * beat else 0.0,
                 vibrato_hz=5.6, vibrato_delay=0.18)
            for p, s, e, v in mono]
-    out.extend(Note(start=s, end=e, pitch=p, volume=_v(v, 8, 12), duty=0.25,
-                    vibrato_cents=14.0 if (e - s) >= 3 * beat / 4 else 0.0)
+    out.extend(Note(start=s, end=e, pitch=p, volume=_v(v, 8, 13), duty=0.25)
                for p, s, e, v in fills)
     return sorted(out, key=lambda n: n.start), len(fills)
 
@@ -315,43 +419,78 @@ def _v(vel, lo, hi):
 
 
 # ------------------------------------------------------------ wave voice --
-def arrange_wave(chords, grid, drive_windows):
-    """Authored accompaniment from the chord track: driving 16th arpeggios
-    in loud sections, sustained shimmer-arp pads in quiet ones."""
-    notes = []
+RIFF_RANGE = (48, 81)
+
+
+def arrange_wave(chords, grid, drive_windows, riff):
+    """The wave channel PLAYS THE RIFF whenever the song has one — the
+    dominant fast line of the 'other' stem at 32nd resolution. Only where
+    the line goes quiet does it fall back to authored chord accompaniment
+    (16th arpeggios in drive sections, shimmer pads elsewhere)."""
+    riff = [[_fold(p, *RIFF_RANGE), s, e, v] for p, s, e, v in _center(riff, 64)]
+    notes = [Note(start=s, end=max(s + 0.03, e - 0.008), pitch=p,
+                  volume=_v(v, 9, 15))
+             for p, s, e, v in riff]
+
+    # chord accompaniment only in the riff's gaps
+    covered = np.zeros(len(grid.lines16) - 1, dtype=bool)
+    cells16 = grid.cells(16)
+    for p, s, e, v in riff:
+        for k, (a, b) in enumerate(cells16):
+            if s < b and e > a + 0.01:
+                covered[k] = True
+
     for (a, b, root, kind), drive in zip(chords, drive_windows):
         if root is None:
             continue
+        span = [(k, c) for k, c in enumerate(cells16)
+                if c[0] >= a - 1e-4 and c[1] <= b + 1e-4]
+        free = [(k, c) for k, c in span if not covered[k]]
+        if len(free) < max(2, len(span) // 2):
+            continue                      # the riff owns this window
         third = 4 if kind == "maj" else (3 if kind == "min" else 7)
         r = _fold(60 + root, *WAVE_ROOT_RANGE)
         tones = [r, r + third, r + 7, r + 12] if kind != "5" else [r, r + 7, r + 12, r + 19]
         if drive:
-            lines = grid.lines16[(grid.lines16 >= a - 1e-4) & (grid.lines16 < b - 1e-4)]
-            for i, t0 in enumerate(lines):
-                t1 = t0 + (lines[1] - lines[0] if len(lines) > 1 else (b - a) / 8)
-                notes.append(Note(start=float(t0), end=float(t0 + 0.88 * (t1 - t0)),
-                                  pitch=tones[i % 4], volume=13, env_period=0))
+            for i, (k, (t0, t1)) in enumerate(free):
+                notes.append(Note(start=t0, end=t0 + 0.88 * (t1 - t0),
+                                  pitch=tones[i % 4], volume=12))
         else:
-            notes.append(Note(start=a, end=b, pitch=tones[0],
+            t0, t1 = free[0][1][0], free[-1][1][1]
+            notes.append(Note(start=t0, end=t1, pitch=tones[0],
                               arp_pitches=tuple(tones[1:3]), arp_hz=24.0,
                               volume=9))
-    return notes
+    notes.sort(key=lambda n: n.start)
+    # strictly monophonic: trim anything the next note overlaps
+    for cur, nxt in zip(notes, notes[1:]):
+        if cur.end > nxt.start:
+            cur.end = nxt.start
+    return [n for n in notes if n.end - n.start >= 0.02]
 
 
 # ------------------------------------------------------------ bass voice --
-def arrange_bass(bass_track, chords, grid, drive_windows):
-    """pYIN bass per 8th; chord-root fallback where the stem has energy but
-    no confident pitch. Staccato eighths in drive, sustains in pads."""
-    cells8 = grid.cells(8)
-    summary = cell_summary(bass_track, cells8, voiced_min=0.4)
-    vel_of = _rms_to_vel([r for _, r in summary])
-    silence = np.percentile([r for _, r in summary if r > 0] or [0], 30)
+def arrange_bass(bass_track, bass_notes, chords, grid, drive_windows):
+    """The real bass line: pYIN trace first (reliable pitch), basic-pitch's
+    dominant line where the trace is silent (fast attacks pYIN misses),
+    chord roots where the stem has energy but neither is confident.
+    Staccato articulation in drive sections."""
+    line = segment_f0(bass_track, grid, prob_min=0.35, jump=1.2)
+    line = [[_fold(p, *BASS_RANGE), s, e, v] for p, s, e, v in line]
 
-    def chord_at(t):
-        for a, b, root, kind in chords:
-            if a <= t < b:
-                return root
-        return None
+    bp_line, _ = riff_lines(bass_notes, grid, vel_min=24)
+    bp_line = [[_fold(p, *BASS_RANGE), s, e, v] for p, s, e, v in bp_line]
+    if line:
+        starts0 = np.array([n[1] for n in line])
+        ends0 = np.array([n[2] for n in line])
+        extra = []
+        for p, s, e, v in bp_line:
+            k = np.searchsorted(starts0, (s + e) / 2) - 1
+            if k >= 0 and (s + e) / 2 < ends0[k]:
+                continue                     # pyin already has this moment
+            extra.append([p, s, e, v])
+        line = sorted(line + extra, key=lambda n: n[1])
+    else:
+        line = bp_line
 
     def drive_at(t):
         for (a, b, *_), d in zip(chords, drive_windows):
@@ -359,26 +498,40 @@ def arrange_bass(bass_track, chords, grid, drive_windows):
                 return d
         return True
 
-    events = []
-    for (pv, rms), (a, b) in zip(summary, cells8):
-        pitch = None
-        if pv is not None:
-            pitch = _fold(int(round(pv)), *BASS_RANGE)
-        elif rms > silence:
-            root = chord_at((a + b) / 2)
-            if root is not None:
-                pitch = _fold(36 + root, *BASS_RANGE)
-        if pitch is None:
+    # root fill: 16th cells with stem energy that the traced line missed
+    cells16 = grid.cells(16)
+    summary = cell_summary(bass_track, cells16, voiced_min=2.0)  # rms only
+    silence = np.percentile([r for _, r in summary if r > 0] or [0], 40)
+    vel_of = _rms_to_vel([r for _, r in summary])
+    starts = np.array([n[1] for n in line]) if line else np.array([])
+    ends = np.array([n[2] for n in line]) if line else np.array([])
+    fills = []
+    for (pv, rms), (a, b) in zip(summary, cells16):
+        if rms <= silence:
             continue
-        events.append([pitch, a, b, vel_of(rms), drive_at(a)])
+        mid = (a + b) / 2
+        if len(starts):
+            k = np.searchsorted(starts, mid) - 1
+            if k >= 0 and mid < ends[k]:
+                continue                    # the traced line has this cell
+        root = next((r for wa, wb, r, _ in chords if wa <= mid < wb), None)
+        if root is None:
+            continue
+        fills.append([_fold(36 + root, *BASS_RANGE), a, b, vel_of(rms)])
 
+    merged = sorted(line + fills, key=lambda n: n[1])
     out = []
-    for pitch, a, b, vel, drive in events:
+    for pitch, a, b, vel in merged:
+        if out and out[-1].end > a:
+            out[-1].end = a
+            if out[-1].end - out[-1].start < 0.03:
+                out.pop()
+        drive = drive_at(a)
         if not drive and out and out[-1].pitch == pitch \
                 and abs(out[-1].end - a) < 0.06:
-            out[-1].end = b - 0.02 * (b - a)   # pad: sustain through
+            out[-1].end = b - 0.01
             continue
-        gate = 0.82 if drive else 0.98
+        gate = 0.85 if drive else 0.99
         out.append(Note(start=a, end=a + gate * (b - a), pitch=pitch,
                         volume=_v(vel, 9, 14), duty=0.25))
     return out
@@ -469,7 +622,7 @@ def drive_profile(drum_hits, other_track, chords):
 
 
 def build_plan(name, stems, work_dir, duration, other_notes, drum_hits,
-               wavetable="saw"):
+               bass_notes=None, wavetable="saw"):
     """Everything above, wired together. Returns (ChannelPlan, stats)."""
     from gb_apu import ChannelPlan
 
@@ -489,18 +642,20 @@ def build_plan(name, stems, work_dir, duration, other_notes, drum_hits,
         stems["other"], grid, os.path.join(work_dir, f"{name}.chords2.json"),
         bass_path=stems["bass"])
     drive = drive_profile(drum_hits, other_track, chords)
+    riff, riff2 = riff_lines(other_notes, grid)
 
-    lead, n_fills = arrange_lead(vocal_track, other_notes, grid)
+    lead, n_fills = arrange_lead(vocal_track, riff, riff2, grid)
     noise, kick_times = arrange_noise(drum_hits, grid)
-    bass = arrange_bass(bass_track, chords, grid, drive)
+    bass = arrange_bass(bass_track, bass_notes or [], chords, grid, drive)
     pulse2 = inject_kicks(bass, kick_times)
-    wave = arrange_wave(chords, grid, drive)
+    wave = arrange_wave(chords, grid, drive, riff)
 
     named = sum(1 for *_, r, k in chords if r is not None)
     stats = {
         "grid": "measured" if measured else "tracked",
         "chords_named": f"{named}/{len(chords)}",
         "drive_windows": f"{sum(drive)}/{len(drive)}",
+        "riff_notes": len(riff),
         "lead_fills": n_fills,
         "kicks_swept": len(kick_times),
     }
