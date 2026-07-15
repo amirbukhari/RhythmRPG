@@ -50,15 +50,21 @@ def value_noise(h: int, w: int, cell: int) -> np.ndarray:
     return np.asarray(img, dtype=np.float32) / 255.0
 
 
-def organic_mask(tile_mask: np.ndarray, jitter: float = 0.22, blur: int = 9) -> np.ndarray:
+def organic_mask(tile_mask: np.ndarray, jitter: float = 0.22, blur: int = 9, warp: float = 0.0) -> np.ndarray:
     """Upscale a tile-res boolean mask to pixels with soft, noise-jittered,
-    rounded edges -- the anti-'razor grid edge' operator."""
+    rounded edges -- the anti-'razor grid edge' operator. `warp` adds a
+    COARSE low-frequency term that swings the whole boundary in and out by
+    several pixels (scale/placement audit: fine jitter alone left big
+    map-rectangular ponds reading as rounded rectangles)."""
     h, w = tile_mask.shape
     img = Image.fromarray((tile_mask * 255).astype(np.uint8)).resize((w * S, h * S), Image.NEAREST)
     img = img.filter(ImageFilter.BoxBlur(blur))
     field = np.asarray(img, dtype=np.float32) / 255.0
     n = value_noise(h * S, w * S, 14)
-    return (field + (n - 0.5) * jitter) > 0.5
+    field = field + (n - 0.5) * jitter
+    if warp > 0:
+        field = field + (value_noise(h * S, w * S, 30) - 0.5) * warp
+    return field > 0.5
 
 
 def erode(mask: np.ndarray, steps: int) -> list[np.ndarray]:
@@ -168,7 +174,9 @@ def main() -> None:
         sl[-1:][blob[-1:]] = base * 0.62  # base shadow
 
     # --- water bodies --------------------------------------------------------
-    water_mask = organic_mask(kind == 2, jitter=0.2, blur=11)
+    # jitter raised 0.2 -> 0.34 (scale/placement audit: map-rectangular ponds
+    # kept reading as rounded RECTANGLES through the gentler wobble)
+    water_mask = organic_mask(kind == 2, jitter=0.3, blur=13, warp=0.6)
     d_w = distance_bands(water_mask, 12)
     shore_bases = [tint((0x14, 0x30, 0x42), a, 0.10) for a in ACCENTS]
     deep = np.array((0x04, 0x0C, 0x13), dtype=np.float32)
@@ -197,6 +205,25 @@ def main() -> None:
     bank_ring = dil & ~water_mask
     canvas[foam_ring] = canvas[foam_ring] * 0.45 + np.array((0x8F, 0xD8, 0xD0), dtype=np.float32) * 0.55 * 0.7
     canvas[bank_ring] *= 0.55
+
+    # --- causeways (scale/placement audit) -----------------------------------
+    # The map routes some paths THROUGH lakes; painted as bare grass-road they
+    # read as glowing squiggles floating on water. Where a path runs beside or
+    # through water, restate it as a BUILT stone causeway: cooler masonry tone
+    # + a hard dark edging where it meets the water.
+    # water dilated ~26px: a full road crossing is ~40px wide, so every pixel
+    # of a crossing sits within reach (6px only re-toned the crossing's edges,
+    # leaving a tan stripe down the middle of the lake)
+    near_water = ~(erode(~water_mask, 26)[26])
+    causeway = path_mask & near_water
+    if causeway.any():
+        stone = np.array((0x4E, 0x50, 0x58), dtype=np.float32)
+        canvas[causeway] = canvas[causeway] * 0.35 + stone[None, :] * 0.65 * (
+            1 + (n_mid[causeway, None] - 0.5) * 0.18
+        )
+        cw_dil = ~(erode(~causeway, 2)[2])
+        cw_edge = cw_dil & water_mask & ~causeway
+        canvas[cw_edge] *= 0.4
 
     # --- rock mesas (G1: the chunky-block killer) ----------------------------
     rock_tiles = kind == 3
@@ -255,6 +282,48 @@ def main() -> None:
                         canvas[y, x] *= crack_col
                     y += int(RNG.integers(-1, 2))
                     x += int(RNG.integers(-1, 2))
+            # SP10: plateau dressing -- big pale tops read bare/flat. Tonal
+            # patches (lichen-dark blotches) + hashed pebbles with a lit top
+            # edge give the plateau the same material density as the grass.
+            patches = (value_noise(PH, PW, 18) > 0.72) & top
+            canvas[patches] *= 0.88
+            for k in range(max(2, len(ys) // 260)):
+                i = int(RNG.integers(0, len(ys)))
+                py_, px_ = int(ys[i]), int(xs[i])
+                pr = int(RNG.integers(1, 3))
+                sl = (slice(max(0, py_ - pr), py_ + pr + 1), slice(max(0, px_ - pr), px_ + pr + 1))
+                if top[sl].all():
+                    canvas[sl] *= 0.8
+                    canvas[sl][0] = np.minimum(canvas[sl][0] * 1.45, 255)  # lit top edge
+
+    # --- fight grounds (venue floors BAKED into the world) -------------------
+    # The old runtime venue floor was a translucent 320x180 rect overlaid on
+    # the map (owner: "straight up squares... you can see through them").
+    # Instead each fight node gets an organic trampled-earth clearing painted
+    # INTO the plate: ragged noise edge, packed-earth tone tinted by region,
+    # wear rings. WorldFight's always-walkable r=64 circle (128 plate px)
+    # stays inside the r~130px disc, so every fight still has a real room --
+    # now indistinguishable from the painted world because it IS the world.
+    markers = [l for l in data["layers"] if l.get("name") == "markers"][0]["objects"]
+    yy_g, xx_g = np.mgrid[0:PH, 0:PW].astype(np.float32)
+    disc_noise = value_noise(PH, PW, 22)
+    for obj in markers:
+        if obj["name"] == "spawn":
+            continue
+        cx, cy = float(obj["x"]) * 2, float(obj["y"]) * 2
+        reg = min(4, int(cx // (26 * S)))
+        # the finale gets a GRAND ring -- its venue pieces stand wide and the
+        # clearing bridges the hall lake as one deliberate stage
+        radius = 230.0 if obj["name"] == "boss_1" else 132.0
+        rr = np.sqrt((xx_g - cx) ** 2 + (yy_g - cy) ** 2) + (disc_noise - 0.5) * 56
+        disc = rr < radius
+        edge = disc & (rr > radius - 16)
+        base = tint((0x57, 0x4E, 0x40), ACCENTS[reg], 0.20)
+        col = base[None, None, :] * (1 + (n_mid - 0.5) * 0.14)[..., None]
+        canvas[disc] = col[disc]
+        canvas[edge] *= 0.62
+        rings = disc & (np.abs((rr % 44) - 22.0) < 1.1) & (rr > 26)
+        canvas[rings] *= 0.85
 
     canvas = np.round(canvas / 9.0) * 9.0  # quantized ramps: crunchy, not airbrushed
     out = Image.fromarray(np.clip(canvas, 0, 255).astype(np.uint8), "RGB")

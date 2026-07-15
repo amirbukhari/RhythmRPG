@@ -23,185 +23,7 @@ export interface Placement {
 }
 
 export interface ArenaLayout {
-  /** [base, dark, light] top-down ground colours (procedural -- a calm,
-   * intentional canvas; the detail comes from the kitbashed pieces). */
-  groundColors: [number, number, number];
-  /** warm accent for the central floor light-pool (the fight's focus). */
-  pool?: number;
-  /** which designed floor motif to draw (AAA audit B1: no void floors). */
-  motif: "sand" | "planks" | "dust" | "boards" | "marble";
   pieces: Placement[];
-}
-
-/**
- * Draws a DESIGNED per-biome floor into a canvas texture (AAA audit B1): the
- * old flat fill + invisible dapple read as a void. Layers: low-frequency tone
- * blotches -> biome motif (wet-sand ripples, mine planks, circus dust rings,
- * attic boards, marble checker) -> speckle -> radial centre light + edge
- * falloff. Deterministic per arena key.
- */
-function paintFloor(scene: Phaser.Scene, key: string, layout: ArenaLayout, edgeFade = false): string {
-  const texKey = `floor_${key}`;
-  if (scene.textures.exists(texKey)) return texKey;
-  const W = BASE_WIDTH;
-  const H = BASE_HEIGHT;
-  const tex = scene.textures.createCanvas(texKey, W, H)!;
-  const ctx = tex.getContext();
-  const img = ctx.createImageData(W, H);
-  const d = img.data;
-
-  let seed = 0;
-  for (const ch of key) seed = (seed * 31 + ch.charCodeAt(0)) & 0x7fffffff;
-  const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
-
-  const [base, dark, light] = layout.groundColors;
-  const toRgb = (c: number) => [(c >> 16) & 255, (c >> 8) & 255, c & 255] as const;
-  const [br, bg, bb] = toRgb(base);
-  const [dr, dg, db] = toRgb(dark);
-  const [lr, lg, lb] = toRgb(light);
-
-  // low-frequency blotches: a handful of big soft tone shifts
-  const blobs = Array.from({ length: 14 }, () => ({
-    x: rnd() * W,
-    y: rnd() * H,
-    r: 26 + rnd() * 52,
-    t: (rnd() - 0.5) * 0.5,
-  }));
-
-  const cx = W / 2;
-  const cy = H * 0.56;
-  for (let y = 0; y < H; y++) {
-    for (let x = 0; x < W; x++) {
-      // tone t in [-1, 1]: -1 = dark colour, +1 = light colour
-      let t = 0;
-      for (const b of blobs) {
-        const dx = x - b.x;
-        const dy = y - b.y;
-        const q = 1 - (dx * dx + dy * dy) / (b.r * b.r);
-        if (q > 0) t += b.t * q;
-      }
-      // biome motif
-      switch (layout.motif) {
-        case "sand": {
-          // tide-ripple bands drifting with x
-          const w1 = Math.sin(y * 0.55 + Math.sin(x * 0.045) * 2.2);
-          if (w1 > 0.86) t += 0.22;
-          break;
-        }
-        case "planks": {
-          // vertical mine boards with seams + grain
-          const px = (x + ((x / 26) | 0) * 7) % 26;
-          if (px < 1.2) t -= 0.5;
-          else t += Math.sin(y * 0.22 + ((x / 26) | 0) * 3.1) * 0.05;
-          break;
-        }
-        case "dust": {
-          // trampled fighting-ring circles around the centre
-          const rr = Math.hypot(x - cx, y - cy);
-          const ring = Math.abs((rr % 34) - 17);
-          if (ring < 1.1 && rr > 20 && rr < 120) t -= 0.28;
-          break;
-        }
-        case "boards": {
-          // horizontal attic floorboards, staggered ends, wood grain
-          const row = (y / 12) | 0;
-          const py = y % 12;
-          if (py < 1) t -= 0.5;
-          else {
-            const off = (row * 53) % 64;
-            if ((x + off) % 64 < 1) t -= 0.4; // board end seam
-            t += Math.sin(x * 0.18 + row * 2.7) * 0.06;
-          }
-          break;
-        }
-        case "marble": {
-          // grand-hall checker + faint veins
-          const cxk = ((x / 24) | 0) + ((y / 24) | 0);
-          t += cxk % 2 === 0 ? 0.1 : -0.12;
-          const vein = Math.sin(x * 0.12 + Math.sin(y * 0.07) * 3.5);
-          if (vein > 0.965) t += 0.3;
-          break;
-        }
-      }
-      // fine speckle
-      t += (rnd() - 0.5) * 0.16;
-
-      // radial fight-light + edge falloff
-      const dcx = (x - cx) / (W * 0.62);
-      const dcy = (y - cy) / (H * 0.72);
-      const rad = Math.sqrt(dcx * dcx + dcy * dcy);
-      const lightBoost = Math.max(0, 1 - rad) * 0.24;
-      const edge = Math.min(1, Math.max(0, (rad - 0.72) * 2.2)) * 0.5;
-
-      let r: number, g: number, b: number;
-      if (t >= 0) {
-        r = br + (lr - br) * Math.min(1, t);
-        g = bg + (lg - bg) * Math.min(1, t);
-        b = bb + (lb - bb) * Math.min(1, t);
-      } else {
-        r = br + (dr - br) * Math.min(1, -t);
-        g = bg + (dg - bg) * Math.min(1, -t);
-        b = bb + (db - bb) * Math.min(1, -t);
-      }
-      // opaque arenas darken at the edge; world venues FADE at the edge so
-      // the terrain blends into the surrounding map (the fight's "room" is
-      // part of the world, not a pasted slab)
-      const m = 1 + lightBoost - (edgeFade ? 0 : edge);
-      const i = (y * W + x) * 4;
-      d[i] = Math.max(0, Math.min(255, r * m));
-      d[i + 1] = Math.max(0, Math.min(255, g * m));
-      d[i + 2] = Math.max(0, Math.min(255, b * m));
-      d[i + 3] = edgeFade ? Math.round(255 * Math.max(0, Math.min(1, (1.02 - rad) * 2.6))) : 255;
-    }
-  }
-  ctx.putImageData(img, 0, 0);
-  tex.refresh();
-  return texKey;
-}
-
-/**
- * Draws a kitbashed arena: a calm PROCEDURAL top-down ground (never an AI
- * whole-scene image -- those read as busy concept art) plus hand-placed
- * environment pieces. Pieces sit BEHIND the fighters (depth < 4) unless
- * flagged `fg`, so the fight always reads.
- */
-export function composeArena(scene: Phaser.Scene, layout: ArenaLayout, key = "arena"): void {
-  // designed per-biome floor (AAA audit B1) -- never a flat void
-  const floorKey = paintFloor(scene, key, layout);
-  scene.add.image(0, 0, floorKey).setOrigin(0, 0).setDepth(-10);
-  // central walkable light-pool (the fight's focus)
-  scene.add
-    .image(BASE_WIDTH / 2, BASE_HEIGHT * 0.56, "glow")
-    .setBlendMode(Phaser.BlendModes.ADD)
-    .setTint(layout.pool ?? 0x2f5f86)
-    .setScale(2.4)
-    .setAlpha(0.14)
-    .setDepth(-9.5);
-
-  for (const p of layout.pieces) {
-    if (!scene.textures.exists(p.key)) continue;
-    const s = p.scale ?? 1;
-    if (p.shadow !== false) {
-      scene.add.ellipse(p.x, p.y, 20 * s, 7 * s, 0x05060a, 0.4).setDepth(p.fg ? 8 : -8 + p.y / 1000);
-    }
-    // save points (campfire / obelisk) and lanterns get a warm/teal glow
-    if (/campfire|obelisk|lantern|lamp/.test(p.key)) {
-      const teal = /obelisk/.test(p.key);
-      scene.add
-        .image(p.x, p.y - 8 * s, "glow")
-        .setBlendMode(Phaser.BlendModes.ADD)
-        .setTint(teal ? 0x49c6bd : 0xf0a648)
-        .setScale(0.5 * s)
-        .setAlpha(0.5)
-        .setDepth(2);
-    }
-    scene.add
-      .image(p.x, p.y, p.key)
-      .setOrigin(0.5, 1)
-      .setScale(s)
-      .setFlipX(!!p.flip)
-      .setDepth(p.fg ? 9 : 1 + p.y / 400);
-  }
 }
 
 // Which authored venue dresses each fight node's spot IN the world.
@@ -221,18 +43,27 @@ export const NODE_VENUE: Record<string, string> = {
  * set pieces stand around the spot in world space. The fight then happens
  * on this exact ground (WorldFight locks its room here).
  */
-export function composeWorldVenue(scene: Phaser.Scene, nodeId: string, cx: number, cy: number): void {
+export function composeWorldVenue(
+  scene: Phaser.Scene,
+  nodeId: string,
+  cx: number,
+  cy: number,
+  canPlace?: (x: number, y: number) => boolean
+): void {
   const key = NODE_VENUE[nodeId];
   const layout = key ? ARENA_LAYOUTS[key] : undefined;
   if (!key || !layout) return;
-  const floorKey = paintFloor(scene, `${key}_world`, layout, true);
-  scene.add.image(cx, cy, floorKey).setDepth(1.5).setAlpha(0.92);
+  // NO floor patch (owner: "you just overlayed the boss arenas on-top of
+  // normal places and you can see through... straight up squares destroy the
+  // aesthetic"). The venue is its SET PIECES standing on the real painted
+  // ground; the world itself is the arena floor.
   // kit pieces, offset from the layout's arena space onto the node's spot
   const ox = cx - BASE_WIDTH / 2;
   const oy = cy - BASE_HEIGHT * 0.56;
   for (const p of layout.pieces) {
     if (/save_obelisk/.test(p.key)) continue; // the overworld places its own
     if (!scene.textures.exists(p.key)) continue;
+    if (canPlace && !canPlace(ox + p.x, oy + p.y)) continue; // no props in the lake
     const s = (p.scale ?? 1) * 0.55; // world proportion for the 1.6x hi-res kit art
     const px = ox + p.x;
     const py = oy + p.y;
@@ -257,9 +88,6 @@ export function composeWorldVenue(scene: Phaser.Scene, nodeId: string, cx: numbe
  */
 export const ARENA_LAYOUTS: Record<string, ArenaLayout> = {
   arena_shallows: {
-    motif: "sand",
-    groundColors: [0x123240, 0x0b2233, 0x1f6f77],
-    pool: 0x2f7f8f,
     pieces: [
       { key: "env_shallows_boat", x: 62, y: 58, scale: 1 },
       { key: "env_shallows_pillar", x: 34, y: 118 },
@@ -283,9 +111,6 @@ export const ARENA_LAYOUTS: Record<string, ArenaLayout> = {
     ],
   },
   arena_saltmines: {
-    motif: "planks",
-    groundColors: [0x2a1e0f, 0x140d05, 0x6e3316],
-    pool: 0xf0a648,
     pieces: [
       { key: "env_saltmines_ore_cart", x: 60, y: 62 },
       { key: "env_saltmines_timber", x: 40, y: 120 },
@@ -303,9 +128,6 @@ export const ARENA_LAYOUTS: Record<string, ArenaLayout> = {
     ],
   },
   arena_pit: {
-    motif: "dust",
-    groundColors: [0x241432, 0x120a1c, 0x4b2a57],
-    pool: 0xb98fca,
     pieces: [
       { key: "env_pit_ticket_booth", x: 58, y: 60 },
       { key: "env_pit_carousel_horse", x: 282, y: 72, flip: true },
@@ -324,9 +146,6 @@ export const ARENA_LAYOUTS: Record<string, ArenaLayout> = {
     ],
   },
   arena_attic: {
-    motif: "boards",
-    groundColors: [0x241a12, 0x120b06, 0x6e3316],
-    pool: 0xe07030,
     pieces: [
       { key: "env_attic_drawers", x: 58, y: 60 },
       { key: "env_attic_crate_stack", x: 286, y: 74, flip: true },
@@ -343,9 +162,6 @@ export const ARENA_LAYOUTS: Record<string, ArenaLayout> = {
     ],
   },
   arena_hall: {
-    motif: "marble",
-    groundColors: [0x141026, 0x0a0716, 0x3a2450],
-    pool: 0x8a52a0,
     pieces: [
       { key: "env_hall_plinth", x: 58, y: 60 },
       { key: "env_hall_plinth", x: 286, y: 68, flip: true },

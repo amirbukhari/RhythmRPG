@@ -20,16 +20,24 @@ from import_asset import flood_key, smooth_downscale  # noqa: E402
 from newband import autocrop, keep_main_island  # noqa: E402
 from scatterkit import OUT, SCATTER, gen_with_retry  # noqa: E402
 
+# "no ground under it": generated pieces kept baking a patch of floor/plinth
+# into the art (owner: "it looks like there's cement under everything.....
+# but then it goes to grass????") -- the object must end at its own feet so
+# it sits on whatever the painted world provides.
 CAM_DARK = (
     "one single isolated small videogame prop OBJECT, big and centered, "
     "viewed from above at a three-quarter angle, filling most of the frame, "
-    "on a plain flat solid black background, nothing else in frame, no scene, "
+    "on a plain flat solid black background, NO ground under it, no floor, "
+    "no base, no platform, no shadow, the object ends at its own feet, "
+    "nothing else in frame, no scene, "
     "no frame, no border, crisp sharp pixel art, "
 )
 CAM_LIGHT = (
     "one single isolated small videogame prop OBJECT, big and centered, "
     "viewed from above at a three-quarter angle, filling most of the frame, "
-    "on a plain flat solid pale grey background, nothing else in frame, "
+    "on a plain flat solid pale grey background, NO ground under it, no "
+    "floor, no base, no platform, no shadow, the object ends at its own "
+    "feet, nothing else in frame, "
     "no scene, no frame, no border, crisp sharp pixel art, "
 )
 

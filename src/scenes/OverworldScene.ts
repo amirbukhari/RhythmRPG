@@ -189,7 +189,26 @@ export class OverworldScene extends Phaser.Scene {
     // each fight node's authored venue -- its biome floor blended into the
     // map + its kitbash set pieces -- stands IN the world, under the foe
     for (const marker of this.markers) {
-      composeWorldVenue(this, marker.nodeId, marker.col * TILE_SIZE + TILE_SIZE / 2, marker.row * TILE_SIZE + TILE_SIZE / 2);
+      composeWorldVenue(
+        this,
+        marker.nodeId,
+        marker.col * TILE_SIZE + TILE_SIZE / 2,
+        marker.row * TILE_SIZE + TILE_SIZE / 2,
+        // scale/placement audit: venue set pieces must stand on land (grass
+        // or path) -- offsets that land in water/rock skip the piece. The
+        // baked fight-ground clearing (paint_ground.py) counts as land even
+        // where the tiles beneath are water (the boss ring bridges the lake).
+        (x, y) => {
+          const discR = marker.nodeId === "boss_1" ? 108 : 58; // matches paint_ground radii
+          const ddx = x - marker.col * TILE_SIZE - TILE_SIZE / 2;
+          const ddy = y - marker.row * TILE_SIZE - TILE_SIZE / 2;
+          if (ddx * ddx + ddy * ddy < discR * discR) return true;
+          const gid = ground.getTileAt(Math.floor(x / TILE_SIZE), Math.floor(y / TILE_SIZE))?.index;
+          if (gid == null || gid <= 0) return false;
+          const local = (gid - 1) % 4; // 0 grass 1 path 2 water 3 rock
+          return local === 0 || local === 1;
+        }
+      );
     }
     for (const marker of this.markers) this.drawMarker(profile, marker);
     for (const echo of this.echoes) this.drawEcho(echo);
@@ -598,9 +617,10 @@ export class OverworldScene extends Phaser.Scene {
       {
         scene: this,
         playerSprite: this.player,
-        // the venue floor (composeWorldVenue) covers the ground around the
-        // node, so that circle is always fightable even where the map tiles
-        // underneath are water/rock -- every fight gets a real room
+        // the trampled fight-ground clearing is BAKED into the painted plate
+        // at every node (paint_ground.py), so this circle is always fightable
+        // even where the map tiles underneath are water/rock -- every fight
+        // gets a real room that IS the world, not an overlay
         isWorldWalkable: (px, py) => {
           const dx = px - nodeX;
           const dy = py - nodeY;
@@ -652,6 +672,15 @@ export class OverworldScene extends Phaser.Scene {
 
     const shore = this.add.graphics().setDepth(1);
 
+    // scale/placement audit: keep decorative scatter out of node venues and
+    // echo spots -- those places are dressed deliberately.
+    const landmarkClear = new Set<string>();
+    for (const t of [...this.markers, ...this.echoes]) {
+      for (let dc = -2; dc <= 2; dc++) {
+        for (let dr = -2; dr <= 2; dr++) landmarkClear.add(keyOf(t.col + dc, t.row + dr));
+      }
+    }
+
     // Shorelines, banks, and rock elevation are BAKED into the painted
     // ground plate (paint_ground.py) -- runtime decoration is now only the
     // prop scatter, with per-prop jitter so nothing sits on a perfect grid
@@ -668,8 +697,14 @@ export class OverworldScene extends Phaser.Scene {
           // hash decides where clusters live; density is high inside, near
           // zero outside.
           const cellH = ((((col >> 3) + 7) * 2654435761) ^ (((row >> 3) + 3) * 40503)) >>> 0;
-          const chance = cellH % 100 < 36 ? 32 : 3;
-          if (h % 100 < chance) {
+          // scale/placement audit: pieces are 20-30px on a 16px grid, so
+          // orthogonally-adjacent placements collide into piles. Inside a
+          // cluster only every other (checkerboard) tile is eligible; the
+          // per-tile chance rises to keep the cluster feel.
+          const clustered = cellH % 100 < 36;
+          if (clustered && ((col + row) & 1) !== 0) continue;
+          const chance = clustered ? 52 : 3;
+          if (h % 100 < chance && !landmarkClear.has(keyOf(col, row))) {
             const cx = px + TILE_SIZE / 2 + (((h >> 5) % 11) - 5);
             const cy = py + TILE_SIZE + 2 + (((h >> 9) % 7) - 3);
             shore.fillStyle(0x05060a, 0.28).fillEllipse(cx, cy - 1, 12, 4); // contact shadow
@@ -681,6 +716,19 @@ export class OverworldScene extends Phaser.Scene {
               const key = kit[(h >> 3) % kit.length];
               // scenery sits a value-step darker than characters (audit O4)
               this.add.image(cx, cy, key).setOrigin(0.5, 1).setScale(0.6).setDepth(2).setTint(0xb2b9c6);
+              // emissive pieces CAST their light (goal: intentional): a soft
+              // additive pool under anything that visibly burns or glows --
+              // this is what makes the night world read as lit, not decorated
+              if (/lantern|crystal|tidepool|brazier|candle|torch|dockpost|votives|belljar|lamp$|geode|hourglass/.test(key)) {
+                const teal = /tidepool|belljar|dockpost/.test(key);
+                this.add
+                  .image(cx, cy - 6, "glow")
+                  .setBlendMode(Phaser.BlendModes.ADD)
+                  .setTint(teal ? 0x49c6bd : 0xf0a648)
+                  .setScale(0.4)
+                  .setAlpha(0.32)
+                  .setDepth(2.1);
+              }
             } else {
               this.add.image(cx, cy, "ow_props", h % DECORATIVE_PROP_COUNT).setOrigin(0.5, 1).setScale(0.72).setDepth(2).setTint(0xb2b9c6);
             }
@@ -722,6 +770,7 @@ export class OverworldScene extends Phaser.Scene {
         const ch = (((cc + 11) * 2654435761) ^ ((cr + 5) * 97002721)) >>> 0;
         const kind = ch % 100;
         if (kind >= 38) continue; // ~38% of cells attempt one landform
+        const canopy = kind < 16; // ~16% canopy, ~22% outcrop of cells
         // several jittered candidates per cell: a busy map (roads, water,
         // marker clearance) rejects most single throws
         let col = -1;
@@ -731,13 +780,23 @@ export class OverworldScene extends Phaser.Scene {
           const r = cr * CELL + 1 + ((ch >> (6 + attempt * 3)) % Math.max(1, CELL - 2));
           if (blocked.has(`${c},${r}`) || !clearOfLandmarks(c, r)) continue;
           if (!isGrassGid(ground.getTileAt(c, r)?.index)) continue;
+          // scale/placement audit: an outcrop's ~5-tile-wide solid base must
+          // not squat on a road or shoreline -- its whole footprint needs
+          // open grass, not just the anchor tile (canopies only overhang, so
+          // the anchor check is enough for them).
+          if (!canopy) {
+            let clear = true;
+            for (let dc = -2; dc <= 2 && clear; dc++) {
+              if (blocked.has(`${c + dc},${r}`) || !isGrassGid(ground.getTileAt(c + dc, r)?.index)) clear = false;
+            }
+            if (!clear) continue;
+          }
           col = c;
           row = r;
           break;
         }
         if (col < 0) continue;
         const biome = REGION_BIOMES[Math.min(REGION_BIOMES.length - 1, Math.floor(col / REGION_W))];
-        const canopy = kind < 16; // ~16% canopy, ~22% outcrop of cells
         // Each form picks among its biome's generated variants (landform_outcrop,
         // _outcrop2, _outcrop3 / _canopy, _canopy2) so a region never repeats one
         // silhouette wall-to-wall (design-audit-3 C).
@@ -830,7 +889,9 @@ export class OverworldScene extends Phaser.Scene {
       const x = col * TILE_SIZE + TILE_SIZE / 2;
       const y = row * TILE_SIZE + TILE_SIZE / 2;
       this.add.ellipse(x, y + 2, 14, 5, 0x05060a, 0.35).setDepth(2); // contact shadow
-      const s = this.add.sprite(x, y, "ow_npcs", npc.frame).setOrigin(0.5, 0.9).setScale(0.72).setDepth(3);
+      // 0.58: townsfolk stand a hair SHORTER than the 25px hero (audit:
+      // at 0.72 they towered over the player and each other inconsistently)
+      const s = this.add.sprite(x, y, "ow_npcs", npc.frame).setOrigin(0.5, 0.9).setScale(0.58).setDepth(3);
       s.setFlipX((col + row) % 2 === 0);
       if (!reduced) {
         this.tweens.add({ targets: s, y: y - 1, duration: 1100 + (col * 37) % 400, yoyo: true, repeat: -1, ease: "Sine.inOut" });
