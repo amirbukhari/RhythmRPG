@@ -94,6 +94,9 @@ export class OverworldScene extends Phaser.Scene {
   private wasd!: Record<"W" | "A" | "S" | "D", Phaser.Input.Keyboard.Key>;
   private interactKey!: Phaser.Input.Keyboard.Key;
   private fog: Phaser.GameObjects.TileSprite | null = null;
+  /** Full-screen whisper of the local region's accent colour (updated per
+   * frame from the camera's position) -- each region OWNS its light. */
+  private regionGrade: Phaser.GameObjects.Rectangle | null = null;
 
   constructor() {
     super("OverworldScene");
@@ -405,6 +408,16 @@ export class OverworldScene extends Phaser.Scene {
     // scale, not a fringe. The depth layering is carried by the canopy
     // overhangs in-world, the diagonal shaft, and the motes instead.)
 
+    // per-region ambient grade: a low-alpha additive wash of the local
+    // accent, tint updated as the camera crosses regions
+    this.regionGrade = this.pinToScreen(
+      this.add.rectangle(0, 0, width, height, 0xffffff, 0.05).setOrigin(0, 0),
+      0,
+      0
+    )
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setDepth(12.5) as Phaser.GameObjects.Rectangle;
+
     const g = this.pinToScreen(this.add.graphics().setDepth(15), 0, 0);
     // cold overcast tint
     g.fillStyle(0x0b1420, 0.06).fillRect(0, 0, width, height);
@@ -424,6 +437,11 @@ export class OverworldScene extends Phaser.Scene {
   update(_time: number, deltaMs: number): void {
     if (!this.player) return;
     this.repositionPinned();
+    if (this.regionGrade) {
+      const ACCENTS = [0x49c6bd, 0xf0a648, 0x9a5cbd, 0xc25424, 0x7a4eb4];
+      const ri = Math.min(4, Math.max(0, Math.floor(this.cameras.main.midPoint.x / (26 * TILE_SIZE))));
+      this.regionGrade.fillColor = ACCENTS[ri];
+    }
     this.playerShadow.setPosition(this.player.x, this.player.y + 2);
     this.playerGlow.setPosition(this.player.x, this.player.y - 6);
     // Canopy overhangs go translucent while the player is beneath them (the
@@ -870,7 +888,7 @@ export class OverworldScene extends Phaser.Scene {
       if (this.textures.exists(outcrop)) {
         const oy = (row - 3) * TILE_SIZE;
         shore.fillStyle(0x05060a, 0.3).fillEllipse(gx, oy - 2, 42, 9);
-        this.add.image(gx, oy, outcrop).setOrigin(0.5, 1).setScale(0.7).setDepth(2.5).setTint(0xd6dce6);
+        this.add.image(gx, oy, outcrop).setOrigin(0.5, 1).setScale(1).setDepth(2.5).setTint(0xd6dce6);
       }
       const prop = GATE_PROPS[biome];
       if (prop && this.textures.exists(prop)) {
@@ -1110,7 +1128,7 @@ export class OverworldScene extends Phaser.Scene {
       .setAlpha(0.35)
       .setDepth(3);
     if (this.textures.exists("env_shared_save_obelisk")) {
-      this.add.image(x, y, "env_shared_save_obelisk").setOrigin(0.5, 1).setScale(0.34).setDepth(4);
+      this.add.image(x, y, "env_shared_save_obelisk").setOrigin(0.5, 1).setScale(1).setDepth(4);
     } else {
       // art not shipped yet: a simple standing stone so the save point still exists
       this.add.rectangle(x, y - 7, 6, 14, 0x2c3a4a).setDepth(4);

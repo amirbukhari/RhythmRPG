@@ -58,6 +58,14 @@ export function composeWorldVenue(
   // normal places and you can see through... straight up squares destroy the
   // aesthetic"). The venue is its SET PIECES standing on the real painted
   // ground; the world itself is the arena floor.
+  // focal stage-light: fights read as lit stages from across the map
+  scene.add
+    .image(cx, cy, "glow")
+    .setBlendMode(Phaser.BlendModes.ADD)
+    .setTint(0xf0c078)
+    .setScale(1.5)
+    .setAlpha(0.12)
+    .setDepth(1.4);
   // kit pieces, offset from the layout's arena space onto the node's spot
   const ox = cx - BASE_WIDTH / 2;
   const oy = cy - BASE_HEIGHT * 0.56;

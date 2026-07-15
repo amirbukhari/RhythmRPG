@@ -129,5 +129,9 @@ export function worldScaleFor(key: string, texHeightPx: number): number | null {
   }
   const boost = meters <= 0.5 ? 1.5 : meters <= 1 ? 1.15 : 1;
   const target = Math.max(MIN_PX, meters * PX_PER_METER * boost);
-  return Math.min(MAX_SCALE, Math.max(MIN_SCALE, target / texHeightPx));
+  const raw = Math.min(MAX_SCALE, Math.max(MIN_SCALE, target / texHeightPx));
+  // art is baked to canonical size (bake_world_scale.py), so this lands at
+  // ~1.0; snap to halves so texels stay integer-sized on the 2x canvas --
+  // uniform chunky pixels, never fractional shimmer
+  return Math.max(0.5, Math.round(raw * 2) / 2);
 }
