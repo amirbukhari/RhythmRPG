@@ -778,6 +778,112 @@ def guarantee_coverage(plan, trans, grid, win=0.09, cap=4, passes=5):
 # summation suppresses overtones), independent of any transcriber. That set
 # is the honest "every note in the song," and cover_salience() makes the
 # render reproduce it.
+#
+# ...but pitch-class recall is blind to MELODY and octave: a wash of the
+# right pitch classes scores high and still sounds nothing like the tune.
+# extract_melody() pulls the dominant melodic line (with octave) a listener
+# actually follows, so the render can put THE MELODY on the lead, loud and
+# clear, instead of burying it under coverage.
+MEL_RANGE = ("C3", "C6")
+
+
+def extract_melody(mix_path, grid, cache_path, hop=256):
+    """The song's dominant melodic line as notes [[midi, start, end, vel]],
+    from a harmonic-salience CQT of the full mix restricted to the melody
+    register, octave-continuity-smoothed. Natural timing (follows the
+    recording), not grid-quantized — that's what makes it sound like the
+    song."""
+    if os.path.exists(cache_path):
+        with open(cache_path) as f:
+            return [list(x) for x in json.load(f)]
+    import librosa
+    from scipy.ndimage import median_filter
+    y, sr = librosa.load(mix_path, sr=22050, mono=True)
+    fmin = librosa.note_to_hz("C1")
+    C = np.abs(librosa.cqt(y, sr=sr, hop_length=hop, fmin=fmin,
+                           n_bins=72, bins_per_octave=12))
+    freqs = librosa.cqt_frequencies(72, fmin=fmin, bins_per_octave=12)
+    S = librosa.salience(C, freqs=freqs, harmonics=[1, 2, 3, 4, 5],
+                         weights=[1.0, 0.5, 0.4, 0.3, 0.2], fill_value=0.0)
+    lo = librosa.note_to_midi(MEL_RANGE[0]) - 24
+    hi = librosa.note_to_midi(MEL_RANGE[1]) - 24
+    band = S[lo:hi + 1]
+    times = librosa.times_like(S, sr=sr, hop_length=hop)
+
+    # Viterbi-lite: argmax per frame, then octave-continuity + median smooth.
+    raw = lo + np.argmax(band, axis=0)
+    strength = band.max(axis=0)
+    voiced = strength > np.percentile(strength[strength > 0], 42)
+    midi = 24.0 + raw
+    # pull octave jumps toward the running median of recent voiced pitches
+    ref = None
+    for i in range(len(midi)):
+        if not voiced[i]:
+            continue
+        if ref is not None:
+            while midi[i] - ref > 7:
+                midi[i] -= 12
+            while ref - midi[i] > 7:
+                midi[i] += 12
+        ref = midi[i] if ref is None else 0.8 * ref + 0.2 * midi[i]
+    midi = median_filter(midi, size=7)
+
+    # segment into notes where the rounded pitch holds
+    notes = []
+    i, n = 0, len(midi)
+    while i < n:
+        if not voiced[i]:
+            i += 1
+            continue
+        p = int(round(midi[i]))
+        j = i + 1
+        gap = 0
+        while j < n and abs(round(midi[j]) - p) <= 0 and gap <= 2:
+            if not voiced[j]:
+                gap += 1
+            else:
+                gap = 0
+            j += 1
+        s, e = float(times[i]), float(times[min(j, n - 1)])
+        if e - s >= 0.05:
+            vel = int(round(60 + 60 * min(1.0, float(np.mean(strength[i:j])) /
+                                          (np.percentile(strength[strength > 0], 90) or 1))))
+            notes.append([p, s, e, vel])
+        i = j
+    # merge same-pitch notes across tiny gaps
+    merged = []
+    for p, s, e, v in notes:
+        if merged and merged[-1][0] == p and s - merged[-1][2] <= 0.06:
+            merged[-1][2] = e
+        else:
+            merged.append([p, s, e, v])
+    with open(cache_path, "w") as f:
+        json.dump(merged, f)
+    return merged
+
+
+def melody_agreement(plan, mel_notes):
+    """Fraction of the original melody's sung time the lead reproduces at the
+    same pitch AND octave (±1 semitone). The real 'is it the tune' metric."""
+    lead = sorted(plan.pulse1, key=lambda n: n.start)
+    if not lead or not mel_notes:
+        return 0.0
+    starts = np.array([n.start for n in lead])
+    ends = np.array([n.end for n in lead])
+    pitches = np.array([n.pitch for n in lead])
+    ok = tot = 0.0
+    for p, s, e, v in mel_notes:
+        dur = e - s
+        tot += dur
+        k = np.searchsorted(starts, s + 1e-6) - 1
+        for kk in (k, k + 1):
+            if 0 <= kk < len(lead) and starts[kk] < e and ends[kk] > s \
+                    and abs(pitches[kk] - p) <= 1:
+                ok += min(e, ends[kk]) - max(s, starts[kk])
+                break
+    return ok / tot if tot else 0.0
+
+
 def salience_targets(mix_path, grid, cache_path, keep=6, rel=0.20, floor_pct=55):
     """Per 32nd cell: [(pc, weight), ...] fundamentals present in the mix."""
     if os.path.exists(cache_path):
@@ -944,30 +1050,65 @@ def drive_profile(drum_hits, other_track, chords):
     return out
 
 
-# Named production styles. The user can't be shown a number and know how it
-# sounds, so the render offers distinct directions to pick from by ear:
-#   clean    — melodic clarity, harmony only where it counts (breathes most)
-#   balanced — dynamic: sparse verses, full choruses
-#   full     — maximum density, every audio-salient pitch reproduced
+def arrange_melody_lead(mel_notes, grid):
+    """THE tune on pulse 1 — the extracted melody, loud and clear, at its
+    real octave and natural timing, vibrato on held notes."""
+    beat = float(np.median(np.diff(grid.beats)))
+    out = []
+    for p, s, e, v in mel_notes:
+        out.append(Note(start=float(s), end=float(e), pitch=int(p),
+                        volume=_v(v, 12, 15), duty=0.50, env_period=0,
+                        vibrato_cents=22.0 if (e - s) >= 0.30 else 0.0,
+                        vibrato_hz=5.6, vibrato_delay=0.16))
+    return out
+
+
+HARM_RANGE = (43, 64)   # G2..E4 — a bed UNDER the C3..C6 melody
+
+
+def arrange_harmony(chords, grid, drive_windows, vol=8):
+    """A quiet plucky chord bed below the melody: root-3-5 arpeggio re-struck
+    per beat, staccato in verses so it never competes with the lead."""
+    beats = list(grid.beats)
+    notes = []
+    for (a, b, root, kind), drive in zip(chords, drive_windows):
+        if root is None:
+            continue
+        third = 4 if kind == "maj" else (3 if kind == "min" else 7)
+        r = _fold(48 + root, *HARM_RANGE)
+        tones = (r, r + third, r + 7)
+        strikes = [t for t in beats if a - 1e-3 <= t < b - 1e-3] or [a]
+        for t0 in strikes:
+            nxt = min([t for t in beats if t > t0 + 1e-6] + [b])
+            gate = 0.92 if drive else 0.55       # verses breathe
+            notes.append(Note(start=float(t0), end=float(t0 + gate * (nxt - t0)),
+                              pitch=tones[0], arp_pitches=tones[1:],
+                              arp_hz=18.0, volume=vol, env_period=3))
+    return notes
+
+
+# Named production styles. Sound quality can't be read off a metric, so the
+# render offers distinct directions to pick from by ear. All are MELODY-FIRST
+# (the tune is the loud lead); they differ only in the backing.
+#   clean    — melody + bass + drums, whisper-quiet harmony bed
+#   balanced — melody forward over a present chord bed and drums
+#   full     — balanced plus a light high-threshold harmony fill (no wash)
 STYLES = {
-    "clean":    dict(cap=3, wmin_drive=0.45, wmin_verse=0.80, wet=0.22),
-    "balanced": dict(cap=4, wmin_drive=0.28, wmin_verse=0.52, wet=0.28),
-    "full":     dict(cap=4, wmin_drive=0.0,  wmin_verse=0.0,  wet=0.30),
+    "clean":    dict(harm_vol=6, mix_wave=0.30, wet=0.20, fill=False),
+    "balanced": dict(harm_vol=8, mix_wave=0.42, wet=0.26, fill=False),
+    "full":     dict(harm_vol=9, mix_wave=0.50, wet=0.28, fill=True),
 }
 
 
 def build_plan(name, stems, work_dir, duration, other_notes, drum_hits,
                bass_notes=None, trans=None, mix_path=None, wavetable="saw",
                style="balanced"):
-    """Everything above, wired together. Returns (ChannelPlan, stats)."""
+    """Melody-first assembly. Returns (ChannelPlan, stats)."""
     from gb_apu import ChannelPlan
     sp = STYLES.get(style, STYLES["balanced"])
 
     grid, measured = load_grid(name, duration)
 
-    vocal_track = extract_pitch(
-        stems["vocals"], os.path.join(work_dir, f"{name}.vocals.pyin.json"),
-        "E2", "A5")
     bass_track = extract_pitch(
         stems["bass"], os.path.join(work_dir, f"{name}.bass.pyin.json"),
         "E1", "G3", frame=4096)
@@ -979,53 +1120,43 @@ def build_plan(name, stems, work_dir, duration, other_notes, drum_hits,
         stems["other"], grid, os.path.join(work_dir, f"{name}.chords2.json"),
         bass_path=stems["bass"])
     drive = drive_profile(drum_hits, other_track, chords)
-    riff, riff2 = riff_lines(other_notes, grid)
 
-    lead, n_fills = arrange_lead(vocal_track, riff, riff2, grid)
+    mel = extract_melody(
+        mix_path, grid, os.path.join(work_dir, f"{name}.melody.json")) \
+        if mix_path else []
+
+    lead = arrange_melody_lead(mel, grid)
     noise, kick_times = arrange_noise(drum_hits, grid)
     bass = arrange_bass(bass_track, bass_notes or [], chords, grid, drive)
     pulse2 = inject_kicks(bass, kick_times)
-    wave = arrange_wave(chords, grid, drive, riff)
+    wave = arrange_harmony(chords, grid, drive, vol=sp["harm_vol"])
 
     plan = ChannelPlan(pulse1=lead, pulse2=pulse2, wave=wave, noise=noise,
                        wavetable=wavetable)
 
-    # Per-32nd-cell drive flag (chorus vs verse) steers coverage dynamics.
-    cells32 = grid.cells(32)
-    drive_cells = []
-    for a, b in cells32:
-        mid = (a + b) / 2
-        drive_cells.append(next((d for (wa, wb, *_), d in zip(chords, drive)
-                                 if wa <= mid < wb), True))
+    # 'full' adds a LIGHT, high-threshold harmony fill in the gaps — never the
+    # dense wash that buried the melody in v4/v5.
+    if sp["fill"] and mix_path:
+        cells32 = grid.cells(32)
+        drive_cells = [next((d for (wa, wb, *_), d in zip(chords, drive)
+                             if wa <= (a + b) / 2 < wb), True) for a, b in cells32]
+        targets = salience_targets(
+            mix_path, grid, os.path.join(work_dir, f"{name}.salience.json"))
+        cover_salience(plan, targets, grid, drive_cells, cap=2,
+                       wmin_drive=0.55, wmin_verse=0.85)
 
     named = sum(1 for *_, r, k in chords if r is not None)
     beat = float(np.median(np.diff(grid.beats)))
     stats = {
         "style": style,
         "grid": "measured" if measured else "tracked",
+        "melody_notes": len(mel),
         "chords_named": f"{named}/{len(chords)}",
         "drive_windows": f"{sum(drive)}/{len(drive)}",
-        "riff_notes": len(riff),
-        "lead_fills": n_fills,
         "kicks_swept": len(kick_times),
         "echo_delay_s": round(beat * 0.75, 4),   # dotted-eighth ping-pong
         "echo_wet": sp["wet"],
+        "mix_wave": sp["mix_wave"],
     }
-
-    if trans is not None:
-        pre = note_catch(plan, trans)
-        catch, added = guarantee_coverage(plan, trans, grid)
-        stats["catch_before_coverage"] = f"{pre:.0%}"
-        stats["note_catch"] = f"{catch:.1%}"
-
-    if mix_path is not None:
-        targets = salience_targets(
-            mix_path, grid, os.path.join(work_dir, f"{name}.salience.json"))
-        stats["audio_recall_before"] = f"{salience_recall(plan, targets, grid):.0%}"
-        sal_added = cover_salience(plan, targets, grid, drive_cells,
-                                   cap=sp["cap"], wmin_drive=sp["wmin_drive"],
-                                   wmin_verse=sp["wmin_verse"])
-        stats["salience_notes_added"] = sal_added
-        stats["audio_recall"] = f"{salience_recall(plan, targets, grid):.1%}"
-
+    stats["melody_agreement"] = f"{melody_agreement(plan, mel):.0%}"
     return plan, stats

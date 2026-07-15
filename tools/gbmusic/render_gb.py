@@ -271,11 +271,10 @@ def render(input_path, output_path, work_dir, wavetable="saw", stereo=True,
     sr = 44100
     echo = (arr_stats["echo_delay_s"], 0.4, arr_stats["echo_wet"])
     audio = render_song(plan, duration, sr=sr, stereo=stereo,
-                        mix=(0.98, 0.90, 0.60, 0.52), echo=echo)
+                        mix=(1.0, 0.86, arr_stats["mix_wave"], 0.5), echo=echo)
 
     print("[5/5] QA + encode")
-    print(f"      audio recall: {arr_stats.get('audio_recall')}  "
-          f"note catch: {arr_stats.get('note_catch')}")
+    print(f"      melody agreement (is it the tune): {arr_stats.get('melody_agreement')}")
     sim = chroma_similarity(input_path, audio, sr)
     print(f"      chroma similarity vs original: {sim:.3f}")
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
