@@ -360,21 +360,47 @@ export class OverworldScene extends Phaser.Scene {
           .setDepth(14)
           .setBlendMode(Phaser.BlendModes.ADD)
           .setTint(0x9fe8e0)
-          .setAlpha(0.22)
+          .setAlpha(0.3)
           .setDisplaySize(width * 1.2, height);
-        this.tweens.add({ targets: rays, alpha: 0.34, duration: 4200, yoyo: true, repeat: -1, ease: "Sine.inOut" });
+        this.tweens.add({ targets: rays, alpha: 0.46, duration: 4200, yoyo: true, repeat: -1, ease: "Sine.inOut" });
+
+        // Ambient light motes (the HLD comparison: their air is ALIVE) --
+        // a dozen tiny additive specks drifting up-screen, screen-pinned so
+        // they read wherever the camera is. Deterministic layout.
+        for (let i = 0; i < 12; i++) {
+          const mx = ((i * 73 + 29) % 100) / 100 * width;
+          const my = ((i * 41 + 13) % 100) / 100 * height;
+          const mote = this.pinToScreen(
+            this.add.image(mx, my, "glow").setScale(0.05 + (i % 3) * 0.02),
+            mx,
+            my
+          )
+            .setDepth(13.5)
+            .setBlendMode(Phaser.BlendModes.ADD)
+            .setTint(i % 4 === 0 ? 0xf0c078 : 0x9fe8e0)
+            .setAlpha(0);
+          this.tweens.add({
+            targets: mote,
+            alpha: { from: 0, to: 0.35 + (i % 3) * 0.1 },
+            duration: 1600 + i * 230,
+            yoyo: true,
+            repeat: -1,
+            delay: i * 420,
+            ease: "Sine.inOut",
+          });
+        }
       }
     }
 
     const g = this.pinToScreen(this.add.graphics().setDepth(15), 0, 0);
     // cold overcast tint
-    g.fillStyle(0x0b1420, 0.18).fillRect(0, 0, width, height);
+    g.fillStyle(0x0b1420, 0.06).fillRect(0, 0, width, height);
     // vignette: nested translucent frames, darker toward the edge
     const steps = 10;
     for (let i = 0; i < steps; i++) {
       const t = i / steps;
       g.fillStyle(0x05060a, 0.06);
-      const inset = Math.round((t * Math.min(width, height)) / 2.4);
+      const inset = Math.round((t * Math.min(width, height)) / 4.6);
       g.fillRect(0, 0, width, inset); // top
       g.fillRect(0, height - inset, width, inset); // bottom
       g.fillRect(0, 0, inset, height); // left
@@ -715,7 +741,7 @@ export class OverworldScene extends Phaser.Scene {
             if (kit.length > 0) {
               const key = kit[(h >> 3) % kit.length];
               // scenery sits a value-step darker than characters (audit O4)
-              this.add.image(cx, cy, key).setOrigin(0.5, 1).setScale(0.6).setDepth(2).setTint(0xb2b9c6);
+              this.add.image(cx, cy, key).setOrigin(0.5, 1).setScale(0.6).setDepth(2).setTint(0xd6dce6);
               // emissive pieces CAST their light (goal: intentional): a soft
               // additive pool under anything that visibly burns or glows --
               // this is what makes the night world read as lit, not decorated
@@ -730,7 +756,7 @@ export class OverworldScene extends Phaser.Scene {
                   .setDepth(2.1);
               }
             } else {
-              this.add.image(cx, cy, "ow_props", h % DECORATIVE_PROP_COUNT).setOrigin(0.5, 1).setScale(0.72).setDepth(2).setTint(0xb2b9c6);
+              this.add.image(cx, cy, "ow_props", h % DECORATIVE_PROP_COUNT).setOrigin(0.5, 1).setScale(0.72).setDepth(2).setTint(0xd6dce6);
             }
           }
         }
@@ -770,13 +796,13 @@ export class OverworldScene extends Phaser.Scene {
       if (this.textures.exists(outcrop)) {
         const oy = (row - 3) * TILE_SIZE;
         shore.fillStyle(0x05060a, 0.3).fillEllipse(gx, oy - 2, 42, 9);
-        this.add.image(gx, oy, outcrop).setOrigin(0.5, 1).setScale(0.7).setDepth(2.5).setTint(0xb2b9c6);
+        this.add.image(gx, oy, outcrop).setOrigin(0.5, 1).setScale(0.7).setDepth(2.5).setTint(0xd6dce6);
       }
       const prop = GATE_PROPS[biome];
       if (prop && this.textures.exists(prop)) {
         const py = (row + 4) * TILE_SIZE;
         shore.fillStyle(0x05060a, 0.28).fillEllipse(gx, py - 1, 12, 4);
-        this.add.image(gx, py, prop).setOrigin(0.5, 1).setScale(0.7).setDepth(2).setTint(0xb2b9c6);
+        this.add.image(gx, py, prop).setOrigin(0.5, 1).setScale(0.7).setDepth(2).setTint(0xd6dce6);
         this.add
           .image(gx, py - 8, "glow")
           .setBlendMode(Phaser.BlendModes.ADD)
@@ -855,7 +881,7 @@ export class OverworldScene extends Phaser.Scene {
         const x = col * TILE_SIZE + TILE_SIZE / 2;
         const y = row * TILE_SIZE + TILE_SIZE;
         shadowLayer.fillStyle(0x05060a, 0.3).fillEllipse(x, y - 2, canopy ? 34 : 46, 10);
-        const img = this.add.image(x, y, key).setOrigin(0.5, 1).setScale(0.8).setTint(0xb2b9c6);
+        const img = this.add.image(x, y, key).setOrigin(0.5, 1).setScale(0.8).setTint(0xd6dce6);
         if (canopy) {
           img.setDepth(6.5); // above the player (5): the crown overhangs
           this.canopies.push(img);
@@ -886,7 +912,7 @@ export class OverworldScene extends Phaser.Scene {
         .setDepth(1)
         .setTileScale(2.4)
         .setTint(0x05060a)
-        .setAlpha(0.16);
+        .setAlpha(0.09);
     }
   }
 

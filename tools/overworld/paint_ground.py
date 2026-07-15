@@ -35,7 +35,9 @@ OUT = ROOT / "assets" / "tilemaps" / "ground_plate.png"
 S = 32  # px per tile cell (2x the runtime 16px -> denser texels, HLD register)
 RNG = np.random.default_rng(20260714)
 
-ACCENTS = [(0x49, 0xC6, 0xBD), (0xF0, 0xA6, 0x48), (0x8A, 0x52, 0xA0), (0xA8, 0x43, 0x1C), (0x4B, 0x2A, 0x57)]
+# HLD-grade accents: one hot signature hue per region, chroma pushed so the
+# blend passes read as COLOUR, not grey (goal: the HLD comparison)
+ACCENTS = [(0x49, 0xC6, 0xBD), (0xF0, 0xA6, 0x48), (0x9A, 0x5C, 0xBD), (0xC2, 0x54, 0x24), (0x7A, 0x4E, 0xB4)]
 
 
 def tint(base: tuple[int, int, int], accent: tuple[int, int, int], amt: float) -> np.ndarray:
@@ -111,7 +113,7 @@ def main() -> None:
         return acc / wsum[..., None]
 
     # --- grass field --------------------------------------------------------
-    grass_bases = [tint((0x20, 0x2B, 0x1D), a, 0.22) for a in ACCENTS]
+    grass_bases = [tint((0x2C, 0x40, 0x26), a, 0.36) for a in ACCENTS]
     img = blended(grass_bases)
     n_low = value_noise(PH, PW, 160)
     n_mid = value_noise(PH, PW, 36)
@@ -151,7 +153,7 @@ def main() -> None:
     # 1-tile spur (32px wide) still holds together comfortably
     path_mask = organic_mask(kind == 1, jitter=0.18, blur=11)
     d_path = distance_bands(path_mask, 6)
-    path_bases = [tint((0x5E, 0x57, 0x46), a, 0.16) for a in ACCENTS]
+    path_bases = [tint((0x8E, 0x83, 0x68), a, 0.18) for a in ACCENTS]
     path_col = blended(path_bases) * (1 + (n_mid - 0.5) * 0.12)[..., None]
     edge = path_mask & (d_path < 3)
     wear = path_mask & (d_path > 7)
@@ -181,8 +183,8 @@ def main() -> None:
     # kept reading as rounded RECTANGLES through the gentler wobble)
     water_mask = organic_mask(kind == 2, jitter=0.3, blur=13, warp=0.6)
     d_w = distance_bands(water_mask, 12)
-    shore_bases = [tint((0x14, 0x30, 0x42), a, 0.10) for a in ACCENTS]
-    deep = np.array((0x04, 0x0C, 0x13), dtype=np.float32)
+    shore_bases = [tint((0x17, 0x42, 0x58), a, 0.20) for a in ACCENTS]
+    deep = np.array((0x08, 0x0D, 0x24), dtype=np.float32)
     t = np.clip(d_w / 26.0, 0, 1)[..., None]
     water_col = blended(shore_bases) * (1 - t) + deep[None, None, :] * t
     water_col *= (1 + (n_mid - 0.5) * 0.08)[..., None]
@@ -243,7 +245,7 @@ def main() -> None:
                         labels[y, x] = nxt
                         stack += [(y + 1, x), (y - 1, x), (y, x + 1), (y, x - 1)]
 
-    rock_top_bases = [tint((0x39, 0x40, 0x4B), a, 0.20) for a in ACCENTS]
+    rock_top_bases = [tint((0x4A, 0x51, 0x5E), a, 0.30) for a in ACCENTS]
     rock_top = blended(rock_top_bases)
     crack_col = 0.5
     for comp in range(1, nxt + 1):
@@ -321,12 +323,25 @@ def main() -> None:
         rr = np.sqrt((xx_g - cx) ** 2 + (yy_g - cy) ** 2) + (disc_noise - 0.5) * 56
         disc = rr < radius
         edge = disc & (rr > radius - 16)
-        base = tint((0x57, 0x4E, 0x40), ACCENTS[reg], 0.20)
+        base = tint((0x6E, 0x61, 0x4A), ACCENTS[reg], 0.28)
         col = base[None, None, :] * (1 + (n_mid - 0.5) * 0.14)[..., None]
         canvas[disc] = col[disc]
         canvas[edge] *= 0.62
         rings = disc & (np.abs((rr % 44) - 22.0) < 1.1) & (rr > 26)
         canvas[rings] *= 0.85
+
+    # --- the world's dark frame (HLD value structure) -------------------------
+    # HLD's playfield GLOWS because its unwalkable surround sits near black.
+    # Sink the outer map edge into darkness with an organic falloff so the
+    # world reads as a lit place inside a void, not a plate that just stops.
+    edge_d = np.minimum.reduce([
+        np.arange(PW, dtype=np.float32)[None, :].repeat(PH, 0),
+        np.arange(PW, dtype=np.float32)[::-1][None, :].repeat(PH, 0),
+        np.arange(PH, dtype=np.float32)[:, None].repeat(PW, 1),
+        np.arange(PH, dtype=np.float32)[::-1][:, None].repeat(PW, 1),
+    ])
+    frame_t = np.clip((64.0 - edge_d - (value_noise(PH, PW, 26) - 0.5) * 40) / 64.0, 0, 1)
+    canvas *= (1 - frame_t * 0.72)[..., None]
 
     canvas = np.round(canvas / 9.0) * 9.0  # quantized ramps: crunchy, not airbrushed
     out = Image.fromarray(np.clip(canvas, 0, 255).astype(np.uint8), "RGB")
