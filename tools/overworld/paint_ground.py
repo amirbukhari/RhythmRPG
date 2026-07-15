@@ -343,7 +343,13 @@ def main() -> None:
     frame_t = np.clip((64.0 - edge_d - (value_noise(PH, PW, 26) - 0.5) * 40) / 64.0, 0, 1)
     canvas *= (1 - frame_t * 0.72)[..., None]
 
-    canvas = np.round(canvas / 9.0) * 9.0  # quantized ramps: crunchy, not airbrushed
+    # quantized ramps with ORDERED DITHER (the HLD floor signature): a 4x4
+    # Bayer offset before quantization turns every soft gradient into the
+    # deliberate checkered banding hand-pixeled floors have -- the ground now
+    # speaks the same chunky register as the baked-scale pieces.
+    bayer = (np.array([[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]], dtype=np.float32) / 16.0 - 0.5) * 10.0
+    offs = np.tile(bayer, (PH // 4 + 1, PW // 4 + 1))[:PH, :PW]
+    canvas = np.round((canvas + offs[..., None]) / 11.0) * 11.0
     out = Image.fromarray(np.clip(canvas, 0, 255).astype(np.uint8), "RGB")
     OUT.parent.mkdir(parents=True, exist_ok=True)
     out.save(OUT, optimize=True)
