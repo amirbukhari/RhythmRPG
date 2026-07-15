@@ -48,8 +48,16 @@ Stages (stems, transcriptions, pitch tracks, and chord tracks all cache in
    envelopes, NR10-style frequency sweeps, a real 15/7-bit LFSR, and the
    DMG's DC-blocking output high-pass — 4x oversampled, then decimated to
    44.1 kHz.
-5. QA + encode: beat-scale chroma cosine similarity against the original
-   (the committed six score 0.84–0.88), then MP3 via lameenc with the
+5. Coverage to full audio recall: transcribers miss real notes, so the
+   render is graded against the **recording's own spectrum**, not the
+   transcription. A harmonic-salience CQT (`arrange.salience_targets`)
+   finds the fundamentals actually present in the mix per 32nd cell;
+   `cover_salience` then folds any missing pitch class into a fast wave
+   arpeggio (the real Game Boy chord technique) or an idle-channel gap
+   until the render reproduces **100%** of them (up from ~30–48% for the
+   melodic core alone). `salience_recall` reports the number.
+6. QA + encode: beat-scale chroma cosine similarity against the original
+   (the committed six score 0.91–0.92), then MP3 via lameenc with the
    encoder delay measured by cross-correlation and trimmed to 0 samples,
    so the decoded file stays sample-aligned with the recording.
 

@@ -262,7 +262,8 @@ def render(input_path, output_path, work_dir, wavetable="saw", stereo=True,
     print("[4/5] arranging the cover (v4 engine) + coverage + APU render")
     plan, arr_stats = arrange.build_plan(
         name, stems, work_dir, duration, trans["other"], hits,
-        bass_notes=trans["bass"], trans=trans, wavetable=wavetable)
+        bass_notes=trans["bass"], trans=trans, mix_path=input_path,
+        wavetable=wavetable)
     counts = dict(pulse1=len(plan.pulse1), pulse2=len(plan.pulse2),
                   wave=len(plan.wave), noise=len(plan.noise))
     print(f"      events: {counts}")

@@ -768,6 +768,156 @@ def guarantee_coverage(plan, trans, grid, win=0.09, cap=4, passes=5):
     return note_catch(plan, trans, win), added
 
 
+# ------------------------------------------- audio-referenced pitch recall --
+# The transcription (basic-pitch/pYIN) is lossy — it misses real notes, so
+# "100% of transcribed notes" undercounts what the SONG actually contains.
+# These functions grade against the recording's own spectrum instead: a
+# harmonic-salience CQT finds the fundamentals present in the audio (harmonic
+# summation suppresses overtones), independent of any transcriber. That set
+# is the honest "every note in the song," and cover_salience() makes the
+# render reproduce it.
+def salience_targets(mix_path, grid, cache_path, keep=6, rel=0.20, floor_pct=55):
+    """Per 32nd cell: [(pc, weight), ...] fundamentals present in the mix."""
+    if os.path.exists(cache_path):
+        with open(cache_path) as f:
+            return [[tuple(x) for x in cell] for cell in json.load(f)]
+    import librosa
+    y, sr = librosa.load(mix_path, sr=22050, mono=True)
+    hop = 512
+    fmin = librosa.note_to_hz("C1")
+    C = np.abs(librosa.cqt(y, sr=sr, hop_length=hop, fmin=fmin,
+                           n_bins=72, bins_per_octave=12))
+    freqs = librosa.cqt_frequencies(72, fmin=fmin, bins_per_octave=12)
+    S = librosa.salience(C, freqs=freqs, harmonics=[1, 2, 3, 4, 5],
+                         weights=[1.0, 0.5, 0.4, 0.3, 0.2], fill_value=0.0)
+    times = librosa.times_like(S, sr=sr, hop_length=hop)
+    floor = float(np.percentile(S[S > 0], floor_pct)) if (S > 0).any() else 0.0
+
+    out = []
+    for a, b in grid.cells(32):
+        sel = (times >= a) & (times < b)
+        if not sel.any():
+            out.append([])
+            continue
+        frame = S[:, sel].mean(axis=1)
+        mx = float(frame.max())
+        if mx <= floor:
+            out.append([])
+            continue
+        thresh = max(rel * mx, floor)
+        pcw = {}
+        for i in range(72):
+            if frame[i] < thresh:
+                continue
+            if i > 0 and frame[i] < frame[i - 1]:
+                continue                      # keep only local-max bins
+            if i < 71 and frame[i] < frame[i + 1]:
+                continue
+            pc = i % 12
+            pcw[pc] = max(pcw.get(pc, 0.0), frame[i] / mx)
+        top = sorted(pcw.items(), key=lambda kv: -kv[1])[:keep]
+        out.append([(int(pc), round(float(w), 3)) for pc, w in top])
+    with open(cache_path, "w") as f:
+        json.dump(out, f)
+    return out
+
+
+def cell_pc_sets(plan, cells):
+    """Per cell, the set of pitch classes the render sounds (base + arp)."""
+    edges = np.array([c[0] for c in cells] + [cells[-1][1]])
+    sets = [set() for _ in cells]
+    n_cells = len(cells)
+
+    def ci(t):
+        return min(max(int(np.searchsorted(edges, t) - 1), 0), n_cells - 1)
+
+    for ch in (plan.pulse1, plan.pulse2, plan.wave):
+        for n in ch:
+            for k in range(ci(n.start), ci(n.end - 1e-6) + 1):
+                sets[k] |= _note_pcs(n)
+    return sets
+
+
+def salience_recall(plan, targets, grid):
+    """Weighted fraction of the audio's salient fundamentals the render
+    sounds in the same cell. THIS is 'how much of the real song is there'."""
+    sets = cell_pc_sets(plan, grid.cells(32))
+    num = den = 0.0
+    for tg, ps in zip(targets, sets):
+        for pc, w in tg:
+            den += w
+            if pc in ps:
+                num += w
+    return num / den if den else 1.0
+
+
+def cover_salience(plan, targets, grid, cap=4, passes=5, wmin=0.0):
+    """Make the render reproduce every audio-salient fundamental: for each
+    cell, any target pitch class not already sounding gets folded into a
+    wave arpeggio or dropped as a fast arp note in an idle channel gap."""
+    channels = [plan.wave, plan.pulse1, plan.pulse2]
+    cells = grid.cells(32)
+    added = 0
+
+    def overlapping(ch, a, b):
+        for n in ch:
+            if n.start < b and n.end > a:
+                return n
+        return None
+
+    def append_tones(note, pcs):
+        note.arp_pitches = tuple(list(note.arp_pitches)
+                                 + [_fold(60 + pc, *WAVE_COV_RANGE) for pc in pcs])
+        note.arp_hz = max(note.arp_hz,
+                          _arp_hz(len(_note_pcs(note)), note.end - note.start))
+
+    for _ in range(passes):
+        sets = cell_pc_sets(plan, cells)
+        changed = False
+        for k, (a, b) in enumerate(cells):
+            need = [pc for pc, w in targets[k] if w >= wmin and pc not in sets[k]]
+            if not need:
+                continue
+            changed = True
+            remaining = need
+            wnote = overlapping(plan.wave, a, b)
+            if wnote is not None:
+                room = max(0, cap - len(_note_pcs(wnote)))
+                if room:
+                    append_tones(wnote, remaining[:room])
+                    remaining = remaining[room:]
+            for ch in channels:
+                if not remaining:
+                    break
+                if overlapping(ch, a, b) is not None:
+                    continue
+                take = remaining[:cap]
+                ch.append(Note(start=a, end=b,
+                               pitch=_fold(60 + take[0], *WAVE_COV_RANGE),
+                               arp_pitches=tuple(_fold(60 + pc, *WAVE_COV_RANGE)
+                                                 for pc in take[1:]),
+                               arp_hz=_arp_hz(len(take), b - a), volume=8))
+                added += 1
+                remaining = remaining[cap:]
+            if remaining:
+                wnote = overlapping(plan.wave, a, b)
+                if wnote is not None:
+                    append_tones(wnote, remaining)
+                else:
+                    plan.wave.append(Note(start=a, end=b,
+                                          pitch=_fold(60 + remaining[0], *WAVE_COV_RANGE),
+                                          arp_pitches=tuple(_fold(60 + pc, *WAVE_COV_RANGE)
+                                                            for pc in remaining[1:]),
+                                          arp_hz=_arp_hz(len(remaining), b - a),
+                                          volume=8))
+                    added += 1
+        for ch in channels:
+            ch.sort(key=lambda n: n.start)
+        if not changed:
+            break
+    return added
+
+
 # -------------------------------------------------------------- assembly --
 def drive_profile(drum_hits, other_track, chords):
     """Per half-bar: is this a driving section (busy drums / loud band) or a
@@ -786,7 +936,7 @@ def drive_profile(drum_hits, other_track, chords):
 
 
 def build_plan(name, stems, work_dir, duration, other_notes, drum_hits,
-               bass_notes=None, trans=None, wavetable="saw"):
+               bass_notes=None, trans=None, mix_path=None, wavetable="saw"):
     """Everything above, wired together. Returns (ChannelPlan, stats)."""
     from gb_apu import ChannelPlan
 
@@ -833,5 +983,13 @@ def build_plan(name, stems, work_dir, duration, other_notes, drum_hits,
         stats["catch_before_coverage"] = f"{pre:.0%}"
         stats["coverage_notes_added"] = added
         stats["note_catch"] = f"{catch:.1%}"
+
+    if mix_path is not None:
+        targets = salience_targets(
+            mix_path, grid, os.path.join(work_dir, f"{name}.salience.json"))
+        stats["audio_recall_before"] = f"{salience_recall(plan, targets, grid):.0%}"
+        sal_added = cover_salience(plan, targets, grid)
+        stats["salience_notes_added"] = sal_added
+        stats["audio_recall"] = f"{salience_recall(plan, targets, grid):.1%}"
 
     return plan, stats
