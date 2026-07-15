@@ -21,9 +21,9 @@ same sweep.
 | SP6 | **Ponds read as rounded rectangles.** Fine shoreline jitter (±3 px) could not disguise map-rectangular water bodies at 380 px scale. | Medium | `organic_mask` gained a coarse low-frequency `warp` term that swings the whole boundary several px in/out; water uses `warp=0.6, blur=13`. | ✅ fixed |
 | SP7 | **Scatter invades dressed places.** Decorative scatter could land inside node venues and on echo spots, fighting the deliberate dressing. | Medium | Scatter now clears a ±2-tile zone around every marker and echo. | ✅ fixed |
 | SP8 | **NPC scale inconsistency.** Townsfolk at 0.72 (~29 px) towered over the 25 px hero. | Low | Normalized to 0.58 (~23 px) — a hair shorter than the hero. | ✅ fixed |
-| SP9 | **Attic mesa pillars repeat one silhouette.** The attic mid-band paints five near-identical rounded-rect pillar mesas in one screen. Shape comes from map data (same-size rock clusters), not the painter. | Low | Deferred: needs map-data variance in `generate_overworld_map.py` (vary rock cluster sizes), or per-component width jitter in the painter. | ⏳ follow-up |
-| SP10 | **Mesa top plateaus read bare.** Large pale tops carry only sparse cracks/glyphs; at retina scale they read flat. | Low | Deferred: add tonal patching + occasional scatter ON mesa tops (needs a "rock-top" placement class). | ⏳ follow-up |
-| SP11 | **Straight parallel road ribbons** in saltmines mid-band read artificial (two N-S roads ~200 px apart, dead straight). | Low | Deferred: map-data routing change; painting alone can't bend them. | ⏳ follow-up |
+| SP9 | **Attic mesa pillars repeat one silhouette.** The attic mid-band paints five near-identical rounded-rect pillar mesas in one screen. Shape comes from map data (same-size rock clusters), not the painter. | Low | `generate_overworld_map.py`: partitions now vary — jittered x, staggered ends, widths 1–2, segmented runs with alley breaks. | ✅ fixed |
+| SP10 | **Mesa top plateaus read bare.** Large pale tops carry only sparse cracks/glyphs; at retina scale they read flat. | Low | Painter plateau dressing: tonal lichen patches + hashed pebbles with a lit top edge. | ✅ fixed |
+| SP11 | **Straight parallel road ribbons** in saltmines mid-band read artificial (two N-S roads ~200 px apart, dead straight). | Low | `_carve_path` meanders (sideways drift every few tiles, endpoints exact, BFS-validated); saltmines ridges segmented with jittered rows and gaps. | ✅ fixed |
 
 ## Scale reference (verified consistent)
 

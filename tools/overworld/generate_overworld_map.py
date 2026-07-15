@@ -96,18 +96,44 @@ def _rect(grid: list[list[int]], c0: int, r0: int, c1: int, r1: int, val: int) -
             grid[r][c] = val
 
 
-def _carve_path(grid: list[list[int]], a: tuple[int, int], b: tuple[int, int]) -> None:
-    """L-shaped corridor (horizontal then vertical) from a to b, PATH tile in a's region."""
+def _carve_path(grid: list[list[int]], a: tuple[int, int], b: tuple[int, int], rng: random.Random | None = None) -> None:
+    """Corridor from a to b, PATH tile per-region. With an rng the corridor
+    MEANDERS: while walking each leg it drifts a tile sideways every few
+    steps (scale/placement audit SP11 -- dead-straight parallel roads read
+    artificial). Without an rng it stays the plain L (used by secret spurs,
+    whose pockets need the predictable punch-through)."""
     c0, r0 = a
     c1, r1 = b
-    region = region_of(c0)
-    p = tid(region, PATH)
+    r = r0
     step = 1 if c1 >= c0 else -1
+    since_jog = 0
     for c in range(c0, c1 + step, step):
-        grid[r0][c] = p
-    step = 1 if r1 >= r0 else -1
-    for r in range(r0, r1 + step, step):
-        grid[r][c1] = tid(region_of(c1), PATH)
+        grid[r][c] = tid(region_of(c), PATH)
+        since_jog += 1
+        if rng is not None and since_jog >= 3 and c != c1 and abs(c - c1) > 2 and rng.random() < 0.38:
+            drift = rng.choice((-1, 1))
+            nr = r + drift
+            if 2 <= nr < MAP_H - 2:
+                r = nr
+                grid[r][c] = tid(region_of(c), PATH)  # keep the corridor connected
+                since_jog = 0
+    cc = c1
+    step = 1 if r1 >= r else -1
+    since_jog = 0
+    for rr in range(r, r1 + step, step):
+        grid[rr][cc] = tid(region_of(cc), PATH)
+        since_jog += 1
+        if rng is not None and since_jog >= 3 and rr != r1 and abs(rr - r1) > 2 and rng.random() < 0.38:
+            drift = rng.choice((-1, 1))
+            nc = cc + drift
+            if 2 <= nc < MAP_W - 2:
+                cc = nc
+                grid[rr][cc] = tid(region_of(cc), PATH)
+                since_jog = 0
+    # land the endpoint exactly (the meander may end a column off)
+    step = 1 if c1 >= cc else -1
+    for c in range(cc, c1 + step, step):
+        grid[r1][c] = tid(region_of(c), PATH)
 
 
 def _carve_secret_spur(grid: list[list[int]], rng: random.Random, from_pt: tuple[int, int], to_pt: tuple[int, int]) -> None:
@@ -146,9 +172,15 @@ def _dress_region(grid: list[list[int]], rng: random.Random, ri: int) -> None:
         for _ in range(3):  # sunken foundation stubs
             c, r = base + rng.randrange(4, REGION_W - 4), rng.randrange(12, REGION_H - 12)
             _rect(grid, c, r, c + 3, r + 3, w(ROCK))
-    elif name == "saltmines":  # mine road: long parallel rock ridges
+    elif name == "saltmines":  # mine road: worked rock ridges (SP11: segmented
+        # with jittered rows and gaps, not four dead-straight full-width bars)
         for ridge_r in (6, 9, 20, 23):
-            _rect(grid, base + 3, ridge_r, base + REGION_W - 3, ridge_r + 1, w(ROCK))
+            c = base + 3
+            while c < base + REGION_W - 3:
+                seg = rng.randrange(4, 9)
+                rr = ridge_r + rng.choice((-1, 0, 0, 1))
+                _rect(grid, c, rr, min(base + REGION_W - 3, c + seg), rr + 1, w(ROCK))
+                c += seg + rng.randrange(1, 4)  # gap between worked sections
         _rect(grid, base + 4, 14, base + 10, 18, w(WATER))  # flooded shaft
     elif name == "pit":  # sunken carnival ring: a big circular flooded pit, centered
         cx, cy, rad = base + REGION_W // 2, REGION_H // 2, 7
@@ -160,14 +192,24 @@ def _dress_region(grid: list[list[int]], rng: random.Random, ri: int) -> None:
             c, r = base + rng.randrange(3, REGION_W - 3), rng.randrange(3, REGION_H - 3)
             if (c - cx) ** 2 + (r - cy) ** 2 > (rad + 2) ** 2:
                 _rect(grid, c, r, c + 2, r + 2, w(ROCK))
-    elif name == "attic":  # building exterior: tight rock-partitioned alleys
+    elif name == "attic":  # building exterior: tight rock-partitioned alleys.
+        # SP9: the four partitions vary -- jittered x, staggered ends, widths
+        # 1-2, and segmented runs -- so the region stops reading as five
+        # copies of one rounded-rect pillar.
         for i in range(4):
-            c = base + 5 + i * 5
-            _rect(grid, c, 3, c + 1, REGION_H - 6, w(ROCK))
+            c = base + 5 + i * 5 + rng.choice((-1, 0, 1))
+            width = rng.choice((1, 1, 2))
+            r = 3 + rng.randrange(0, 4)
+            end = REGION_H - 6 - rng.randrange(0, 4)
+            while r < end:
+                seg = rng.randrange(5, 11)
+                _rect(grid, c, r, c + width, min(end, r + seg), w(ROCK))
+                r += seg + rng.randrange(2, 4)  # alley break
         # punch cross-corridors so it's a maze, not solid walls
         for gap_r in (9, 17, 26):
-            for c in range(base + 5, base + 22, 5):
-                grid[gap_r][c] = w(GRASS)
+            for c in range(base + 4, base + 23):
+                if grid[gap_r][c] == w(ROCK):
+                    grid[gap_r][c] = w(GRASS)
     elif name == "hall":  # flooded plaza: open water with statue columns
         _rect(grid, base + 2, 2, base + REGION_W - 2, REGION_H - 2, w(WATER))
         for cx, cy in [(8, 10), (18, 8), (6, 22), (20, 24), (13, 16)]:
@@ -206,9 +248,10 @@ def build_grid() -> list[list[int]]:
 
     # the main road: waypoint chain through spawn, every node, in campaign
     # order. Carved LAST so it's never accidentally resealed by a pocket ring.
+    # Meandering (rng passed): a worn trail drifts, it doesn't run on rails.
     waypoints = [SPAWN, *NODE_MARKERS.values()]
     for a, b in zip(waypoints, waypoints[1:]):
-        _carve_path(grid, a, b)
+        _carve_path(grid, a, b, rng)
 
     return grid
 
