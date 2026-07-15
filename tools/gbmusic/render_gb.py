@@ -232,7 +232,7 @@ def write_mp3(path, audio, sr, bitrate=128):
 
 
 def render(input_path, output_path, work_dir, wavetable="saw", stereo=True,
-           report_path=None):
+           report_path=None, style="balanced"):
     os.makedirs(work_dir, exist_ok=True)
     name = os.path.splitext(os.path.basename(input_path))[0]
 
@@ -259,22 +259,23 @@ def render(input_path, output_path, work_dir, wavetable="saw", stereo=True,
     kinds = {k: sum(1 for h in hits if h[1] == k) for k in ("kick", "snare", "hat")}
     print(f"      drums: {len(hits)} hits {kinds}")
 
-    print("[4/5] arranging the cover (v4 engine) + coverage + APU render")
+    print(f"[4/5] arranging the cover (v6, style={style}) + coverage + APU render")
     plan, arr_stats = arrange.build_plan(
         name, stems, work_dir, duration, trans["other"], hits,
         bass_notes=trans["bass"], trans=trans, mix_path=input_path,
-        wavetable=wavetable)
+        wavetable=wavetable, style=style)
     counts = dict(pulse1=len(plan.pulse1), pulse2=len(plan.pulse2),
                   wave=len(plan.wave), noise=len(plan.noise))
     print(f"      events: {counts}")
     print(f"      arrangement: {arr_stats}")
-    catch = arrange.note_catch(plan, trans)
-    print(f"      note catch (source notes the render plays): {catch:.1%}")
     sr = 44100
+    echo = (arr_stats["echo_delay_s"], 0.4, arr_stats["echo_wet"])
     audio = render_song(plan, duration, sr=sr, stereo=stereo,
-                        mix=(0.95, 0.90, 0.66, 0.50))
+                        mix=(0.98, 0.90, 0.60, 0.52), echo=echo)
 
     print("[5/5] QA + encode")
+    print(f"      audio recall: {arr_stats.get('audio_recall')}  "
+          f"note catch: {arr_stats.get('note_catch')}")
     sim = chroma_similarity(input_path, audio, sr)
     print(f"      chroma similarity vs original: {sim:.3f}")
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
@@ -285,7 +286,7 @@ def render(input_path, output_path, work_dir, wavetable="saw", stereo=True,
 
     report = dict(song=name, duration_s=round(duration, 2),
                   rendered_s=round(out_dur, 2), events=counts,
-                  note_catch=round(catch, 4), arrangement=arr_stats,
+                  style=style, arrangement=arr_stats,
                   drum_kinds=kinds, chroma_similarity=round(sim, 3))
     if report_path:
         with open(report_path, "w") as f:
@@ -303,15 +304,18 @@ def main():
                     choices=("saw", "triangle", "organ"))
     ap.add_argument("--mono", action="store_true")
     ap.add_argument("--report", default=None, help="write a JSON QA report")
+    ap.add_argument("--style", default="balanced",
+                    choices=("clean", "balanced", "full"),
+                    help="production style / density (see arrange.STYLES)")
     args = ap.parse_args()
 
     if args.work_dir:
         render(args.input, args.output, args.work_dir, args.wavetable,
-               stereo=not args.mono, report_path=args.report)
+               stereo=not args.mono, report_path=args.report, style=args.style)
     else:
         with tempfile.TemporaryDirectory() as td:
             render(args.input, args.output, td, args.wavetable,
-                   stereo=not args.mono, report_path=args.report)
+                   stereo=not args.mono, report_path=args.report, style=args.style)
 
 
 if __name__ == "__main__":

@@ -429,7 +429,7 @@ def arrange_wave(chords, grid, drive_windows, riff):
     (16th arpeggios in drive sections, shimmer pads elsewhere)."""
     riff = [[_fold(p, *RIFF_RANGE), s, e, v] for p, s, e, v in _center(riff, 64)]
     notes = [Note(start=s, end=max(s + 0.03, e - 0.008), pitch=p,
-                  volume=_v(v, 9, 15))
+                  volume=_v(v, 9, 15), env_period=2)
              for p, s, e, v in riff]
 
     # chord accompaniment only in the riff's gaps
@@ -453,13 +453,13 @@ def arrange_wave(chords, grid, drive_windows, riff):
         tones = [r, r + third, r + 7, r + 12] if kind != "5" else [r, r + 7, r + 12, r + 19]
         if drive:
             for i, (k, (t0, t1)) in enumerate(free):
-                notes.append(Note(start=t0, end=t0 + 0.88 * (t1 - t0),
-                                  pitch=tones[i % 4], volume=12))
+                notes.append(Note(start=t0, end=t0 + 0.9 * (t1 - t0),
+                                  pitch=tones[i % 4], volume=12, env_period=2))
         else:
             t0, t1 = free[0][1][0], free[-1][1][1]
             notes.append(Note(start=t0, end=t1, pitch=tones[0],
                               arp_pitches=tuple(tones[1:3]), arp_hz=24.0,
-                              volume=9))
+                              volume=9, env_period=3))
     notes.sort(key=lambda n: n.start)
     # strictly monophonic: trim anything the next note overlaps
     for cur, nxt in zip(notes, notes[1:]):
@@ -533,7 +533,8 @@ def arrange_bass(bass_track, bass_notes, chords, grid, drive_windows):
             continue
         gate = 0.85 if drive else 0.99
         out.append(Note(start=a, end=a + gate * (b - a), pitch=pitch,
-                        volume=_v(vel, 9, 14), duty=0.25))
+                        volume=_v(vel, 9, 14), duty=0.25,
+                        env_period=2 if drive else 3))
     return out
 
 
@@ -562,7 +563,8 @@ def inject_kicks(bass_notes, kick_times):
         for s0, s1 in segs:
             if s1 - s0 >= 0.04:
                 ducked.append(Note(start=s0, end=s1, pitch=n.pitch,
-                                   volume=n.volume, duty=n.duty))
+                                   volume=n.volume, duty=n.duty,
+                                   env_period=n.env_period))
     ducked.extend(
         Note(start=k, end=k + 0.07, pitch=74, volume=15, env_period=1,
              duty=0.50, sweep_semitones=-38.0, sweep_s=0.05)
@@ -851,12 +853,17 @@ def salience_recall(plan, targets, grid):
     return num / den if den else 1.0
 
 
-def cover_salience(plan, targets, grid, cap=4, passes=5, wmin=0.0):
-    """Make the render reproduce every audio-salient fundamental: for each
-    cell, any target pitch class not already sounding gets folded into a
-    wave arpeggio or dropped as a fast arp note in an idle channel gap."""
+def cover_salience(plan, targets, grid, drive_cells=None, cap=4, passes=5,
+                   wmin_drive=0.0, wmin_verse=0.0):
+    """Reproduce the audio's salient fundamentals, but section-aware: fill
+    to a low threshold in driving sections (choruses stay full) and a higher
+    one in sparse sections (verses breathe), so the result has dynamics
+    instead of a uniform wall. Missing pitches fold into a plucked wave
+    arpeggio or an idle-channel gap."""
     channels = [plan.wave, plan.pulse1, plan.pulse2]
     cells = grid.cells(32)
+    if drive_cells is None:
+        drive_cells = [True] * len(cells)
     added = 0
 
     def overlapping(ch, a, b):
@@ -875,6 +882,7 @@ def cover_salience(plan, targets, grid, cap=4, passes=5, wmin=0.0):
         sets = cell_pc_sets(plan, cells)
         changed = False
         for k, (a, b) in enumerate(cells):
+            wmin = wmin_drive if drive_cells[k] else wmin_verse
             need = [pc for pc, w in targets[k] if w >= wmin and pc not in sets[k]]
             if not need:
                 continue
@@ -896,7 +904,8 @@ def cover_salience(plan, targets, grid, cap=4, passes=5, wmin=0.0):
                                pitch=_fold(60 + take[0], *WAVE_COV_RANGE),
                                arp_pitches=tuple(_fold(60 + pc, *WAVE_COV_RANGE)
                                                  for pc in take[1:]),
-                               arp_hz=_arp_hz(len(take), b - a), volume=8))
+                               arp_hz=_arp_hz(len(take), b - a), volume=8,
+                               env_period=3))
                 added += 1
                 remaining = remaining[cap:]
             if remaining:
@@ -909,7 +918,7 @@ def cover_salience(plan, targets, grid, cap=4, passes=5, wmin=0.0):
                                           arp_pitches=tuple(_fold(60 + pc, *WAVE_COV_RANGE)
                                                             for pc in remaining[1:]),
                                           arp_hz=_arp_hz(len(remaining), b - a),
-                                          volume=8))
+                                          volume=8, env_period=3))
                     added += 1
         for ch in channels:
             ch.sort(key=lambda n: n.start)
@@ -935,10 +944,24 @@ def drive_profile(drum_hits, other_track, chords):
     return out
 
 
+# Named production styles. The user can't be shown a number and know how it
+# sounds, so the render offers distinct directions to pick from by ear:
+#   clean    — melodic clarity, harmony only where it counts (breathes most)
+#   balanced — dynamic: sparse verses, full choruses
+#   full     — maximum density, every audio-salient pitch reproduced
+STYLES = {
+    "clean":    dict(cap=3, wmin_drive=0.45, wmin_verse=0.80, wet=0.22),
+    "balanced": dict(cap=4, wmin_drive=0.28, wmin_verse=0.52, wet=0.28),
+    "full":     dict(cap=4, wmin_drive=0.0,  wmin_verse=0.0,  wet=0.30),
+}
+
+
 def build_plan(name, stems, work_dir, duration, other_notes, drum_hits,
-               bass_notes=None, trans=None, mix_path=None, wavetable="saw"):
+               bass_notes=None, trans=None, mix_path=None, wavetable="saw",
+               style="balanced"):
     """Everything above, wired together. Returns (ChannelPlan, stats)."""
     from gb_apu import ChannelPlan
+    sp = STYLES.get(style, STYLES["balanced"])
 
     grid, measured = load_grid(name, duration)
 
@@ -967,28 +990,41 @@ def build_plan(name, stems, work_dir, duration, other_notes, drum_hits,
     plan = ChannelPlan(pulse1=lead, pulse2=pulse2, wave=wave, noise=noise,
                        wavetable=wavetable)
 
+    # Per-32nd-cell drive flag (chorus vs verse) steers coverage dynamics.
+    cells32 = grid.cells(32)
+    drive_cells = []
+    for a, b in cells32:
+        mid = (a + b) / 2
+        drive_cells.append(next((d for (wa, wb, *_), d in zip(chords, drive)
+                                 if wa <= mid < wb), True))
+
     named = sum(1 for *_, r, k in chords if r is not None)
+    beat = float(np.median(np.diff(grid.beats)))
     stats = {
+        "style": style,
         "grid": "measured" if measured else "tracked",
         "chords_named": f"{named}/{len(chords)}",
         "drive_windows": f"{sum(drive)}/{len(drive)}",
         "riff_notes": len(riff),
         "lead_fills": n_fills,
         "kicks_swept": len(kick_times),
+        "echo_delay_s": round(beat * 0.75, 4),   # dotted-eighth ping-pong
+        "echo_wet": sp["wet"],
     }
 
     if trans is not None:
         pre = note_catch(plan, trans)
         catch, added = guarantee_coverage(plan, trans, grid)
         stats["catch_before_coverage"] = f"{pre:.0%}"
-        stats["coverage_notes_added"] = added
         stats["note_catch"] = f"{catch:.1%}"
 
     if mix_path is not None:
         targets = salience_targets(
             mix_path, grid, os.path.join(work_dir, f"{name}.salience.json"))
         stats["audio_recall_before"] = f"{salience_recall(plan, targets, grid):.0%}"
-        sal_added = cover_salience(plan, targets, grid)
+        sal_added = cover_salience(plan, targets, grid, drive_cells,
+                                   cap=sp["cap"], wmin_drive=sp["wmin_drive"],
+                                   wmin_verse=sp["wmin_verse"])
         stats["salience_notes_added"] = sal_added
         stats["audio_recall"] = f"{salience_recall(plan, targets, grid):.1%}"
 

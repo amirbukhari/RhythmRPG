@@ -214,7 +214,13 @@ def _render_wave_note(note: Note, sr: int, buf: np.ndarray, table: np.ndarray):
     # CH3 has no envelope, only the 100/50/25%/mute shifter; approximate
     # dynamics by picking the nearest shift level from the note volume.
     shift = 1.0 if note.volume >= 12 else (0.5 if note.volume >= 7 else 0.25)
-    buf[i0:i1] = wave * shift / 15.0
+    amp = wave * shift
+    # Optional pluck: LSDJ fakes a wave envelope with table amp-commands;
+    # env_period>0 gives an exponential decay (tau = 0.05*period s) so
+    # arpeggiated chord beds pluck instead of droning.
+    if note.env_period > 0:
+        amp = amp * np.exp(-t / (0.05 * note.env_period)).astype(np.float32)
+    buf[i0:i1] = amp / 15.0
 
 
 def _render_noise_hit(hit: NoiseHit, sr: int, buf: np.ndarray):
@@ -244,13 +250,38 @@ def _monophonic_overwrite(events, render_fn, sr, buf):
         render_fn(ev, sr, buf)
 
 
+def _pingpong(mono, sr, delay_s, feedback=0.42, taps=4):
+    """Stereo ping-pong delay of one channel — the classic game-music echo.
+    Returns (wet_left, wet_right); odd taps pan right, even left."""
+    d = max(1, int(delay_s * sr))
+    left = np.zeros_like(mono)
+    right = np.zeros_like(mono)
+    for k in range(1, taps + 1):
+        shift = d * k
+        if shift >= len(mono):
+            break
+        tap = np.zeros_like(mono)
+        tap[shift:] = mono[:-shift] * (feedback ** k)
+        if k % 2:
+            right += tap
+        else:
+            left += tap
+    # Darker echoes: low-pass the wet so repeats sit behind the dry signal.
+    b, a = sps.butter(2, 3200.0 / (sr / 2), "low")
+    return (sps.lfilter(b, a, left).astype(np.float32),
+            sps.lfilter(b, a, right).astype(np.float32))
+
+
 def render_song(plan: ChannelPlan, duration: float, sr: int = 44100,
-                mix=(0.85, 0.85, 0.80, 0.60), stereo: bool = True) -> np.ndarray:
+                mix=(0.85, 0.85, 0.80, 0.60), stereo: bool = True,
+                echo=None, pans=None) -> np.ndarray:
     """Render a ChannelPlan to a float32 array (samples, 2) in [-1, 1].
 
-    mix: per-channel gains (pulse1, pulse2, wave, noise).
-    Stereo uses NR51-style soft panning: pu1 left-leaning, pu2
-    right-leaning, wave/noise centered — the classic headphone image.
+    mix:  per-channel gains (pulse1, pulse2, wave, noise).
+    echo: (delay_s, feedback, wet) ping-pong delay fed from the lead (and a
+          touch of wave) for depth/width; None disables it.
+    pans: per-channel (left, right) gains; defaults to a lead-centered image
+          with the wave bed widened and bass/drums centered.
     """
     isr = sr * OVERSAMPLE
     n_over = int(np.ceil(duration * isr)) + isr // 10
@@ -272,14 +303,25 @@ def render_song(plan: ChannelPlan, duration: float, sr: int = 44100,
     n_out = int(np.ceil(duration * sr))
     chans = [c[:n_out] for c in chans]
 
-    if stereo:
-        pans = [(1.0, 0.6), (0.6, 1.0), (0.85, 0.85), (0.8, 0.8)]
-    else:
+    if not stereo:
         pans = [(1.0, 1.0)] * 4
+    elif pans is None:
+        # lead centered (echo gives it width), bass centered, wave bed
+        # widened, drums centered — a clean, present image.
+        pans = [(0.98, 0.98), (0.92, 0.92), (0.95, 0.72), (0.85, 0.85)]
+
     out = np.zeros((n_out, 2), dtype=np.float32)
     for c, g, (pl, pr) in zip(chans, mix, pans):
         out[:, 0] += c * g * pl
         out[:, 1] += c * g * pr
+
+    if echo is not None:
+        delay_s, feedback, wet = echo
+        # Feed the lead plus a little of the wave bed into the delay.
+        src = chans[0] * mix[0] + 0.4 * chans[2] * mix[2]
+        wl, wr = _pingpong(src, sr, delay_s, feedback)
+        out[:, 0] += wet * wl
+        out[:, 1] += wet * wr
 
     # DC-blocking high-pass (the DMG's output capacitor), ~20 Hz.
     b, a = sps.butter(1, 20.0 / (sr / 2), "highpass")
