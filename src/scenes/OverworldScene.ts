@@ -925,8 +925,20 @@ export class OverworldScene extends Phaser.Scene {
     // the live fight hides these when the player walks into the foe
     this.nodeFoeVisuals.set(marker.nodeId, [foe, aura, foeShadow]);
     if (status === "locked") {
-      // past the frontier: a dark, motionless silhouette waiting in the fog
-      foe.setTint(0x1a2230).setAlpha(0.9);
+      // past the frontier: a dark, motionless silhouette waiting in the fog.
+      // A faint additive accent rim behind it keeps the shade's hue identity
+      // (design-audit-3: a flat black cutout read as a rendering bug, and
+      // every locked foe looked the same).
+      const rim = this.add
+        .sprite(x, footY, tex, 0)
+        .setOrigin(0.5, 1)
+        .setScale((colossal ? 0.8 : 0.4) * 1.07)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setTint(accent)
+        .setAlpha(0.22)
+        .setDepth(4.45);
+      foe.setTint(0x232c40).setAlpha(0.95);
+      this.nodeFoeVisuals.get(marker.nodeId)!.push(rim);
     } else {
       const animKey = `ow_foe_${tex}`;
       if (!this.anims.exists(animKey)) {
