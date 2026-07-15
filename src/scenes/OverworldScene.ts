@@ -668,7 +668,7 @@ export class OverworldScene extends Phaser.Scene {
           // hash decides where clusters live; density is high inside, near
           // zero outside.
           const cellH = ((((col >> 3) + 7) * 2654435761) ^ (((row >> 3) + 3) * 40503)) >>> 0;
-          const chance = cellH % 100 < 28 ? 32 : 2;
+          const chance = cellH % 100 < 36 ? 32 : 3;
           if (h % 100 < chance) {
             const cx = px + TILE_SIZE / 2 + (((h >> 5) % 11) - 5);
             const cy = py + TILE_SIZE + 2 + (((h >> 9) % 7) - 3);
