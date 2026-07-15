@@ -28,27 +28,35 @@ from newband import autocrop, keep_main_island, scrub_mist, fit_to_frame, breath
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "assets" / "sprites" / "enemies"
 
+# The first pass's shared "dark teal and rust palette" clause homogenized the
+# bestiary into three near-identical hooded ghosts (the same failure mode the
+# band had). Same fix: each foe gets a DISTINCT silhouette and one bold
+# signature colour that dominates it.
 STYLE = (
     "16-bit video game enemy sprite, bold menacing silhouette, chunky pixels, "
-    "flat cel shading, drowned gothic horror, dark teal and rust palette, "
-    "full body SIDE VIEW facing LEFT, "
+    "flat cel shading, drowned gothic horror, ONE bold saturated signature "
+    "colour dominating the creature, full body SIDE VIEW facing LEFT, "
 )
 
 FOES: dict[str, tuple[str, int]] = {
     "slime": (
-        STYLE + "heaving mound of black-green rot ooze with a jagged mouth of "
-        "pearl-white teeth and small glowing teal eyes, dripping",
-        61,
+        STYLE + "hulking amorphous SLIME BLOB creature, a heaped mound of "
+        "luminous translucent TOXIC TEAL-GREEN ooze with no legs and no "
+        "humanoid shape, one wide jagged dark mouth of pearl-white teeth, "
+        "dripping goo",
+        561,
     ),
     "drifter": (
-        STYLE + "gaunt drowned wanderer ghost, waterlogged long coat, kelp "
-        "tangled around the arms, glowing pale eyes, reaching forward",
-        62,
+        STYLE + "gaunt drowned wanderer ghost in a waterlogged RUST-ORANGE "
+        "long coat, kelp tangled around the arms, hunched and reaching "
+        "forward, glowing pale eyes",
+        562,
     ),
     "elite_wraith": (
-        STYLE + "tall spectral wraith wearing a crown of pearl teeth, tattered "
-        "flowing robes fading to mist below the waist, long clawed fingers",
-        63,
+        STYLE + "tall regal spectral wraith in flowing VIOLET-PURPLE tattered "
+        "robes fading to mist below the waist, BONE-WHITE crown of pearl "
+        "teeth, long clawed fingers raised",
+        563,
     ),
 }
 
