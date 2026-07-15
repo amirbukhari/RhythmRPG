@@ -12,6 +12,7 @@ import { BASE_WIDTH, BASE_HEIGHT, RENDER_SCALE } from "../config/GameConfig";
 import { music } from "../systems/audio/SongPlayer";
 import { WorldFight } from "./overworld/WorldFight";
 import { composeWorldVenue } from "./env/ArenaComposer";
+import dressingData from "../data/content/overworld/dressing.json";
 
 const TILE_SIZE = 16;
 const STEP_DURATION_MS = 160;
@@ -80,8 +81,6 @@ export class OverworldScene extends Phaser.Scene {
   /** Canopy landforms drawn ABOVE the player (PRD v7.15); they alpha-fade
    * when the player walks beneath so the map keeps its sense of height. */
   private canopies: Phaser.GameObjects.Image[] = [];
-  /** Per-region scatter-piece texture keys (env_<biome>_scatter_*). */
-  private scatterKits: string[][] = [];
   /** Screen-space UI pinned to the camera's visible rect. Under the 2x
    * retina zoom (RENDER_SCALE) with a scrolled follow camera, Phaser's
    * scrollFactor-0 transform drifts, so UI is pinned to worldView per frame
@@ -123,9 +122,6 @@ export class OverworldScene extends Phaser.Scene {
     this.fight = null;
     this.canopies = [];
     this.pinned = [];
-    this.scatterKits = REGION_BIOMES.map((b) =>
-      this.textures.getTextureKeys().filter((k) => k.startsWith(`env_${b}_scatter_`)).sort()
-    );
     this.nodeFoeVisuals.clear();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.fight?.destroy();
@@ -702,85 +698,66 @@ export class OverworldScene extends Phaser.Scene {
     const localKind = (gid: number) => (gid - 1) % 4;
     const isGrassGid = (gid: number | undefined) => gid !== undefined && localKind(gid) === 0;
 
-    const keyOf = (c: number, r: number) => `${c},${r}`;
-    const blocked = new Set<string>();
-    for (const t of [
-      ...this.markers.map((m) => ({ col: m.col, row: m.row })),
-      ...this.echoes.map((e) => ({ col: e.col, row: e.row })),
-      spawnTile,
-    ]) {
-      for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) blocked.add(keyOf(t.col + dc, t.row + dr));
-    }
-
+    void isGrassGid;
+    void spawnTile;
     const shore = this.add.graphics().setDepth(1);
 
-    // scale/placement audit: keep decorative scatter out of node venues and
-    // echo spots -- those places are dressed deliberately.
-    const landmarkClear = new Set<string>();
-    for (const t of [...this.markers, ...this.echoes]) {
-      for (let dc = -2; dc <= 2; dc++) {
-        for (let dr = -2; dr <= 2; dr++) landmarkClear.add(keyOf(t.col + dc, t.row + dr));
-      }
-    }
+    // Every prop in the world is placed BY HAND (owner: "items need to be
+    // placed with intention. none of this scattering shit") -- authored
+    // vignettes, singletons, and landmark landforms in dressing.json. The
+    // hash-scatter system is deleted.
+    this.placeAuthoredDressing(shore);
+    this.placeRegionGates(map, ground, shore);
+  }
 
-    // Shorelines, banks, and rock elevation are BAKED into the painted
-    // ground plate (paint_ground.py) -- runtime decoration is now only the
-    // prop scatter, with per-prop jitter so nothing sits on a perfect grid
-    // (design-audit-2 G5).
-    for (let row = 0; row < map.height; row++) {
-      for (let col = 0; col < map.width; col++) {
-        const idx = ground.getTileAt(col, row)?.index;
-        const px = col * TILE_SIZE;
-        const py = row * TILE_SIZE;
-        if (isGrassGid(idx) && !blocked.has(keyOf(col, row))) {
-          const h = ((col * 73856093) ^ (row * 19349663)) >>> 0;
-          // CLUSTERED scatter (AAA audit O3): real places group -- graveyards,
-          // reed banks, camps -- with clearings between. A low-frequency cell
-          // hash decides where clusters live; density is high inside, near
-          // zero outside.
-          const cellH = ((((col >> 3) + 7) * 2654435761) ^ (((row >> 3) + 3) * 40503)) >>> 0;
-          // scale/placement audit: pieces are 20-30px on a 16px grid, so
-          // orthogonally-adjacent placements collide into piles. Inside a
-          // cluster only every other (checkerboard) tile is eligible; the
-          // per-tile chance rises to keep the cluster feel.
-          const clustered = cellH % 100 < 36;
-          if (clustered && ((col + row) & 1) !== 0) continue;
-          const chance = clustered ? 52 : 3;
-          if (h % 100 < chance && !landmarkClear.has(keyOf(col, row))) {
-            const cx = px + TILE_SIZE / 2 + (((h >> 5) % 11) - 5);
-            const cy = py + TILE_SIZE + 2 + (((h >> 9) % 7) - 3);
-            shore.fillStyle(0x05060a, 0.28).fillEllipse(cx, cy - 1, 12, 4); // contact shadow
-            // Per-biome AI scatter kits (design-audit-3 B): each region
-            // decorates from its OWN 8-piece library instead of the shared
-            // 6-frame sheet that repeated one lamp across the whole world.
-            const kit = this.scatterKits[Math.min(REGION_BIOMES.length - 1, Math.floor(col / 26))];
-            if (kit.length > 0) {
-              const key = kit[(h >> 3) % kit.length];
-              // scenery sits a value-step darker than characters (audit O4)
-              this.add.image(cx, cy, key).setOrigin(0.5, 1).setScale(0.6).setDepth(2).setTint(0xd6dce6);
-              // emissive pieces CAST their light (goal: intentional): a soft
-              // additive pool under anything that visibly burns or glows --
-              // this is what makes the night world read as lit, not decorated
-              if (/lantern|crystal|tidepool|brazier|candle|torch|dockpost|votives|belljar|lamp$|geode|hourglass/.test(key)) {
-                const teal = /tidepool|belljar|dockpost/.test(key);
-                this.add
-                  .image(cx, cy - 6, "glow")
-                  .setBlendMode(Phaser.BlendModes.ADD)
-                  .setTint(teal ? 0x49c6bd : 0xf0a648)
-                  .setScale(0.4)
-                  .setAlpha(0.32)
-                  .setDepth(2.1);
-              }
-            } else {
-              this.add.image(cx, cy, "ow_props", h % DECORATIVE_PROP_COUNT).setOrigin(0.5, 1).setScale(0.72).setDepth(2).setTint(0xd6dce6);
-            }
-          }
+  /**
+   * Authored set-dressing: composed mini-scenes (a fled camp, a shrine, a
+   * wrecked cart) where every piece has a story reason to be where it is,
+   * plus lone singletons and landmark landforms. Data-driven from
+   * dressing.json; each piece appears at most twice per region, so the art
+   * library reads as a world, not a repeating texture.
+   */
+  private placeAuthoredDressing(shore: Phaser.GameObjects.Graphics): void {
+    const file = dressingData as {
+      regions: {
+        region: string;
+        placements: { vignette: string; key: string; col: number; row: number; dx: number; dy: number; scale: number; flip: boolean }[];
+      }[];
+    };
+    for (const region of file.regions) {
+      const ri = REGION_BIOMES.indexOf(region.region);
+      if (ri < 0) continue;
+      const base = ri * 26;
+      for (const p of region.placements) {
+        if (!this.textures.exists(p.key)) continue;
+        const x = (base + p.col) * TILE_SIZE + TILE_SIZE / 2 + p.dx;
+        const y = p.row * TILE_SIZE + TILE_SIZE + p.dy;
+        const canopy = /landform_canopy/.test(p.key);
+        const landform = /landform_/.test(p.key);
+        shore
+          .fillStyle(0x05060a, landform ? 0.3 : 0.28)
+          .fillEllipse(x, y - 2, landform ? (canopy ? 34 : 46) : 12, landform ? 10 : 4);
+        const img = this.add
+          .image(x, y, p.key)
+          .setOrigin(0.5, 1)
+          .setScale(p.scale)
+          .setFlipX(p.flip)
+          .setTint(0xd6dce6)
+          .setDepth(canopy ? 6.5 : landform ? 2.5 : 2);
+        if (canopy) this.canopies.push(img);
+        // emissive pieces cast their light -- the night world reads lit
+        if (/lantern|crystal|tidepool|brazier|candle|torch|dockpost|votives|belljar|lamp$|geode|hourglass|campfire/.test(p.key)) {
+          const teal = /tidepool|belljar|dockpost/.test(p.key);
+          this.add
+            .image(x, y - 6, "glow")
+            .setBlendMode(Phaser.BlendModes.ADD)
+            .setTint(teal ? 0x49c6bd : 0xf0a648)
+            .setScale(0.4)
+            .setAlpha(0.32)
+            .setDepth(2.1);
         }
       }
     }
-
-    this.placeLandforms(map, ground, shore, blocked, isGrassGid);
-    this.placeRegionGates(map, ground, shore);
   }
 
   /**
@@ -826,84 +803,6 @@ export class OverworldScene extends Phaser.Scene {
           .setScale(0.45)
           .setAlpha(0.38)
           .setDepth(2.1);
-      }
-    }
-  }
-
-  /**
-   * LANDSCAPE-scale forms over the scene (PRD v7.15 direction: "giant rocks
-   * and hills and trees over the scene, like Hyper Light Drifter"). Per
-   * sparse low-frequency cell: either a colossal OUTCROP that breaks the map
-   * silhouette (scenery layer, below the player) or a CANOPY tree whose
-   * crown OVERHANGS the play space -- drawn ABOVE the player layer and
-   * alpha-fading when the player walks beneath (the HLD height trick).
-   * Deterministic (same hash discipline as prop clustering), kept clear of
-   * markers/echoes/spawn and their venue circles.
-   */
-  private placeLandforms(
-    map: Phaser.Tilemaps.Tilemap,
-    ground: Phaser.Tilemaps.TilemapLayer,
-    shadowLayer: Phaser.GameObjects.Graphics,
-    blocked: Set<string>,
-    isGrassGid: (gid: number | undefined) => boolean
-  ): void {
-    const REGION_W = 26; // tiles per region (generate_overworld_map.py)
-    const CELL = 8;
-    const clearOfLandmarks = (col: number, row: number): boolean => {
-      for (const t of [...this.markers, ...this.echoes]) {
-        if (Math.abs(t.col - col) <= 3 && Math.abs(t.row - row) <= 3) return false;
-      }
-      return true;
-    };
-    for (let cr = 0; cr * CELL < map.height; cr++) {
-      for (let cc = 0; cc * CELL < map.width; cc++) {
-        const ch = (((cc + 11) * 2654435761) ^ ((cr + 5) * 97002721)) >>> 0;
-        const kind = ch % 100;
-        if (kind >= 38) continue; // ~38% of cells attempt one landform
-        const canopy = kind < 16; // ~16% canopy, ~22% outcrop of cells
-        // several jittered candidates per cell: a busy map (roads, water,
-        // marker clearance) rejects most single throws
-        let col = -1;
-        let row = -1;
-        for (let attempt = 0; attempt < 6; attempt++) {
-          const c = cc * CELL + 1 + ((ch >> (4 + attempt * 3)) % Math.max(1, CELL - 2));
-          const r = cr * CELL + 1 + ((ch >> (6 + attempt * 3)) % Math.max(1, CELL - 2));
-          if (blocked.has(`${c},${r}`) || !clearOfLandmarks(c, r)) continue;
-          if (!isGrassGid(ground.getTileAt(c, r)?.index)) continue;
-          // scale/placement audit: an outcrop's ~5-tile-wide solid base must
-          // not squat on a road or shoreline -- its whole footprint needs
-          // open grass, not just the anchor tile (canopies only overhang, so
-          // the anchor check is enough for them).
-          if (!canopy) {
-            let clear = true;
-            for (let dc = -2; dc <= 2 && clear; dc++) {
-              if (blocked.has(`${c + dc},${r}`) || !isGrassGid(ground.getTileAt(c + dc, r)?.index)) clear = false;
-            }
-            if (!clear) continue;
-          }
-          col = c;
-          row = r;
-          break;
-        }
-        if (col < 0) continue;
-        const biome = REGION_BIOMES[Math.min(REGION_BIOMES.length - 1, Math.floor(col / REGION_W))];
-        // Each form picks among its biome's generated variants (landform_outcrop,
-        // _outcrop2, _outcrop3 / _canopy, _canopy2) so a region never repeats one
-        // silhouette wall-to-wall (design-audit-3 C).
-        const base = `env_${biome}_landform_${canopy ? "canopy" : "outcrop"}`;
-        const variants = [base, `${base}2`, `${base}3`].filter((k) => this.textures.exists(k));
-        if (variants.length === 0) continue;
-        const key = variants[(ch >> 13) % variants.length];
-        const x = col * TILE_SIZE + TILE_SIZE / 2;
-        const y = row * TILE_SIZE + TILE_SIZE;
-        shadowLayer.fillStyle(0x05060a, 0.3).fillEllipse(x, y - 2, canopy ? 34 : 46, 10);
-        const img = this.add.image(x, y, key).setOrigin(0.5, 1).setScale(0.8).setTint(0xd6dce6);
-        if (canopy) {
-          img.setDepth(6.5); // above the player (5): the crown overhangs
-          this.canopies.push(img);
-        } else {
-          img.setDepth(2.5);
-        }
       }
     }
   }
