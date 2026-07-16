@@ -795,14 +795,17 @@ def stem_energy(path):
 
 
 def pick_melody_source(stems):
-    """The melody lives in the isolated voice, not the crowded mix: the
-    vocal stem when a song is sung, the lead-instrument ('other') stem when
-    it's an instrumental. Returns (path, which)."""
+    """The melody lives in the ISOLATED voice, not the crowded mix — that's
+    the lesson from v8: extracting the 'dominant line of the full mix' gave
+    the loudest thing (a guitar, a harmonic), not the tune, so the lead
+    played the wrong notes. The vocal stem is the melody when a song is
+    sung; the lead-instrument ('other') stem when it's an instrumental.
+    Returns (path, which)."""
     voc = stem_energy(stems["vocals"])
     oth = stem_energy(stems["other"])
-    if voc >= 0.16 * oth and voc > 1e-4:
-        return stems["vocals"], "vocals"
-    return stems["other"], "other"
+    if voc > 0.015 and voc > 0.10 * oth:
+        return stems["vocals"], "vocal"
+    return stems["other"], "instrumental"
 
 
 def extract_melody(src_path, grid, cache_path, hop=256):
@@ -922,6 +925,35 @@ def melody_agreement(plan, mel_notes):
                 ok += min(e, ends[kk]) - max(s, starts[kk])
                 break
     return ok / tot if tot else 0.0
+
+
+def lead_vs_track(lead, track):
+    """Independent validation: fraction of the reference track's voiced time
+    the lead reproduces, by pitch class and by exact pitch (±1 semitone).
+    Non-circular when `track` is a DIFFERENT algorithm (pYIN) on a SEPARATE
+    signal (the isolated vocal stem)."""
+    t = np.array(track["t"])
+    m = np.array([np.nan if v is None else v for v in track["m"]])
+    p = np.array(track["p"])
+    voiced = ~np.isnan(m) & (p > 0.5)
+    if not voiced.any() or not lead:
+        return 0.0, 0.0
+    starts = np.array([n.start for n in lead])
+    ends = np.array([n.end for n in lead])
+    pit = np.array([n.pitch for n in lead])
+    exact = pc = tot = 0
+    for ti, mi in zip(t[voiced], m[voiced]):
+        k = int(np.searchsorted(starts, ti) - 1)
+        if k < 0 or ti >= ends[k]:
+            continue
+        tot += 1
+        d = abs(pit[k] - mi)
+        dpc = d % 12
+        if min(dpc, 12 - dpc) <= 1:
+            pc += 1
+        if d <= 1.5:
+            exact += 1
+    return (exact / tot if tot else 0.0), (pc / tot if tot else 0.0)
 
 
 def salience_targets(mix_path, grid, cache_path, keep=6, rel=0.20, floor_pct=55):
@@ -1167,12 +1199,13 @@ def build_plan(name, stems, work_dir, duration, other_notes, drum_hits,
         bass_path=stems["bass"])
     drive = drive_profile(drum_hits, other_track, chords)
 
-    # The melody the ear locks onto is the dominant salient line of the FULL
-    # mix (isolated stems are a different, noisier line — measured worse).
-    mel_which = "mix"
+    # Extract the melody from the ISOLATED stem (vocal for sung songs, lead
+    # instrument for instrumentals) — the tune, not the loudest line of the
+    # mix. (v8 proved full-mix extraction plays the wrong notes: it matched
+    # the real vocal only 27%.)
+    mel_src, mel_which = pick_melody_source(stems)
     mel = extract_melody(
-        mix_path, grid, os.path.join(work_dir, f"{name}.melody.mix.json")) \
-        if mix_path else []
+        mel_src, grid, os.path.join(work_dir, f"{name}.melody.{mel_which}.json"))
 
     lead = arrange_melody_lead(mel, grid)
     noise, kick_times = arrange_noise(drum_hits, grid)
@@ -1200,5 +1233,13 @@ def build_plan(name, stems, work_dir, duration, other_notes, drum_hits,
         "mix_noise": sp["mix_noise"],
         "power_chords": len(wave),
     }
-    stats["melody_agreement"] = f"{melody_agreement(plan, mel):.0%}"
+    # Independent check: does the lead actually track the sung vocal? (pYIN
+    # on the isolated vocal stem — a different algorithm on a separate signal,
+    # so NOT the circular self-check that hid v8's wrong-melody bug.)
+    if mel_which == "vocal":
+        vtr = extract_pitch(
+            stems["vocals"], os.path.join(work_dir, f"{name}.vocals.pyin.json"),
+            "E2", "A5")
+        ex, pc = lead_vs_track(lead, vtr)
+        stats["lead_vs_vocal"] = f"{ex:.0%} exact / {pc:.0%} pc"
     return plan, stats
