@@ -1,12 +1,11 @@
 import Phaser from "phaser";
 import { retinaCamera } from "../config/GameConfig";
-import battleAbyssUrl from "../../assets/backgrounds/battle_abyss.png";
 import titleUrl from "../../assets/backgrounds/bg_title.png";
 
-// The band -- Inhalants (tools/pixelart/bandmates.py). Amir is the provided
-// hand-drawn guitarist; the other three are authored to match. Every member
-// ships three 48x48 strips: idle, run, attack. Loaded once here as
-// `band_<member>` (idle) / `band_<member>_run` / `band_<member>_attack`.
+// The playable character -- Mir (v10.0 solo pivot; tools/pixelart/newband.py).
+// He ships three strips: idle, run, attack. Loaded once here as
+// `band_mir` (idle) / `band_mir_run` / `band_mir_attack` (the `band_` key
+// prefix is kept so nothing downstream churns).
 const BAND_URLS = import.meta.glob("../../assets/sprites/band/*/*.png", {
   eager: true,
   query: "?url",
@@ -28,7 +27,6 @@ import glowUrl from "../../assets/fx/glow.png";
 import sparkUrl from "../../assets/fx/spark.png";
 import hazeUrl from "../../assets/fx/haze.png";
 import godrayUrl from "../../assets/fx/godray.png";
-import landmarksUrl from "../../assets/sprites/overworld/landmarks.png";
 import slimeUrl from "../../assets/sprites/enemies/slime.png";
 import drifterUrl from "../../assets/sprites/enemies/drifter.png";
 import eliteWraithUrl from "../../assets/sprites/enemies/elite_wraith.png";
@@ -52,7 +50,6 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload(): void {
-    this.load.image("bg_battle_abyss", battleAbyssUrl);
     this.load.image("bg_title", titleUrl);
     // Native colossal boss art (PRD §11.1: authored at size, never upscaled).
     this.load.spritesheet("conductor_colossal", conductorColossalUrl, { frameWidth: 52, frameHeight: 72 });
@@ -63,13 +60,10 @@ export class BootScene extends Phaser.Scene {
     this.load.image("glow", glowUrl);
     this.load.image("spark", sparkUrl);
     // Overworld atmosphere: seamless drifting fog, raking god-ray shafts, and
-    // one colossal set-piece landmark per region (30x40 frames).
     this.load.image("fx_haze", hazeUrl);
     this.load.image("fx_godray", godrayUrl);
-    this.load.spritesheet("ow_landmarks", landmarksUrl, { frameWidth: 64, frameHeight: 80 });
-    // Band sprites: `band_amir/idle.png` -> key `band_amir`; `.../run.png` ->
-    // `band_amir_run`; `.../attack.png` -> `band_amir_attack`. All 72x72
-    // (newband.py legibility pass).
+    // Cast sprites: `band/mir/idle.png` -> key `band_mir`; `.../run.png` ->
+    // `band_mir_run`; `.../attack.png` -> `band_mir_attack`.
     for (const [path, url] of Object.entries(BAND_URLS)) {
       const m = /band\/([^/]+)\/([^/]+)\.png$/.exec(path);
       if (!m) continue;

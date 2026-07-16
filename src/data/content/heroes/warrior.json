@@ -2,7 +2,7 @@
   "heroId": "warrior",
   "role": "warrior",
   "name": "Amir",
-  "spriteId": "amir",
+  "spriteId": "mir",
   "maxHp": 120,
   "maxFocus": 5,
   "abilityIds": [

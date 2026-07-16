@@ -3,6 +3,7 @@ import { TransportClock } from "../systems/audio/TransportClock";
 import { CALIBRATION_BPM, CALIBRATION_BEAT_SECONDS, CALIBRATION_TAP_COUNT, computeCalibrationOffsetMs } from "../systems/audio/Calibration";
 import { GameContext } from "../state/GameContext";
 import {BASE_WIDTH, BASE_HEIGHT, retinaCamera } from "../config/GameConfig";
+import { addBackdrop } from "../ui/Backdrop";
 
 /** AV sync test and global timing offset save. See PRD §9.3, §10.3. */
 export class CalibrationScene extends Phaser.Scene {
@@ -20,6 +21,9 @@ export class CalibrationScene extends Phaser.Scene {
 
   async create(): Promise<void> {
     retinaCamera(this);
+    // The world's dimmed key-art instead of raw black -- this is the first
+    // dressed screen a new player reaches (art cohesion audit C1).
+    addBackdrop(this, 0.72);
     const settings = GameContext.activeProfile?.settings;
     this.tapKey = settings?.keyBindings.tap ?? " ";
     // PRD §9.3/W3C photosensitivity guidance: no full-brightness flashing
@@ -31,17 +35,21 @@ export class CalibrationScene extends Phaser.Scene {
       .text(BASE_WIDTH / 2, 20, `CALIBRATION\nTap ${keyLabel} on every beat`, {
         fontFamily: "monospace",
         fontSize: "9px",
-        color: "#ffffff",
+        color: "#d8ceb6",
         align: "center",
+        stroke: "#05060a",
+        strokeThickness: 3,
       })
       .setOrigin(0.5);
 
-    this.pulse = this.add.circle(BASE_WIDTH / 2, BASE_HEIGHT / 2, 10, 0x4444ff);
+    this.pulse = this.add.circle(BASE_WIDTH / 2, BASE_HEIGHT / 2, 10, 0x2b7f78);
     this.statusText = this.add
       .text(BASE_WIDTH / 2, BASE_HEIGHT - 30, `Taps: 0 / ${CALIBRATION_TAP_COUNT}`, {
         fontFamily: "monospace",
         fontSize: "8px",
-        color: "#aaaaaa",
+        color: "#9fb0c0",
+        stroke: "#05060a",
+        strokeThickness: 2,
       })
       .setOrigin(0.5);
 
@@ -73,8 +81,8 @@ export class CalibrationScene extends Phaser.Scene {
     // Gentle mode: gradual color shift only, no bright flash. Default mode:
     // a full-brightness flash, but at ~1.67Hz (100 BPM quarter notes), well
     // under the 3/second seizure-risk threshold W3C flags.
-    this.pulse.setFillStyle(this.gentleFlash ? 0x8888ff : 0xffffff);
-    this.time.delayedCall(100, () => this.pulse.setFillStyle(0x4444ff));
+    this.pulse.setFillStyle(this.gentleFlash ? 0x49c6bd : 0xf2efe4);
+    this.time.delayedCall(100, () => this.pulse.setFillStyle(0x2b7f78));
   }
 
   private registerTap(): void {

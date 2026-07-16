@@ -62,10 +62,6 @@ export class OverworldScene extends Phaser.Scene {
   private playerShadow!: Phaser.GameObjects.Ellipse;
   private playerGlow!: Phaser.GameObjects.Image;
   private playerPos: GridPosition = { col: 0, row: 0 };
-  /** The rest of Inhalants walking with Amir (visual party, PRD §7.1). */
-  private followers: { member: string; sprite: Phaser.GameObjects.Sprite; shadow: Phaser.GameObjects.Ellipse }[] = [];
-  /** Recently vacated tiles, newest first; follower i walks history[i]. */
-  private stepHistory: GridPosition[] = [];
   private moving = false;
   private walkable: boolean[][] = [];
   private markers: Marker[] = [];
@@ -108,8 +104,8 @@ export class OverworldScene extends Phaser.Scene {
     // re-register live cache keys.
     if (!this.textures.exists("overworld_tiles")) this.load.image("overworld_tiles", tilesetUrl);
     if (!this.cache.tilemap.exists("overworld")) this.load.tilemapTiledJSON("overworld", tilemapUrl);
-    // The leader (Amir) and the old-hero NPC sprites are loaded centrally in
-    // BootScene (band_* and hero_*); nothing hero-related to preload here.
+    // Mir and the old-hero NPC sprites are loaded centrally in
+    // BootScene (band_* keys); nothing hero-related to preload here.
     if (!this.textures.exists("ow_props")) this.load.spritesheet("ow_props", propsUrl, { frameWidth: 24, frameHeight: 32 });
     if (!this.textures.exists("ow_npcs")) this.load.spritesheet("ow_npcs", npcsUrl, { frameWidth: 32, frameHeight: 40 });
   }
@@ -184,7 +180,6 @@ export class OverworldScene extends Phaser.Scene {
 
     this.decorate(map, ground, spawnTile);
     this.softenSeamsAndDapple(map);
-    this.drawLandmarks();
     this.drawNpcs(spawnTile);
     // each fight node's authored venue -- its biome floor blended into the
     // map + its kitbash set pieces -- stands IN the world, under the foe
@@ -213,8 +208,8 @@ export class OverworldScene extends Phaser.Scene {
     for (const marker of this.markers) this.drawMarker(profile, marker);
     for (const echo of this.echoes) this.drawEcho(echo);
 
-    // The party leader on the map is Amir, the band's guitarist (his real
-    // hand-drawn art, tools/pixelart/bandmates.py). His sheets are side-facing
+    // The player on the map is Mir, the guitarist (tools/pixelart/newband.py
+    // generation, conformed by bake_cast.py). His sheets are side-facing
     // only, so one run cycle serves every direction (flipped for left); the
     // idle is his breathing stand. Frame counts are read off the loaded
     // textures so re-authoring the sheets can't desync the ranges.
@@ -222,7 +217,7 @@ export class OverworldScene extends Phaser.Scene {
     if (!this.anims.exists("leader_walk")) {
       this.anims.create({
         key: "leader_walk",
-        frames: this.anims.generateFrameNumbers("band_amir_run", { start: 0, end: lastFrame("band_amir_run") }),
+        frames: this.anims.generateFrameNumbers("band_mir_run", { start: 0, end: lastFrame("band_mir_run") }),
         frameRate: 12,
         repeat: -1,
       });
@@ -230,7 +225,7 @@ export class OverworldScene extends Phaser.Scene {
     if (!this.anims.exists("leader_idle")) {
       this.anims.create({
         key: "leader_idle",
-        frames: this.anims.generateFrameNumbers("band_amir", { start: 0, end: lastFrame("band_amir") }),
+        frames: this.anims.generateFrameNumbers("band_mir", { start: 0, end: lastFrame("band_mir") }),
         frameRate: 5,
         repeat: -1,
       });
@@ -246,9 +241,9 @@ export class OverworldScene extends Phaser.Scene {
       ? { col: returnMarker.col, row: returnMarker.row }
       : { col: Math.floor(spawnObject.x! / TILE_SIZE), row: Math.floor(spawnObject.y! / TILE_SIZE) };
 
-    // Contact shadow grounds Amir like the props/foes around him, and a soft
-    // teal under-glow lifts the playable characters a value step above the
-    // scenery (AAA audit O4) so the eye finds them in the dark world.
+    // Contact shadow grounds Mir like the props/foes around him, and a soft
+    // teal under-glow lifts him a value step above the
+    // scenery (AAA audit O4) so the eye finds him in the dark world.
     this.playerShadow = this.add.ellipse(0, 0, 13, 4, 0x05060a, 0.4).setDepth(4.4);
     this.playerGlow = this.add
       .image(0, 0, "glow")
@@ -257,35 +252,14 @@ export class OverworldScene extends Phaser.Scene {
       .setScale(0.32)
       .setAlpha(0.2)
       .setDepth(4.35);
-    this.player = this.add.sprite(0, 0, "band_amir", 0);
-    // Amir's frames are 48x48 with the figure ~37px tall; scaled to ~0.52 he
+    this.player = this.add.sprite(0, 0, "band_mir", 0);
+    // Mir's frames are 48x48 with the figure ~37px tall; scaled to ~0.52 he
     // stands ~1.2 tiles against the 16px tiles (feet-anchored so he sits on
     // the tile centre). Idle breathes until the player moves.
     this.player.setOrigin(0.5, 0.9).setScale(0.5); // 50px frames baked (bake_cast.py): 25px world, integer texels
     this.player.setDepth(5);
     this.player.play("leader_idle");
     this.snapPlayerToGrid();
-
-    // The rest of the band walks with Amir: bassist, vocalist, drummer trail
-    // him in a line (visual party -- the whole point is that Inhalants are the
-    // main characters, PRD §7.1). Followers are decorative: they never block
-    // tiles or trigger anything.
-    this.followers = [];
-    this.stepHistory = [];
-    for (const member of ["bassist", "vocalist", "drummer"]) {
-      const idleKey = `bm_idle_${member}`;
-      const walkKey = `bm_walk_${member}`;
-      if (this.textures.exists(`band_${member}`) && !this.anims.exists(idleKey)) {
-        this.anims.create({ key: idleKey, frames: this.anims.generateFrameNumbers(`band_${member}`, { start: 0, end: lastFrame(`band_${member}`) }), frameRate: 4, repeat: -1 });
-        this.anims.create({ key: walkKey, frames: this.anims.generateFrameNumbers(`band_${member}_run`, { start: 0, end: lastFrame(`band_${member}_run`) }), frameRate: 10, repeat: -1 });
-      }
-      if (!this.textures.exists(`band_${member}`)) continue;
-      const shadow = this.add.ellipse(0, 0, 12, 4, 0x05060a, 0.35).setDepth(4.3);
-      const sprite = this.add.sprite(0, 0, `band_${member}`, 0).setOrigin(0.5, 0.9).setScale(0.5).setDepth(4.6);
-      sprite.play(idleKey);
-      sprite.setPosition(this.playerPos.col * TILE_SIZE + TILE_SIZE / 2, this.playerPos.row * TILE_SIZE + TILE_SIZE / 2);
-      this.followers.push({ member, sprite, shadow });
-    }
 
     // Retina render (design-audit-3): the canvas is 2x; zooming the camera
     // keeps every world coordinate identical while art renders at its real
@@ -454,16 +428,9 @@ export class OverworldScene extends Phaser.Scene {
     }
     if (this.fight) {
       // a fight is live IN the world: the sim drives the player; tile
-      // movement, interactions, and the conga line pause until it resolves
+      // movement and interactions pause until it resolves
       if (!this.fight.update(deltaMs)) this.fight = null;
       return;
-    }
-    for (const f of this.followers) {
-      f.shadow.setPosition(f.sprite.x, f.sprite.y + 2);
-      // drop a follower back to its idle when it has stopped moving
-      if (!this.tweens.isTweening(f.sprite) && f.sprite.anims.getName() !== `bm_idle_${f.member}`) {
-        f.sprite.play(`bm_idle_${f.member}`);
-      }
     }
     if (this.fog && !GameContext.activeProfile?.settings.reducedMotion) {
       this.fog.tilePositionX += 0.08;
@@ -594,16 +561,12 @@ export class OverworldScene extends Phaser.Scene {
   }
 
   private tryStep(dir: Direction): void {
-    // Amir's art is side-facing; face the walk direction (flip for left) and
+    // Mir's art is side-facing; face the walk direction (flip for left) and
     // run the one walk cycle for every direction.
     this.faceDirection(dir);
 
     const target = stepTarget(this.playerPos, dir);
     if (!isWalkable(this.walkable, target)) return;
-
-    // the tile the leader vacates becomes the next follower waypoint
-    this.stepHistory.unshift({ ...this.playerPos });
-    if (this.stepHistory.length > 8) this.stepHistory.pop();
 
     this.moving = true;
     this.playerPos = target;
@@ -618,27 +581,9 @@ export class OverworldScene extends Phaser.Scene {
         this.checkEncounterTrigger();
       },
     });
-    this.stepFollowers();
   }
 
-  /** Each bandmate walks to where the member ahead just was (conga line). */
-  private stepFollowers(): void {
-    this.followers.forEach((f, i) => {
-      const spot = this.stepHistory[i];
-      if (!spot) return;
-      const tx = spot.col * TILE_SIZE + TILE_SIZE / 2;
-      const ty = spot.row * TILE_SIZE + TILE_SIZE / 2;
-      if (Math.abs(f.sprite.x - tx) < 0.5 && Math.abs(f.sprite.y - ty) < 0.5) return;
-      // band art natively faces LEFT: flip when moving right
-      if (tx > f.sprite.x) f.sprite.setFlipX(true);
-      else if (tx < f.sprite.x) f.sprite.setFlipX(false);
-      const walkKey = `bm_walk_${f.member}`;
-      if (f.sprite.anims.getName() !== walkKey || !f.sprite.anims.isPlaying) f.sprite.play(walkKey);
-      this.tweens.add({ targets: f.sprite, x: tx, y: ty, duration: STEP_DURATION_MS });
-    });
-  }
-
-  /** Flips Amir to face the walk direction. Only horizontal moves change the
+  /** Flips Mir to face the walk direction. Only horizontal moves change the
    * flip; up/down keep the last-faced side (his art is side-only). His
    * hand-drawn sheets natively face LEFT (see the run cycle's lean), so
    * moving right is the flipped side -- getting this backwards makes him
@@ -931,29 +876,6 @@ export class OverworldScene extends Phaser.Scene {
     }
   }
 
-  /**
-   * One colossal set-piece per region (landmarks.py) placed off the road for
-   * scale + untold story (PRD §8.8.1): the drowned ship, salt headframe,
-   * carnival wheel, leaning tenement, and the Conductor's spire. Frame index
-   * == region index. Drawn behind gameplay with a soft contact shadow, big
-   * enough to tower over the 16px tiles.
-   */
-  private drawLandmarks(): void {
-    // (regionIndex, col, row) -- edge-of-region scenic spots clear of the road.
-    const spots: [number, number, number][] = [
-      [0, 21, 6],   // shallows: wrecked ship by the bay
-      [1, 44, 7],   // salt mines: winding headframe
-      [2, 66, 28],  // pit: drowned carnival wheel
-      [3, 90, 7],   // attic: leaning tenement
-      [4, 120, 27], // hall: the Conductor's spire
-    ];
-    for (const [frame, col, row] of spots) {
-      const x = col * TILE_SIZE + TILE_SIZE / 2;
-      const y = row * TILE_SIZE + TILE_SIZE;
-      this.add.ellipse(x, y, 48, 12, 0x05060a, 0.4).setDepth(0); // grounding shadow
-      this.add.image(x, y, "ow_landmarks", frame).setOrigin(0.5, 1).setScale(1.15).setDepth(1);
-    }
-  }
 
   /**
    * The four generated pre-band adventurers (warrior/tank/mage/healer) now
@@ -993,7 +915,7 @@ export class OverworldScene extends Phaser.Scene {
     const x = echo.col * TILE_SIZE + TILE_SIZE / 2;
     const y = echo.row * TILE_SIZE + TILE_SIZE / 2;
     const found = this.echoFoundIds.has(echo.id);
-    this.add.image(x, y, "ow_props", ECHO_RUNE_FRAME).setOrigin(0.5, 1).setScale(0.72).setDepth(2).setAlpha(found ? 0.55 : 1);
+    this.add.image(x, y, "ow_props", ECHO_RUNE_FRAME).setOrigin(0.5, 1).setScale(0.5).setDepth(2).setAlpha(found ? 0.55 : 1);
 
     const reduced = Boolean(GameContext.activeProfile?.settings.reducedMotion);
     const glow = this.add

@@ -6,11 +6,11 @@
 |---|---|
 | Document title | *The Drowned Chorus* — Browser Rhythm-Action RPG PRD |
 | Working codename | Project Meterfall (historical; the game is titled *The Drowned Chorus*) |
-| Status | **Active v9.14** — v8.0: enterprise rewrite per the [PRD audit](./prd-audit-2026-07-14.md); v8.1: P1 beat truth; v8.2: P2+P3 (four-tier judgment, ultimate, phased boss, Sightread, §9.3 parity) + mobile hardening; v8.3: SFX/relics/hygiene/retired-code deletion; v8.4: landforms; v8.5: the ending (FinaleScene) + wordmark + VFX; v8.6: §8.6 curriculum as authored data + enemy state motion; v8.7: balance harness + measured balance pass; v8.8: onset-snapped grids + elevation shading; v8.9: soak + bundle split; v9.0: design audit 2 — the ground is one painted plate (mesas/ribbons/water bodies), tile stamping retired; v9.1: design audit 3 stages A–C — 2× retina render, signature-colour band, per-biome scatter kits (16 pieces × 5 biomes), landform variants (5 silhouettes per biome); v9.2: stages D–E — the bestiary reads apart (signature-colour foes), venue kit re-framed as objects; v9.3: scale & placement audit — 8 findings fixed (causeways, floating venue pieces, outcrops on roads, cluster piles, toy scale, rectangular ponds); v9.4: venues ARE the world — floor slabs deleted, fight grounds baked into the plate, no-baked-floor art pipeline, emissive prop light, scatter wave 3 (24/biome); v9.5: the map itself de-gridded — meandering roads, segmented ridges, varied attic partitions (SP9/SP11 closed); v9.6: road corners melt into curves, region-entry gates; v9.7: the HLD grade — saturated region palettes, near-black frame, living light; v9.8: the hash scatter is DELETED — every prop is an authored placement (288 pieces, 128 vignettes); v9.9: the hand-pixeled fidelity pass + green-screen despill; v9.10: one world unit (canonical metre scale) + the world moves; v9.11: one pixel register — world scale baked into the art itself; v9.12: the CAST joins the register (band + foes flat-cel requantized to per-frame budgets) and every retired-era art asset (dead hero/arena-bg/UI-icon loads) is deleted outright; v9.13: every AI-generated sprite gets a forced dark outline (skatopia.py's own "single biggest reads as real pixel art win," finally applied past the hand-authored pieces); **v9.14: fights scar the ground they happen on (persistent hit decals) — closing the combat-drama gap a direct HLD comparison surfaced.** |
+| Status | **Active v10.1** — v10.0: **the solo pivot** — the band cast is retired; the game is **Mir**, alone, searching the drowned world for his toddler son **Nari**; the Conductor is revealed as the instrument of **Lunal**, a masked huntress (§8.4/§8.7); v10.1: the art-cohesion pass ([audit](../design/art-cohesion-audit.md) findings applied: legacy-register screens restyled, quantization escapees fixed, texel scales snapped, cohesion lint added). Prior: v8.0: enterprise rewrite per the [PRD audit](./prd-audit-2026-07-14.md); v8.1: P1 beat truth; v8.2: P2+P3 (four-tier judgment, ultimate, phased boss, Sightread, §9.3 parity) + mobile hardening; v8.3: SFX/relics/hygiene/retired-code deletion; v8.4: landforms; v8.5: the ending (FinaleScene) + wordmark + VFX; v8.6: §8.6 curriculum as authored data + enemy state motion; v8.7: balance harness + measured balance pass; v8.8: onset-snapped grids + elevation shading; v8.9: soak + bundle split; v9.0: design audit 2 — the ground is one painted plate (mesas/ribbons/water bodies), tile stamping retired; v9.1: design audit 3 stages A–C — 2× retina render, signature-colour band, per-biome scatter kits (16 pieces × 5 biomes), landform variants (5 silhouettes per biome); v9.2: stages D–E — the bestiary reads apart (signature-colour foes), venue kit re-framed as objects; v9.3: scale & placement audit — 8 findings fixed (causeways, floating venue pieces, outcrops on roads, cluster piles, toy scale, rectangular ponds); v9.4: venues ARE the world — floor slabs deleted, fight grounds baked into the plate, no-baked-floor art pipeline, emissive prop light, scatter wave 3 (24/biome); v9.5: the map itself de-gridded — meandering roads, segmented ridges, varied attic partitions (SP9/SP11 closed); v9.6: road corners melt into curves, region-entry gates; v9.7: the HLD grade — saturated region palettes, near-black frame, living light; v9.8: the hash scatter is DELETED — every prop is an authored placement (288 pieces, 128 vignettes); v9.9: the hand-pixeled fidelity pass + green-screen despill; v9.10: one world unit (canonical metre scale) + the world moves; v9.11: one pixel register — world scale baked into the art itself; v9.12: the CAST joins the register (band + foes flat-cel requantized to per-frame budgets) and every retired-era art asset (dead hero/arena-bg/UI-icon loads) is deleted outright; v9.13: every AI-generated sprite gets a forced dark outline (skatopia.py's own "single biggest reads as real pixel art win," finally applied past the hand-authored pieces); **v9.14: fights scar the ground they happen on (persistent hit decals) — closing the combat-drama gap a direct HLD comparison surfaced.** |
 | Owner | Amir Bukhari |
 | Author | Amir Bukhari (compiled from concept notes, deep research, and live-play feedback) |
 | Created | 2026-07-08 |
-| Last updated | 2026-07-14 |
+| Last updated | 2026-07-16 |
 | Source material | Concept screenshots + [Deep Research Report](../research/deep-research-report.md) + Skatopia setlist lyrics + six recorded Inhalants tracks + [world bible](../design/world-bible.md) |
 | Distribution | Product, Engineering, Art, Audio, QA, Accessibility |
 | Approval required from | Product sponsor, Engineering lead, Art lead, Audio lead, QA lead *(names TBD)* |
@@ -25,6 +25,8 @@ and [`docs/design/aaa-audit.md`](../design/aaa-audit.md).
 
 | Version | Date | Change |
 |---|---|---|
+| **10.1** | **2026-07-16** | **The art-cohesion pass.** Owner: "it doesn't feel cohesive at all." Full-sweep audit ([`docs/design/art-cohesion-audit.md`](../design/art-cohesion-audit.md)) root-caused the feel to four coexisting art generations plus unevenly applied cohesion passes. Applied: the audio gate/menu backdrop and Calibration/Save screens leave the legacy register (C1); quantization/bloom escapees requantized and the two shipped pipeline glitches fixed (C4/C5); non-integer render scales snapped to the texel grid and the duplicate ink shipwreck landmark retired (C6 + C1); a **cohesion lint** now gates regeneration (max colours per class, single-island silhouette, no rectangular backdrop) so the audit's checks are permanent. |
+| **10.0** | **2026-07-16** | **The solo pivot — Mir, Nari, and Lunal.** Owner: "we're getting rid of the band idea. it's just one character… Mir… he has a toddler named Nari, we have to find him. the conductor is controlled by a masked huntress named Lunal." The four-piece band cast (v7.9 "Inhalants") is **retired as fiction**: the playable character is **Mir** (lead guitar — the former Amir slot, renamed); the follower conga is deleted; bassist/vocalist/drummer sprites and their generator paths are removed. The campaign gains its stated objective: **Mir is searching for his missing toddler son, Nari** — the critical path is the search, told environmentally (§8.8, no dialogue). The Conductor is re-specified as **Lunal's instrument**: a masked huntress conducts the conductor (§8.7); v1 reveals her through staging at the finale, a Lunal fight is a v2 candidate (§18). The *soundtrack attribution is unchanged* — the six recorded tracks remain by the real-world band Inhalants (§11.2); only the in-fiction cast changes. |
 | 0.1–1.4 | 2026-07-08 | Initial synthesis → enterprise PRD structure; music tooling (`gbmusic`) and demo-master slicing decisions. |
 | 2.0–4.4 | 2026-07-08 | Turn-based engine built end-to-end vs. spec; campaign, boss, relics, accessibility, e2e/CI; multiple root-caused input/CI fixes. |
 | 5.0–5.3 | 2026-07-10 | Walkable overworld replaces node menu; Groove-spend + full stat wiring; analytics consent UI; first full lyric-derived art pass. |
@@ -63,15 +65,17 @@ and [`docs/design/aaa-audit.md`](../design/aaa-audit.md).
 ## 1. Executive Summary
 
 *The Drowned Chorus* is a **single-player, browser-based, top-down rhythm-action RPG**.
-The player leads Inhalants — a four-piece band (Amir on lead guitar, plus Bassist,
-Vocalist, and Drummer) — through one continuous, hand-authored drowned world of five
-joined regions. Exploration is a first-class game loop: hidden paths, secret pockets,
+The player is **Mir**, a guitarist descending alone into one continuous, hand-authored
+drowned world of five joined regions, **searching for his missing toddler son, Nari**.
+Exploration is a first-class game loop: hidden paths, secret pockets,
 and discoverable "echo" lore fragments reward leaving the road. Combat happens **in the
 world**: walking into a foe locks the camera to a room of the actual overworld and runs
 a real-time action fight there — 8-directional momentum movement, dashes with i-frames,
 frame-data attacks, hitstun and damage-scaled knockback, on-beat parries — with the
 rhythm woven in as **on-beat power**: actions timed to the beat of the *actually
-playing* music are empowered. The soundtrack is six real recorded Inhalants tracks; the
+playing* music are empowered. At the end of the road waits the Conductor — and behind
+his baton, **Lunal**, the masked huntress who holds his strings (§8.7). The soundtrack
+is six real recorded tracks by the band Inhalants; the
 art direction is the *Hyper Light Drifter* register (colossal silhouette-first enemies,
 vivid limited palette, additive glow on near-black depths), produced through an
 AI-generation + deterministic-import pipeline.
@@ -168,8 +172,8 @@ which this PRD supersedes as product spec.
 
 Multiplayer, monetization, user-generated content, imported-song gameplay, live beat
 detection, voice acting, dialogue trees/quest-givers (§8.8.4), loot-driven progression,
-controller haptics as a required channel, band-member switching mid-fight (v2 target,
-§8.4), native/store distribution.
+controller haptics as a required channel, additional playable characters or a playable
+Lunal fight (v2 candidates, §8.4/§18), native/store distribution.
 
 ---
 
@@ -226,8 +230,8 @@ Every KPI below is measurable from events that fire on the **shipped** game path
 
 Online multiplayer, user-generated beat maps, live beat detection from arbitrary
 audio, voice acting, NPCs with dialogue trees or quest-givers, controller rumble as a
-required channel, monetization plumbing, band-member switching mid-fight (v2, §8.4),
-loot/gear-grind progression (§8.5).
+required channel, monetization plumbing, additional playable characters / the Lunal
+fight (v2, §8.4/§18), loot/gear-grind progression (§8.5).
 
 ### 7.3 Product pillars
 
@@ -349,27 +353,31 @@ globally before judgment. Enemy attacks telegraph and land on the beat.
 song's grid; damage/knockback/Groove/dash-i-frames/parry windows scale per tier;
 HUD tier popups + per-tier analytics live.)*
 
-### 8.4 The cast — Inhalants, the band
+### 8.4 The cast — Mir, alone (v10.0)
 
-The playable cast is the band (v7.9): **Amir** (lead guitar), **Bassist**,
-**Vocalist**, **Drummer**. The band walks the world together (followers in a conga
-line, decorative in v1).
+The playable character is **Mir** — a lead guitarist, alone in the drowned world,
+searching for his toddler son **Nari**. He walks alone; no followers, no party.
 
-- **v1 (this spec):** the player controls the leader (Amir) with one complete kit —
+- **v1 (this spec):** the player controls Mir with one complete kit —
   light / heavy / special / ultimate / dash / parry per §8.2.
-- **v2 (target, out of v1 scope):** each member is a distinct playable kit with a
-  signature special and trait (guitar burst zoning, bass shockwave space control,
-  vocal sustain/heal pulse, drum-roll gap-close), switchable between fights.
+- **Nari** is the campaign's object, not a mechanic: his absence is staged
+  environmentally along the critical path (§8.8.2 echoes may reference him; a small
+  physical trace per region is the direction), and he is found in the finale (§8.7).
+  He is never an escort, an inventory item, or a fail state.
+- **v2 (target, out of v1 scope):** kit expansion for Mir (unlockable specials), and
+  a possible **Lunal** confrontation as a post-Conductor fight (§18).
 
-*(v8.0 note: v6.0's song-title hero names — Deereater, Saltminer, Esoterophobe,
-Sunshine Sally — are retired as cast names; the songs are the soundtrack, not the
-characters. The four legacy role definitions (warrior/tank/mage/healer JSON) back the
-retired turn-based path only.)*
+*(v10.0 note: the v7.9 four-piece band cast — "Inhalants": Amir/Bassist/Vocalist/
+Drummer — is retired as fiction; the real-world band Inhalants remains the recorded
+soundtrack's attribution (§11.2). v8.0 note, still true: v6.0's song-title hero names
+— Deereater, Saltminer, Esoterophobe, Sunshine Sally — are retired as cast names. The
+four legacy role definitions (warrior/tank/mage/healer JSON) back the retired
+turn-based path only.)*
 
 **Sightread** — the realization of the concept art's "see the music" — is re-specified
 for action combat as a **forecast assist**: a HUD lane previewing the next bars' beats
 and any incoming telegraphed enemy attack. v1: available as an accessibility/HUD
-setting; v2: also an in-fiction Vocalist kit ability. *(v1 shipped v8.2: the
+setting; v2: possibly an in-fiction kit ability. *(v1 shipped v8.2: the
 "Sightread Forecast" setting renders the lane — upcoming grid beats + red strike
 markers against a now-line — from the same beat grid judgment uses.)*
 
@@ -379,8 +387,8 @@ markers against a now-line — from the same beat grid judgment uses.)*
 - **Focus** — built by on-beat aggression, spent on specials.
 - **Groove** (0–100) — built by on-beat play, clean combos, and parries; **spent in
   full on the ultimate** (§8.2). A Groove meter that cannot be spent is out of spec.
-- Progression is deterministic, not loot-driven: boss clears unlock kit tools; one
-  relic slot per member plus one shared party charm; relics grant real mechanical
+- Progression is deterministic, not loot-driven: boss clears unlock kit tools; Mir
+  carries one relic slot plus one charm; relics grant real mechanical
   effects chosen on the results screen.
 
 ### 8.6 Encounter design progression (v8.0 — post-luchador curriculum)
@@ -403,7 +411,16 @@ Foe roster is **lyric-canon only** (v7.6): slime, drifter, elite wraith, the Con
 `mid_biome_2_luchadores_*`, `*_clave_*` — around correct contents; rename tracked in
 §20.2.)*
 
-### 8.7 Final boss — "The Conductor" (v8.0 re-spec for in-world action combat)
+### 8.7 Final boss — "The Conductor" (v8.0 re-spec; v10.0: Lunal's instrument)
+
+**Narrative frame (v10.0).** The Conductor does not act alone: he is **conducted**.
+**Lunal**, a masked huntress, holds his strings — the misery song he rehearses is
+hers, and Nari's trail ends at her hall. In v1 Lunal is **revealed, not fought**:
+her presence is staged environmentally (her masks among the hall's dressing; a
+huntress silhouette in the finale staging) and named in echo lines (§8.8.2). The
+finale (v8.5 FinaleScene) is re-staged at v10.0: felling the Conductor breaks her
+hold on the hall, and **Mir finds Nari** — the closing lines land the reunion, with
+Lunal's escape left open as the v2 hook (§18). A playable Lunal fight is v2.
 
 The Conductor is fought in his hall **in the world** (§8.2), rendered at native
 colossal resolution. The fight has **three authored phases keyed to HP thresholds**,
@@ -440,7 +457,9 @@ is deliberately larger than its critical path so it can hold secrets.
 **8.8.2 Echoes — the found backstory.** An **echo** is a discoverable, hand-placed
 environmental-story beat off the critical path: a staged prop arrangement with a
 context-prompt interaction revealing **one evocative line** of world-bible §5a/§5b
-canon — found, never told. Echoes are collectible (persisted per save, §10.7),
+canon — found, never told. *(v10.0: the echo voice now also carries the search — a
+subset of lines trace Nari's passage and name Lunal, so the objective is discoverable
+the same way everything else is.)* Echoes are collectible (persisted per save, §10.7),
 optional, and surfaced only as a found/total HUD counter — no map markers. Ten ship in
 the current world.
 
@@ -625,7 +644,7 @@ slots and all deterministic regeneration plumbing.
 |---|---|
 | Base resolution | 320×180 logical; art authored up to ~1.5× density (§10.6) |
 | Tile size | 16×16 |
-| Player sprite | small, silhouette-readable band members (individually recognizable at world scale) |
+| Player sprite | small, silhouette-readable Mir (recognizable at world scale; red guitar signature) |
 | Standard enemy | 48×48+; elites/bosses colossal (the Conductor ~2.9× player height, native-resolution) |
 | Glow/bloom | additive emissive layer on eyes, edges, telegraphs, hazards; beat-pulsing accents |
 | Environments | designed floors and venues (§11.1.1) — no noise fills, no void centres |
@@ -673,8 +692,10 @@ remains a future polish item.
 
 ### 11.2 Music and audio content spec (v8.0 — the recorded soundtrack)
 
-**The soundtrack is six recorded Inhalants tracks** (owner-supplied, committed in
-`assets/audio/`), streamed lazily and crossfaded by scene mode (§10.3):
+**The soundtrack is six recorded tracks by the band Inhalants** (owner-supplied,
+committed in `assets/audio/`), streamed lazily and crossfaded by scene mode (§10.3).
+*(v10.0: "Inhalants" is the real band credited for the recordings; the in-fiction
+band of the same name is retired — the music attribution is unaffected.)*
 
 | Mode | Track |
 |---|---|
@@ -700,7 +721,7 @@ deliverables and nothing ships from them.
 
 ### 11.3 UX rules — the fight HUD
 
-The in-world fight must always show: the framed band plate (HP bar, Focus pips, Groove
+The in-world fight must always show: Mir's framed plate (HP bar, Focus pips, Groove
 bar, damage %), a **beat indicator** pulsing with the judged beat, enemy HP hugging
 each sprite, a screen-space named boss bar in boss fights, and a controls hint that
 auto-fades. On-beat feedback must be legible (hit flash / scaled arcs). Critical
@@ -711,8 +732,9 @@ information never relies on color alone. Once §8.3 tiers land, judgment feedbac
 
 | Asset | Location | Status |
 |---|---|---|
-| Playable band (4 members × idle/run/attack strips, derived from one base pose each) | `assets/sprites/band/{amir,bassist,vocalist,drummer}/` | Shipped (v7.9 AI-generated cast; prior hand-drawn originals archived in `assets/reference/band-original/`) |
-| Foes (slime, drifter, elite wraith) + the colossal Conductor | `assets/sprites/enemies/` | Shipped (v7.11 resprite in the band's register; Conductor native-resolution) |
+| Playable character Mir (idle/run/attack strips, derived from one base pose) | `assets/sprites/band/mir/` | Shipped (v10.0: solo pivot — the former Amir slot renamed; bassist/vocalist/drummer sprites deleted; hand-drawn originals archived in `assets/reference/band-original/`) |
+| Nari (finale staging) + Lunal (masks, reveal silhouette) | — | **Open (v10.0):** specced §8.4/§8.7, no art shipped — tracked §20.2 |
+| Foes (slime, drifter, elite wraith) + the colossal Conductor | `assets/sprites/enemies/` | Shipped (v7.11 resprite in the cast's register; Conductor native-resolution) |
 | Six-track soundtrack + beat-grid maps | `assets/audio/*.mp3` (~45 MB, lazy-loaded) + `src/data/content/songs/*.json` | Shipped (v7.7 audio; v8.1 measured beat grids via `tools/audio/measure_beats.py`). Listening-pass verification owed (§20.2) |
 | Five-region overworld (130×34 Tiled JSON, BFS-validated reachability) + 20-tile sheet | `assets/tilemaps/`, `tools/overworld/generate_overworld_map.py` | Shipped (v7.0; ground/water/clustering/value pass v7.12; de-pixelation v7.14) |
 | Environment kits (5 biomes + shared, 28 pieces) + venue composition | `assets/sprites/env/`, `tools/pixelart/envkit.py`, `ArenaComposer.ts` | Shipped (v7.11 coherent top-down kits; v7.14 world venues) |
@@ -727,7 +749,7 @@ information never relies on color alone. Once §8.3 tiers land, judgment feedbac
 The checklist the game's art is built and judged against; per-slot generation prompts
 live in [`docs/design/art-prompts.md`](../design/art-prompts.md) (kept 1:1).
 
-**Animation-state standard.** Playable band members target **≥22 states** (idle,
+**Animation-state standard.** Mir targets **≥22 states** (idle,
 idle_combat, walk, run, dash, jump, fall, land, attack_1/2/3, heavy, special,
 ultimate, parry, block, hurt, death, downed, revive, victory, interact + portrait).
 Enemies target **≥6 states** (idle, move, attack, telegraph, hurt, death; ranged/elite
@@ -736,9 +758,10 @@ transitions, stagger, death).
 
 | Category | Scope | Approx. slots |
 |---|---|---|
-| Playable band | 4 members × ~22 states + portraits | ~92 |
+| Playable character | Mir × ~22 states + portrait | ~23 |
+| Story figures (v10.0) | Nari (finale staging set) + Lunal (masks, silhouette, reveal staging) | ~8 |
 | Enemies | ~18 types across 5 biomes × 6 states | ~114 |
-| Boss(es) | The Conductor (3 phases) + 1–2 mid-bosses | ~36 |
+| Boss(es) | The Conductor (3 phases) + 1–2 mid-bosses; Lunal fight is v2 | ~36 |
 | Tilesets | 5 biomes × ~9 sheets (autotile, cliffs, transitions, decals, occluders, animated) | ~45 |
 | Props & destructibles | ~12/biome + ~10 shared interactables | ~70 |
 | Landmarks | 5 primary + ~2 secondary per biome | ~15 |
@@ -747,7 +770,7 @@ transitions, stagger, death).
 | UI kit | wordmark, menu illustration, HUD, icons, cursor, panels, results, settings, bitmap font | ~90 |
 | **Ambient figures** (v8.0: re-scoped from "questgivers" — §8.8.4 forbids dialogue NPCs; these are silent world-dressing characters) | 4 old-hero figures + ~6 townsfolk × (idle + portrait-less) | ~20 |
 | Items & pickups | health orb, currency, ~15 relics, keys | ~25 |
-| **Total** | | **~567 named slots** (thousands of frames) |
+| **Total** | | **~506 named slots** (thousands of frames; v10.0 re-count after the solo pivot) |
 
 Slots are filled by the §11.1 pipeline (AI-generated per catalog, or real art dropped
 into the same slots). Procedural stand-ins fill slots temporarily and never count as
@@ -820,9 +843,9 @@ Phases are sequential from v8.0 adoption; each exit condition is verifiable agai
 | **P4 — Content & art depth** (~3 weeks) | §11.5 manifest burn-down (states, VFX, wordmark, SFX pack); §11.1.1 landforms (v7.15 direction); encounter/track ID hygiene (§8.6); retired-scene deletion | §11.1 criteria (1)–(7) pass screenshot review across all screens; no retired scenes in the build |
 | **P5 — Hardening & release** (~2 weeks) | §16.1 QA matrix on real Tier-1/Tier-2 browsers + devices; Firefox root-cause; balance; soak | All §16.2 gates green; Tier-1 matrix 100% |
 
-Explicitly deferred past v1: band-member switching (§8.4 v2), moveset schema
-extraction (§10.5), additional biome content beyond the five regions, storefront
-distribution.
+Explicitly deferred past v1: the Lunal fight and Mir kit expansion (§8.4 v2), moveset
+schema extraction (§10.5), additional biome content beyond the five regions,
+storefront distribution.
 
 ---
 
@@ -880,8 +903,9 @@ the matrix defines the intended hand-off shape as the team grows.
    whether accounts/monetization stay permanently out of scope.
 2. Mobile as a Tier-1 target in v2 (touch controls exist; performance/layout polish
    and touch-latency window tuning would be the work).
-3. Band-member switching design (v2, §8.4): between-fight selection vs. mid-fight
-   tag — and whether followers gain combat presence in v1.5.
+3. The Lunal fight (v2, §8.7/§8.4): post-Conductor confrontation vs. a parallel
+   final act — and how much of Nari's finale staging ships in v1 vs. v1.5
+   (minimum bar: the reunion is staged, not implied).
 4. Wordmark production path (v7.12: AI text rendering unreliable; needs hand-lettering).
 5. ~~Whether the retired turn-based systems are deleted outright or archived~~ —
    **answered v8.3: deleted outright; git history is the archive** (consistent with
@@ -952,7 +976,7 @@ remaining test covers shipped code, which is the honest number.)*
 | **Relics live again (§8.5 — v8.3)** | `applyRelics` re-targeted to the action arena and applied at fight start (opening Focus / opening guard / banked Groove); the post-pivot inert-relics regression is closed and unit-pinned |
 | Timing plumbing (§8.3) | Judgment never touches UI timers; calibration offset applied before judgment; assist ×1.5 applied |
 | Soundtrack playback (§11.2) | Six real tracks, lazy-loaded (`preload="none"`), scene-mode crossfade, combat rotation, gesture-primed for mobile autoplay |
-| Band cast (§8.4) | Four AI-generated members in one register, per-member idle/run/attack derived from a base pose; the band walks the world as a conga; leader fights with their real sprite |
+| Playable cast (§8.4) | **v10.0: solo Mir** — idle/run/attack derived from one base pose; walks the world alone (the v7.9 follower conga and the other three members are deleted); fights with his real sprite |
 | Art (§11.1) | AI-pipeline backdrops/foes/band/landmarks/props/kits; designed floors + coherent pinned-camera kits + menacing resprites + framed HUD (v7.11); ground/water/clustering/value pass (v7.12); 1.5× legibility re-render (v7.13); quantization-free downscale + world venues (v7.14) — all screenshot-verified |
 | Venues & story staging (§11.1.1) | All five places built and composed into the world with beat-pulsing story lights |
 | Persistence (§10.7) | Full save lifecycle incl. echoes, consent, calibration; verified across reload |
@@ -980,7 +1004,11 @@ remaining test covers shipped code, which is the honest number.)*
    (excluded from the gate since v4.1) (P5).
 5. **Legacy ability/role content** (`src/data/content/abilities|heroes`) remains as
    validated data with no runtime consumer — earmarked as the seed of the v2
-   per-member moveset schema (§10.5), not deleted.
+   moveset schema (§10.5), not deleted.
+6. **Nari + Lunal staging (§8.4/§8.7 — v10.0):** the narrative is specced and the
+   finale text re-staged, but the physical staging art (Nari at the finale, Lunal's
+   masks in the hall dressing, per-region Nari traces) and the search-voiced echo
+   lines are not yet authored — the solo pivot ships mechanically first.
 
 *(Closed by v8.2–v8.3: four-tier judgment, ultimate, phased boss, §9.3 parity,
 Sightread v1, analytics parity, battle SFX first fill, the relics regression,
@@ -1017,7 +1045,8 @@ P5 hardening (real-device QA matrix, Firefox root-cause, balance, soak).
 
 Tracked slot-by-slot against §11.5 in [`docs/design/art-prompts.md`](../design/art-prompts.md)
 and the [AAA audit](../design/aaa-audit.md) burn-down (P0–P2 shipped; P3 wordmark and
-landform pass open). Filled as real (AI-pipeline or provided) art: band (4), foes (4),
-venue kits (28 pieces), landmarks (5), backdrops (5, now venue-superseded), title
-key-art, NPCs/props/obelisks. Open rows: full animation-state sets, VFX library, SFX,
-parallax layers, wordmark, remaining enemy types beyond the lyric-canon four.
+landform pass open). Filled as real (AI-pipeline or provided) art: Mir (v10.0; the
+other three band slots deleted), foes (4), venue kits (28 pieces), landmarks (5),
+backdrops (5, now venue-superseded), title key-art, NPCs/props/obelisks. Open rows:
+full animation-state sets, Nari/Lunal staging art (v10.0), VFX library, SFX, parallax
+layers, wordmark, remaining enemy types beyond the lyric-canon four.

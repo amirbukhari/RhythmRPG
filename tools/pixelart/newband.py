@@ -1,8 +1,8 @@
-"""Generate the fresh Inhalants band (PRD v7.9): four NEW AI-generated playable
-characters replacing the previous band art, per direct owner feedback ("get rid
-of the main character we have and just start fresh with new band characters").
+"""Generate Mir, the playable character (PRD v10.0 solo pivot; formerly the
+four-piece band tool -- bassist/vocalist/drummer were retired with the band
+fiction, and the lead slot was renamed amir -> mir).
 
-Per member: ONE AI generation (a full-body, side-view, left-facing musician on
+ONE AI generation (a full-body, side-view, left-facing musician on
 a plain white background -- the proven Pollinations sprite path), flood-keyed,
 pixelated to the engine's 48x48 frame on the master palette (band cohesion),
 then the animation strips are DERIVED procedurally from that base pose --
@@ -14,8 +14,7 @@ Output: assets/sprites/band/<member>/{idle,run,attack}.png -- the exact slots
 the engine already loads (band_<member>[_run|_attack]), so no code changes.
 
 Usage:
-  python tools/pixelart/newband.py            # generate all four
-  python tools/pixelart/newband.py guitarist  # one member
+  python tools/pixelart/newband.py       # regenerate Mir
   SEED_OFFSET=3 python ...                    # reroll variants
 """
 
@@ -38,7 +37,8 @@ FRAME = 72  # engine frame size (BootScene loads 72x72; AAA legibility pass)
 FIG_H = 66  # figure height inside the frame (feet anchored near the bottom)
 FOOT_Y = 69  # baseline the feet sit on
 
-# One shared style clause so the four read as ONE band; the subject varies.
+# The shared style clause that kept the cast in one register; kept for Mir
+# (and any future story figure -- Nari/Lunal staging art should reuse it).
 STYLE = (
     "16-bit video game character sprite, bold clean silhouette, chunky pixels, "
     "flat cel shading, gothic drowned-rock musician, pale teal-tinged skin, "
@@ -49,26 +49,10 @@ STYLE = (
 
 MEMBERS: dict[str, tuple[str, int]] = {
     # member -> (subject prompt, seed)
-    "amir": (
+    "mir": (
         STYLE + "lead guitarist playing a rusted BRIGHT RED electric guitar slung low, "
         "tall BRIGHT TEAL mohawk, NO hood, bare arms, black leather vest with teal trim",
         11,
-    ),
-    "bassist": (
-        STYLE + "bass guitarist with a long-necked dark bass guitar, very tall "
-        "and lanky, BONE-WHITE hooded cloak with the deep hood UP hiding the eyes, pale ghostly figure",
-        22,
-    ),
-    "vocalist": (
-        STYLE + "singer holding a corroded brass microphone up to the mouth, "
-        "long drowned hair over one eye, flowing open EMBER-ORANGE greatcoat, other fist raised",
-        33,
-    ),
-    "drummer": (
-        STYLE + "marching drummer holding two drumsticks, a single small GOLD snare "
-        "drum strapped at the waist, stocky and broad, PLUM-PURPLE sleeveless shirt, "
-        "NO drum kit, NO cymbals",
-        44,
     ),
 }
 

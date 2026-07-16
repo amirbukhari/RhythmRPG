@@ -13,13 +13,10 @@ import os
 import sys
 from pathlib import Path
 
+import cohesion_lint
 import tiles
-import heroes
 import enemies
-import backgrounds
 import props
-import landmarks
-import bandmates
 import ui
 import fx
 from skatopia import save
@@ -35,25 +32,26 @@ def main() -> None:
     # regenerates the whole explorable world consistently.
     save(tiles.build_multi_region(), "tilemaps/overworld_tileset.png")
     generate_overworld_map.main()
-    heroes.build_all()
-    enemies.build_all()
-    save(backgrounds.build(False), "backgrounds/battle_abyss.png")
-    save(backgrounds.build(True), "backgrounds/battle_conductor.png")
-    save(backgrounds.caustics(), "backgrounds/caustics.png")
+    # Foes are AI-generated (newfoes.py, committed); the procedural sheets are
+    # a fallback that must not clobber the shipped art (same rule as landmarks).
+    if os.environ.get("REGEN_FOES") == "1":
+        enemies.build_all()
     save(props.build_sheet(), "sprites/overworld/props.png")
     save(ui.panel(False), "ui/panel.png")
     save(ui.panel(True), "ui/panel_boss.png")
-    save(ui.icon_sheet()[0], "ui/icons.png")
     save(fx.radial(), "fx/glow.png")
     save(fx.spark(), "fx/spark.png")
     save(fx.haze(), "fx/haze.png")
     save(fx.godray(), "fx/godray.png")
-    # Landmarks are now AI-generated (generate_ai.py, committed); the procedural
-    # sheet is kept as a fallback but does not clobber the shipped art.
-    if os.environ.get("REGEN_LANDMARKS") == "1":
-        save(landmarks.build_sheet(), "sprites/overworld/landmarks.png")
-    bandmates.build_all()  # the playable band -- Amir (from provided art) + 3 authored mates
+    # The old ink landmark sheet is retired (art cohesion audit C1/C6): region
+    # set-pieces are the painterly gate landforms + authored dressing now.
+    # The playable character (Mir) is AI-generated + committed (newband.py ->
+    # bake_cast.py -> requantize_cast.py -> outline_pass.py); nothing to
+    # regenerate procedurally here since the v10.0 solo pivot.
     print("all art regenerated")
+    # the art cohesion audit's checks, as a permanent gate (exit 1 on findings)
+    if cohesion_lint.main() != 0:
+        raise SystemExit("cohesion lint failed -- see findings above")
 
 
 if __name__ == "__main__":

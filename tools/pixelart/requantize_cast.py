@@ -20,10 +20,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 # path (relative to assets/sprites) -> frame count
 TARGETS: dict[str, int] = {
-    "band/amir/idle.png": 2, "band/amir/run.png": 4, "band/amir/attack.png": 3,
-    "band/bassist/idle.png": 2, "band/bassist/run.png": 4, "band/bassist/attack.png": 3,
-    "band/drummer/idle.png": 2, "band/drummer/run.png": 4, "band/drummer/attack.png": 3,
-    "band/vocalist/idle.png": 2, "band/vocalist/run.png": 4, "band/vocalist/attack.png": 3,
+    "band/mir/idle.png": 2, "band/mir/run.png": 4, "band/mir/attack.png": 3,
     "enemies/slime.png": 2, "enemies/drifter.png": 2, "enemies/elite_wraith.png": 2,
 }
 

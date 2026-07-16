@@ -8,10 +8,9 @@ export interface HeroClass {
   role: HeroRole;
   name: string;
   /**
-   * Which band member's art (tools/pixelart/bandmates.py) renders this slot:
-   * `band_<spriteId>` idle / `band_<spriteId>_run` / `band_<spriteId>_attack`.
-   * The four mechanical roles are re-skinned to Inhalants -- Amir (lead
-   * guitar) leads the party; bass, vocals, drums fill the others.
+   * Which cast art renders this slot: `band_<spriteId>` idle /
+   * `band_<spriteId>_run` / `band_<spriteId>_attack`. v10.0: the only live
+   * spriteId is `mir` (legacy role JSON backs the retired path only).
    */
   spriteId: string;
   maxHp: number;

@@ -77,7 +77,16 @@ def fidelity(path: Path) -> None:
     # them (a lit lantern went dark). Re-stamp the original wherever it burns.
     lum = a[..., :3].astype(np.float32).max(axis=2)
     hot = lum > 190
-    qa[hot] = a[..., :3][hot]
+    if int(hot.sum()) <= 64:
+        qa[hot] = a[..., :3][hot]
+    elif hot.any():
+        # Large baked glows (crystal blooms, braziers) must stay in-register:
+        # re-stamping the raw gradient here let 100-300-colour blooms escape
+        # the budget entirely (art cohesion audit C4). Quantize the hot region
+        # to its own tight ramp instead.
+        hot_rgb = a[..., :3][hot].reshape(1, -1, 3)
+        hi = Image.fromarray(hot_rgb, "RGB").quantize(colors=6, method=Image.MEDIANCUT, dither=Image.Dither.NONE).convert("RGB")
+        qa[hot] = np.array(hi).reshape(-1, 3)
     out = np.dstack([qa, hard])
     # shared value ramp with the painted plate (crunch, not airbrush)
     out[..., :3] = (np.round(out[..., :3].astype(np.float32) / 9.0) * 9.0).clip(0, 255).astype(np.uint8)

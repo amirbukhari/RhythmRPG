@@ -180,7 +180,7 @@ export class WorldFight {
       .setDepth(20)
       .setAlpha(0.94);
     const plateName = this.scene.add
-      .text(ox + 9, oy + BASE_HEIGHT - 30, "INHALANTS", { fontFamily: "monospace", fontSize: "6px", color: "#9fe8e0" })
+      .text(ox + 9, oy + BASE_HEIGHT - 30, "MIR", { fontFamily: "monospace", fontSize: "6px", color: "#9fe8e0" })
       .setDepth(21);
     this.beatPulse = this.scene.add.circle(ox + 90, oy + BASE_HEIGHT - 26, 3, 0x49c6bd).setDepth(21);
     // graphics draw in design coords; positioning the object at the room's
@@ -578,7 +578,7 @@ export class WorldFight {
     if (p.attack) {
       const frame = p.attack.phase === "startup" ? 0 : p.attack.phase === "active" ? 1 : 2;
       if (this.playerSprite.anims.isPlaying) this.playerSprite.anims.stop();
-      this.playerSprite.setTexture("band_amir_attack", frame);
+      this.playerSprite.setTexture("band_mir_attack", frame);
     } else {
       // run while the sim is moving him, breathe when standing
       const moving = Math.hypot(p.vel.x, p.vel.y) > 12;

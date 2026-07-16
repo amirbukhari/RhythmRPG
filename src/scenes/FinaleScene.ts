@@ -9,7 +9,8 @@ import { music } from "../systems/audio/SongPlayer";
  * The ending. Beating the Conductor used to dump the player straight back
  * onto the overworld with a "+150 XP" toast -- a releasable game closes its
  * story. Same found-not-told voice as the echoes (PRD §7.3 pillar 4): a few
- * staged lines, the wordmark, and the band's credits. The world stays open
+ * staged lines — the Lunal reveal and finding Nari (PRD §8.7 v10.0) — the
+ * wordmark, and the credits. The world stays open
  * afterwards (echoes remain findable), so "Return to the world" is the
  * primary action, not a hard stop.
  */
@@ -26,7 +27,11 @@ export class FinaleScene extends Phaser.Scene {
     const reduced = Boolean(GameContext.activeProfile?.settings.reducedMotion);
 
     // The last three lines of the untold story, surfacing one at a time.
-    const lines = ["The hall falls silent.", "Then -- not silence. Rain, far above.", "The chorus rests. The band plays on."];
+    const lines = [
+      "The hall falls silent. A mask clatters where the huntress stood.",
+      "Then -- not silence. Rain, far above. And under it, small: a laugh.",
+      "Nari. Found. The chorus rests.",
+    ];
     lines.forEach((line, i) => {
       const t = this.add
         .text(BASE_WIDTH / 2, 26 + i * 12, line, { fontFamily: "monospace", fontSize: "7px", color: "#d8ceb6", stroke: "#05060a", strokeThickness: 3 })
@@ -39,7 +44,8 @@ export class FinaleScene extends Phaser.Scene {
     if (!reduced) this.tweens.add({ targets: wordmark, alpha: 1, delay: 4800, duration: 1200 });
 
     const credits = [
-      "INHALANTS are  Amir · Bassist · Vocalist · Drummer",
+      "starring  Mir · Nari · Lunal · the Conductor",
+      "music by INHALANTS",
       "songs  Sunshine Sally · Deereater · Glassriff",
       "John's Anus · Truckers for Christ · Quotience",
     ].join("\n");
