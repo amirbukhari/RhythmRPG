@@ -1,6 +1,5 @@
 import Phaser from "phaser";
 import { retinaCamera } from "../config/GameConfig";
-import titleUrl from "../../assets/backgrounds/bg_title.png";
 
 // The playable character -- Mir (v10.0 solo pivot; tools/pixelart/newband.py).
 // He ships three strips: idle, run, attack. Loaded once here as
@@ -50,7 +49,6 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload(): void {
-    this.load.image("bg_title", titleUrl);
     // Colossal boss art at 4x density (hd_cast.py), rendered at 0.25.
     this.load.spritesheet("conductor_colossal", conductorColossalUrl, { frameWidth: 208, frameHeight: 288 });
     this.load.image("ui_panel", uiPanelUrl);

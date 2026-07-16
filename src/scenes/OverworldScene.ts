@@ -7,7 +7,6 @@ import { stepTarget, isWalkable, type Direction, type GridPosition } from "../sy
 import tilesetUrl from "../../assets/tilemaps/overworld_tileset.png";
 import tilemapUrl from "../../assets/tilemaps/overworld.json?url";
 import propsUrl from "../../assets/sprites/overworld/props.png";
-import npcsUrl from "../../assets/sprites/overworld/npcs.png";
 import { BASE_WIDTH, BASE_HEIGHT, RENDER_SCALE } from "../config/GameConfig";
 import { music } from "../systems/audio/SongPlayer";
 import { WorldFight } from "./overworld/WorldFight";
@@ -107,7 +106,6 @@ export class OverworldScene extends Phaser.Scene {
     // Mir and the old-hero NPC sprites are loaded centrally in
     // BootScene (band_* keys); nothing hero-related to preload here.
     if (!this.textures.exists("ow_props")) this.load.spritesheet("ow_props", propsUrl, { frameWidth: 24, frameHeight: 32 });
-    if (!this.textures.exists("ow_npcs")) this.load.spritesheet("ow_npcs", npcsUrl, { frameWidth: 32, frameHeight: 40 });
   }
 
   create(): void {
@@ -180,7 +178,6 @@ export class OverworldScene extends Phaser.Scene {
 
     this.decorate(map, ground, spawnTile);
     this.softenSeamsAndDapple(map);
-    this.drawNpcs(spawnTile);
     // each fight node's authored venue -- its biome floor blended into the
     // map + its kitbash set pieces -- stands IN the world, under the foe
     for (const marker of this.markers) {
@@ -876,38 +873,6 @@ export class OverworldScene extends Phaser.Scene {
   }
 
 
-  /**
-   * The four generated pre-band adventurers (warrior/tank/mage/healer) now
-   * live in the world as NPCs -- bystanders near the shore, not the party.
-   * Placed on the nearest walkable grass to a few offsets from spawn, each
-   * with a slow idle bob so they read as alive, but no interaction in v1.
-   */
-  private drawNpcs(spawnTile: GridPosition): void {
-    const reduced = Boolean(GameContext.activeProfile?.settings.reducedMotion);
-    // Real drowned-gothic townsfolk (ow_npcs: ferryman, widow, barker, chorister),
-    // AI-generated, isolated pixel-art sprites (generate_ai.py).
-    const npcs: { frame: number; dc: number; dr: number }[] = [
-      { frame: 0, dc: 4, dr: -3 },
-      { frame: 1, dc: 7, dr: -1 },
-      { frame: 2, dc: 5, dr: 3 },
-      { frame: 3, dc: 9, dr: 2 },
-    ];
-    for (const npc of npcs) {
-      const col = spawnTile.col + npc.dc;
-      const row = spawnTile.row + npc.dr;
-      if (!isWalkable(this.walkable, { col, row })) continue;
-      const x = col * TILE_SIZE + TILE_SIZE / 2;
-      const y = row * TILE_SIZE + TILE_SIZE / 2;
-      this.add.ellipse(x, y + 2, 14, 5, 0x05060a, 0.35).setDepth(2); // contact shadow
-      // 0.58: townsfolk stand a hair SHORTER than the 25px hero (audit:
-      // at 0.72 they towered over the player and each other inconsistently)
-      const s = this.add.sprite(x, y, "ow_npcs", npc.frame).setOrigin(0.5, 0.9).setScale(0.5).setDepth(3);
-      s.setFlipX((col + row) % 2 === 0);
-      if (!reduced) {
-        this.tweens.add({ targets: s, y: y - 1, duration: 1100 + (col * 37) % 400, yoyo: true, repeat: -1, ease: "Sine.inOut" });
-      }
-    }
-  }
 
   /** Draws an undiscovered echo's rune + a soft additive glow pulse (found ones stay marked but dim). */
   private drawEcho(echo: Echo): void {
