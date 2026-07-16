@@ -147,11 +147,116 @@ def main() -> None:
 
     stamp_tufts()
 
+    # --- region micro-motifs (v11.3 ground-variation pass) -------------------
+    # Each biome stamps its own faint marks into the turf so the five regions
+    # read as five PLACES even with zero set dressing (the purge: the ground
+    # is the game). All marks are subtle mixes, never full overwrites.
+    grass_px = np.asarray(Image.fromarray(((kind == 0) * 255).astype(np.uint8)).resize((PW, PH), Image.NEAREST)) > 127
+
+    def mix(mask: np.ndarray, colour: tuple[int, int, int], amt: float) -> None:
+        c = np.array(colour, dtype=np.float32)
+        canvas[mask] = canvas[mask] * (1 - amt) + c[None, :] * amt
+
+    # r0 shallows: tide lines -- long wavy pale horizontals left by the water
+    r_mask = grass_px & (region_px == 0)
+    tide_wave = (value_noise(PH, PW, 90) - 0.5) * 26
+    tide_rows = (np.abs(((yy_r := np.arange(PH, dtype=np.float32)[:, None]) + tide_wave) % 96) < 1.2)
+    mix(r_mask & tide_rows & (value_noise(PH, PW, 40) > 0.35), (0xB9, 0xC8, 0xBB), 0.28)
+
+    # r1 saltmines: crusted salt veins -- bright random-walk crackle
+    r_mask = grass_px & (region_px == 1)
+    ys_v, xs_v = np.where(r_mask[::64, ::64])
+    for vy, vx in zip(ys_v * 64, xs_v * 64):
+        h = (int(vx) * 73856093 ^ int(vy) * 83492791) & 0xFFFFFFFF
+        if h % 100 >= 22:
+            continue
+        y, x = int(vy), int(vx)
+        for _ in range(18 + h % 30):
+            if 0 <= y < PH and 0 <= x < PW and r_mask[y, x]:
+                canvas[y, x] = canvas[y, x] * 0.4 + np.array((0xD9, 0xE2, 0xDE), dtype=np.float32) * 0.6
+            y += int(RNG.integers(-1, 2))
+            x += int(RNG.integers(-1, 2))
+
+    # r2 pit: ash smudges + fallen carnival confetti flecks
+    r_mask = grass_px & (region_px == 2)
+    canvas[r_mask & (value_noise(PH, PW, 30) > 0.68)] *= 0.86  # ash
+    fleck_h = (np.arange(PH)[:, None] * 19349663 + np.arange(PW)[None, :] * 73856093) & 0xFFFF
+    festival = [(0x9A, 0x5C, 0xBD), (0xC9, 0x9A, 0x3F), (0x49, 0xC6, 0xBD)]
+    for i, fc in enumerate(festival):
+        mix(r_mask & (fleck_h == 77 + i * 331), fc, 0.75)
+
+    # r3 attic: ghostly floorboard seams showing through the turf
+    r_mask = grass_px & (region_px == 3)
+    yy_b = np.arange(PH)[:, None].repeat(PW, 1)
+    xx_b = np.arange(PW)[None, :].repeat(PH, 0)
+    board_row = yy_b // 26
+    seam_h = (yy_b % 26) == 0
+    joint = ((xx_b + board_row * 67) % 150) < 2
+    canvas[r_mask & seam_h] *= 0.8
+    canvas[r_mask & joint & ((yy_b % 26) < 24)] *= 0.9
+    canvas[r_mask & (board_row % 2 == 0) & ~seam_h] *= 0.97  # alternating board tone
+
+    # r4 hall: faint marble veining -- pale contour filaments
+    r_mask = grass_px & (region_px == 4)
+    vein_n = value_noise(PH, PW, 55)
+    mix(r_mask & (np.abs(vein_n - 0.5) < 0.006), (0xC9, 0xC4, 0xD4), 0.30)
+
+    # --- path hierarchy: the main road vs desire-path spurs ------------------
+    # BFS the road graph from spawn to the boss: that corridor (+1 tile of
+    # slack) is the MAIN road; every other path tile is a side spur, painted
+    # as a narrower, broken desire path. The route also gives Nari's trail
+    # its direction (stamped after the fight grounds below).
+    markers = [l for l in data["layers"] if l.get("name") == "markers"][0]["objects"]
+
+    def nearest_path_tile(px_x: float, px_y: float) -> tuple[int, int] | None:
+        t0 = (int(px_y // 16), int(px_x // 16))
+        best, bd = None, 1e9
+        ys_p, xs_p = np.where(kind == 1)
+        for py, px in zip(ys_p, xs_p):
+            d = (py - t0[0]) ** 2 + (px - t0[1]) ** 2
+            if d < bd:
+                best, bd = (int(py), int(px)), d
+        return best
+
+    spawn_obj = next(o for o in markers if o["name"] == "spawn")
+    boss_obj = next((o for o in markers if o["name"] == "boss_1"), None)
+    route: list[tuple[int, int]] = []
+    if boss_obj is not None:
+        start = nearest_path_tile(spawn_obj["x"], spawn_obj["y"])
+        goal = nearest_path_tile(boss_obj["x"], boss_obj["y"])
+        if start and goal:
+            from collections import deque
+            parent: dict[tuple[int, int], tuple[int, int] | None] = {start: None}
+            q = deque([start])
+            while q:
+                cur = q.popleft()
+                if cur == goal:
+                    break
+                cy_t, cx_t = cur
+                for ny, nx in ((cy_t + 1, cx_t), (cy_t - 1, cx_t), (cy_t, cx_t + 1), (cy_t, cx_t - 1)):
+                    if 0 <= ny < H and 0 <= nx < W and kind[ny, nx] == 1 and (ny, nx) not in parent:
+                        parent[(ny, nx)] = cur
+                        q.append((ny, nx))
+            if goal in parent:
+                cur2: tuple[int, int] | None = goal
+                while cur2 is not None:
+                    route.append(cur2)
+                    cur2 = parent[cur2]
+                route.reverse()
+
+    main_tiles = np.zeros_like(kind, dtype=bool)
+    if route:
+        for ty, tx in route:
+            main_tiles[max(0, ty - 1) : ty + 2, max(0, tx - 1) : tx + 2] |= kind[max(0, ty - 1) : ty + 2, max(0, tx - 1) : tx + 2] == 1
+    else:
+        main_tiles = kind == 1  # fallback: no route found, everything is main
+    spur_tiles = (kind == 1) & ~main_tiles
+
     # --- path ribbon ---------------------------------------------------------
     # blur 7 -> 11: the meandering road's single-tile jogs painted as hard
     # stair-steps; the wider falloff melts each corner into a curve while a
     # 1-tile spur (32px wide) still holds together comfortably
-    path_mask = organic_mask(kind == 1, jitter=0.18, blur=11)
+    path_mask = organic_mask(main_tiles, jitter=0.18, blur=11)
     d_path = distance_bands(path_mask, 6)
     path_bases = [tint((0x8E, 0x83, 0x68), a, 0.18) for a in ACCENTS]
     path_col = blended(path_bases) * (1 + (n_mid - 0.5) * 0.12)[..., None]
@@ -177,6 +282,17 @@ def main() -> None:
         sl[blob] = base
         sl[: ry + 1][blob[: ry + 1]] = base * 1.18  # top-light
         sl[-1:][blob[-1:]] = base * 0.62  # base shadow
+
+    # --- desire-path spurs ----------------------------------------------------
+    # Side trails are half-swallowed by the turf: narrower, paler, and BROKEN
+    # into worn patches -- you learn to read them, they never compete with the
+    # main road. (Secret-pocket approaches stay findable but subtle.)
+    spur_px = np.zeros((PH, PW), dtype=bool)
+    if spur_tiles.any():
+        spur_band = organic_mask(spur_tiles, jitter=0.26, blur=7)
+        spur_px = spur_band & (value_noise(PH, PW, 12) > 0.34) & ~path_mask
+        worn = canvas[spur_px] * 0.35 + path_col[spur_px] * 0.65
+        canvas[spur_px] = canvas[spur_px] * 0.45 + worn * 0.55
 
     # --- water bodies --------------------------------------------------------
     # jitter raised 0.2 -> 0.34 (scale/placement audit: map-rectangular ponds
@@ -211,6 +327,46 @@ def main() -> None:
     canvas[foam_ring] = canvas[foam_ring] * 0.45 + np.array((0x8F, 0xD8, 0xD0), dtype=np.float32) * 0.55 * 0.7
     canvas[bank_ring] *= 0.55
 
+    # --- drowned shapes under the surface (v11.3) -----------------------------
+    # The village went under mid-festival: pale rooftops, chimneys, and a hull
+    # ghost beneath the shallows, told entirely through the depth ramp. Shapes
+    # sit in mid-depth water, blurred a touch, and fade with depth.
+    overlay = np.zeros((PH, PW), dtype=np.float32)
+    placed: list[tuple[int, int]] = []
+    ys_w, xs_w = np.where(kind == 2)
+    for ty, tx in zip(ys_w, xs_w):
+        h = (tx * 40503 ^ ty * 2654435761) & 0xFFFFFFFF
+        if h % 100 >= 4:
+            continue
+        cx, cy = tx * S + S // 2, ty * S + S // 2
+        reg = region[ty, tx]
+        if reg not in (0, 4) and h % 5 != 0:
+            continue  # cluster in the shallows + the hall lake
+        if d_w[cy, cx] < 7 or any((cx - px) ** 2 + (cy - py) ** 2 < 70**2 for px, py in placed):
+            continue
+        placed.append((cx, cy))
+        kindh = h % 3
+        if kindh < 2:  # gabled roof + chimney
+            rw, rh = 30 + (h >> 5) % 14, 16 + (h >> 9) % 8
+            for dy in range(rh):
+                half = int(rw / 2 * (dy / rh))
+                overlay[cy - rh // 2 + dy, cx - half : cx + half + 1] = 1.0
+            overlay[cy - rh // 2 - 4 : cy - rh // 2, cx + rw // 4 : cx + rw // 4 + 3] = 1.0  # chimney
+            overlay[cy - rh // 2 : cy + rh // 2, cx - 1 : cx + 1] *= 1.0  # ridge stays
+        else:  # boat hull
+            rw, rh = 26 + (h >> 5) % 10, 8
+            yy_o, xx_o = np.ogrid[-rh : rh + 1, -rw // 2 : rw // 2 + 1]
+            hull = ((xx_o / (rw / 2)) ** 2 + (yy_o / rh) ** 2 <= 1) & (yy_o >= 0)
+            sl = overlay[cy : cy + 2 * rh + 1, cx - rw // 2 : cx + rw // 2 + 1]
+            if sl.shape == hull.shape:
+                sl[hull] = 1.0
+    if placed:
+        overlay = np.asarray(Image.fromarray((overlay * 255).astype(np.uint8)).filter(ImageFilter.BoxBlur(2)), dtype=np.float32) / 255.0
+        depth_fade = np.clip(1.0 - d_w / 34.0, 0.45, 1.0)
+        a = (overlay * 0.52 * depth_fade)[..., None] * water_mask[..., None]
+        ghost = blended(shore_bases) * 1.8
+        canvas = canvas * (1 - a) + ghost * a
+
     # --- causeways (scale/placement audit) -----------------------------------
     # The map routes some paths THROUGH lakes; painted as bare grass-road they
     # read as glowing squiggles floating on water. Where a path runs beside or
@@ -220,7 +376,7 @@ def main() -> None:
     # of a crossing sits within reach (6px only re-toned the crossing's edges,
     # leaving a tan stripe down the middle of the lake)
     near_water = ~(erode(~water_mask, 26)[26])
-    causeway = path_mask & near_water
+    causeway = (path_mask | spur_px) & near_water
     if causeway.any():
         stone = np.array((0x4E, 0x50, 0x58), dtype=np.float32)
         canvas[causeway] = canvas[causeway] * 0.35 + stone[None, :] * 0.65 * (
@@ -329,6 +485,36 @@ def main() -> None:
         canvas[edge] *= 0.62
         rings = disc & (np.abs((rr % 44) - 22.0) < 1.1) & (rr > 26)
         canvas[rings] *= 0.85
+
+    # --- Nari's trail (v11.3): the search, told in the ground -----------------
+    # Tiny toddler footprints march along the critical-path route toward the
+    # boss -- Mir is tracking his son through ground paint alone. A short run
+    # every ~14 route tiles, prints stepping in the route's true direction.
+    def stamp_print(py: int, px: int) -> None:
+        if 1 <= py < PH - 2 and 1 <= px < PW - 1 and not water_mask[py, px]:
+            canvas[py : py + 2, px : px + 2] *= 0.62  # sole
+            canvas[py + 2, px] *= 0.7  # heel
+    for i in range(3, len(route) - 1, 14):
+        ty, tx = route[i]
+        ny, nx = route[i + 1]
+        dy, dx = ny - ty, nx - tx  # unit tile step = the walk direction
+        cx, cy = tx * S + S // 2, ty * S + S // 2
+        h = (tx * 19349663 ^ ty * 73856093) & 0xFFFFFFFF
+        for step in range(5):
+            along = step * 8 - 16
+            side = 3 if step % 2 else -3
+            px_ = cx + dx * along + (dy * side)  # lateral offset perpendicular
+            py_ = cy + dy * along + (dx * side)
+            stamp_print(py_ + (h >> step) % 2, px_ + (h >> (step + 3)) % 2)
+
+    # --- value composition (v11.3): the road carries the light ---------------
+    # A soft macro pool of light hugs the main road so the critical path sits
+    # a half-step brighter than off-path ground -- the eye is guided without
+    # a single UI element. Fight clearings are already pale and stay so.
+    road_small = np.asarray(Image.fromarray((path_mask * 255).astype(np.uint8)).resize((PW // 8, PH // 8), Image.BILINEAR))
+    road_light = np.asarray(Image.fromarray(road_small).filter(ImageFilter.BoxBlur(22)).resize((PW, PH), Image.BILINEAR), dtype=np.float32) / 255.0
+    road_light = road_light / max(1e-3, road_light.max())
+    canvas *= (0.95 + road_light * 0.11)[..., None]
 
     # --- the world's dark frame (HLD value structure) -------------------------
     # HLD's playfield GLOWS because its unwalkable surround sits near black.
