@@ -6,16 +6,15 @@ register: unquantized colour blooms (C4), an unkeyed rectangular generation
 backdrop and an orphan pixel island shipped as-is (C5). Each escape was a
 one-off review miss; this lint turns those reviews into a gate.
 
-Checks, per committed sprite PNG:
-  * colour budget    -- opaque colour count within the class budget (the
-                        fidelity_pass area formula + glow headroom);
+Checks, per committed sprite PNG (v11.0: re-scoped to STRUCTURAL checks --
+the colour-budget and hard-alpha rules were pixel-register rules and retired
+with it):
   * no orphan specks -- every alpha island is either >= 9 px or >= 3% of the
                         largest island (composed groups like a candle cluster
                         pass; a stray keying speck fails);
   * no backdrop card -- a piece whose tight bounding box is nearly fully
-                        opaque with a non-outline border is an unkeyed
-                        generation backdrop;
-  * hard alpha       -- sprite art carries 0/255 alpha only.
+                        opaque with a bright border is an unkeyed
+                        generation backdrop.
 
 Exempt by design: fx/ (soft additive gradients), ui/panel* (9-slice soft
 edges), the painted ground plate + tileset (own the many-colour register),
@@ -43,16 +42,6 @@ EXEMPT_FILES = {"panel.png", "panel_boss.png"}
 # soft-alpha allowance only where the design calls for it (none today beyond
 # the exemptions above)
 OUTLINE_MAX = 40  # channel value at/below which a colour reads as "outline dark"
-
-
-def colour_budget(path: Path, area: int) -> int:
-    rel = path.relative_to(ASSETS).as_posix()
-    if rel.startswith("backgrounds/"):
-        return 40  # key-art posterization budget
-    if rel.startswith("sprites/band/") or rel.startswith("sprites/enemies/"):
-        return 90  # multi-frame sheets (requantize_cast budgets x frames)
-    # env pieces: fidelity_pass formula + glow headroom
-    return int(np.clip(6 + area**0.5 / 3.2, 8, 24)) + 10
 
 
 def islands(mask: np.ndarray) -> list[int]:
@@ -83,21 +72,10 @@ def lint(path: Path) -> list[str]:
     findings: list[str] = []
     a = np.array(Image.open(path).convert("RGBA"))
     alpha = a[..., 3]
-    mask = alpha > 0
+    mask = alpha > 128  # soft HD edges: judge structure by the solid core
 
     if not mask.any():
         return [f"{path}: fully transparent"]
-
-    # hard alpha
-    semi = int(((alpha > 0) & (alpha < 255)).sum())
-    if semi:
-        findings.append(f"{path}: {semi} semi-transparent px (sprites are hard-alpha)")
-
-    # colour budget
-    colours = len(set(map(tuple, a[mask][:, :3].tolist())))
-    budget = colour_budget(path, int(mask.sum()))
-    if colours > budget:
-        findings.append(f"{path}: {colours} opaque colours (budget {budget})")
 
     # orphan specks (multi-frame sheets excluded: frames are separate islands)
     rel = path.relative_to(ASSETS).as_posix()

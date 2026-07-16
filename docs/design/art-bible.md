@@ -1,6 +1,12 @@
 # Art Bible — Meterfall / *the drowned chorus*
 
-Status: **living document**, current as of 2026-07-10. This is the real
+> **HISTORICAL (superseded 2026-07-16).** This document describes the
+> code-drawn pixel era (pre-v7.9) and no longer reflects the game: the cast
+> is solo **Mir** (PRD v10.0), and the aesthetic is **painterly HD, not
+> pixel art** (PRD v11.0 — see PRD §11.1/§11.1.2 for the current direction
+> and production pipeline). Kept as direction history.
+
+Status: historical, last true as of 2026-07-10. This is the real
 art-direction doc PRD §11.1 asked for. Unlike earlier cycles, the art it
 describes is **built and in the game**, not aspirational.
 

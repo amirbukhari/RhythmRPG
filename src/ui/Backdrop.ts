@@ -12,7 +12,7 @@ import { BASE_WIDTH, BASE_HEIGHT } from "../config/GameConfig";
  */
 export function addBackdrop(scene: Phaser.Scene, dim = 0.5): void {
   if (scene.textures.exists("bg_title")) {
-    scene.add.image(BASE_WIDTH / 2, BASE_HEIGHT / 2, "bg_title").setDepth(-10);
+    scene.add.image(BASE_WIDTH / 2, BASE_HEIGHT / 2, "bg_title").setDisplaySize(BASE_WIDTH, BASE_HEIGHT).setDepth(-10);
   } else {
     scene.add.rectangle(0, 0, BASE_WIDTH, BASE_HEIGHT, 0x0b1420).setOrigin(0, 0).setDepth(-10);
   }

@@ -1,5 +1,13 @@
 # Art Cohesion Audit — why the game doesn't read as one world
 
+> **Postscript (same day):** findings C1–C6 were applied at PRD v10.1 (see
+> that revision row for the fix list). Hours later the owner retired pixel
+> art entirely (PRD v11.0 — painterly HD); the pixel-register prescriptions
+> here (colour budgets, outline policy, texel snapping) are therefore
+> historical, while the structural findings (one register, no unkeyed
+> backdrops, no orphan islands, one bloom system) carry forward into the
+> re-scoped `cohesion_lint.py` and PRD §11.1.2.
+
 **Date:** 2026-07-16 · **Owner directive:** "do a visual audit of the art in
 this game — it doesn't feel cohesive at all."
 

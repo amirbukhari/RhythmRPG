@@ -58,7 +58,8 @@ const TIER_LABEL: Record<Exclude<BeatTier, "off">, { text: string; color: string
 
 // world-proportioned foe scales (72px frames; conductor uses his colossal sheet)
 // sheets are baked to fight size (bake_cast.py) -- everyone renders at 1.0
-const FIGHT_SCALE: Record<string, number> = { the_conductor: 1.0, elite_wraith: 1.0, drifter: 1.0, slime: 1.0 };
+// HD sheets are 4x the world size (hd_cast.py): world size unchanged at 0.25
+const FIGHT_SCALE: Record<string, number> = { the_conductor: 0.25, elite_wraith: 0.25, drifter: 0.25, slime: 0.25 };
 const FIGHT_ACCENT: Record<string, number> = {
   the_conductor: 0xf0a648,
   elite_wraith: 0x49c6bd,
@@ -317,17 +318,17 @@ export class WorldFight {
       e.strikeDamage = def.action?.damage;
       const colossal = enemyId === "the_conductor";
       const tex = colossal ? "conductor_colossal" : `enemy_${enemyId}`;
-      const scale = FIGHT_SCALE[enemyId] ?? 0.5;
+      const scale = FIGHT_SCALE[enemyId] ?? 0.25;
       const accent = FIGHT_ACCENT[enemyId] ?? 0xffffff;
       this.accents.set(e.id, accent);
       this.enemyIds.set(e.id, enemyId);
       this.lastEnemyHp.set(e.id, e.hp);
       const wx = this.rect.x + e.pos.x;
       const wy = this.rect.y + e.pos.y;
-      this.shadows.set(e.id, this.scene.add.ellipse(wx, wy, 26 * scale, 8 * scale, 0x05060a, 0.42).setDepth(4.3));
+      this.shadows.set(e.id, this.scene.add.ellipse(wx, wy, 26, 8, 0x05060a, 0.42).setDepth(4.3));
       this.auras.set(
         e.id,
-        this.scene.add.image(wx, wy - 8, "glow").setBlendMode(Phaser.BlendModes.ADD).setTint(accent).setDepth(4.32).setScale(scale).setAlpha(0.35)
+        this.scene.add.image(wx, wy - 8, "glow").setBlendMode(Phaser.BlendModes.ADD).setTint(accent).setDepth(4.32).setScale(1).setAlpha(0.35)
       );
       const animKey = `wf_idle_${tex}`;
       if (!this.scene.anims.exists(animKey)) {
@@ -634,7 +635,7 @@ export class WorldFight {
       // v7.4 spec): windup crouches (anticipation), the strike's active
       // frames lunge and stretch toward the player (impact), recovery
       // settles back. Squash-and-stretch on the base scale, never baked in.
-      const base = FIGHT_SCALE[this.enemyIds.get(e.id) ?? ""] ?? 0.5;
+      const base = FIGHT_SCALE[this.enemyIds.get(e.id) ?? ""] ?? 0.25;
       let sx = base;
       let sy = base;
       let lunge = 0;

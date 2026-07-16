@@ -1,6 +1,10 @@
 import { test } from "@playwright/test";
 import { waitForScene } from "./helpers";
 
+// Capture harness, not a behavior gate: the 4x canvas (v11.0) renders slowly
+// under headless software raster, so give captures generous headroom.
+test.setTimeout(240_000);
+
 test("audit: capture every screen", async ({ page }) => {
   await page.goto("/");
   await waitForScene(page, "AudioGateScene");

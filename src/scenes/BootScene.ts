@@ -33,14 +33,14 @@ import eliteWraithUrl from "../../assets/sprites/enemies/elite_wraith.png";
 import conductorUrl from "../../assets/sprites/enemies/the_conductor.png";
 import conductorColossalUrl from "../../assets/sprites/enemies/conductor_colossal.png";
 
-// Regenerated foes (newfoes.py) ship 72x72 frames for legibility; the
+// HD painterly foes (hd_cast.py, v11.0) ship 4x frames, rendered at 0.25; the
 // Conductor's small sheet is legacy 48x48 (his fights use the colossal sheet).
 const ENEMY_URLS: Record<string, { url: string; frame: number }> = {
-  // foe sheets baked to their fight size (bake_cast.py): render scale 1.0
-  slime: { url: slimeUrl, frame: 32 },
-  drifter: { url: drifterUrl, frame: 35 },
-  elite_wraith: { url: eliteWraithUrl, frame: 45 },
-  the_conductor: { url: conductorUrl, frame: 48 },
+  // HD frames at 4x the world size (hd_cast.py): render scale 0.25
+  slime: { url: slimeUrl, frame: 128 },
+  drifter: { url: drifterUrl, frame: 140 },
+  elite_wraith: { url: eliteWraithUrl, frame: 180 },
+  the_conductor: { url: conductorUrl, frame: 192 },
 };
 
 /** Loads the asset manifest and verifies browser support. See PRD §10.6. */
@@ -51,8 +51,8 @@ export class BootScene extends Phaser.Scene {
 
   preload(): void {
     this.load.image("bg_title", titleUrl);
-    // Native colossal boss art (PRD §11.1: authored at size, never upscaled).
-    this.load.spritesheet("conductor_colossal", conductorColossalUrl, { frameWidth: 52, frameHeight: 72 });
+    // Colossal boss art at 4x density (hd_cast.py), rendered at 0.25.
+    this.load.spritesheet("conductor_colossal", conductorColossalUrl, { frameWidth: 208, frameHeight: 288 });
     this.load.image("ui_panel", uiPanelUrl);
     this.load.image("ui_panel_boss", uiPanelBossUrl);
     this.load.image("wordmark", wordmarkUrl);
@@ -69,8 +69,8 @@ export class BootScene extends Phaser.Scene {
       if (!m) continue;
       const [, member, anim] = m;
       const key = anim === "idle" ? `band_${member}` : `band_${member}_${anim}`;
-      // band strips baked to 50px frames (bake_cast.py: one pixel register)
-      this.load.spritesheet(key, url, { frameWidth: 50, frameHeight: 50 });
+      // HD painterly strips: 200px frames (hd_cast.py), rendered at 0.125
+      this.load.spritesheet(key, url, { frameWidth: 200, frameHeight: 200 });
     }
     // Environment kitbash pieces: `.../env/shallows/rock_a.png` -> env_shallows_rock_a
     for (const [path, url] of Object.entries(ENV_URLS)) {

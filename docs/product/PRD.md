@@ -6,7 +6,7 @@
 |---|---|
 | Document title | *The Drowned Chorus* — Browser Rhythm-Action RPG PRD |
 | Working codename | Project Meterfall (historical; the game is titled *The Drowned Chorus*) |
-| Status | **Active v10.1** — v10.0: **the solo pivot** — the band cast is retired; the game is **Mir**, alone, searching the drowned world for his toddler son **Nari**; the Conductor is revealed as the instrument of **Lunal**, a masked huntress (§8.4/§8.7); v10.1: the art-cohesion pass ([audit](../design/art-cohesion-audit.md) findings applied: legacy-register screens restyled, quantization escapees fixed, texel scales snapped, cohesion lint added). Prior: v8.0: enterprise rewrite per the [PRD audit](./prd-audit-2026-07-14.md); v8.1: P1 beat truth; v8.2: P2+P3 (four-tier judgment, ultimate, phased boss, Sightread, §9.3 parity) + mobile hardening; v8.3: SFX/relics/hygiene/retired-code deletion; v8.4: landforms; v8.5: the ending (FinaleScene) + wordmark + VFX; v8.6: §8.6 curriculum as authored data + enemy state motion; v8.7: balance harness + measured balance pass; v8.8: onset-snapped grids + elevation shading; v8.9: soak + bundle split; v9.0: design audit 2 — the ground is one painted plate (mesas/ribbons/water bodies), tile stamping retired; v9.1: design audit 3 stages A–C — 2× retina render, signature-colour band, per-biome scatter kits (16 pieces × 5 biomes), landform variants (5 silhouettes per biome); v9.2: stages D–E — the bestiary reads apart (signature-colour foes), venue kit re-framed as objects; v9.3: scale & placement audit — 8 findings fixed (causeways, floating venue pieces, outcrops on roads, cluster piles, toy scale, rectangular ponds); v9.4: venues ARE the world — floor slabs deleted, fight grounds baked into the plate, no-baked-floor art pipeline, emissive prop light, scatter wave 3 (24/biome); v9.5: the map itself de-gridded — meandering roads, segmented ridges, varied attic partitions (SP9/SP11 closed); v9.6: road corners melt into curves, region-entry gates; v9.7: the HLD grade — saturated region palettes, near-black frame, living light; v9.8: the hash scatter is DELETED — every prop is an authored placement (288 pieces, 128 vignettes); v9.9: the hand-pixeled fidelity pass + green-screen despill; v9.10: one world unit (canonical metre scale) + the world moves; v9.11: one pixel register — world scale baked into the art itself; v9.12: the CAST joins the register (band + foes flat-cel requantized to per-frame budgets) and every retired-era art asset (dead hero/arena-bg/UI-icon loads) is deleted outright; v9.13: every AI-generated sprite gets a forced dark outline (skatopia.py's own "single biggest reads as real pixel art win," finally applied past the hand-authored pieces); **v9.14: fights scar the ground they happen on (persistent hit decals) — closing the combat-drama gap a direct HLD comparison surfaced.** |
+| Status | **Active v11.0** — **the beauty pivot: pixel art is retired as the aesthetic.** The game keeps its world, mood, and palette but is now a **high-fidelity painterly 2D** game: smooth rendering, HD-authored art, no pixelation/quantization/forced outlines anywhere in the pipeline (§7.1, §11.1, §10.6; migration §20.5). Prior: v10.0: **the solo pivot** — the band cast is retired; the game is **Mir**, alone, searching the drowned world for his toddler son **Nari**; the Conductor is revealed as the instrument of **Lunal**, a masked huntress (§8.4/§8.7); v10.1: the art-cohesion pass ([audit](../design/art-cohesion-audit.md) findings applied: legacy-register screens restyled, quantization escapees fixed, texel scales snapped, cohesion lint added). Prior: v8.0: enterprise rewrite per the [PRD audit](./prd-audit-2026-07-14.md); v8.1: P1 beat truth; v8.2: P2+P3 (four-tier judgment, ultimate, phased boss, Sightread, §9.3 parity) + mobile hardening; v8.3: SFX/relics/hygiene/retired-code deletion; v8.4: landforms; v8.5: the ending (FinaleScene) + wordmark + VFX; v8.6: §8.6 curriculum as authored data + enemy state motion; v8.7: balance harness + measured balance pass; v8.8: onset-snapped grids + elevation shading; v8.9: soak + bundle split; v9.0: design audit 2 — the ground is one painted plate (mesas/ribbons/water bodies), tile stamping retired; v9.1: design audit 3 stages A–C — 2× retina render, signature-colour band, per-biome scatter kits (16 pieces × 5 biomes), landform variants (5 silhouettes per biome); v9.2: stages D–E — the bestiary reads apart (signature-colour foes), venue kit re-framed as objects; v9.3: scale & placement audit — 8 findings fixed (causeways, floating venue pieces, outcrops on roads, cluster piles, toy scale, rectangular ponds); v9.4: venues ARE the world — floor slabs deleted, fight grounds baked into the plate, no-baked-floor art pipeline, emissive prop light, scatter wave 3 (24/biome); v9.5: the map itself de-gridded — meandering roads, segmented ridges, varied attic partitions (SP9/SP11 closed); v9.6: road corners melt into curves, region-entry gates; v9.7: the HLD grade — saturated region palettes, near-black frame, living light; v9.8: the hash scatter is DELETED — every prop is an authored placement (288 pieces, 128 vignettes); v9.9: the hand-pixeled fidelity pass + green-screen despill; v9.10: one world unit (canonical metre scale) + the world moves; v9.11: one pixel register — world scale baked into the art itself; v9.12: the CAST joins the register (band + foes flat-cel requantized to per-frame budgets) and every retired-era art asset (dead hero/arena-bg/UI-icon loads) is deleted outright; v9.13: every AI-generated sprite gets a forced dark outline (skatopia.py's own "single biggest reads as real pixel art win," finally applied past the hand-authored pieces); **v9.14: fights scar the ground they happen on (persistent hit decals) — closing the combat-drama gap a direct HLD comparison surfaced.** |
 | Owner | Amir Bukhari |
 | Author | Amir Bukhari (compiled from concept notes, deep research, and live-play feedback) |
 | Created | 2026-07-08 |
@@ -25,6 +25,7 @@ and [`docs/design/aaa-audit.md`](../design/aaa-audit.md).
 
 | Version | Date | Change |
 |---|---|---|
+| **11.0** | **2026-07-16** | **The beauty pivot — "we're not making a pixel art game anymore, I just want a beautiful game."** Pixel art is retired as the aesthetic; the drowned-gothic world, the Mir/Nari/Lunal story, the HLD-register staging (colossal silhouettes, emissive light, one-palette-five-moods) all stay — rendered as **high-fidelity painterly 2D** instead of chunky texels. Engine: smooth rendering (antialias on, `pixelArt`/`roundPixels` off, `image-rendering: pixelated` removed), canvas raised to 4× the design space with text rasterized at canvas resolution. Pipeline: AI generations are imported at native painterly fidelity — the pixelate/quantize/outline passes (`fidelity_pass`, `requantize_cast`, `outline_pass`, the /9 value ramp, cohesion-lint colour budgets) are retired from the production path; the cohesion lint is re-scoped to structural checks (keying, orphan islands, backdrop cards). The ground plate re-renders unquantized. Because every committed sprite is a downscaled-and-crunched derivative of a discarded raw, the art library must be **regenerated at HD** — staged migration tracked in §20.5; the game remains fully playable with the v10 pixel art wherever HD art hasn't landed yet. |
 | **10.1** | **2026-07-16** | **The art-cohesion pass.** Owner: "it doesn't feel cohesive at all." Full-sweep audit ([`docs/design/art-cohesion-audit.md`](../design/art-cohesion-audit.md)) root-caused the feel to four coexisting art generations plus unevenly applied cohesion passes. Applied: the audio gate/menu backdrop and Calibration/Save screens leave the legacy register (C1); quantization/bloom escapees requantized and the two shipped pipeline glitches fixed (C4/C5); non-integer render scales snapped to the texel grid and the duplicate ink shipwreck landmark retired (C6 + C1); a **cohesion lint** now gates regeneration (max colours per class, single-island silhouette, no rectangular backdrop) so the audit's checks are permanent. |
 | **10.0** | **2026-07-16** | **The solo pivot — Mir, Nari, and Lunal.** Owner: "we're getting rid of the band idea. it's just one character… Mir… he has a toddler named Nari, we have to find him. the conductor is controlled by a masked huntress named Lunal." The four-piece band cast (v7.9 "Inhalants") is **retired as fiction**: the playable character is **Mir** (lead guitar — the former Amir slot, renamed); the follower conga is deleted; bassist/vocalist/drummer sprites and their generator paths are removed. The campaign gains its stated objective: **Mir is searching for his missing toddler son, Nari** — the critical path is the search, told environmentally (§8.8, no dialogue). The Conductor is re-specified as **Lunal's instrument**: a masked huntress conducts the conductor (§8.7); v1 reveals her through staging at the finale, a Lunal fight is a v2 candidate (§18). The *soundtrack attribution is unchanged* — the six recorded tracks remain by the real-world band Inhalants (§11.2); only the in-fiction cast changes. |
 | 0.1–1.4 | 2026-07-08 | Initial synthesis → enterprise PRD structure; music tooling (`gbmusic`) and demo-master slicing decisions. |
@@ -221,7 +222,7 @@ Every KPI below is measurable from events that fire on the **shipped** game path
 | Scope shape | One continuous, hand-authored five-region world (§8.8) with the critical path (five fights, one per region, each region's boss met in-place) and a substantially larger exploration layer around it. |
 | Combat | Real-time rhythm-action, fought **in the world** (§8.2): the camera locks to a room of the actual overworld around the foe. No separate battle scenes on the shipped path. |
 | Camera / layout | Top-down, HLD-style, everywhere — one camera model for exploration and combat. |
-| Aesthetic | Pixel-art in the *Hyper Light Drifter* register (§11.1) at 320×180 logical resolution; art sourced via the AI-generation + import pipeline (§11.1). |
+| Aesthetic | **High-fidelity painterly 2D** (v11.0 — supersedes "pixel-art"): the *Hyper Light Drifter* staging register (colossal silhouettes, vivid limited accents, emissive light on near-black depths) rendered as smooth painted illustration, 320×180 design space at 4× canvas resolution; art sourced via the AI-generation + HD import pipeline (§11.1). |
 | Music | Six recorded Inhalants tracks are the soundtrack (§11.2). Each shipped track carries an authored beat map; combat judgment derives from the audible track (§8.3). |
 | Narrative | Environmental only. World-bible canon (§5a/§5b) surfaces through staged scenes and echoes (§8.8.2) — never dialogue trees or lore dumps. |
 | Session target | 10–20 minute sessions; 2–3 hour first completion. |
@@ -588,9 +589,11 @@ phases — re-targeted at §8.7's section-based phases when built).
 
 ### 10.6 Rendering and scene architecture
 
-- Fixed logical resolution **320×180**, 16:9, integer scaling, `image-rendering:
-  pixelated`. Generated art is authored at up to ~1.5× logical density (v7.13) with
-  engine scales compensating — more detail per screen pixel, same on-screen sizes.
+- Fixed logical design space **320×180**, 16:9; the canvas renders at **4×**
+  (1280×720) with cameras zoomed to the design rect, smooth-scaled to the viewport
+  (v11.0: `pixelArt`/`roundPixels` off, antialias on, no `image-rendering: pixelated`).
+  Text rasterizes at canvas resolution so UI stays crisp under the zoom. Art is
+  authored at ≥2× its on-screen size and downsampled — never upsampled.
 - Scene stack (`src/main.ts`):
 
 | Scene | Status | Purpose |
@@ -619,46 +622,53 @@ browser restart (release gate #6).
 
 ## 11. Content and UX Requirements
 
-### 11.1 Art direction — *Hyper Light Drifter* register
+### 11.1 Art direction — beautiful painterly 2D, HLD staging (v11.0)
 
-**Target feel:** colossal, imposing, silhouette-first enemies dwarfing a small nimble
-player; a vivid, ruthlessly limited palette (abyssal teal, plum/magenta, ember-gold,
-blood on desaturated near-black); additive glow on eyes, arcs, telegraphs, and the
-chorus's light. Emissive readability is a hard requirement: every telegraph and
-hitbox-active frame glows so the real-time fight reads at a glance.
+**Target feel:** every frame reads as a **painted illustration** — soft atmospheric
+light, real material rendering, depth of tone — staged the way *Hyper Light Drifter*
+stages: colossal, imposing, silhouette-first enemies dwarfing a small nimble player; a
+vivid, ruthlessly limited palette (abyssal teal, plum/magenta, ember-gold, blood on
+desaturated near-black); additive glow on eyes, arcs, telegraphs, and the chorus's
+light. Emissive readability is a hard requirement: every telegraph and hitbox-active
+frame glows so the real-time fight reads at a glance. **What is retired (v11.0):**
+deliberate pixelation as a style — chunky texels, palette quantization, posterized
+value ramps, forced 1px outlines, integer-texel discipline. Beauty bar: a stranger
+shown any screenshot should say "that's a beautiful painting," not "that's pixel art."
 
-**Sourcing (v8.0 — supersedes all "no image generation" language):** production art is
-**AI-generated through the in-repo pipeline** and deterministically imported —
-`tools/pixelart/generate_ai.py` (keyless Flux via Pollinations) → cleanup passes
-(background flood-key, largest-island filtering, mist-scrub) → `smooth_downscale()`
-(clean LANCZOS, hard alpha, **no palette quantization** since v7.14) → committed PNGs
-in `assets/` slots. Prompts are cataloged 1:1 with the manifest in
-[`docs/design/art-prompts.md`](../design/art-prompts.md); style coherence comes from
-shared per-biome/per-cast style clauses and a **pinned top-down camera clause** in
-every environment prompt (the v7.10 audit's root-cause fix). Hand-drawn or
-commissioned art drops into the same slots and always wins over generated art.
-Procedural code-drawn art (`tools/pixelart/`) remains the fallback for not-yet-generated
-slots and all deterministic regeneration plumbing.
+**Sourcing (v11.0):** production art is **AI-generated through the in-repo pipeline**
+and imported at native painterly fidelity — `tools/pixelart/generate_ai.py` (keyless
+Flux via Pollinations) → cleanup passes (background flood-key, largest-island
+filtering, mist-scrub) → **HD import**: smooth LANCZOS resize to the slot's target
+size at 2–4× the old texel budget, soft alpha edges kept, **no pixelate, no palette
+quantization, no outline pass, no value ramp**. Prompts are cataloged 1:1 with the
+manifest in [`docs/design/art-prompts.md`](../design/art-prompts.md) (style clauses
+re-cut from "16-bit pixel art sprite" to "painted game illustration"); style coherence
+comes from shared per-biome/per-cast style clauses and the pinned top-down camera
+clause. Hand-drawn or commissioned art drops into the same slots and always wins.
+The v10 pixel pipeline (`fidelity_pass`, `requantize_cast`, `outline_pass`,
+`bake_cast` crunch steps) is retired from the production path; slots not yet
+regenerated ship the v10 pixel art until their HD art lands (§20.5).
 
 | Asset type | Spec |
 |---|---|
-| Base resolution | 320×180 logical; art authored up to ~1.5× density (§10.6) |
-| Tile size | 16×16 |
-| Player sprite | small, silhouette-readable Mir (recognizable at world scale; red guitar signature) |
-| Standard enemy | 48×48+; elites/bosses colossal (the Conductor ~2.9× player height, native-resolution) |
+| Design space | 320×180 logical layout; canvas renders at 4× (1280×720); art authored at ≥2× its on-screen size so it downsamples, never upsamples |
+| Ground | painted plate (paint_ground.py), unquantized, 2× density |
+| Player sprite | small, silhouette-readable Mir (red guitar signature), ~100px source frames |
+| Standard enemy | elites/bosses colossal (the Conductor ~2.9× player height); ≥2× density sources |
 | Glow/bloom | additive emissive layer on eyes, edges, telegraphs, hazards; beat-pulsing accents |
-| Environments | designed floors and venues (§11.1.1) — no noise fills, no void centres |
+| Environments | designed venues (§11.1.1) — no noise fills, no void centres |
 | Animation | low frame count, high pose contrast (anticipation → impact → recovery), 8–12 fps; strips derived from one base pose per character for identity stability |
 | Palette policy | master palette discipline; per-region dominant hue ("one palette, five moods") |
 
-**Acceptance criteria** (judged, not vibes): (1) no tint-swaps or upscales — bosses at
-native colossal resolution; (2) animation states, not static sprites (§11.5 standard);
-(3) every arena/venue a distinct authored place (§11.1.1); (4) consistent light source
-+ emissive pass; (5) master-palette discipline; (6) deterministic regeneration
-(`generate_all.py` + committed generator scripts); (7) designed surfaces — every tile
-reads as *grass/stone/water*, never RNG static; (8)–(10) per the §11.5 manifest: every
-row filled with real art, every character/enemy carrying its full state set, every
-biome a full tileset + props. Gaps tracked in §20.4 only — never implied shipped.
+**Acceptance criteria** (judged, not vibes): (1) no upscaled or crunched art — every
+source at or above its rendered size; (2) animation states, not static sprites (§11.5
+standard); (3) every arena/venue a distinct authored place (§11.1.1); (4) consistent
+light source + emissive pass; (5) palette discipline without posterization; (6)
+regeneration through committed scripts + the structural cohesion lint (keying, orphan
+islands, backdrop cards — colour budgets retired with the pixel register); (7)
+designed surfaces — every stretch of ground reads as *grass/stone/water*, never RNG
+static; (8)–(10) per the §11.5 manifest. Gaps tracked in §20.4/§20.5 only — never
+implied shipped.
 
 ### 11.1.1 Environments — every fight happens in a specific place
 
@@ -689,6 +699,41 @@ trees whose crowns overhang the play space, drawn **above the player layer** and
 alpha-fading while the player walks beneath (the HLD height trick). Deterministic
 cell-hash scatter, kept clear of markers/echoes/spawn. Elevation shading/terracing
 remains a future polish item.
+
+### 11.1.2 Production pipeline (v11.0 — owner-supplied method, adapted to painterly HD)
+
+The owner's production method, adopted as the standing art process (adapted from its
+pixel-art framing to the painterly register; tool equivalents mapped to this repo's
+browser/Phaser stack):
+
+1. **Golden scene first.** One finished reference screen — player, one enemy, ground,
+   venue dressing, lighting, and UI in frame — is the binding visual reference every
+   asset is judged against. Current golden scene: the Shallows fight capture
+   (`audit-7`, post-v11.0) with the HD cast; it is **draft** until the Shallows env
+   kit is HD (then re-captured and frozen).
+2. **Freeze the rules immediately; never prompt each asset from scratch.** Frozen at
+   v11.0: 320×180 design space at 4× canvas; player 25 world-px; enemies at
+   world size via fixed scale contracts (`hd_cast.py` header) and env via
+   `WorldScale.ts` metres; the master palette + per-region dominant hue; cool
+   overcast key light with teal/ember emissives; soft alpha edges, **no outlines**;
+   animation budgets — idle 2–4, walk/run 4–6, attack 3–5, damage 2, death 4–6
+   frames, secondary motion from tweens/particles/shake, never more frames.
+   Every generation uses the shared style clause + a per-slot subject.
+3. **AI generates concepts and bases, not per-frame art.** One approved base pose
+   per character; strips derive procedurally from it (identity stability). Enemy
+   variants recolour/derive rather than regenerate. Once ~5–20 approved references
+   exist, training a custom LoRA (e.g. Scenario) for batch-consistent env kits is
+   the sanctioned scale-up path (open question §18).
+4. **Environments from reusable kits** per biome with palette/damage/vegetation
+   variants (the existing env-kit + dressing.json system).
+5. **Work inside the game constantly.** Every batch is reviewed via the e2e capture
+   sweep (`audit.spec.ts`) at actual scale before it counts as shipped.
+6. **Priority order:** player readability → combat animations → collision/ground →
+   enemies → interactive props → backgrounds → decorative variants → portraits/
+   marketing. §20.5's stages follow this order.
+7. **Disclosure:** shipped art is AI-generated + procedurally derived; if the game
+   ever moves to a storefront (§18), its generative-AI content survey must disclose
+   this.
 
 ### 11.2 Music and audio content spec (v8.0 — the recorded soundtrack)
 
@@ -732,9 +777,9 @@ information never relies on color alone. Once §8.3 tiers land, judgment feedbac
 
 | Asset | Location | Status |
 |---|---|---|
-| Playable character Mir (idle/run/attack strips, derived from one base pose) | `assets/sprites/band/mir/` | Shipped (v10.0: solo pivot — the former Amir slot renamed; bassist/vocalist/drummer sprites deleted; hand-drawn originals archived in `assets/reference/band-original/`) |
+| Playable character Mir (idle/run/attack strips, derived from one base pose) | `assets/sprites/band/mir/` | Shipped (v11.0 HD painterly, `hd_cast.py`, 200px frames; v10.0 solo pivot deleted the other three members; hand-drawn originals archived in `assets/reference/band-original/`) |
 | Nari (finale staging) + Lunal (masks, reveal silhouette) | — | **Open (v10.0):** specced §8.4/§8.7, no art shipped — tracked §20.2 |
-| Foes (slime, drifter, elite wraith) + the colossal Conductor | `assets/sprites/enemies/` | Shipped (v7.11 resprite in the cast's register; Conductor native-resolution) |
+| Foes (slime, drifter, elite wraith) + the colossal Conductor | `assets/sprites/enemies/` | Shipped (v11.0 HD painterly, `hd_cast.py`, 4× frames incl. both Conductor sheets) |
 | Six-track soundtrack + beat-grid maps | `assets/audio/*.mp3` (~45 MB, lazy-loaded) + `src/data/content/songs/*.json` | Shipped (v7.7 audio; v8.1 measured beat grids via `tools/audio/measure_beats.py`). Listening-pass verification owed (§20.2) |
 | Five-region overworld (130×34 Tiled JSON, BFS-validated reachability) + 20-tile sheet | `assets/tilemaps/`, `tools/overworld/generate_overworld_map.py` | Shipped (v7.0; ground/water/clustering/value pass v7.12; de-pixelation v7.14) |
 | Environment kits (5 biomes + shared, 28 pieces) + venue composition | `assets/sprites/env/`, `tools/pixelart/envkit.py`, `ArenaComposer.ts` | Shipped (v7.11 coherent top-down kits; v7.14 world venues) |
@@ -872,7 +917,8 @@ storefront distribution.
 2. The game boots into a user-gesture audio gate; no prohibited autoplay.
 3. The Conductor's phase transitions execute on bar boundaries of the audible track
    without desync (§8.7).
-4. Pixel art remains crisp at supported resolutions (integer-scaled 320×180).
+4. Art renders at full fidelity at supported resolutions — no upscale blur from
+   under-resolved sources, no pixelated scaling artifacts (v11.0).
 5. Every §9.3 accessibility feature is present, discoverable, and functional **on the
    shipped combat path**.
 6. Save data persists in IndexedDB across refresh and browser restart.
@@ -1040,6 +1086,29 @@ manifest burn-down**: the v7.15 landform art pass (colossal outcrops, canopy
 overhangs above the player layer), character animation-state depth, the VFX library,
 the hand-lettered wordmark, and real recorded SFX into the `SfxPlayer` slots. Then
 P5 hardening (real-device QA matrix, Firefox root-cause, balance, soak).
+
+### 20.5 The v11.0 HD migration (beauty pivot) — staged status
+
+The committed art library is downscaled-and-crunched pixel derivatives of discarded
+raws, so every category must be **regenerated at HD**. The game stays fully playable
+throughout; un-migrated slots ship their v10 pixel art. Stages, in order of on-screen
+area / player exposure:
+
+| Stage | Scope | Status |
+|---|---|---|
+| Engine | smooth rendering, 4× canvas, crisp text | ✅ shipped v11.0 (pixelArt/roundPixels off, text at canvas resolution, capture sweep green) |
+| Title + menus | full-fidelity key-art backdrop | ✅ shipped v11.0 (1280×720 key-art, all menu/flow scenes) |
+| Ground plate | unquantized repaint | ✅ shipped v11.0 (Bayer-dither/value-ramp retired from paint_ground.py) |
+| Cast | Mir strips (HD base pose → derived strips) | ✅ shipped v11.0 (`hd_cast.py`, 200px frames, screenshot-reviewed) |
+| Foes | slime/drifter/wraith idles + both Conductor sheets | ✅ shipped v11.0 (`hd_cast.py`, 4× frames, screenshot-reviewed) |
+| **Golden scene** (§11.1.2) | Shallows fight capture, frozen as reference | **draft** — awaits the Shallows env kit, then freeze |
+| Environment kits | ~150 pieces across 5 biomes (landforms → venue kit → scatter) | open — next stage; batch AFTER the golden scene freezes (§11.1.2 rule 1) |
+| Overworld figures | NPCs, props sheet, echo rune, save obelisk | open |
+| UI | panels, wordmark (re-letter at HD) | open |
+| FX | glow/spark/haze/godray re-render soft | open (current fx read fine under ADD blending) |
+
+*(Update the Status column as stages land; a stage is "shipped" only after an
+in-game screenshot review, per the standing review-and-reroll discipline.)*
 
 ### 20.4 Asset-manifest progress
 

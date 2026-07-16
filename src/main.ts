@@ -1,5 +1,29 @@
 import Phaser from "phaser";
-import { gameConfig } from "./config/GameConfig";
+import { gameConfig, RENDER_SCALE } from "./config/GameConfig";
+
+// v11.0 beauty pivot: cameras zoom the 320x180 design space up to the 4x
+// canvas, and Phaser rasterizes Text at style resolution 1 by default --
+// which the zoom then blurs. Default every scene's add.text/make.text to
+// canvas resolution so ALL existing UI text stays crisp without touching
+// every call site.
+const textFactory = Phaser.GameObjects.GameObjectFactory.prototype.text;
+Phaser.GameObjects.GameObjectFactory.prototype.text = function (
+  this: Phaser.GameObjects.GameObjectFactory,
+  x: number,
+  y: number,
+  text: string | string[],
+  style?: Phaser.Types.GameObjects.Text.TextStyle
+) {
+  return textFactory.call(this, x, y, text, { resolution: RENDER_SCALE, ...style });
+};
+const textCreator = Phaser.GameObjects.GameObjectCreator.prototype.text;
+Phaser.GameObjects.GameObjectCreator.prototype.text = function (
+  this: Phaser.GameObjects.GameObjectCreator,
+  config: Phaser.Types.GameObjects.Text.TextConfig,
+  addToScene?: boolean
+) {
+  return textCreator.call(this, { ...config, style: { resolution: RENDER_SCALE, ...config.style } }, addToScene);
+};
 import { BootScene } from "./scenes/BootScene";
 import { AudioGateScene } from "./scenes/AudioGateScene";
 import { MainMenuScene } from "./scenes/MainMenuScene";

@@ -256,7 +256,7 @@ export class OverworldScene extends Phaser.Scene {
     // Mir's frames are 48x48 with the figure ~37px tall; scaled to ~0.52 he
     // stands ~1.2 tiles against the 16px tiles (feet-anchored so he sits on
     // the tile centre). Idle breathes until the player moves.
-    this.player.setOrigin(0.5, 0.9).setScale(0.5); // 50px frames baked (bake_cast.py): 25px world, integer texels
+    this.player.setOrigin(0.5, 0.9).setScale(0.125); // 200px HD frames (hd_cast.py): 25px world, 4x canvas density
     this.player.setDepth(5);
     this.player.play("leader_idle");
     this.snapPlayerToGrid();
@@ -267,7 +267,6 @@ export class OverworldScene extends Phaser.Scene {
     this.cameras.main.setZoom(RENDER_SCALE);
     this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
     this.cameras.main.startFollow(this.player, true, 1, 1);
-    this.cameras.main.setRoundPixels(true);
 
     const keyboard = this.input.keyboard!;
     this.cursors = keyboard.createCursorKeys();
@@ -993,7 +992,7 @@ export class OverworldScene extends Phaser.Scene {
       .setAlpha(status === "locked" ? 0.08 : 0.3)
       .setDepth(3);
 
-    const foe = this.add.sprite(x, footY, tex, 0).setOrigin(0.5, 1).setScale(1).setDepth(4.5);
+    const foe = this.add.sprite(x, footY, tex, 0).setOrigin(0.5, 1).setScale(0.25).setDepth(4.5);
     // the live fight hides these when the player walks into the foe
     this.nodeFoeVisuals.set(marker.nodeId, [foe, aura, foeShadow]);
     if (status === "locked") {

@@ -23,7 +23,7 @@ export class MainMenuScene extends Phaser.Scene {
     // the shared backdrop if it somehow isn't loaded. A soft top scrim keeps
     // the wordmark legible over the art.
     if (this.textures.exists("bg_title")) {
-      this.add.image(BASE_WIDTH / 2, BASE_HEIGHT / 2, "bg_title").setDepth(-10);
+      this.add.image(BASE_WIDTH / 2, BASE_HEIGHT / 2, "bg_title").setDisplaySize(BASE_WIDTH, BASE_HEIGHT).setDepth(-10);
       this.add.rectangle(0, 0, BASE_WIDTH, 92, 0x05060a, 0.42).setOrigin(0, 0).setDepth(-9);
       this.add.rectangle(0, 96, BASE_WIDTH, BASE_HEIGHT - 96, 0x05060a, 0.3).setOrigin(0, 0).setDepth(-9);
     } else {
