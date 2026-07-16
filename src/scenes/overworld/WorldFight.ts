@@ -122,6 +122,11 @@ export class WorldFight {
   private beatPulse: Phaser.GameObjects.Arc;
   private attackGlow: Phaser.GameObjects.Image;
   private hud: Phaser.GameObjects.GameObject[] = [];
+  /** Persistent ground-scuff decals stamped at every hit -- the fight scars
+   * the ground it happens on (the HLD boss-room "battle happened here"
+   * read), rather than resetting to pristine after every impact spark. */
+  private groundDecals: Phaser.GameObjects.RenderTexture | null = null;
+  private decalStamp: Phaser.GameObjects.Image | null = null;
 
   constructor(host: WorldFightHost, nodeId: string, encounterId: string, nodeWorldX: number, nodeWorldY: number) {
     this.scene = host.scene;
@@ -157,6 +162,11 @@ export class WorldFight {
     this.fx = this.scene.add.graphics().setDepth(8);
     this.bars = this.scene.add.graphics().setDepth(8.5);
     this.attackGlow = this.scene.add.image(0, 0, "glow").setBlendMode(Phaser.BlendModes.ADD).setTint(0xf4d27a).setDepth(7).setAlpha(0);
+    // ground scars: depth 3 sits above the painted plate/venue dressing (<=2.6)
+    // and below every fighter's shadow/sprite (>=3.5), so scuffs read as part
+    // of the ground, not a decal floating over the fight.
+    this.groundDecals = this.scene.add.renderTexture(this.rect.x, this.rect.y, BASE_WIDTH, BASE_HEIGHT).setOrigin(0, 0).setDepth(3);
+    this.decalStamp = this.scene.add.image(0, 0, "glow").setVisible(false);
 
     // HUD: the camera is locked to this.rect for the whole fight, so
     // screen-space UI is simply placed at rect + design offset (the retina
@@ -358,6 +368,30 @@ export class WorldFight {
     return tier === "perfect" || tier === "great";
   }
 
+  /** Stamps 2-3 small dark scuffs into the ground at a hit's WORLD position --
+   * a persistent scar, not a transient spark. Reduced-motion still gets the
+   * scuffs (they're static ground detail, not motion) but photosensitivity
+   * safe mode skips them (rapid stamping during a flurry is still "flashing
+   * new content" territory). Coordinates are LOCAL to the render texture,
+   * which sits at this.rect's origin. */
+  private stampScuff(worldX: number, worldY: number, color: number): void {
+    if (!this.groundDecals || !this.decalStamp) return;
+    if (GameContext.activeProfile?.settings.photosensitivitySafeMode) return;
+    const lx = worldX - this.rect.x;
+    const ly = worldY - this.rect.y;
+    const n = 2 + Math.floor(Math.random() * 2);
+    for (let i = 0; i < n; i++) {
+      const dx = (Math.random() - 0.5) * 14;
+      const dy = (Math.random() - 0.5) * 8 + 3; // biased toward the feet, not the head
+      this.decalStamp
+        .setTint(color)
+        .setAlpha(0.55 + Math.random() * 0.25)
+        .setScale(0.13 + Math.random() * 0.06)
+        .setAngle(Math.random() * 360);
+      this.groundDecals.draw(this.decalStamp, lx + dx, ly + dy);
+    }
+  }
+
   /** §11.3 judgment feedback: a brief tier label above the player. Off-tier
    * presses show nothing (information, not punishment). */
   private showTierPopup(tier: BeatTier): void {
@@ -441,7 +475,10 @@ export class WorldFight {
     const settings = GameContext.activeProfile?.settings;
     // Battle SFX from sim state transitions (never from render state).
     const p = getPlayer(this.arena);
-    if (this.prevPlayerHp >= 0 && p.hp < this.prevPlayerHp - 0.01) this.sfx?.hurt();
+    if (this.prevPlayerHp >= 0 && p.hp < this.prevPlayerHp - 0.01) {
+      this.sfx?.hurt();
+      this.stampScuff(this.playerSprite.x, this.playerSprite.y, 0x8a2020);
+    }
     this.prevPlayerHp = p.hp;
     const reduced = Boolean(settings?.reducedMotion);
     if (p.state === "dash" && !this.wasDashing) {
@@ -638,6 +675,11 @@ export class WorldFight {
       const prev = this.lastEnemyHp.get(e.id) ?? e.hp;
       if (e.hp < prev - 0.01) {
         this.sfx?.hit(p.attack?.onBeat ?? false);
+        // darken the foe's accent toward black -- a bruise/ichor stain in
+        // its colour family, not a bright paint splash
+        const r = (accent >> 16) & 0xff, g = (accent >> 8) & 0xff, b = accent & 0xff;
+        const bruise = ((r * 0.6) << 16) | ((g * 0.6) << 8) | (b * 0.6);
+        this.stampScuff(wx, wy, bruise);
         if (!reduced) {
           const spark = this.scene.add.image(wx, wy - 8, "spark").setBlendMode(Phaser.BlendModes.ADD).setDepth(9).setScale(0.35).setTint(0xfff4d0);
           this.scene.tweens.add({ targets: spark, scale: 1.1, alpha: 0, angle: 40, duration: 220, onComplete: () => spark.destroy() });
