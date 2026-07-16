@@ -271,7 +271,8 @@ def render(input_path, output_path, work_dir, wavetable="saw", stereo=True,
     sr = 44100
     echo = (arr_stats["echo_delay_s"], 0.4, arr_stats["echo_wet"])
     audio = render_song(plan, duration, sr=sr, stereo=stereo,
-                        mix=(1.0, 0.86, arr_stats["mix_wave"], 0.5), echo=echo)
+                        mix=(1.0, 0.92, arr_stats["mix_wave"],
+                             arr_stats["mix_noise"]), echo=echo)
 
     print("[5/5] QA + encode")
     print(f"      melody agreement (is it the tune): {arr_stats.get('melody_agreement')}")
@@ -303,9 +304,10 @@ def main():
                     choices=("saw", "triangle", "organ"))
     ap.add_argument("--mono", action="store_true")
     ap.add_argument("--report", default=None, help="write a JSON QA report")
-    ap.add_argument("--style", default="balanced",
-                    choices=("clean", "balanced", "full"),
-                    help="production style / density (see arrange.STYLES)")
+    ap.add_argument("--style", default="driving",
+                    choices=("tight", "driving", "wall",
+                             "clean", "balanced", "full"),
+                    help="intensity: tight / driving / wall (see arrange.STYLES)")
     args = ap.parse_args()
 
     if args.work_dir:

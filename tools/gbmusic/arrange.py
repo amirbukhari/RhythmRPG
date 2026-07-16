@@ -787,10 +787,28 @@ def guarantee_coverage(plan, trans, grid, win=0.09, cap=4, passes=5):
 MEL_RANGE = ("C3", "C6")
 
 
-def extract_melody(mix_path, grid, cache_path, hop=256):
+def stem_energy(path):
+    """Mean RMS of a stem — used to tell if a song has a real vocal line."""
+    import librosa
+    y, sr = librosa.load(path, sr=22050, mono=True)
+    return float(np.sqrt(np.mean(y ** 2)))
+
+
+def pick_melody_source(stems):
+    """The melody lives in the isolated voice, not the crowded mix: the
+    vocal stem when a song is sung, the lead-instrument ('other') stem when
+    it's an instrumental. Returns (path, which)."""
+    voc = stem_energy(stems["vocals"])
+    oth = stem_energy(stems["other"])
+    if voc >= 0.16 * oth and voc > 1e-4:
+        return stems["vocals"], "vocals"
+    return stems["other"], "other"
+
+
+def extract_melody(src_path, grid, cache_path, hop=256):
     """The song's dominant melodic line as notes [[midi, start, end, vel]],
-    from a harmonic-salience CQT of the full mix restricted to the melody
-    register, octave-continuity-smoothed. Natural timing (follows the
+    from a harmonic-salience CQT of an ISOLATED stem restricted to the
+    melody register, octave-continuity-smoothed. Natural timing (follows the
     recording), not grid-quantized — that's what makes it sound like the
     song."""
     if os.path.exists(cache_path):
@@ -798,7 +816,7 @@ def extract_melody(mix_path, grid, cache_path, hop=256):
             return [list(x) for x in json.load(f)]
     import librosa
     from scipy.ndimage import median_filter
-    y, sr = librosa.load(mix_path, sr=22050, mono=True)
+    y, sr = librosa.load(src_path, sr=22050, mono=True)
     fmin = librosa.note_to_hz("C1")
     C = np.abs(librosa.cqt(y, sr=sr, hop_length=hop, fmin=fmin,
                            n_bins=72, bins_per_octave=12))
@@ -807,26 +825,48 @@ def extract_melody(mix_path, grid, cache_path, hop=256):
                          weights=[1.0, 0.5, 0.4, 0.3, 0.2], fill_value=0.0)
     lo = librosa.note_to_midi(MEL_RANGE[0]) - 24
     hi = librosa.note_to_midi(MEL_RANGE[1]) - 24
-    band = S[lo:hi + 1]
+    band = S[lo:hi + 1]                      # (nb, nframes)
     times = librosa.times_like(S, sr=sr, hop_length=hop)
+    nb, nf = band.shape
 
-    # Viterbi-lite: argmax per frame, then octave-continuity + median smooth.
-    raw = lo + np.argmax(band, axis=0)
-    strength = band.max(axis=0)
-    voiced = strength > np.percentile(strength[strength > 0], 42)
-    midi = 24.0 + raw
-    # pull octave jumps toward the running median of recent voiced pitches
-    ref = None
-    for i in range(len(midi)):
-        if not voiced[i]:
-            continue
-        if ref is not None:
-            while midi[i] - ref > 7:
-                midi[i] -= 12
-            while ref - midi[i] > 7:
-                midi[i] += 12
-        ref = midi[i] if ref is None else 0.8 * ref + 0.2 * midi[i]
-    midi = median_filter(midi, size=7)
+    # Proper Viterbi pitch tracking: emission = per-frame salience (column-
+    # normalized), transition = a linear penalty on the semitone jump, solved
+    # per frame in O(nb) via a max-plus distance transform. This tracks the
+    # melodic line through momentary drop-outs and kills the octave/argmax
+    # jitter the old argmax path produced.
+    emit = band / (band.max(axis=0, keepdims=True) + 1e-9)
+    lam = 0.18                               # penalty per semitone of jump
+    dp = emit[:, 0].copy()
+    back = np.zeros((nf, nb), dtype=np.int32)
+    idxs = np.arange(nb)
+    for f in range(1, nf):
+        # forward/backward envelope of (dp - lam*|i-j|)
+        left = dp.copy()
+        for i in range(1, nb):
+            left[i] = max(left[i], left[i - 1] - lam)
+        right = dp.copy()
+        for i in range(nb - 2, -1, -1):
+            right[i] = max(right[i], right[i + 1] - lam)
+        best = np.maximum(left, right)
+        # argmax source for backtrace (nearest better neighbour)
+        src = idxs.copy()
+        for i in range(1, nb):
+            if left[i - 1] - lam >= dp[i]:
+                src[i] = src[i - 1]
+        for i in range(nb - 2, -1, -1):
+            if right[i + 1] - lam > max(dp[i], left[i]):
+                src[i] = src[i + 1]
+        back[f] = src
+        dp = emit[:, f] + best
+    path = np.empty(nf, dtype=np.int32)
+    path[-1] = int(np.argmax(dp))
+    for f in range(nf - 1, 0, -1):
+        path[f - 1] = back[f, path[f]]
+    midi = 24.0 + lo + path.astype(float)
+
+    strength = band[path, np.arange(nf)]
+    voiced = strength > np.percentile(strength[strength > 0], 40)
+    midi = median_filter(midi, size=5)
 
     # segment into notes where the rounded pitch holds
     notes = []
@@ -1051,53 +1091,58 @@ def drive_profile(drum_hits, other_track, chords):
 
 
 def arrange_melody_lead(mel_notes, grid):
-    """THE tune on pulse 1 — the extracted melody, loud and clear, at its
-    real octave and natural timing, vibrato on held notes."""
-    beat = float(np.median(np.diff(grid.beats)))
+    """The riff/vocal hook on pulse 1 — the extracted melodic line at its
+    real octave and natural timing. 25% duty for a biting, nasal lead that
+    cuts through a wall of distortion; vibrato only on sustained notes."""
     out = []
     for p, s, e, v in mel_notes:
         out.append(Note(start=float(s), end=float(e), pitch=int(p),
-                        volume=_v(v, 12, 15), duty=0.50, env_period=0,
-                        vibrato_cents=22.0 if (e - s) >= 0.30 else 0.0,
-                        vibrato_hz=5.6, vibrato_delay=0.16))
+                        volume=_v(v, 13, 15), duty=0.25, env_period=0,
+                        vibrato_cents=18.0 if (e - s) >= 0.45 else 0.0,
+                        vibrato_hz=6.0, vibrato_delay=0.20))
     return out
 
 
-HARM_RANGE = (43, 64)   # G2..E4 — a bed UNDER the C3..C6 melody
+POWER_RANGE = (40, 59)   # E2..B3 — chunky low-mid, under the lead
 
 
-def arrange_harmony(chords, grid, drive_windows, vol=8):
-    """A quiet plucky chord bed below the melody: root-3-5 arpeggio re-struck
-    per beat, staccato in verses so it never competes with the lead."""
-    beats = list(grid.beats)
+def arrange_power_chords(chords, grid, drive_windows, vol=11, subdiv=2):
+    """Distorted-guitar energy the chiptune way: POWER CHORDS (root + fifth
+    + octave, no third — the neutral, heavy metal voicing) hammered on a
+    fast grid and palm-muted (short, plucky). subdiv=2 -> eighths, 1 ->
+    sixteenths in the drive sections. This is the wall the lead rides on."""
+    step16 = grid.lines16
     notes = []
     for (a, b, root, kind), drive in zip(chords, drive_windows):
         if root is None:
             continue
-        third = 4 if kind == "maj" else (3 if kind == "min" else 7)
-        r = _fold(48 + root, *HARM_RANGE)
-        tones = (r, r + third, r + 7)
-        strikes = [t for t in beats if a - 1e-3 <= t < b - 1e-3] or [a]
-        for t0 in strikes:
-            nxt = min([t for t in beats if t > t0 + 1e-6] + [b])
-            gate = 0.92 if drive else 0.55       # verses breathe
-            notes.append(Note(start=float(t0), end=float(t0 + gate * (nxt - t0)),
+        r = _fold(48 + root, *POWER_RANGE)
+        tones = (r, r + 7, r + 12)                # root · fifth · octave
+        div = 1 if drive else max(2, subdiv)      # chorus chugs in 16ths
+        grid_pts = step16[(step16 >= a - 1e-4) & (step16 < b - 1e-4)]
+        strikes = grid_pts[::div]
+        for i, t0 in enumerate(strikes):
+            nxt = t0 + (strikes[1] - strikes[0] if len(strikes) > 1
+                        else (b - a) / 8)
+            chug = 0.55 if drive else 0.72        # palm-mute: short, punchy
+            notes.append(Note(start=float(t0),
+                              end=float(t0 + chug * (nxt - t0)),
                               pitch=tones[0], arp_pitches=tones[1:],
-                              arp_hz=18.0, volume=vol, env_period=3))
+                              arp_hz=64.0, volume=vol, env_period=2))
     return notes
 
 
-# Named production styles. Sound quality can't be read off a metric, so the
-# render offers distinct directions to pick from by ear. All are MELODY-FIRST
-# (the tune is the loud lead); they differ only in the backing.
-#   clean    — melody + bass + drums, whisper-quiet harmony bed
-#   balanced — melody forward over a present chord bed and drums
-#   full     — balanced plus a light high-threshold harmony fill (no wash)
+# Intensity presets. These are hardcore punk / metal tracks, so every preset
+# drives hard; they differ in how thick and relentless the guitar wall is.
+#   tight   — lead + palm-muted eighths + drums, clearer separation
+#   driving — sixteenth power-chord chug under the riff (the default)
+#   wall    — driving, hotter, thickest chug
 STYLES = {
-    "clean":    dict(harm_vol=6, mix_wave=0.30, wet=0.20, fill=False),
-    "balanced": dict(harm_vol=8, mix_wave=0.42, wet=0.26, fill=False),
-    "full":     dict(harm_vol=9, mix_wave=0.50, wet=0.28, fill=True),
+    "tight":   dict(power_vol=10, subdiv=2, mix_wave=0.60, mix_noise=0.60, wet=0.16),
+    "driving": dict(power_vol=11, subdiv=1, mix_wave=0.70, mix_noise=0.66, wet=0.18),
+    "wall":    dict(power_vol=12, subdiv=1, mix_wave=0.82, mix_noise=0.70, wet=0.20),
 }
+STYLE_ALIASES = {"clean": "tight", "balanced": "driving", "full": "wall"}
 
 
 def build_plan(name, stems, work_dir, duration, other_notes, drum_hits,
@@ -1105,7 +1150,8 @@ def build_plan(name, stems, work_dir, duration, other_notes, drum_hits,
                style="balanced"):
     """Melody-first assembly. Returns (ChannelPlan, stats)."""
     from gb_apu import ChannelPlan
-    sp = STYLES.get(style, STYLES["balanced"])
+    style = STYLE_ALIASES.get(style, style)
+    sp = STYLES.get(style, STYLES["driving"])
 
     grid, measured = load_grid(name, duration)
 
@@ -1121,35 +1167,29 @@ def build_plan(name, stems, work_dir, duration, other_notes, drum_hits,
         bass_path=stems["bass"])
     drive = drive_profile(drum_hits, other_track, chords)
 
+    # The melody the ear locks onto is the dominant salient line of the FULL
+    # mix (isolated stems are a different, noisier line — measured worse).
+    mel_which = "mix"
     mel = extract_melody(
-        mix_path, grid, os.path.join(work_dir, f"{name}.melody.json")) \
+        mix_path, grid, os.path.join(work_dir, f"{name}.melody.mix.json")) \
         if mix_path else []
 
     lead = arrange_melody_lead(mel, grid)
     noise, kick_times = arrange_noise(drum_hits, grid)
     bass = arrange_bass(bass_track, bass_notes or [], chords, grid, drive)
     pulse2 = inject_kicks(bass, kick_times)
-    wave = arrange_harmony(chords, grid, drive, vol=sp["harm_vol"])
+    wave = arrange_power_chords(chords, grid, drive, vol=sp["power_vol"],
+                                subdiv=sp["subdiv"])
 
     plan = ChannelPlan(pulse1=lead, pulse2=pulse2, wave=wave, noise=noise,
                        wavetable=wavetable)
-
-    # 'full' adds a LIGHT, high-threshold harmony fill in the gaps — never the
-    # dense wash that buried the melody in v4/v5.
-    if sp["fill"] and mix_path:
-        cells32 = grid.cells(32)
-        drive_cells = [next((d for (wa, wb, *_), d in zip(chords, drive)
-                             if wa <= (a + b) / 2 < wb), True) for a, b in cells32]
-        targets = salience_targets(
-            mix_path, grid, os.path.join(work_dir, f"{name}.salience.json"))
-        cover_salience(plan, targets, grid, drive_cells, cap=2,
-                       wmin_drive=0.55, wmin_verse=0.85)
 
     named = sum(1 for *_, r, k in chords if r is not None)
     beat = float(np.median(np.diff(grid.beats)))
     stats = {
         "style": style,
         "grid": "measured" if measured else "tracked",
+        "melody_source": mel_which,
         "melody_notes": len(mel),
         "chords_named": f"{named}/{len(chords)}",
         "drive_windows": f"{sum(drive)}/{len(drive)}",
@@ -1157,6 +1197,8 @@ def build_plan(name, stems, work_dir, duration, other_notes, drum_hits,
         "echo_delay_s": round(beat * 0.75, 4),   # dotted-eighth ping-pong
         "echo_wet": sp["wet"],
         "mix_wave": sp["mix_wave"],
+        "mix_noise": sp["mix_noise"],
+        "power_chords": len(wave),
     }
     stats["melody_agreement"] = f"{melody_agreement(plan, mel):.0%}"
     return plan, stats
