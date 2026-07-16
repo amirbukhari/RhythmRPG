@@ -795,13 +795,54 @@ def stem_energy(path):
 
 
 def pick_melody_source(stems):
-    """These are HARDCORE PUNK/METAL tracks — the vocals are SCREAMS, not a
-    sung melody, so there is no melodic line to pull from the vocal stem
-    (pitch-tracking a scream returns garbage — that was v9's mistake). The
-    recognizable hook is the GUITAR RIFF, which lives in the 'other' stem
-    once bass and drums are separated out. So the lead always comes from
-    there. Returns (path, which)."""
-    return stems["other"], "guitar riff"
+    """These are melodic-hardcore tracks — vocals are SCREAMS (no sung
+    melody), the hook is the guitar/synth line. With 6-stem separation the
+    guitar is isolated; fall back to the 4-stem 'other' lump if unavailable.
+    Returns (path, which)."""
+    if stems.get("guitar") and os.path.exists(stems["guitar"]):
+        return stems["guitar"], "guitar"
+    return stems["other"], "guitar (4-stem)"
+
+
+def _salience_cqt(path, hop=256):
+    """Harmonic-salience CQT of one stem + its bin frequencies/times."""
+    import librosa
+    y, sr = librosa.load(path, sr=22050, mono=True)
+    fmin = librosa.note_to_hz("C1")
+    C = np.abs(librosa.cqt(y, sr=sr, hop_length=hop, fmin=fmin,
+                           n_bins=72, bins_per_octave=12))
+    freqs = librosa.cqt_frequencies(72, fmin=fmin, bins_per_octave=12)
+    S = librosa.salience(C, freqs=freqs, harmonics=[1, 2, 3, 4, 5],
+                         weights=[1.0, 0.5, 0.4, 0.3, 0.2], fill_value=0.0)
+    return S, librosa.times_like(S, sr=sr, hop_length=hop)
+
+
+def extract_lead_melody(guitar_path, piano_path, grid, cache_path, hop=256):
+    """The doubled lead of a melodic-hardcore band: the melody is played by
+    guitar AND synth together, so the line they SHARE is the hook, while the
+    rhythm chug (guitar only) and pads (synth only) don't reinforce. Build a
+    combined salience = guitar + a bonus where the synth agrees, then
+    top-line Viterbi-track it. Falls back to guitar-only if synth is absent."""
+    if os.path.exists(cache_path):
+        with open(cache_path) as f:
+            return [list(x) for x in json.load(f)]
+    import librosa
+    from scipy.ndimage import median_filter
+    Sg, times = _salience_cqt(guitar_path, hop)
+    combined = Sg.copy()
+    if piano_path and os.path.exists(piano_path):
+        try:
+            Sp, _ = _salience_cqt(piano_path, hop)
+            n = min(Sg.shape[1], Sp.shape[1])
+            combined = combined[:, :n]
+            times = times[:n]
+            gn = Sg[:, :n] / (Sg[:, :n].max() + 1e-9)
+            pn = Sp[:, :n] / (Sp[:, :n].max() + 1e-9)
+            # agreement bonus: where BOTH stems are strong at the same pitch
+            combined = combined + 1.5 * np.sqrt(gn * pn) * Sg[:, :n].max()
+        except Exception:
+            pass
+    return _viterbi_melody(combined, times, grid, cache_path)
 
 
 def extract_melody(src_path, grid, cache_path, hop=256):
@@ -813,40 +854,32 @@ def extract_melody(src_path, grid, cache_path, hop=256):
     if os.path.exists(cache_path):
         with open(cache_path) as f:
             return [list(x) for x in json.load(f)]
+    S, times = _salience_cqt(src_path, hop)
+    return _viterbi_melody(S, times, grid, cache_path)
+
+
+def _viterbi_melody(S, times, grid, cache_path):
+    """Shared melody tracker: restrict a salience matrix to the melody
+    register, Viterbi-track a top-line-biased path, segment into notes."""
     import librosa
     from scipy.ndimage import median_filter
-    y, sr = librosa.load(src_path, sr=22050, mono=True)
-    fmin = librosa.note_to_hz("C1")
-    C = np.abs(librosa.cqt(y, sr=sr, hop_length=hop, fmin=fmin,
-                           n_bins=72, bins_per_octave=12))
-    freqs = librosa.cqt_frequencies(72, fmin=fmin, bins_per_octave=12)
-    S = librosa.salience(C, freqs=freqs, harmonics=[1, 2, 3, 4, 5],
-                         weights=[1.0, 0.5, 0.4, 0.3, 0.2], fill_value=0.0)
     lo = librosa.note_to_midi(MEL_RANGE[0]) - 24
     hi = librosa.note_to_midi(MEL_RANGE[1]) - 24
     band = S[lo:hi + 1]                      # (nb, nframes)
-    times = librosa.times_like(S, sr=sr, hop_length=hop)
     nb, nf = band.shape
 
-    # Proper Viterbi pitch tracking: emission = per-frame salience (column-
-    # normalized), transition = a linear penalty on the semitone jump, solved
-    # per frame in O(nb) via a max-plus distance transform. This tracks the
-    # melodic line through momentary drop-outs and kills the octave/argmax
-    # jitter the old argmax path produced.
-    #
-    # Height bias: in a polyphonic guitar/synth stem the LEAD melody rides
-    # above the rhythm power-chords, so weight higher bins up. Without this
-    # the tracker locks onto the louder rhythm chug, not the hook (the two
-    # extractors only agreed ~30%). The bias breaks that tie toward the top
-    # line where a melodic-hardcore lead actually sits.
+    # Viterbi pitch tracking: emission = per-frame salience (column-
+    # normalized), transition = a linear semitone-jump penalty solved per
+    # frame in O(nb) via a max-plus envelope — tracks the line through
+    # drop-outs, kills argmax octave jitter. Height bias: the LEAD rides
+    # above the rhythm power-chords, so higher bins are weighted up.
     height = np.linspace(0.72, 1.32, nb)[:, None]
     emit = band / (band.max(axis=0, keepdims=True) + 1e-9) * height
-    lam = 0.18                               # penalty per semitone of jump
+    lam = 0.18
     dp = emit[:, 0].copy()
     back = np.zeros((nf, nb), dtype=np.int32)
     idxs = np.arange(nb)
     for f in range(1, nf):
-        # forward/backward envelope of (dp - lam*|i-j|)
         left = dp.copy()
         for i in range(1, nb):
             left[i] = max(left[i], left[i - 1] - lam)
@@ -854,7 +887,6 @@ def extract_melody(src_path, grid, cache_path, hop=256):
         for i in range(nb - 2, -1, -1):
             right[i] = max(right[i], right[i + 1] - lam)
         best = np.maximum(left, right)
-        # argmax source for backtrace (nearest better neighbour)
         src = idxs.copy()
         for i in range(1, nb):
             if left[i - 1] - lam >= dp[i]:
@@ -874,7 +906,6 @@ def extract_melody(src_path, grid, cache_path, hop=256):
     voiced = strength > np.percentile(strength[strength > 0], 40)
     midi = median_filter(midi, size=5)
 
-    # segment into notes where the rounded pitch holds
     notes = []
     i, n = 0, len(midi)
     while i < n:
@@ -896,7 +927,6 @@ def extract_melody(src_path, grid, cache_path, hop=256):
                                           (np.percentile(strength[strength > 0], 90) or 1))))
             notes.append([p, s, e, vel])
         i = j
-    # merge same-pitch notes across tiny gaps
     merged = []
     for p, s, e, v in notes:
         if merged and merged[-1][0] == p and s - merged[-1][2] <= 0.06:
@@ -1209,15 +1239,23 @@ def build_plan(name, stems, work_dir, duration, other_notes, drum_hits,
         bass_path=stems["bass"])
     drive = drive_profile(drum_hits, other_track, chords)
 
-    # The melody is the guitar/synth line in the isolated 'other' stem
-    # (melodic hardcore -- vocals are screams). Two ways to read it:
-    mel_src, mel_which = pick_melody_source(stems)
+    # The melody is the guitar/synth line (melodic hardcore -- vocals are
+    # screams). With 6-stem separation the melody is the line the isolated
+    # GUITAR and SYNTH SHARE (extract_lead_melody); the rhythm chug and pads
+    # don't reinforce, so the hook survives. Fall back to older paths if the
+    # 6-stem guitar isn't available.
     if lead_source == "riff":
         riff_top, _ = riff_lines(other_notes, grid)
         riff_top = _center(riff_top, 72)
         mel = [[_fold(int(p), 48, 84), s, e, v] for p, s, e, v in riff_top]
         mel_which = "basic-pitch riff"
+    elif stems.get("guitar") and os.path.exists(stems["guitar"]):
+        mel = extract_lead_melody(
+            stems["guitar"], stems.get("piano"), grid,
+            os.path.join(work_dir, f"{name}.melody.leadxstem.json"))
+        mel_which = "guitar+synth shared"
     else:
+        mel_src, mel_which = pick_melody_source(stems)
         mel = extract_melody(
             mel_src, grid,
             os.path.join(work_dir, f"{name}.melody.salience.json"))

@@ -96,6 +96,45 @@ def separate(wav_path, work_dir, model="htdemucs"):
     return stems
 
 
+def separate6(wav_path, work_dir, model="htdemucs_6s"):
+    """6-stem separation (adds guitar + piano/synth). For melodic hardcore
+    the melody is doubled across guitar and synth, so isolating them lets
+    the melody extractor find the line they SHARE — the hook — instead of
+    the rhythm chug buried in the 4-stem 'other' lump. Returns
+    {'guitar': path, 'piano': path}."""
+    out_root = os.path.join(work_dir, "demucs_out")
+    track = os.path.splitext(os.path.basename(wav_path))[0]
+    stem_dir = os.path.join(out_root, model, track)
+    want = {n: os.path.join(stem_dir, f"{n}.wav") for n in ("guitar", "piano")}
+    if all(os.path.exists(p) for p in want.values()):
+        print(f"      6-stem cached in {stem_dir}")
+        return want
+
+    import torch
+    from demucs.apply import apply_model
+    from demucs.pretrained import get_model
+
+    y, sr = sf.read(wav_path, dtype="float32", always_2d=True)
+    m = get_model(model)
+    if sr != m.samplerate:
+        import librosa
+        y = librosa.resample(y.T, orig_sr=sr, target_sr=m.samplerate).T
+        sr = m.samplerate
+    if y.shape[1] == 1:
+        y = np.repeat(y, 2, axis=1)
+    wav = torch.from_numpy(y.T.copy())
+    ref = wav.mean(0)
+    wav = (wav - ref.mean()) / (ref.std() + 1e-8)
+    with torch.no_grad():
+        sources = apply_model(m, wav[None], device="cpu", split=True,
+                              overlap=0.2, progress=True)[0]
+    sources = sources * (ref.std() + 1e-8) + ref.mean()
+    os.makedirs(stem_dir, exist_ok=True)
+    for name, src in zip(m.sources, sources):
+        sf.write(os.path.join(stem_dir, f"{name}.wav"), src.numpy().T, sr)
+    return want
+
+
 # -------------------------------------------------------- transcription --
 def transcribe_pitched(path, cache_path):
     """basic-pitch a stem -> [[pitch, start, end, velocity], ...] (cached)."""
@@ -245,8 +284,9 @@ def render(input_path, output_path, work_dir, wavetable="saw", stereo=True,
         duration = info.frames / info.samplerate
     print(f"      duration {duration:.1f}s")
 
-    print("[2/5] separating stems (Demucs htdemucs)")
+    print("[2/5] separating stems (Demucs htdemucs 4-stem + 6-stem)")
     stems = separate(wav_path, work_dir)
+    stems.update(separate6(wav_path, work_dir))   # guitar + piano/synth
 
     print("[3/5] transcribing stems (basic-pitch) + classifying drums")
     trans = {}
