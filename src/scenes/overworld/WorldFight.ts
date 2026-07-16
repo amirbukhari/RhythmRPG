@@ -57,7 +57,8 @@ const TIER_LABEL: Record<Exclude<BeatTier, "off">, { text: string; color: string
  */
 
 // world-proportioned foe scales (72px frames; conductor uses his colossal sheet)
-const FIGHT_SCALE: Record<string, number> = { the_conductor: 1.0, elite_wraith: 0.62, drifter: 0.48, slime: 0.45 };
+// sheets are baked to fight size (bake_cast.py) -- everyone renders at 1.0
+const FIGHT_SCALE: Record<string, number> = { the_conductor: 1.0, elite_wraith: 1.0, drifter: 1.0, slime: 1.0 };
 const FIGHT_ACCENT: Record<string, number> = {
   the_conductor: 0xf0a648,
   elite_wraith: 0x49c6bd,

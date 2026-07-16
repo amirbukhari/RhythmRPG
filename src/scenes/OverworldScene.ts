@@ -261,7 +261,7 @@ export class OverworldScene extends Phaser.Scene {
     // Amir's frames are 48x48 with the figure ~37px tall; scaled to ~0.52 he
     // stands ~1.2 tiles against the 16px tiles (feet-anchored so he sits on
     // the tile centre). Idle breathes until the player moves.
-    this.player.setOrigin(0.5, 0.9).setScale(0.35);
+    this.player.setOrigin(0.5, 0.9).setScale(0.5); // 50px frames baked (bake_cast.py): 25px world, integer texels
     this.player.setDepth(5);
     this.player.play("leader_idle");
     this.snapPlayerToGrid();
@@ -281,7 +281,7 @@ export class OverworldScene extends Phaser.Scene {
       }
       if (!this.textures.exists(`band_${member}`)) continue;
       const shadow = this.add.ellipse(0, 0, 12, 4, 0x05060a, 0.35).setDepth(4.3);
-      const sprite = this.add.sprite(0, 0, `band_${member}`, 0).setOrigin(0.5, 0.9).setScale(0.33).setDepth(4.6);
+      const sprite = this.add.sprite(0, 0, `band_${member}`, 0).setOrigin(0.5, 0.9).setScale(0.5).setDepth(4.6);
       sprite.play(idleKey);
       sprite.setPosition(this.playerPos.col * TILE_SIZE + TILE_SIZE / 2, this.playerPos.row * TILE_SIZE + TILE_SIZE / 2);
       this.followers.push({ member, sprite, shadow });
@@ -980,7 +980,7 @@ export class OverworldScene extends Phaser.Scene {
       this.add.ellipse(x, y + 2, 14, 5, 0x05060a, 0.35).setDepth(2); // contact shadow
       // 0.58: townsfolk stand a hair SHORTER than the 25px hero (audit:
       // at 0.72 they towered over the player and each other inconsistently)
-      const s = this.add.sprite(x, y, "ow_npcs", npc.frame).setOrigin(0.5, 0.9).setScale(0.58).setDepth(3);
+      const s = this.add.sprite(x, y, "ow_npcs", npc.frame).setOrigin(0.5, 0.9).setScale(0.5).setDepth(3);
       s.setFlipX((col + row) % 2 === 0);
       if (!reduced) {
         this.tweens.add({ targets: s, y: y - 1, duration: 1100 + (col * 37) % 400, yoyo: true, repeat: -1, ease: "Sine.inOut" });
@@ -1071,7 +1071,7 @@ export class OverworldScene extends Phaser.Scene {
       .setAlpha(status === "locked" ? 0.08 : 0.3)
       .setDepth(3);
 
-    const foe = this.add.sprite(x, footY, tex, 0).setOrigin(0.5, 1).setScale(colossal ? 0.8 : 0.4).setDepth(4.5);
+    const foe = this.add.sprite(x, footY, tex, 0).setOrigin(0.5, 1).setScale(1).setDepth(4.5);
     // the live fight hides these when the player walks into the foe
     this.nodeFoeVisuals.set(marker.nodeId, [foe, aura, foeShadow]);
     if (status === "locked") {
@@ -1082,7 +1082,7 @@ export class OverworldScene extends Phaser.Scene {
       const rim = this.add
         .sprite(x, footY, tex, 0)
         .setOrigin(0.5, 1)
-        .setScale((colossal ? 0.8 : 0.4) * 1.07)
+        .setScale(1.07)
         .setBlendMode(Phaser.BlendModes.ADD)
         .setTint(accent)
         .setAlpha(0.22)
