@@ -232,7 +232,7 @@ def write_mp3(path, audio, sr, bitrate=128):
 
 
 def render(input_path, output_path, work_dir, wavetable="saw", stereo=True,
-           report_path=None, style="balanced"):
+           report_path=None, style="balanced", lead_source="salience"):
     os.makedirs(work_dir, exist_ok=True)
     name = os.path.splitext(os.path.basename(input_path))[0]
 
@@ -263,7 +263,7 @@ def render(input_path, output_path, work_dir, wavetable="saw", stereo=True,
     plan, arr_stats = arrange.build_plan(
         name, stems, work_dir, duration, trans["other"], hits,
         bass_notes=trans["bass"], trans=trans, mix_path=input_path,
-        wavetable=wavetable, style=style)
+        wavetable=wavetable, style=style, lead_source=lead_source)
     counts = dict(pulse1=len(plan.pulse1), pulse2=len(plan.pulse2),
                   wave=len(plan.wave), noise=len(plan.noise))
     print(f"      events: {counts}")
@@ -308,15 +308,19 @@ def main():
                     choices=("tight", "driving", "wall",
                              "clean", "balanced", "full"),
                     help="intensity: tight / driving / wall (see arrange.STYLES)")
+    ap.add_argument("--lead", default="salience", choices=("salience", "riff"),
+                    help="how to read the guitar/synth melody (A/B for the ear)")
     args = ap.parse_args()
 
     if args.work_dir:
         render(args.input, args.output, args.work_dir, args.wavetable,
-               stereo=not args.mono, report_path=args.report, style=args.style)
+               stereo=not args.mono, report_path=args.report, style=args.style,
+               lead_source=args.lead)
     else:
         with tempfile.TemporaryDirectory() as td:
             render(args.input, args.output, td, args.wavetable,
-                   stereo=not args.mono, report_path=args.report, style=args.style)
+                   stereo=not args.mono, report_path=args.report, style=args.style,
+               lead_source=args.lead)
 
 
 if __name__ == "__main__":

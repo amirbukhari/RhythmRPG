@@ -795,17 +795,13 @@ def stem_energy(path):
 
 
 def pick_melody_source(stems):
-    """The melody lives in the ISOLATED voice, not the crowded mix — that's
-    the lesson from v8: extracting the 'dominant line of the full mix' gave
-    the loudest thing (a guitar, a harmonic), not the tune, so the lead
-    played the wrong notes. The vocal stem is the melody when a song is
-    sung; the lead-instrument ('other') stem when it's an instrumental.
-    Returns (path, which)."""
-    voc = stem_energy(stems["vocals"])
-    oth = stem_energy(stems["other"])
-    if voc > 0.015 and voc > 0.10 * oth:
-        return stems["vocals"], "vocal"
-    return stems["other"], "instrumental"
+    """These are HARDCORE PUNK/METAL tracks — the vocals are SCREAMS, not a
+    sung melody, so there is no melodic line to pull from the vocal stem
+    (pitch-tracking a scream returns garbage — that was v9's mistake). The
+    recognizable hook is the GUITAR RIFF, which lives in the 'other' stem
+    once bass and drums are separated out. So the lead always comes from
+    there. Returns (path, which)."""
+    return stems["other"], "guitar riff"
 
 
 def extract_melody(src_path, grid, cache_path, hop=256):
@@ -837,7 +833,14 @@ def extract_melody(src_path, grid, cache_path, hop=256):
     # per frame in O(nb) via a max-plus distance transform. This tracks the
     # melodic line through momentary drop-outs and kills the octave/argmax
     # jitter the old argmax path produced.
-    emit = band / (band.max(axis=0, keepdims=True) + 1e-9)
+    #
+    # Height bias: in a polyphonic guitar/synth stem the LEAD melody rides
+    # above the rhythm power-chords, so weight higher bins up. Without this
+    # the tracker locks onto the louder rhythm chug, not the hook (the two
+    # extractors only agreed ~30%). The bias breaks that tie toward the top
+    # line where a melodic-hardcore lead actually sits.
+    height = np.linspace(0.72, 1.32, nb)[:, None]
+    emit = band / (band.max(axis=0, keepdims=True) + 1e-9) * height
     lam = 0.18                               # penalty per semitone of jump
     dp = emit[:, 0].copy()
     back = np.zeros((nf, nb), dtype=np.int32)
@@ -1123,15 +1126,16 @@ def drive_profile(drum_hits, other_track, chords):
 
 
 def arrange_melody_lead(mel_notes, grid):
-    """The riff/vocal hook on pulse 1 — the extracted melodic line at its
-    real octave and natural timing. 25% duty for a biting, nasal lead that
-    cuts through a wall of distortion; vibrato only on sustained notes."""
+    """The guitar/synth lead on pulse 1 — the melodic hook of a melodic-
+    hardcore track, at its real octave and natural timing. 50% duty for a
+    full, singing lead voice (not a thin bleep) that still cuts over the
+    power-chord wall; vibrato on sustained notes for a vocal-like lead."""
     out = []
     for p, s, e, v in mel_notes:
         out.append(Note(start=float(s), end=float(e), pitch=int(p),
-                        volume=_v(v, 13, 15), duty=0.25, env_period=0,
-                        vibrato_cents=18.0 if (e - s) >= 0.45 else 0.0,
-                        vibrato_hz=6.0, vibrato_delay=0.20))
+                        volume=_v(v, 13, 15), duty=0.50, env_period=0,
+                        vibrato_cents=20.0 if (e - s) >= 0.40 else 0.0,
+                        vibrato_hz=5.8, vibrato_delay=0.18))
     return out
 
 
@@ -1179,8 +1183,14 @@ STYLE_ALIASES = {"clean": "tight", "balanced": "driving", "full": "wall"}
 
 def build_plan(name, stems, work_dir, duration, other_notes, drum_hits,
                bass_notes=None, trans=None, mix_path=None, wavetable="saw",
-               style="balanced"):
-    """Melody-first assembly. Returns (ChannelPlan, stats)."""
+               style="balanced", lead_source="salience"):
+    """Melody-first assembly. Returns (ChannelPlan, stats).
+
+    lead_source picks HOW the guitar/synth melody is read from the 'other'
+    stem — the two methods disagree ~30%, so this is an A/B for the ear:
+      salience — harmonic-salience CQT + top-line-biased Viterbi
+      riff     — basic-pitch transcription's dominant line (riff_lines)
+    """
     from gb_apu import ChannelPlan
     style = STYLE_ALIASES.get(style, style)
     sp = STYLES.get(style, STYLES["driving"])
@@ -1199,13 +1209,18 @@ def build_plan(name, stems, work_dir, duration, other_notes, drum_hits,
         bass_path=stems["bass"])
     drive = drive_profile(drum_hits, other_track, chords)
 
-    # Extract the melody from the ISOLATED stem (vocal for sung songs, lead
-    # instrument for instrumentals) — the tune, not the loudest line of the
-    # mix. (v8 proved full-mix extraction plays the wrong notes: it matched
-    # the real vocal only 27%.)
+    # The melody is the guitar/synth line in the isolated 'other' stem
+    # (melodic hardcore -- vocals are screams). Two ways to read it:
     mel_src, mel_which = pick_melody_source(stems)
-    mel = extract_melody(
-        mel_src, grid, os.path.join(work_dir, f"{name}.melody.{mel_which}.json"))
+    if lead_source == "riff":
+        riff_top, _ = riff_lines(other_notes, grid)
+        riff_top = _center(riff_top, 72)
+        mel = [[_fold(int(p), 48, 84), s, e, v] for p, s, e, v in riff_top]
+        mel_which = "basic-pitch riff"
+    else:
+        mel = extract_melody(
+            mel_src, grid,
+            os.path.join(work_dir, f"{name}.melody.salience.json"))
 
     lead = arrange_melody_lead(mel, grid)
     noise, kick_times = arrange_noise(drum_hits, grid)
@@ -1233,13 +1248,11 @@ def build_plan(name, stems, work_dir, duration, other_notes, drum_hits,
         "mix_noise": sp["mix_noise"],
         "power_chords": len(wave),
     }
-    # Independent check: does the lead actually track the sung vocal? (pYIN
-    # on the isolated vocal stem — a different algorithm on a separate signal,
-    # so NOT the circular self-check that hid v8's wrong-melody bug.)
-    if mel_which == "vocal":
-        vtr = extract_pitch(
-            stems["vocals"], os.path.join(work_dir, f"{name}.vocals.pyin.json"),
-            "E2", "A5")
-        ex, pc = lead_vs_track(lead, vtr)
-        stats["lead_vs_vocal"] = f"{ex:.0%} exact / {pc:.0%} pc"
+    # Consistency check: does the salience-tracked lead agree with an
+    # INDEPENDENT read of the same guitar stem — basic-pitch's dominant
+    # transcribed line (riff_lines)? Two different algorithms agreeing on
+    # the isolated instrument is real evidence the riff is right.
+    riff_top, _ = riff_lines(other_notes, grid)
+    if riff_top:
+        stats["lead_vs_riff"] = f"{melody_agreement(plan, riff_top):.0%}"
     return plan, stats
