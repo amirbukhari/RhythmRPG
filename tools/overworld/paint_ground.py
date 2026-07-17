@@ -404,10 +404,12 @@ def main() -> None:
     rock_top_bases = [tint((0x4A, 0x51, 0x5E), a, 0.30) for a in ACCENTS]
     rock_top = blended(rock_top_bases)
     crack_col = 0.5
+    mesa_px = np.zeros((PH, PW), dtype=bool)  # union, so later passes respect the mesas
     for comp in range(1, nxt + 1):
         cm = organic_mask(labels == comp, jitter=0.34, blur=8)
         if not cm.any():
             continue
+        mesa_px |= cm
         below_out = cm & ~np.roll(cm, -1, 0)  # south rim of the mesa
         # cast shadow on the ground south of the mesa
         sh = np.roll(cm, 7, 0) & ~cm
@@ -468,23 +470,59 @@ def main() -> None:
     markers = [l for l in data["layers"] if l.get("name") == "markers"][0]["objects"]
     yy_g, xx_g = np.mgrid[0:PH, 0:PW].astype(np.float32)
     disc_noise = value_noise(PH, PW, 22)
+    # v11.4 (owner: "the boss arenas look like trash. why are they just
+    # smacked on-top"): the old pass OVERWROTE everything under the disc with
+    # a flat fill + dark ring -- a pasted sticker. Now the clearing is WEAR of
+    # the ground that's already there: a radial falloff blends the turf toward
+    # packed earth, patchy with noise so grass/motifs grind through at the
+    # rim, clipped so it never paints over mesas or open water. The boss ring
+    # is the one deliberate construction: where it bridges the hall lake it
+    # becomes built masonry (the causeway language) with inlaid arcs -- the
+    # Conductor's stage, not a stain.
     for obj in markers:
         if obj["name"] == "spawn":
             continue
         cx, cy = float(obj["x"]) * 2, float(obj["y"]) * 2
         reg = min(4, int(cx // (26 * S)))
-        # the finale gets a GRAND ring -- its venue pieces stand wide and the
-        # clearing bridges the hall lake as one deliberate stage
-        radius = 230.0 if obj["name"] == "boss_1" else 132.0
-        rr = np.sqrt((xx_g - cx) ** 2 + (yy_g - cy) ** 2) + (disc_noise - 0.5) * 56
-        disc = rr < radius
-        edge = disc & (rr > radius - 16)
-        base = tint((0x6E, 0x61, 0x4A), ACCENTS[reg], 0.28)
-        col = base[None, None, :] * (1 + (n_mid - 0.5) * 0.14)[..., None]
-        canvas[disc] = col[disc]
-        canvas[edge] *= 0.62
-        rings = disc & (np.abs((rr % 44) - 22.0) < 1.1) & (rr > 26)
-        canvas[rings] *= 0.85
+        boss = obj["name"] == "boss_1"
+        radius = 230.0 if boss else 132.0
+        # architecture is round: the boss stage keeps a near-true circle
+        # (gentle waver), organic wear keeps the loose ragged boundary
+        rr = np.sqrt((xx_g - cx) ** 2 + (yy_g - cy) ** 2) + (disc_noise - 0.5) * (16.0 if boss else 56.0)
+        t = np.clip((radius - rr) / radius, 0.0, 1.0)  # 0 at rim -> 1 at centre
+        if not boss:
+            # patchy trampled wear: strongest at centre, ground grinding through
+            wear = (t**0.65) * (0.45 + 0.55 * n_mid) * 0.8
+            land = ~water_mask & ~mesa_px & (wear > 0.02)
+            base = tint((0x6E, 0x61, 0x4A), ACCENTS[reg], 0.28)
+            earth = base[None, None, :] * (1 + (n_mid - 0.5) * 0.14 + (n_hi - 0.5) * 0.08)[..., None]
+            a = wear[..., None] * land[..., None]
+            canvas = canvas * (1 - a) + earth * a
+            # faded, BROKEN wear arcs (circling feet), never full stamped rings
+            arcs = land & (rr < radius - 10) & (np.abs((rr % 44) - 22.0) < 1.0) & (rr > 30) & (value_noise(PH, PW, 16) > 0.5)
+            canvas[arcs] *= 0.9
+            continue
+        # --- the Conductor's stage: BUILT, not worn ---------------------------
+        # A pale marble round (the hall's own material) laid over land and
+        # bridging the lake as masonry deck; clean concentric inlay circles,
+        # a defined double rim, weathered by noise only in tone, not in shape.
+        stage_r = radius * 0.86
+        on_stage = (rr < stage_r) & ~mesa_px
+        marble = np.array((0x8E, 0x86, 0x9A), dtype=np.float32)
+        tone = (1 + (n_mid - 0.5) * 0.16 + (n_hi - 0.5) * 0.06)
+        a = (np.clip((stage_r - rr) / 30.0, 0, 1) * 0.85)[..., None] * on_stage[..., None]
+        canvas = canvas * (1 - a) + (marble[None, None, :] * tone[..., None]) * a
+        # masonry deck edging where the stage meets open water
+        deck_dil = ~(erode(~(on_stage & water_mask), 3)[3])
+        canvas[deck_dil & water_mask & ~on_stage] *= 0.38
+        # clean concentric inlays, lightly broken by weathering
+        inlay = on_stage & (np.abs((rr % 58) - 29.0) < 1.3) & (rr > 34) & (value_noise(PH, PW, 40) > 0.22)
+        canvas[inlay] = canvas[inlay] * 0.66 + np.array((0xD6, 0xD0, 0xE0), dtype=np.float32)[None, :] * 0.34
+        # defined double rim: dark seam, pale kerb
+        seam = ~mesa_px & (np.abs(rr - stage_r) < 2.2)
+        kerb = ~mesa_px & (rr >= stage_r + 2.2) & (rr < stage_r + 6.0)
+        canvas[seam] *= 0.55
+        canvas[kerb] = canvas[kerb] * 0.6 + marble[None, :] * 0.4 * 1.1
 
     # --- Nari's trail (v11.3): the search, told in the ground -----------------
     # Tiny toddler footprints march along the critical-path route toward the
