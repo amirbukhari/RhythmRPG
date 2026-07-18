@@ -39,9 +39,6 @@ RNG = np.random.default_rng(20260714)
 # the Breach (sand/foam), the Scar (blood rust), the Stage (storm violet)
 ACCENTS = [(0x49, 0xC6, 0xBD), (0x58, 0xC0, 0x7A), (0xE8, 0xD9, 0xA8), (0xC2, 0x54, 0x24), (0x7A, 0x4E, 0xB4)]
 
-# The painted WATERLINE: everything west of this plate x is under the sea
-# (the Fold, the Shelf, and the western Breach); east of it is the surface.
-X_WATERLINE = 2 * 26 * 32 + 416  # mid-Breach
 
 
 def tint(base: tuple[int, int, int], accent: tuple[int, int, int], amt: float) -> np.ndarray:
@@ -109,6 +106,10 @@ def main() -> None:
         m = Image.fromarray(((region_px == r) * 255).astype(np.uint8)).filter(ImageFilter.BoxBlur(48))
         weights.append(np.asarray(m, dtype=np.float32) / 255.0)
     wsum = np.stack(weights).sum(0).clip(1e-3)
+
+    # v13.0 open world: "under the sea" is the Fold+Shelf TERRITORY, so the
+    # waterline is the organic contour of their blurred weight field.
+    w01 = (weights[0] + weights[1]) / wsum
 
     def blended(bases: list[np.ndarray]) -> np.ndarray:
         acc = np.zeros((PH, PW, 3), dtype=np.float32)
@@ -211,12 +212,12 @@ def main() -> None:
     # wreck ribs: the skeletons of dead ships stitched up the shelf, every
     # bow pointing UP the climb -- pale bone arcs with a sunken shadow
     bone = np.array((0xC9, 0xC2, 0xA8), dtype=np.float32)
+    shelf_open = list(zip(*np.where((region == 1) & (kind == 0))))
     for wi in range(6):
         h = (wi * 83492791 + 331) & 0xFFFFFFFF
-        wc = 26 + (h >> 4) % 22
-        wr = 3 + (h >> 9) % 27
-        if kind[wr, wc] != 0 or region[wr, wc] != 1:
-            continue
+        if not shelf_open:
+            break
+        wr, wc = shelf_open[(h >> 4) % len(shelf_open)]
         wx, wy = wc * S, wr * S
         nrib = 5 + h % 3
         for ri in range(nrib):
@@ -236,7 +237,7 @@ def main() -> None:
         mix(r_mask & (fleck_h == 77 + i * 331), fc, 0.7)
     xx_r = np.arange(PW)[None, :].repeat(PH, 0)
     rip_wob = (value_noise(PH, PW, 70) - 0.5) * 22
-    near_wl = np.abs(xx_r - X_WATERLINE) < 190
+    near_wl = (w01 > 0.22) & (w01 < 0.62)
     ridges = r_mask & near_wl & (((xx_r + rip_wob).astype(np.int32) % 16) < 2)
     canvas[ridges] *= 0.86
     crests = r_mask & near_wl & (((xx_r + rip_wob).astype(np.int32) % 16) == 2)
@@ -661,7 +662,7 @@ def main() -> None:
         if obj["name"] == "spawn" or obj["name"] == "boss_1":
             continue
         cx, cy = float(obj["x"]) * 2, float(obj["y"]) * 2
-        reg = min(4, int(cx // (26 * S)))
+        reg = int(region[min(H - 1, int(cy // S)), min(W - 1, int(cx // S))])
         radius = 132.0
         rr = np.sqrt((xx_g - cx) ** 2 + (yy_g - cy) ** 2) + (disc_noise - 0.5) * 56
         t = np.clip((radius - rr) / radius, 0.0, 1.0)  # 0 at rim -> 1 at centre
@@ -682,8 +683,7 @@ def main() -> None:
     # a cool depth grade, caustic light webs playing over the ground, and
     # drifting sediment. The line itself is a broken foam seam; the surface
     # side dries out of it, wet sand darkening right at the crossing.
-    wl_wob = (value_noise(PH, PW, 60) - 0.5) * 90
-    depth_u = np.clip((X_WATERLINE + wl_wob - xx_g) / 140.0, 0.0, 1.0)
+    depth_u = np.clip((w01 - 0.35) / 0.3, 0.0, 1.0)
     deep_sea = np.array((0x10, 0x2E, 0x36), dtype=np.float32)
     canvas = canvas * (1 - (depth_u * 0.22)[..., None]) + deep_sea[None, None, :] * (depth_u * 0.22)[..., None]
     # (v12.1 -- owner: "why are we still placing shit on-top of everything":
@@ -692,11 +692,11 @@ def main() -> None:
     # region materials, the drowned shapes, and the waterline say
     # "underwater" without painting a pattern over the world.)
     # the foam seam, broken (never a solid rule) -- and the wet band beyond it
-    seam_d = np.abs(xx_g - (X_WATERLINE + wl_wob))
-    foam_line = (seam_d < 2.4) & ~water_mask & (value_noise(PH, PW, 12) > 0.28)
+    seam_d = np.abs(w01 - 0.5)
+    foam_line = (seam_d < 0.012) & ~water_mask & (value_noise(PH, PW, 12) > 0.28)
     canvas[foam_line] = canvas[foam_line] * 0.35 + np.array((0xD9, 0xF2, 0xEA), dtype=np.float32)[None, :] * 0.65
-    wet_band = (xx_g > X_WATERLINE + wl_wob) & (seam_d < 26) & ~water_mask
-    canvas[wet_band] *= (1 - 0.14 * np.clip(1 - (seam_d[wet_band] - 2) / 24.0, 0, 1))[..., None]
+    wet_band = (w01 < 0.5) & (w01 > 0.36) & ~water_mask
+    canvas[wet_band] *= (1 - 0.14 * np.clip((w01[wet_band] - 0.36) / 0.14, 0, 1))[..., None]
 
     # --- Nari's trail (v12.0): he FOLLOWED -- until the Scar ------------------
     # Tiny toddler footprints trail the route from the Fold: Nari walking
@@ -712,7 +712,7 @@ def main() -> None:
             canvas[py + 2, px] *= 0.7  # heel
             if drag:
                 canvas[py + 1, px + 2 : px + 4] *= 0.8  # the drag tail
-    loss_idx = next((i for i, (ty, tx) in enumerate(route) if tx // 26 >= 3), len(route))
+    loss_idx = next((i for i, (ty, tx) in enumerate(route) if region[ty, tx] >= 3), len(route))
     for i in range(3, min(loss_idx, len(route) - 1), 10):
         ty, tx = route[i]
         ny, nx = route[i + 1]
@@ -780,23 +780,23 @@ def main() -> None:
                 lat = 3 if k % 2 else -3
                 adult_print(cy0 + dy * k * 11 + dx * lat, cx0 + dx * k * 11 + dy * lat)
     # the decoys: single-file small prints wandering beyond the Breach
+    surface_open = list(zip(*np.where((region >= 2) & (kind == 0))))
     for ti in range(14):
         h = (ti * 83492791 + 401) & 0xFFFFFFFF
-        tc = 2 * 26 + (h >> 4) % (3 * 26)
-        tr = 2 + (h >> 9) % (H - 4)
-        if kind[tr, tc] != 0:
-            continue
+        if not surface_open:
+            break
+        tr, tc = surface_open[(h >> 4) % len(surface_open)]
         ang = ((h >> 11) % 628) / 100.0
         sx, sy = np.cos(ang), np.sin(ang) * 0.5
         for k in range(6 + (h >> 6) % 9):
             small_decoy_print(int(tr * S + 16 + sy * k * 9), int(tc * S + 16 + sx * k * 9))
     # den creatures: three-toed crossings on the Scar
+    scar_open = list(zip(*np.where((region == 3) & (kind == 0))))
     for ti in range(10):
         h = (ti * 40503 + 77) & 0xFFFFFFFF
-        tc = 3 * 26 + (h >> 4) % 26
-        tr = 2 + (h >> 9) % (H - 4)
-        if kind[tr, tc] != 0:
-            continue
+        if not scar_open:
+            break
+        tr, tc = scar_open[(h >> 4) % len(scar_open)]
         ang = ((h >> 11) % 628) / 100.0
         sx, sy = np.cos(ang), np.sin(ang) * 0.6
         for k in range(5 + (h >> 6) % 7):

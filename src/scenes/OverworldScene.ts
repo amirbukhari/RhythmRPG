@@ -67,6 +67,9 @@ export class OverworldScene extends Phaser.Scene {
   private nariShadow: Phaser.GameObjects.Ellipse | null = null;
   private moving = false;
   private walkable: boolean[][] = [];
+  /** Region territory per tile, decoded from the ground layer's gids
+   * (v13.0: regions are organic territories, not 26-column strips). */
+  private regions: number[][] = [];
   private markers: Marker[] = [];
   private echoes: Echo[] = [];
   private echoGlows = new Map<string, Phaser.GameObjects.Image>();
@@ -145,14 +148,18 @@ export class OverworldScene extends Phaser.Scene {
     this.add.image(0, 0, "ground_plate").setOrigin(0).setScale(0.5).setDepth(0);
 
     this.walkable = [];
+    this.regions = [];
     for (let row = 0; row < map.height; row++) {
       const rowFlags: boolean[] = [];
+      const rowRegions: number[] = [];
       for (let col = 0; col < map.width; col++) {
         const tile = ground.getTileAt(col, row);
         const props = tile ? (tileset.getTileProperties(tile.index) as { collides?: boolean } | null) : null;
         rowFlags.push(!props?.collides);
+        rowRegions.push(tile ? Math.min(4, Math.max(0, Math.floor((tile.index - 1) / 4))) : 0);
       }
       this.walkable.push(rowFlags);
+      this.regions.push(rowRegions);
     }
 
     // Marker names in the tilemap ARE campaign node ids (plus one "spawn").
@@ -426,8 +433,10 @@ export class OverworldScene extends Phaser.Scene {
     if (!this.player) return;
     this.repositionPinned();
     if (this.regionGrade) {
-      const ACCENTS = [0x49c6bd, 0xf0a648, 0x9a5cbd, 0xc25424, 0x7a4eb4];
-      const ri = Math.min(4, Math.max(0, Math.floor(this.cameras.main.midPoint.x / (26 * TILE_SIZE))));
+      const ACCENTS = [0x49c6bd, 0x58c07a, 0xe8d9a8, 0xc25424, 0x7a4eb4];
+      const tc = Math.floor(this.cameras.main.midPoint.x / TILE_SIZE);
+      const tr = Math.floor(this.cameras.main.midPoint.y / TILE_SIZE);
+      const ri = this.regions[tr]?.[tc] ?? 0;
       this.regionGrade.fillColor = ACCENTS[ri];
     }
     this.playerShadow.setPosition(this.player.x, this.player.y + 2);
@@ -620,7 +629,7 @@ export class OverworldScene extends Phaser.Scene {
   private checkNariLoss(): void {
     const profile = GameContext.activeProfile;
     if (!this.nari || !profile || profile.nariLostAt) return;
-    if (Math.floor(this.playerPos.col / 26) < 3) return;
+    if ((this.regions[this.playerPos.row]?.[this.playerPos.col] ?? 0) < 3) return;
     profile.nariLostAt = Date.now();
     void GameContext.persistActiveProfile();
     const nari = this.nari;

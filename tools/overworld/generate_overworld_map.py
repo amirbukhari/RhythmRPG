@@ -33,18 +33,49 @@ OUT_DIR = REPO_ROOT / "assets" / "tilemaps"
 
 TILE_SIZE = 16
 
-# --- world layout: five regions joined left-to-right, campaign order -------
-REGIONS = ["shallows", "saltmines", "pit", "attic", "hall"]
-REGION_W, REGION_H = 26, 34
-MAP_W, MAP_H = REGION_W * len(REGIONS), REGION_H
+# --- world layout: the Ascent as an OPEN world (v13.0), not a strip --------
+# Owner: "we start on the left but it's like you ascend to a world that's
+# extensive to the up down and right and the story takes you through a
+# specific path around the map to a specific point for the ending."
+# Mir starts drowned in the WEST (the Fold, the Kelp Shelf climbing above
+# it); crossing the Breach surfaces into a Scar that sprawls north, south,
+# and east; the Stage waits at one specific far point. Regions are organic
+# TERRITORIES (weighted Voronoi with jitter), not columns.
+REGIONS = ["shallows", "saltmines", "pit", "attic", "hall"]  # ids: fold, shelf, breach, scar, stage
+MAP_W, MAP_H = 112, 64
+
+# (col, row, weight) -- a lower weight claims a LARGER territory
+REGION_ANCHORS = [
+    (11, 50, 0.9),   # the Fold: the drowned south-west, where Mir wakes
+    (17, 18, 1.0),   # the Kelp Shelf: the drowned north-west climb
+    (34, 34, 1.5),   # the Breach: the narrow crossing band
+    (66, 38, 0.55),  # the Scar: the huge open surface (up, down, and right)
+    (97, 13, 1.05),  # the Stage: the specific far point where it ends
+]
+
+_JR = random.Random(20260717)
+_JIT = [[_JR.uniform(-2.5, 2.5) for _ in range(MAP_W)] for _ in range(MAP_H)]
+
+
+def _region_at(c: int, r: int) -> int:
+    best, bd = 0, 1e18
+    for i, (ac, ar, w) in enumerate(REGION_ANCHORS):
+        d = w * (((c - ac + _JIT[r][c]) ** 2 + (r - ar + _JIT[r][(c * 7 + 3) % MAP_W]) ** 2) ** 0.5)
+        if d < bd:
+            best, bd = i, d
+    return best
+
+
+REGION_MAP: list[list[int]] = [[_region_at(c, r) for c in range(MAP_W)] for r in range(MAP_H)]
 
 # Local tile ids within a region's own 4-tile block (see tiles.py).
 GRASS, PATH, WATER, ROCK = 0, 1, 2, 3
 WALKABLE_LOCAL = {GRASS, PATH}
 
 
-def region_of(col: int) -> int:
-    return min(len(REGIONS) - 1, col // REGION_W)
+def region_of(col: int, row: int = 0) -> int:
+    """Region territory at a tile (2D since v13.0; row defaults 0 for edges)."""
+    return REGION_MAP[min(MAP_H - 1, max(0, row))][min(MAP_W - 1, max(0, col))]
 
 
 def tid(region_index: int, local: int) -> int:
@@ -56,39 +87,34 @@ def is_walkable_id(raw_id: int) -> bool:
     return (raw_id % 4) in WALKABLE_LOCAL
 
 
-def wp(region_index: int, local_col: int, local_row: int) -> tuple[int, int]:
-    """A waypoint expressed in a region's own local coordinates."""
-    return (region_index * REGION_W + local_col, local_row)
-
-
-# Campaign node markers, kept in sync with src/data/content/campaign/opening_biome.json.
-# Placed in a loose zigzag across the five regions -- not just a straight
-# road -- so the world reads as a real winding descent, not a corridor.
+# Campaign node markers (ABSOLUTE coords since v13.0), kept in sync with
+# src/data/content/campaign/opening_biome.json. The road tours the open
+# world: out of the Fold, north up the Shelf, east across the Breach, a long
+# south-east swing through the Scar, then north-east to the Stage -- the
+# specific point where it ends.
 NODE_MARKERS: dict[str, tuple[int, int]] = {
-    "opening_1": wp(0, 21, 8),
-    "mid_1": wp(1, 20, 26),
-    "mid_2": wp(2, 21, 9),
-    "mid_3": wp(3, 20, 25),
-    "boss_1": wp(4, 20, 17),
+    "opening_1": (20, 45),
+    "mid_1": (22, 17),
+    "mid_2": (36, 31),
+    "mid_3": (66, 52),
+    "boss_1": (96, 14),
 }
-SPAWN: tuple[int, int] = wp(0, 3, 27)
+SPAWN: tuple[int, int] = (8, 54)
 
-# Two echoes per region (10 total) -- lore text mirrors world-bible §5b
-# verbatim so the map data and the design doc never drift apart. Each is
-# (title, one-line found-text, region, local anchor near where its spur/pocket lands).
-# v12.0 Ascent: the echo voice carries the premise -- the Fold's faith, the
-# climb, the crossing, the hostile surface, and what waits on the Stage.
+# Two echoes per region territory (10 total), anchors ABSOLUTE. The echo
+# voice carries the Ascent premise -- the Fold's faith, the climb, the
+# crossing, the hostile surface, and what waits on the Stage.
 ECHOES: list[tuple[str, str, str, int, tuple[int, int]]] = [
-    ("The First Prayer", "We didn't raise the obelisk. We woke on the floor and it was already listening.", "shallows", 0, wp(0, 9, 6)),
-    ("The Unlit Lamp", "Nobody leaves the Fold. It isn't a rule. It's just that nobody ever has.", "shallows", 0, wp(0, 18, 30)),
-    ("The Climber's Knot", "Rope enough to reach the light -- if you don't weigh anything anymore.", "saltmines", 1, wp(1, 8, 30)),
-    ("The First Wreck", "Every ship that ever sank points the same way. Up.", "saltmines", 1, wp(1, 17, 5)),
-    ("The Broken Foam", "The line between worlds is thinner than a footstep. His fit inside mine.", "pit", 2, wp(2, 8, 27)),
-    ("Salt in the Lungs", "The first breath burns. The second one is his name.", "pit", 2, wp(2, 18, 6)),
-    ("The Small Prints", "They walk IN. Toward the den. Why would he walk toward it?", "attic", 3, wp(3, 9, 6)),
-    ("What the Claws Keep", "It doesn't eat what it takes. It collects.", "attic", 3, wp(3, 17, 28)),
-    ("The Rehearsal", "The music stops every time the small one cries. Then it starts again, angrier.", "hall", 4, wp(4, 9, 25)),
-    ("The Huntress's Mark", "She doesn't hunt to kill. She hunts to keep.", "hall", 4, wp(4, 15, 6)),
+    ("The First Prayer", "We didn't raise the obelisk. We woke on the floor and it was already listening.", "shallows", 0, (6, 40)),
+    ("The Unlit Lamp", "Nobody leaves the Fold. It isn't a rule. It's just that nobody ever has.", "shallows", 0, (16, 59)),
+    ("The Climber's Knot", "Rope enough to reach the light -- if you don't weigh anything anymore.", "saltmines", 1, (9, 9)),
+    ("The First Wreck", "Every ship that ever sank points the same way. Up.", "saltmines", 1, (28, 8)),
+    ("The Broken Foam", "The line between worlds is thinner than a footstep. His fit inside mine.", "pit", 2, (33, 22)),
+    ("Salt in the Lungs", "The first breath burns. The second one is his name.", "pit", 2, (39, 43)),
+    ("The Small Prints", "They walk IN. Toward the den. Why would he walk toward it?", "attic", 3, (54, 28)),
+    ("What the Claws Keep", "It doesn't eat what it takes. It collects.", "attic", 3, (75, 58)),
+    ("The Rehearsal", "The music stops every time the small one cries. Then it starts again, angrier.", "hall", 4, (88, 6)),
+    ("The Huntress's Mark", "She doesn't hunt to kill. She hunts to keep.", "hall", 4, (104, 24)),
 ]
 
 
@@ -110,32 +136,32 @@ def _carve_path(grid: list[list[int]], a: tuple[int, int], b: tuple[int, int], r
     step = 1 if c1 >= c0 else -1
     since_jog = 0
     for c in range(c0, c1 + step, step):
-        grid[r][c] = tid(region_of(c), PATH)
+        grid[r][c] = tid(region_of(c, r), PATH)
         since_jog += 1
         if rng is not None and since_jog >= 3 and c != c1 and abs(c - c1) > 2 and rng.random() < 0.38:
             drift = rng.choice((-1, 1))
             nr = r + drift
             if 2 <= nr < MAP_H - 2:
                 r = nr
-                grid[r][c] = tid(region_of(c), PATH)  # keep the corridor connected
+                grid[r][c] = tid(region_of(c, r), PATH)  # keep the corridor connected
                 since_jog = 0
     cc = c1
     step = 1 if r1 >= r else -1
     since_jog = 0
     for rr in range(r, r1 + step, step):
-        grid[rr][cc] = tid(region_of(cc), PATH)
+        grid[rr][cc] = tid(region_of(cc, rr), PATH)
         since_jog += 1
         if rng is not None and since_jog >= 3 and rr != r1 and abs(rr - r1) > 2 and rng.random() < 0.38:
             drift = rng.choice((-1, 1))
             nc = cc + drift
             if 2 <= nc < MAP_W - 2:
                 cc = nc
-                grid[rr][cc] = tid(region_of(cc), PATH)
+                grid[rr][cc] = tid(region_of(cc, rr), PATH)
                 since_jog = 0
     # land the endpoint exactly (the meander may end a column off)
     step = 1 if c1 >= cc else -1
     for c in range(cc, c1 + step, step):
-        grid[r1][c] = tid(region_of(c), PATH)
+        grid[r1][c] = tid(region_of(c, r1), PATH)
 
 
 def _carve_secret_spur(grid: list[list[int]], rng: random.Random, from_pt: tuple[int, int], to_pt: tuple[int, int]) -> None:
@@ -146,7 +172,7 @@ def _carve_secret_spur(grid: list[list[int]], rng: random.Random, from_pt: tuple
     only through this spur."""
     c0, r0 = from_pt
     c1, r1 = to_pt
-    region = region_of(c1)
+    region = region_of(c1, r1)
     # the pocket FIRST: a small walkable clearing ringed by rock so it reads
     # as enclosed... then the spur carved SECOND, punching the one opening
     # through the ring the corridor actually needs. Order matters: carving
@@ -160,83 +186,74 @@ def _carve_secret_spur(grid: list[list[int]], rng: random.Random, from_pt: tuple
     _carve_path(grid, (bend_col, r1), (c1, r1))
 
 
-def _dress_region(grid: list[list[int]], rng: random.Random, ri: int) -> None:
-    """Region-specific obstacle placement so each of the five feels distinct
-    in layout, not just tint (PRD §11.1.1 'one palette, five moods',
-    extended to the walkable world by §8.8.1)."""
-    base = ri * REGION_W
-    name = REGIONS[ri]
-    w = lambda local: tid(ri, local)  # noqa: E731
+def _dress_zones(grid: list[list[int]], rng: random.Random) -> None:
+    """Territory dressing (v13.0): each region's obstacles are seeded inside
+    its own organic zone, so the layout language follows the territory shape
+    instead of a 26-column strip."""
 
-    if name == "shallows":  # coastal: bay inlets top and bottom
-        _rect(grid, base + 2, 2, base + 12, 9, w(WATER))
-        _rect(grid, base + 14, REGION_H - 10, base + 24, REGION_H - 3, w(WATER))
-        for _ in range(3):  # sunken foundation stubs
-            c, r = base + rng.randrange(4, REGION_W - 4), rng.randrange(12, REGION_H - 12)
-            _rect(grid, c, r, c + 3, r + 3, w(ROCK))
-    elif name == "saltmines":  # mine road: worked rock ridges (SP11: segmented
-        # with jittered rows and gaps, not four dead-straight full-width bars)
-        for ridge_r in (6, 9, 20, 23):
-            c = base + 3
-            while c < base + REGION_W - 3:
-                seg = rng.randrange(4, 9)
-                rr = ridge_r + rng.choice((-1, 0, 0, 1))
-                _rect(grid, c, rr, min(base + REGION_W - 3, c + seg), rr + 1, w(ROCK))
-                c += seg + rng.randrange(1, 4)  # gap between worked sections
-        _rect(grid, base + 4, 14, base + 10, 18, w(WATER))  # flooded shaft
-    elif name == "pit":  # sunken carnival ring: a big circular flooded pit, centered
-        cx, cy, rad = base + REGION_W // 2, REGION_H // 2, 7
-        for r in range(REGION_H):
-            for c in range(base, base + REGION_W):
-                if (c - cx) ** 2 + (r - cy) ** 2 <= rad * rad:
-                    grid[r][c] = w(WATER)
-        for _ in range(4):  # toppled seating debris
-            c, r = base + rng.randrange(3, REGION_W - 3), rng.randrange(3, REGION_H - 3)
-            if (c - cx) ** 2 + (r - cy) ** 2 > (rad + 2) ** 2:
-                _rect(grid, c, r, c + 2, r + 2, w(ROCK))
-    elif name == "attic":  # building exterior: tight rock-partitioned alleys.
-        # SP9: the four partitions vary -- jittered x, staggered ends, widths
-        # 1-2, and segmented runs -- so the region stops reading as five
-        # copies of one rounded-rect pillar.
-        for i in range(4):
-            c = base + 5 + i * 5 + rng.choice((-1, 0, 1))
-            width = rng.choice((1, 1, 2))
-            r = 3 + rng.randrange(0, 4)
-            end = REGION_H - 6 - rng.randrange(0, 4)
-            while r < end:
-                seg = rng.randrange(5, 11)
-                _rect(grid, c, r, c + width, min(end, r + seg), w(ROCK))
-                r += seg + rng.randrange(2, 4)  # alley break
-        # punch cross-corridors so it's a maze, not solid walls
-        for gap_r in (9, 17, 26):
-            for c in range(base + 4, base + 23):
-                if grid[gap_r][c] == w(ROCK):
-                    grid[gap_r][c] = w(GRASS)
-    elif name == "hall":  # flooded plaza: open water with statue columns
-        _rect(grid, base + 2, 2, base + REGION_W - 2, REGION_H - 2, w(WATER))
-        for cx, cy in [(8, 10), (18, 8), (6, 22), (20, 24), (13, 16)]:
-            _rect(grid, base + cx, cy, base + cx + 2, cy + 3, w(ROCK))
+    def blob(c0: int, r0: int, w_: int, h_: int, local: int, ri: int) -> None:
+        for r in range(r0, r0 + h_):
+            for c in range(c0, c0 + w_):
+                if 2 <= c < MAP_W - 2 and 2 <= r < MAP_H - 2 and REGION_MAP[r][c] == ri:
+                    grid[r][c] = tid(ri, local)
+
+    zone: dict[int, list[tuple[int, int]]] = {i: [] for i in range(5)}
+    for r in range(2, MAP_H - 2):
+        for c in range(2, MAP_W - 2):
+            zone[REGION_MAP[r][c]].append((c, r))
+
+    def spots(ri: int, n: int) -> list[tuple[int, int]]:
+        tiles = zone[ri]
+        return [tiles[rng.randrange(len(tiles))] for _ in range(n)]
+
+    # the Fold: open silt with pools and rock knots; the town stays clear
+    for c, r in spots(0, 4):
+        if (c - SPAWN[0]) ** 2 + (r - SPAWN[1]) ** 2 > 64:
+            blob(c, r, rng.randrange(3, 6), rng.randrange(2, 5), WATER, 0)
+    for c, r in spots(0, 5):
+        if (c - SPAWN[0]) ** 2 + (r - SPAWN[1]) ** 2 > 49:
+            blob(c, r, 2, 2, ROCK, 0)
+    # the Kelp Shelf: worked terrace ridges climbing the drowned slope
+    for c, r in spots(1, 14):
+        blob(c, r, rng.randrange(3, 8), rng.choice((1, 2)), ROCK, 1)
+    for c, r in spots(1, 3):
+        blob(c, r, rng.randrange(3, 5), rng.randrange(2, 4), WATER, 1)
+    # the Breach: tide pools along the crossing
+    for c, r in spots(2, 6):
+        blob(c, r, rng.randrange(2, 5), rng.randrange(2, 4), WATER, 2)
+    # the Scar: outcrop knots + dark pits, sprawling every direction
+    for c, r in spots(3, 26):
+        blob(c, r, rng.randrange(2, 5), rng.randrange(2, 4), ROCK, 3)
+    for c, r in spots(3, 6):
+        blob(c, r, rng.randrange(3, 7), rng.randrange(2, 5), WATER, 3)
+    # the Stage: the boss lake (its island is carved after) + broken colonnade
+    bc, br = NODE_MARKERS["boss_1"]
+    for r in range(br - 9, br + 10):
+        for c in range(bc - 11, bc + 12):
+            if 2 <= c < MAP_W - 2 and 2 <= r < MAP_H - 2 and (c - bc) ** 2 + ((r - br) * 1.3) ** 2 <= 100 and REGION_MAP[r][c] == 4:
+                grid[r][c] = tid(4, WATER)
+    for c, r in spots(4, 6):
+        blob(c, r, 1, rng.randrange(2, 4), ROCK, 4)
 
 
 def build_grid() -> list[list[int]]:
     rng = random.Random(20260711)
-    grid = [[tid(region_of(c), GRASS) for c in range(MAP_W)] for _ in range(MAP_H)]
+    grid = [[tid(REGION_MAP[r][c], GRASS) for c in range(MAP_W)] for r in range(MAP_H)]
 
     # solid rock border
     for c in range(MAP_W):
-        grid[0][c] = tid(region_of(c), ROCK)
-        grid[MAP_H - 1][c] = tid(region_of(c), ROCK)
+        grid[0][c] = tid(REGION_MAP[0][c], ROCK)
+        grid[MAP_H - 1][c] = tid(REGION_MAP[MAP_H - 1][c], ROCK)
     for r in range(MAP_H):
-        grid[r][0] = tid(region_of(0), ROCK)
-        grid[r][MAP_W - 1] = tid(region_of(MAP_W - 1), ROCK)
+        grid[r][0] = tid(REGION_MAP[r][0], ROCK)
+        grid[r][MAP_W - 1] = tid(REGION_MAP[r][MAP_W - 1], ROCK)
 
-    for ri in range(len(REGIONS)):
-        _dress_region(grid, rng, ri)
+    _dress_zones(grid, rng)
 
     # scattered texture obstacles, placed before carving so the road always wins
-    for _ in range(90):
+    for _ in range(160):
         c, r = rng.randrange(2, MAP_W - 2), rng.randrange(2, MAP_H - 2)
-        grid[r][c] = tid(region_of(c), ROCK if rng.random() < 0.6 else WATER)
+        grid[r][c] = tid(REGION_MAP[r][c], ROCK if rng.random() < 0.6 else WATER)
 
     # secret spurs: each echo is reachable only by branching off the main
     # road at its region's node marker, then walking an L-bend corridor away
@@ -258,7 +275,7 @@ def build_grid() -> list[list[int]]:
         for c in range(bc - 5, bc + 6):
             if 0 <= c < MAP_W and 0 <= r < MAP_H and (c - bc) ** 2 + (r - br) ** 2 <= 20:
                 if grid[r][c] % 4 != PATH:
-                    grid[r][c] = tid(region_of(c), GRASS)
+                    grid[r][c] = tid(REGION_MAP[r][c], GRASS)
 
     # the main road: waypoint chain through spawn, every node, in campaign
     # order. Carved LAST so it's never accidentally resealed by a pocket ring.
