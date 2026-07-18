@@ -327,15 +327,18 @@ def main() -> None:
         fw_, fh_ = 26 + (h >> 5) % 18, 20 + (h >> 7) % 14
         if fx + fw_ >= PW - 2 or fy + fh_ >= PH - 2:
             continue
-        ring_m = np.zeros((PH, PW), dtype=bool)
-        ring_m[fy : fy + fh_, fx : fx + fw_] = True
-        ring_m[fy + 2 : fy + fh_ - 2, fx + 2 : fx + fw_ - 2] = False
-        ring_m &= grass_px
-        canvas[ring_m] = canvas[ring_m] * 0.55 + silt[None, :] * 0.45
-        inner = np.zeros((PH, PW), dtype=bool)
-        inner[fy + 2 : fy + fh_ - 2, fx + 2 : fx + fw_ - 2] = True
-        inner &= grass_px
-        canvas[inner] *= 0.92
+        # a filled, slightly sunken silt floor -- ground that was once a
+        # hut's, not an outline drawn over the turf
+        floor_m = np.zeros((PH, PW), dtype=bool)
+        floor_m[fy : fy + fh_, fx : fx + fw_] = True
+        floor_m &= grass_px
+        fcol = silt[None, None, :] * (1 + (n_mid - 0.5) * 0.10)[..., None] * 0.9
+        canvas[floor_m] = canvas[floor_m] * 0.25 + fcol[floor_m] * 0.75
+        edge_m = np.zeros((PH, PW), dtype=bool)
+        edge_m[fy : fy + fh_, fx : fx + fw_] = True
+        edge_m[fy + 1 : fy + fh_ - 1, fx + 1 : fx + fw_ - 1] = False
+        edge_m &= grass_px
+        canvas[edge_m] *= 0.8
 
     # --- prayer rings at every save-obelisk (v12.0) --------------------------
     # The Fold's faith marks the whole ascent. Mirrors OverworldScene's
@@ -662,14 +665,11 @@ def main() -> None:
     depth_u = np.clip((X_WATERLINE + wl_wob - xx_g) / 140.0, 0.0, 1.0)
     deep_sea = np.array((0x10, 0x2E, 0x36), dtype=np.float32)
     canvas = canvas * (1 - (depth_u * 0.22)[..., None]) + deep_sea[None, None, :] * (depth_u * 0.22)[..., None]
-    caustic_n = value_noise(PH, PW, 38)
-    caustics = (np.abs(caustic_n - 0.5) < 0.0075) & (depth_u > 0.55) & ~water_mask
-    c_str = (0.2 * depth_u)[..., None]
-    pale = np.array((0xB4, 0xEE, 0xE2), dtype=np.float32)
-    canvas[caustics] = canvas[caustics] * (1 - c_str[caustics]) + pale[None, :] * c_str[caustics]
-    sed_h = (yy_g.astype(np.int64) * 73856093 + xx_g.astype(np.int64) * 19349663) & 0x3FF
-    sediment = (sed_h == 517) & (depth_u > 0.4)
-    canvas[sediment] = canvas[sediment] * 0.5 + pale[None, :] * 0.5 * 0.8
+    # (v12.1 -- owner: "why are we still placing shit on-top of everything":
+    # the caustic-web + sediment overlay crossed every material at uniform
+    # strength and read as a decal layer; deleted. The depth grade, the
+    # region materials, the drowned shapes, and the waterline say
+    # "underwater" without painting a pattern over the world.)
     # the foam seam, broken (never a solid rule) -- and the wet band beyond it
     seam_d = np.abs(xx_g - (X_WATERLINE + wl_wob))
     foam_line = (seam_d < 2.4) & ~water_mask & (value_noise(PH, PW, 12) > 0.28)
