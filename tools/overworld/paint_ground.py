@@ -35,9 +35,13 @@ OUT = ROOT / "assets" / "tilemaps" / "ground_plate.png"
 S = 32  # px per tile cell (2x the runtime 16px -> denser texels, HLD register)
 RNG = np.random.default_rng(20260714)
 
-# HLD-grade accents: one hot signature hue per region, chroma pushed so the
-# blend passes read as COLOUR, not grey (goal: the HLD comparison)
-ACCENTS = [(0x49, 0xC6, 0xBD), (0xF0, 0xA6, 0x48), (0x9A, 0x5C, 0xBD), (0xC2, 0x54, 0x24), (0x7A, 0x4E, 0xB4)]
+# v12.0 Ascent accents: the Fold (deep teal), the Kelp Shelf (kelp green),
+# the Breach (sand/foam), the Scar (blood rust), the Stage (storm violet)
+ACCENTS = [(0x49, 0xC6, 0xBD), (0x58, 0xC0, 0x7A), (0xE8, 0xD9, 0xA8), (0xC2, 0x54, 0x24), (0x7A, 0x4E, 0xB4)]
+
+# The painted WATERLINE: everything west of this plate x is under the sea
+# (the Fold, the Shelf, and the western Breach); east of it is the surface.
+X_WATERLINE = 2 * 26 * 32 + 416  # mid-Breach
 
 
 def tint(base: tuple[int, int, int], accent: tuple[int, int, int], amt: float) -> np.ndarray:
@@ -112,8 +116,10 @@ def main() -> None:
             acc += weights[r][..., None] * bases[r][None, None, :]
         return acc / wsum[..., None]
 
-    # --- grass field --------------------------------------------------------
-    grass_bases = [tint((0x2C, 0x40, 0x26), a, 0.36) for a in ACCENTS]
+    # --- ground field (v12.0: each region's "grass" is its own material) ----
+    # silt streets / kelp turf / wet sand / ashen scrub / stone moor
+    GROUND_BASES = [(0x2E, 0x46, 0x44), (0x24, 0x44, 0x2F), (0x86, 0x76, 0x54), (0x40, 0x30, 0x28), (0x3A, 0x34, 0x46)]
+    grass_bases = [tint(b, a, 0.22) for b, a in zip(GROUND_BASES, ACCENTS)]
     img = blended(grass_bases)
     n_low = value_noise(PH, PW, 160)
     n_mid = value_noise(PH, PW, 36)
@@ -124,6 +130,7 @@ def main() -> None:
     img *= (1 + (grain - 0.5) * 0.12)[..., None]  # per-pixel grain (HLD crunch)
 
     canvas = img  # float32 HxWx3
+    yy_g, xx_g = np.mgrid[0:PH, 0:PW].astype(np.float32)
 
     def stamp_tufts() -> None:
         """Individually hash-placed grass marks -- variation, not wallpaper."""
@@ -157,44 +164,101 @@ def main() -> None:
         c = np.array(colour, dtype=np.float32)
         canvas[mask] = canvas[mask] * (1 - amt) + c[None, :] * amt
 
-    # r0 shallows: tide lines -- long wavy pale horizontals left by the water
+    # r0 the Fold: current lines -- the silt combed by the water above
     r_mask = grass_px & (region_px == 0)
     tide_wave = (value_noise(PH, PW, 90) - 0.5) * 26
     tide_rows = (np.abs(((yy_r := np.arange(PH, dtype=np.float32)[:, None]) + tide_wave) % 96) < 1.2)
     mix(r_mask & tide_rows & (value_noise(PH, PW, 40) > 0.35), (0xB9, 0xC8, 0xBB), 0.28)
 
-    # r1 saltmines: crusted salt veins -- bright random-walk crackle
+    # r1 the Kelp Shelf: kelp wisps -- long dark strands swaying up-slope
     r_mask = grass_px & (region_px == 1)
-    ys_v, xs_v = np.where(r_mask[::64, ::64])
-    for vy, vx in zip(ys_v * 64, xs_v * 64):
+    ys_v, xs_v = np.where(r_mask[::48, ::48])
+    kelp_dark = np.array((0x14, 0x30, 0x1E), dtype=np.float32)
+    for vy, vx in zip(ys_v * 48, xs_v * 48):
         h = (int(vx) * 73856093 ^ int(vy) * 83492791) & 0xFFFFFFFF
-        if h % 100 >= 22:
+        if h % 100 >= 30:
             continue
-        y, x = int(vy), int(vx)
-        for _ in range(18 + h % 30):
-            if 0 <= y < PH and 0 <= x < PW and r_mask[y, x]:
-                canvas[y, x] = canvas[y, x] * 0.4 + np.array((0xD9, 0xE2, 0xDE), dtype=np.float32) * 0.6
-            y += int(RNG.integers(-1, 2))
-            x += int(RNG.integers(-1, 2))
+        x = int(vx) + (h >> 5) % 40
+        ln = 10 + h % 14
+        for d in range(ln):
+            y = int(vy) - d
+            xw = x + int(2.2 * np.sin(d * 0.5 + h % 7))
+            if 0 <= y < PH and 0 <= xw < PW and r_mask[y, xw]:
+                canvas[y, xw] = canvas[y, xw] * 0.45 + kelp_dark * 0.55
+                if d == ln - 1:
+                    canvas[y, xw] = canvas[y, xw] * 0.5 + np.array(ACCENTS[1], dtype=np.float32) * 0.5
+    # wreck ribs: the skeletons of dead ships stitched up the shelf, every
+    # bow pointing UP the climb -- pale bone arcs with a sunken shadow
+    bone = np.array((0xC9, 0xC2, 0xA8), dtype=np.float32)
+    for wi in range(6):
+        h = (wi * 83492791 + 331) & 0xFFFFFFFF
+        wc = 26 + (h >> 4) % 22
+        wr = 3 + (h >> 9) % 27
+        if kind[wr, wc] != 0 or region[wr, wc] != 1:
+            continue
+        wx, wy = wc * S, wr * S
+        nrib = 5 + h % 3
+        for ri in range(nrib):
+            ry = wy + ri * 7
+            half = int((14 - abs(ri - nrib / 2) * 3))
+            for dx in range(-half, half + 1):
+                bow = int((dx * dx) / max(1, half * 2.2))
+                y, x = ry - bow, wx + dx
+                if 0 <= y < PH - 1 and 0 <= x < PW and grass_px[y, x]:
+                    canvas[y, x] = canvas[y, x] * 0.4 + bone[None, :] * 0.6
+                    canvas[y + 1, x] *= 0.7
 
-    # r2 pit: ash smudges + fallen carnival confetti flecks
+    # r2 the Breach: shell flecks + tidal ripple combing near the waterline
     r_mask = grass_px & (region_px == 2)
-    canvas[r_mask & (value_noise(PH, PW, 30) > 0.68)] *= 0.86  # ash
     fleck_h = (np.arange(PH)[:, None] * 19349663 + np.arange(PW)[None, :] * 73856093) & 0xFFFF
-    festival = [(0x9A, 0x5C, 0xBD), (0xC9, 0x9A, 0x3F), (0x49, 0xC6, 0xBD)]
-    for i, fc in enumerate(festival):
-        mix(r_mask & (fleck_h == 77 + i * 331), fc, 0.75)
+    for i, fc in enumerate([(0xD8, 0xD0, 0xB4), (0xB9, 0xC8, 0xBB)]):
+        mix(r_mask & (fleck_h == 77 + i * 331), fc, 0.7)
+    xx_r = np.arange(PW)[None, :].repeat(PH, 0)
+    rip_wob = (value_noise(PH, PW, 70) - 0.5) * 22
+    near_wl = np.abs(xx_r - X_WATERLINE) < 190
+    ridges = r_mask & near_wl & (((xx_r + rip_wob).astype(np.int32) % 16) < 2)
+    canvas[ridges] *= 0.86
+    crests = r_mask & near_wl & (((xx_r + rip_wob).astype(np.int32) % 16) == 2)
+    canvas[crests] *= 1.12
 
-    # r3 attic: ghostly floorboard seams showing through the turf
+    # r3 the Scar: sun-cracked earth -- a dark mud-crack web, plus claw
+    # gouges, scorch patches, and monster-den rings (the hostile surface)
     r_mask = grass_px & (region_px == 3)
-    yy_b = np.arange(PH)[:, None].repeat(PW, 1)
-    xx_b = np.arange(PW)[None, :].repeat(PH, 0)
-    board_row = yy_b // 26
-    seam_h = (yy_b % 26) == 0
-    joint = ((xx_b + board_row * 67) % 150) < 2
-    canvas[r_mask & seam_h] *= 0.8
-    canvas[r_mask & joint & ((yy_b % 26) < 24)] *= 0.9
-    canvas[r_mask & (board_row % 2 == 0) & ~seam_h] *= 0.97  # alternating board tone
+    crack_n = value_noise(PH, PW, 30)
+    canvas[r_mask & (np.abs(crack_n - 0.5) < 0.005)] *= 0.66
+    ys_v, xs_v = np.where(r_mask[::56, ::56])
+    ember = np.array(ACCENTS[3], dtype=np.float32)
+    for vy, vx in zip(ys_v * 56, xs_v * 56):
+        h = (int(vx) * 40503 ^ int(vy) * 19349663) & 0xFFFFFFFF
+        cy0, cx0 = int(vy) + (h >> 9) % 40, int(vx) + (h >> 4) % 40
+        if h % 100 < 10:  # claw gouge: three parallel slashes
+            for k in range(3):
+                for d in range(10 + h % 7):
+                    y, x = cy0 + d + k * 4, cx0 + d - k * 2
+                    if 0 <= y < PH and 0 <= x < PW and r_mask[y, x]:
+                        canvas[y, x] *= 0.55
+        elif h % 100 < 16:  # scorch patch with ember rim flecks
+            rr_s = 8 + h % 8
+            yy_o, xx_o = np.ogrid[-rr_s : rr_s + 1, -rr_s : rr_s + 1]
+            dd = np.sqrt(yy_o**2 + xx_o**2)
+            sl_y, sl_x = slice(max(0, cy0 - rr_s), cy0 + rr_s + 1), slice(max(0, cx0 - rr_s), cx0 + rr_s + 1)
+            sub = canvas[sl_y, sl_x]
+            subm = r_mask[sl_y, sl_x]
+            if sub.shape[:2] == dd.shape:
+                sub[(dd <= rr_s) & subm] *= 0.6
+                rim = (np.abs(dd - rr_s) < 1.2) & subm & ((yy_o * 3 + xx_o * 7) % 5 == 0)
+                sub[rim] = sub[rim] * 0.3 + ember[None, :] * 0.7
+        elif h % 100 < 20:  # den ring: trampled circle, bone flecks
+            rr_s = 16 + h % 10
+            yy_o, xx_o = np.ogrid[-rr_s : rr_s + 1, -rr_s : rr_s + 1]
+            dd = np.sqrt(yy_o**2 + xx_o**2)
+            sl_y, sl_x = slice(max(0, cy0 - rr_s), cy0 + rr_s + 1), slice(max(0, cx0 - rr_s), cx0 + rr_s + 1)
+            sub = canvas[sl_y, sl_x]
+            subm = r_mask[sl_y, sl_x]
+            if sub.shape[:2] == dd.shape:
+                sub[(dd <= rr_s * 0.8) & subm] *= 0.85
+                bone = (dd <= rr_s * 0.7) & subm & ((yy_o * 5 + xx_o * 11) % 23 == 0)
+                sub[bone] = sub[bone] * 0.35 + np.array((0xCE, 0xC8, 0xB2), dtype=np.float32)[None, :] * 0.65
 
     # r4 hall: faint marble veining -- pale contour filaments
     r_mask = grass_px & (region_px == 4)
@@ -227,6 +291,72 @@ def main() -> None:
         vein_s = value_noise(PH, PW, 48)
         vm = stage_px & (np.abs(vein_s - 0.5) < 0.007)
         canvas[vm] = canvas[vm] * 0.6 + np.array((0xC9, 0xC4, 0xD4), dtype=np.float32)[None, :] * 0.4
+
+    # --- the Fold: the obelisk town (v12.0) ----------------------------------
+    # Mir wakes here. The town is told in ground alone: a trodden prayer
+    # plaza (its own material) around the spawn, ring furrows worn by
+    # generations of circling worshippers, and the rectangular silt
+    # foundations of huts around the streets.
+    _spawn0 = next(o for o in _markers0 if o["name"] == "spawn")
+    stc, str_ = int(_spawn0["x"] // 16), int(_spawn0["y"] // 16)
+    town_tiles = np.zeros_like(kind, dtype=bool)
+    for _r in range(max(0, str_ - 4), min(H, str_ + 5)):
+        for _c in range(max(0, stc - 4), min(W, stc + 5)):
+            if (_c - stc) ** 2 + (_r - str_) ** 2 <= 13 and kind[_r, _c] in (0, 1):
+                town_tiles[_r, _c] = True
+    plaza_px = organic_mask(town_tiles, jitter=0.22, blur=9)
+    silt = tint((0x7E, 0x78, 0x62), ACCENTS[0], 0.16)
+    pcol = silt[None, None, :] * (1 + (n_low - 0.5) * 0.14 + (n_mid - 0.5) * 0.10 + (n_hi - 0.5) * 0.06)[..., None]
+    pcol = pcol * (1 + (grain - 0.5) * 0.10)[..., None]
+    canvas[plaza_px] = pcol[plaza_px]
+    # worn prayer-ring furrows, circling the plaza's heart
+    scx, scy = stc * S + S // 2, str_ * S + S // 2
+    rr_p = np.sqrt((xx_g - scx) ** 2 + (yy_g - scy) ** 2)
+    furrow = plaza_px & (np.abs((rr_p % 30) - 15.0) < 1.1) & (rr_p > 18) & (rr_p < 120)
+    canvas[furrow] *= 0.82
+    # hut foundations: rectangular silt outlines in the streets around the plaza
+    for fi in range(14):
+        h = (fi * 2654435761 + 977) & 0xFFFFFFFF
+        fc = stc + ((h >> 4) % 21) - 10
+        fr = str_ + ((h >> 9) % 15) - 7
+        if not (0 <= fc < W and 0 <= fr < H) or kind[fr, fc] != 0 or region[fr, fc] != 0:
+            continue
+        if (fc - stc) ** 2 + (fr - str_) ** 2 <= 13:
+            continue  # not inside the plaza itself
+        fx, fy = fc * S + (h >> 13) % 16, fr * S + (h >> 17) % 16
+        fw_, fh_ = 26 + (h >> 5) % 18, 20 + (h >> 7) % 14
+        if fx + fw_ >= PW - 2 or fy + fh_ >= PH - 2:
+            continue
+        ring_m = np.zeros((PH, PW), dtype=bool)
+        ring_m[fy : fy + fh_, fx : fx + fw_] = True
+        ring_m[fy + 2 : fy + fh_ - 2, fx + 2 : fx + fw_ - 2] = False
+        ring_m &= grass_px
+        canvas[ring_m] = canvas[ring_m] * 0.55 + silt[None, :] * 0.45
+        inner = np.zeros((PH, PW), dtype=bool)
+        inner[fy + 2 : fy + fh_ - 2, fx + 2 : fx + fw_ - 2] = True
+        inner &= grass_px
+        canvas[inner] *= 0.92
+
+    # --- prayer rings at every save-obelisk (v12.0) --------------------------
+    # The Fold's faith marks the whole ascent. Mirrors OverworldScene's
+    # deterministic obelisk placement (first walkable of fixed candidates).
+    def _walk(c, r):
+        return 0 <= c < W and 0 <= r < H and kind[r, c] in (0, 1)
+    node_names = {o["name"] for o in _markers0 if o["name"] != "spawn"}
+    for o in _markers0:
+        if o["name"] == "spawn":
+            continue
+        mc, mr = int(o["x"] // 16), int(o["y"] // 16)
+        cand = [(mc - 2, mr), (mc + 2, mr), (mc, mr + 2), (mc, mr - 2), (mc - 2, mr + 1), (mc + 2, mr + 1)]
+        spot = next(((c, r) for c, r in cand if _walk(c, r)), None)
+        if spot is None:
+            continue
+        ocx, ocy = spot[0] * S + S // 2, spot[1] * S + S // 2
+        rr_o = np.sqrt((xx_g - ocx) ** 2 + (yy_g - ocy) ** 2)
+        ring = (np.abs(rr_o - 22.0) < 1.6) & grass_px
+        canvas[ring] *= 0.78
+        knee = (np.abs(rr_o - 22.0) < 5.0) & (rr_o >= 23.6) & grass_px & (value_noise(PH, PW, 9) > 0.6)
+        canvas[knee] *= 0.9
 
     # --- path hierarchy: the main road vs desire-path spurs ------------------
     # BFS the road graph from spawn to the boss: that corridor (+1 tile of
@@ -370,8 +500,8 @@ def main() -> None:
             continue
         cx, cy = tx * S + S // 2, ty * S + S // 2
         reg = region[ty, tx]
-        if reg not in (0, 4) and h % 5 != 0:
-            continue  # cluster in the shallows + the hall lake
+        if reg not in (0, 1, 4) and h % 5 != 0:
+            continue  # cluster under the sea (Fold/Shelf) + the hall lake
         if d_w[cy, cx] < 7 or any((cx - px) ** 2 + (cy - py) ** 2 < 70**2 for px, py in placed):
             continue
         placed.append((cx, cy))
@@ -498,7 +628,6 @@ def main() -> None:
     # stays inside the r~130px disc, so every fight still has a real room --
     # now indistinguishable from the painted world because it IS the world.
     markers = [l for l in data["layers"] if l.get("name") == "markers"][0]["objects"]
-    yy_g, xx_g = np.mgrid[0:PH, 0:PW].astype(np.float32)
     disc_noise = value_noise(PH, PW, 22)
     # v11.5 (owner: "I don't like that we are layering shit"): fight wear is
     # for REGULAR arenas only -- turf blending toward packed earth, patchy,
@@ -523,15 +652,42 @@ def main() -> None:
         arcs = land & (rr < radius - 10) & (np.abs((rr % 44) - 22.0) < 1.0) & (rr > 30) & (value_noise(PH, PW, 16) > 0.5)
         canvas[arcs] *= 0.9
 
-    # --- Nari's trail (v11.3): the search, told in the ground -----------------
-    # Tiny toddler footprints march along the critical-path route toward the
-    # boss -- Mir is tracking his son through ground paint alone. A short run
-    # every ~14 route tiles, prints stepping in the route's true direction.
+    # --- under the sea + the waterline (v12.0) --------------------------------
+    # The Fold and the Shelf are on the ocean floor; the western Breach still
+    # wades. West of the wobbling waterline the world renders UNDERWATER:
+    # a cool depth grade, caustic light webs playing over the ground, and
+    # drifting sediment. The line itself is a broken foam seam; the surface
+    # side dries out of it, wet sand darkening right at the crossing.
+    wl_wob = (value_noise(PH, PW, 60) - 0.5) * 90
+    depth_u = np.clip((X_WATERLINE + wl_wob - xx_g) / 140.0, 0.0, 1.0)
+    deep_sea = np.array((0x10, 0x2E, 0x36), dtype=np.float32)
+    canvas = canvas * (1 - (depth_u * 0.22)[..., None]) + deep_sea[None, None, :] * (depth_u * 0.22)[..., None]
+    caustic_n = value_noise(PH, PW, 38)
+    caustics = (np.abs(caustic_n - 0.5) < 0.0075) & (depth_u > 0.55) & ~water_mask
+    c_str = (0.2 * depth_u)[..., None]
+    pale = np.array((0xB4, 0xEE, 0xE2), dtype=np.float32)
+    canvas[caustics] = canvas[caustics] * (1 - c_str[caustics]) + pale[None, :] * c_str[caustics]
+    sed_h = (yy_g.astype(np.int64) * 73856093 + xx_g.astype(np.int64) * 19349663) & 0x3FF
+    sediment = (sed_h == 517) & (depth_u > 0.4)
+    canvas[sediment] = canvas[sediment] * 0.5 + pale[None, :] * 0.5 * 0.8
+    # the foam seam, broken (never a solid rule) -- and the wet band beyond it
+    seam_d = np.abs(xx_g - (X_WATERLINE + wl_wob))
+    foam_line = (seam_d < 2.4) & ~water_mask & (value_noise(PH, PW, 12) > 0.28)
+    canvas[foam_line] = canvas[foam_line] * 0.35 + np.array((0xD9, 0xF2, 0xEA), dtype=np.float32)[None, :] * 0.65
+    wet_band = (xx_g > X_WATERLINE + wl_wob) & (seam_d < 26) & ~water_mask
+    canvas[wet_band] *= (1 - 0.14 * np.clip(1 - (seam_d[wet_band] - 2) / 24.0, 0, 1))[..., None]
+
+    # --- Nari's trail (v12.0): he FOLLOWED -- until the Scar ------------------
+    # Tiny toddler footprints trail the route from the Fold: Nari walking
+    # behind his father. At the first route tile on the surface (the Scar,
+    # region index 3) the trail ends in a scuffle -- prints circling, a drag
+    # mark -- and beyond it only sparse single prints remain: clues.
     def stamp_print(py: int, px: int) -> None:
         if 1 <= py < PH - 2 and 1 <= px < PW - 1 and not water_mask[py, px]:
             canvas[py : py + 2, px : px + 2] *= 0.62  # sole
             canvas[py + 2, px] *= 0.7  # heel
-    for i in range(3, len(route) - 1, 14):
+    loss_idx = next((i for i, (ty, tx) in enumerate(route) if tx // 26 >= 3), len(route))
+    for i in range(3, min(loss_idx, len(route) - 1), 10):
         ty, tx = route[i]
         ny, nx = route[i + 1]
         dy, dx = ny - ty, nx - tx  # unit tile step = the walk direction
@@ -543,6 +699,24 @@ def main() -> None:
             px_ = cx + dx * along + (dy * side)  # lateral offset perpendicular
             py_ = cy + dy * along + (dx * side)
             stamp_print(py_ + (h >> step) % 2, px_ + (h >> (step + 3)) % 2)
+    if loss_idx < len(route):
+        ty, tx = route[loss_idx]
+        cx, cy = tx * S + S // 2, ty * S + S // 2
+        h = 0x5EED
+        # the scuffle: prints circling in panic
+        for k in range(12):
+            ang = k * 0.55 + (h >> k) % 3 * 0.2
+            stamp_print(int(cy + 10 * np.sin(ang)), int(cx + 12 * np.cos(ang)))
+        # the drag mark, leading away from the road
+        for d in range(26):
+            y, x = cy + d // 3, cx + d
+            if 0 <= y < PH and 0 <= x < PW and not water_mask[y, x]:
+                canvas[y : y + 2, x] *= 0.6
+        # beyond: sparse single prints -- the clues Mir hunts
+        for i in range(loss_idx + 6, len(route) - 1, 24):
+            ty, tx = route[i]
+            h2 = (tx * 40503 ^ ty * 2654435761) & 0xFFFFFFFF
+            stamp_print(ty * S + (h2 >> 5) % S, tx * S + (h2 >> 11) % S)
 
     # --- value composition (v11.3): the road carries the light ---------------
     # A soft macro pool of light hugs the main road so the critical path sits

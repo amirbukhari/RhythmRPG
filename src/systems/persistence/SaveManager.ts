@@ -25,6 +25,8 @@ export interface SaveProfile {
   echoesFound: string[];
   /** Epoch ms of the first campaign completion (the Conductor's fall). Absent until then. */
   campaignCompletedAt?: number;
+  /** Epoch ms of the moment Nari was lost on the surface (v12.0 loss beat). Absent while he still follows. */
+  nariLostAt?: number;
 }
 
 export function createDefaultSaveProfile(slotId: string, startNodeId: string): SaveProfile {

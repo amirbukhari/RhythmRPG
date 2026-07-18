@@ -4588,12 +4588,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "Baker's Ledger"
+              "value": "The First Prayer"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "Everyone's boat but mine -- I'll follow once the last one's free."
+              "value": "We didn't raise the obelisk. We woke on the floor and it was already listening."
             },
             {
               "name": "region",
@@ -4617,12 +4617,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "The Empty Cradle"
+              "value": "The Unlit Lamp"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "She untied every line but her own."
+              "value": "Nobody leaves the Fold. It isn't a rule. It's just that nobody ever has."
             },
             {
               "name": "region",
@@ -4646,12 +4646,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "The Foreman's Ledger"
+              "value": "The Climber's Knot"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "Everyone's shift but mine ends at the sound. I keep counting anyway."
+              "value": "Rope enough to reach the light -- if you don't weigh anything anymore."
             },
             {
               "name": "region",
@@ -4675,12 +4675,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "Listening Stones"
+              "value": "The First Wreck"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "If you stack them right, they listen back."
+              "value": "Every ship that ever sank points the same way. Up."
             },
             {
               "name": "region",
@@ -4704,12 +4704,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "Two Ticket Stubs"
+              "value": "The Broken Foam"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "Front row, both of us. He said don't blink."
+              "value": "The line between worlds is thinner than a footstep. His fit inside mine."
             },
             {
               "name": "region",
@@ -4733,12 +4733,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "The Fortune Wheel"
+              "value": "Salt in the Lungs"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "It never lands anywhere else now. I've checked."
+              "value": "The first breath burns. The second one is his name."
             },
             {
               "name": "region",
@@ -4762,12 +4762,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "The Boarded Window"
+              "value": "The Small Prints"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "We didn't lock her in. We tried to keep it out."
+              "value": "They walk IN. Toward the den. Why would he walk toward it?"
             },
             {
               "name": "region",
@@ -4791,12 +4791,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "The Handprint"
+              "value": "What the Claws Keep"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "Not for help. For quiet."
+              "value": "It doesn't eat what it takes. It collects."
             },
             {
               "name": "region",
@@ -4820,12 +4820,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "The Program"
+              "value": "The Rehearsal"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "He wrote his own name in last, every time, like it might come out different."
+              "value": "The music stops every time the small one cries. Then it starts again, angrier."
             },
             {
               "name": "region",
@@ -4849,12 +4849,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "The Standing Ovation"
+              "value": "The Huntress's Mark"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "They clapped until the water was over their heads. He never once turned around."
+              "value": "She doesn't hunt to kill. She hunts to keep."
             },
             {
               "name": "region",

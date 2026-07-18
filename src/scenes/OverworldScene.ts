@@ -61,6 +61,10 @@ export class OverworldScene extends Phaser.Scene {
   private playerShadow!: Phaser.GameObjects.Ellipse;
   private playerGlow!: Phaser.GameObjects.Image;
   private playerPos: GridPosition = { col: 0, row: 0 };
+  /** Nari (v12.0): follows Mir from the Fold until the loss beat on the
+   * surface. Decorative -- never blocks tiles or triggers anything. */
+  private nari: Phaser.GameObjects.Sprite | null = null;
+  private nariShadow: Phaser.GameObjects.Ellipse | null = null;
   private moving = false;
   private walkable: boolean[][] = [];
   private markers: Marker[] = [];
@@ -258,6 +262,20 @@ export class OverworldScene extends Phaser.Scene {
     this.player.play("leader_idle");
     this.snapPlayerToGrid();
 
+    // Nari follows (v12.0) -- until he is lost on the surface (§8.4).
+    this.nari = null;
+    this.nariShadow = null;
+    if (!profile.nariLostAt && this.textures.exists("band_nari")) {
+      if (!this.anims.exists("nari_idle")) {
+        this.anims.create({ key: "nari_idle", frames: this.anims.generateFrameNumbers("band_nari", { start: 0, end: lastFrame("band_nari") }), frameRate: 4, repeat: -1 });
+        this.anims.create({ key: "nari_walk", frames: this.anims.generateFrameNumbers("band_nari_run", { start: 0, end: lastFrame("band_nari_run") }), frameRate: 9, repeat: -1 });
+      }
+      this.nariShadow = this.add.ellipse(0, 0, 8, 3, 0x05060a, 0.35).setDepth(4.3);
+      this.nari = this.add.sprite(0, 0, "band_nari", 0).setOrigin(0.5, 0.9).setScale(0.125).setDepth(4.55);
+      this.nari.play("nari_idle");
+      this.nari.setPosition(this.playerPos.col * TILE_SIZE + TILE_SIZE / 2, this.playerPos.row * TILE_SIZE + TILE_SIZE / 2 + 2);
+    }
+
     // Retina render (design-audit-3): the canvas is 2x; zooming the camera
     // keeps every world coordinate identical while art renders at its real
     // texel density (the follow camera centers, so no centerOn needed).
@@ -428,6 +446,10 @@ export class OverworldScene extends Phaser.Scene {
       if (!this.fight.update(deltaMs)) this.fight = null;
       return;
     }
+    if (this.nari) {
+      this.nariShadow?.setPosition(this.nari.x, this.nari.y + 1);
+      if (!this.tweens.isTweening(this.nari) && this.nari.anims.getName() !== "nari_idle") this.nari.play("nari_idle");
+    }
     if (this.fog && !GameContext.activeProfile?.settings.reducedMotion) {
       this.fog.tilePositionX += 0.08;
       this.fog.tilePositionY -= 0.03;
@@ -461,7 +483,7 @@ export class OverworldScene extends Phaser.Scene {
         .setVisible(true);
     } else if (this.nearbyObelisk) {
       this.interactHint
-        .setText("E: rest")
+        .setText("E: pray")
         .setPosition(this.nearbyObelisk.col * TILE_SIZE + TILE_SIZE / 2, this.nearbyObelisk.row * TILE_SIZE - 8)
         .setVisible(true);
     } else {
@@ -564,6 +586,7 @@ export class OverworldScene extends Phaser.Scene {
     const target = stepTarget(this.playerPos, dir);
     if (!isWalkable(this.walkable, target)) return;
 
+    const vacated = { ...this.playerPos };
     this.moving = true;
     this.playerPos = target;
     if (this.player.anims.getName() !== "leader_walk" || !this.player.anims.isPlaying) this.player.play("leader_walk");
@@ -574,9 +597,52 @@ export class OverworldScene extends Phaser.Scene {
       duration: STEP_DURATION_MS,
       onComplete: () => {
         this.moving = false;
+        this.checkNariLoss();
         this.checkEncounterTrigger();
       },
     });
+    this.stepNari(vacated);
+  }
+
+  /** Nari toddles to the tile his father just left. */
+  private stepNari(spot: GridPosition): void {
+    if (!this.nari) return;
+    const tx = spot.col * TILE_SIZE + TILE_SIZE / 2;
+    const ty = spot.row * TILE_SIZE + TILE_SIZE / 2 + 2;
+    if (tx > this.nari.x) this.nari.setFlipX(true);
+    else if (tx < this.nari.x) this.nari.setFlipX(false);
+    if (this.nari.anims.getName() !== "nari_walk" || !this.nari.anims.isPlaying) this.nari.play("nari_walk");
+    this.tweens.add({ targets: this.nari, x: tx, y: ty, duration: STEP_DURATION_MS + 30 });
+  }
+
+  /** The loss beat (§8.4 v12.0): Mir's first step onto the surface -- the
+   * Scar, region index 3 -- and Nari is gone. Once, persisted on the save. */
+  private checkNariLoss(): void {
+    const profile = GameContext.activeProfile;
+    if (!this.nari || !profile || profile.nariLostAt) return;
+    if (Math.floor(this.playerPos.col / 26) < 3) return;
+    profile.nariLostAt = Date.now();
+    void GameContext.persistActiveProfile();
+    const nari = this.nari;
+    const shadow = this.nariShadow;
+    this.nari = null;
+    this.nariShadow = null;
+    const reduced = Boolean(profile.settings.reducedMotion);
+    if (reduced) {
+      nari.destroy();
+      shadow?.destroy();
+    } else {
+      this.tweens.add({
+        targets: nari,
+        alpha: 0,
+        duration: 2400,
+        onComplete: () => {
+          nari.destroy();
+          shadow?.destroy();
+        },
+      });
+    }
+    this.showToast("NARI?", "He was right behind you.");
   }
 
   /** Flips Mir to face the walk direction. Only horizontal moves change the
@@ -1029,7 +1095,7 @@ export class OverworldScene extends Phaser.Scene {
     if (!GameContext.activeProfile?.settings.reducedMotion) {
       this.tweens.add({ targets: obelisk.glow, alpha: 0.9, scale: 0.9, yoyo: true, duration: 350 });
     }
-    this.showToast("THE CHORUS RESTS", "Progress saved.");
+    this.showToast("THE OBELISK HEARS", "Progress saved.");
   }
 
   /** A small self-dismissing framed message (same visual family as the echo panel). */

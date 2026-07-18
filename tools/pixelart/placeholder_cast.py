@@ -33,6 +33,7 @@ ROOT = Path(__file__).resolve().parents[2]
 INK = (16, 20, 32, 255)  # silhouette body
 ACCENT = {
     "mir": (73, 198, 189),  # teal (player glow)
+    "nari": (240, 192, 112),  # warm ember-gold: the small hopeful one
     "slime": (154, 202, 67),
     "drifter": (159, 232, 224),
     "elite_wraith": (73, 198, 189),
@@ -60,16 +61,16 @@ def _core(d: ImageDraw.ImageDraw, box: tuple[float, float, float, float], rgb: t
 
 
 def figure_humanoid(w: int, h: int, fig_h: int, accent: tuple[int, int, int],
-                    hat: bool = False, guitar: bool = False) -> Image.Image:
+                    hat: bool = False, guitar: bool = False, toddler: bool = False) -> Image.Image:
     """A slim standing silhouette, feet at the bottom margin, facing left."""
     im, d = _canvas(w, h)
     W, H = w * SS, h * SS
     fh = fig_h * SS
     foot = H - max(2, H // 50)
     cx = W / 2
-    head_r = fh * 0.085
-    head_cy = foot - fh + head_r * 1.6
-    body_w = fh * 0.22
+    head_r = fh * (0.16 if toddler else 0.085)  # toddlers are mostly head
+    head_cy = foot - fh + head_r * (1.1 if toddler else 1.6)
+    body_w = fh * (0.34 if toddler else 0.22)
     # body capsule (shoulders to feet)
     d.rounded_rectangle((cx - body_w / 2, head_cy + head_r * 1.2, cx + body_w / 2, foot), radius=body_w / 2, fill=INK)
     d.ellipse((cx - head_r, head_cy - head_r, cx + head_r, head_cy + head_r), fill=INK)
@@ -150,6 +151,16 @@ def main() -> None:
     pack([base, breathe(base, fig_h)]).save(out / "idle.png")
     pack(run_frames(base, fig_h)).save(out / "run.png")
     pack(attack_frames(base, fig_h)).save(out / "attack.png")
+
+    # Nari: the toddler who follows (v12.0 Ascent premise). Same 200px frame
+    # contract as Mir so BootScene's band glob loads him with zero changes;
+    # the figure itself is small -- a child beside his father.
+    nari_h = 72
+    nbase = figure_humanoid(200, 200, nari_h, ACCENT["nari"], toddler=True)
+    nout = ROOT / "assets/sprites/band/nari"
+    nout.mkdir(parents=True, exist_ok=True)
+    pack([nbase, breathe(nbase, nari_h)]).save(nout / "idle.png")
+    pack(run_frames(nbase, nari_h)).save(nout / "run.png")
 
     foes = {
         "slime": (figure_mound, 128, 128, 104),

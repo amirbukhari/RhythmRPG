@@ -6,7 +6,7 @@
 |---|---|
 | Document title | *The Drowned Chorus* — Browser Rhythm-Action RPG PRD |
 | Working codename | Project Meterfall (historical; the game is titled *The Drowned Chorus*) |
-| Status | **Active v11.5** — v11.5: the boss ground is a real island of UNIQUE terrain (no overlays). Prior: v11.4: v11.4: fight grounds re-painted as wear-of-the-ground + the built boss stage (no more stamped discs). Prior: v11.3: v11.3: the **ground-variation pass** (§11.1.1: region micro-motifs, drowned shapes, Nari's trail, path hierarchy, road-carried light). Prior: v11.2: v11.2: **the purge** — all AI-generated sprite art is thrown out except the painted ground ("throw out anything that generated art that isn't the grass/water/ground/path/boss ground areas"); figures are minimal code-drawn glow-shapes (`placeholder_cast.py`) until a character direction is chosen. v11.1: generations re-cut to the vivid HLD register. Prior: v11.0: **the beauty pivot: pixel art is retired as the aesthetic.** The game keeps its world, mood, and palette but is now a **high-fidelity painterly 2D** game: smooth rendering, HD-authored art, no pixelation/quantization/forced outlines anywhere in the pipeline (§7.1, §11.1, §10.6; migration §20.5). Prior: v10.0: **the solo pivot** — the band cast is retired; the game is **Mir**, alone, searching the drowned world for his toddler son **Nari**; the Conductor is revealed as the instrument of **Lunal**, a masked huntress (§8.4/§8.7); v10.1: the art-cohesion pass ([audit](../design/art-cohesion-audit.md) findings applied: legacy-register screens restyled, quantization escapees fixed, texel scales snapped, cohesion lint added). Prior: v8.0: enterprise rewrite per the [PRD audit](./prd-audit-2026-07-14.md); v8.1: P1 beat truth; v8.2: P2+P3 (four-tier judgment, ultimate, phased boss, Sightread, §9.3 parity) + mobile hardening; v8.3: SFX/relics/hygiene/retired-code deletion; v8.4: landforms; v8.5: the ending (FinaleScene) + wordmark + VFX; v8.6: §8.6 curriculum as authored data + enemy state motion; v8.7: balance harness + measured balance pass; v8.8: onset-snapped grids + elevation shading; v8.9: soak + bundle split; v9.0: design audit 2 — the ground is one painted plate (mesas/ribbons/water bodies), tile stamping retired; v9.1: design audit 3 stages A–C — 2× retina render, signature-colour band, per-biome scatter kits (16 pieces × 5 biomes), landform variants (5 silhouettes per biome); v9.2: stages D–E — the bestiary reads apart (signature-colour foes), venue kit re-framed as objects; v9.3: scale & placement audit — 8 findings fixed (causeways, floating venue pieces, outcrops on roads, cluster piles, toy scale, rectangular ponds); v9.4: venues ARE the world — floor slabs deleted, fight grounds baked into the plate, no-baked-floor art pipeline, emissive prop light, scatter wave 3 (24/biome); v9.5: the map itself de-gridded — meandering roads, segmented ridges, varied attic partitions (SP9/SP11 closed); v9.6: road corners melt into curves, region-entry gates; v9.7: the HLD grade — saturated region palettes, near-black frame, living light; v9.8: the hash scatter is DELETED — every prop is an authored placement (288 pieces, 128 vignettes); v9.9: the hand-pixeled fidelity pass + green-screen despill; v9.10: one world unit (canonical metre scale) + the world moves; v9.11: one pixel register — world scale baked into the art itself; v9.12: the CAST joins the register (band + foes flat-cel requantized to per-frame budgets) and every retired-era art asset (dead hero/arena-bg/UI-icon loads) is deleted outright; v9.13: every AI-generated sprite gets a forced dark outline (skatopia.py's own "single biggest reads as real pixel art win," finally applied past the hand-authored pieces); **v9.14: fights scar the ground they happen on (persistent hit decals) — closing the combat-drama gap a direct HLD comparison surfaced.** |
+| Status | **Active v12.0** — **the Ascent premise**: Mir wakes on the ocean floor in an obelisk-cult town; he climbs for the surface; the surface is hostile and full of monsters; Nari follows him and is lost up there — the world, the regions, and the ground itself now tell this story (§1, §8.4, §8.8.1, §11.1.1). Prior: v11.5: v11.5: the boss ground is a real island of UNIQUE terrain (no overlays). Prior: v11.4: v11.4: fight grounds re-painted as wear-of-the-ground + the built boss stage (no more stamped discs). Prior: v11.3: v11.3: the **ground-variation pass** (§11.1.1: region micro-motifs, drowned shapes, Nari's trail, path hierarchy, road-carried light). Prior: v11.2: v11.2: **the purge** — all AI-generated sprite art is thrown out except the painted ground ("throw out anything that generated art that isn't the grass/water/ground/path/boss ground areas"); figures are minimal code-drawn glow-shapes (`placeholder_cast.py`) until a character direction is chosen. v11.1: generations re-cut to the vivid HLD register. Prior: v11.0: **the beauty pivot: pixel art is retired as the aesthetic.** The game keeps its world, mood, and palette but is now a **high-fidelity painterly 2D** game: smooth rendering, HD-authored art, no pixelation/quantization/forced outlines anywhere in the pipeline (§7.1, §11.1, §10.6; migration §20.5). Prior: v10.0: **the solo pivot** — the band cast is retired; the game is **Mir**, alone, searching the drowned world for his toddler son **Nari**; the Conductor is revealed as the instrument of **Lunal**, a masked huntress (§8.4/§8.7); v10.1: the art-cohesion pass ([audit](../design/art-cohesion-audit.md) findings applied: legacy-register screens restyled, quantization escapees fixed, texel scales snapped, cohesion lint added). Prior: v8.0: enterprise rewrite per the [PRD audit](./prd-audit-2026-07-14.md); v8.1: P1 beat truth; v8.2: P2+P3 (four-tier judgment, ultimate, phased boss, Sightread, §9.3 parity) + mobile hardening; v8.3: SFX/relics/hygiene/retired-code deletion; v8.4: landforms; v8.5: the ending (FinaleScene) + wordmark + VFX; v8.6: §8.6 curriculum as authored data + enemy state motion; v8.7: balance harness + measured balance pass; v8.8: onset-snapped grids + elevation shading; v8.9: soak + bundle split; v9.0: design audit 2 — the ground is one painted plate (mesas/ribbons/water bodies), tile stamping retired; v9.1: design audit 3 stages A–C — 2× retina render, signature-colour band, per-biome scatter kits (16 pieces × 5 biomes), landform variants (5 silhouettes per biome); v9.2: stages D–E — the bestiary reads apart (signature-colour foes), venue kit re-framed as objects; v9.3: scale & placement audit — 8 findings fixed (causeways, floating venue pieces, outcrops on roads, cluster piles, toy scale, rectangular ponds); v9.4: venues ARE the world — floor slabs deleted, fight grounds baked into the plate, no-baked-floor art pipeline, emissive prop light, scatter wave 3 (24/biome); v9.5: the map itself de-gridded — meandering roads, segmented ridges, varied attic partitions (SP9/SP11 closed); v9.6: road corners melt into curves, region-entry gates; v9.7: the HLD grade — saturated region palettes, near-black frame, living light; v9.8: the hash scatter is DELETED — every prop is an authored placement (288 pieces, 128 vignettes); v9.9: the hand-pixeled fidelity pass + green-screen despill; v9.10: one world unit (canonical metre scale) + the world moves; v9.11: one pixel register — world scale baked into the art itself; v9.12: the CAST joins the register (band + foes flat-cel requantized to per-frame budgets) and every retired-era art asset (dead hero/arena-bg/UI-icon loads) is deleted outright; v9.13: every AI-generated sprite gets a forced dark outline (skatopia.py's own "single biggest reads as real pixel art win," finally applied past the hand-authored pieces); **v9.14: fights scar the ground they happen on (persistent hit decals) — closing the combat-drama gap a direct HLD comparison surfaced.** |
 | Owner | Amir Bukhari |
 | Author | Amir Bukhari (compiled from concept notes, deep research, and live-play feedback) |
 | Created | 2026-07-08 |
@@ -25,6 +25,7 @@ and [`docs/design/aaa-audit.md`](../design/aaa-audit.md).
 
 | Version | Date | Change |
 |---|---|---|
+| **12.0** | **2026-07-17** | **The Ascent — the premise, and a world built from it.** Owner: "you wake up lying on the ocean floor. in a religious cult like town that prays to an obelisk. you leave the town for the surface. the surface is scary and full of monsters. your son follows you... you lose your son on the surface, you fight to find him." The five regions are re-cut as one continuous **ascent**: the Fold (the ocean-floor obelisk town, silt and prayer rings), the Kelp Shelf (the drowned climb, ship skeletons), the Breach (the shoreline where the world crosses the painted waterline), the Scar (the hostile surface — claw gouges, scorch, monster dens), and the Stage (where the Conductor rehearses, Lunal watches, and Nari is kept). Drowned regions render underwater (caustic light webs, depth darkening, drifting sediment); a literal painted **waterline** crosses the Breach. **Nari follows Mir** as a real follower from the town, and is **lost at the surface** (scripted beat; the ground's footprint trail ends at a scuffle and turns to sparse clues). Save-obelisks are canonized as the cult's prayer stones; echo lore re-voiced to the ascent. Unique-terrain patches land in "tons of places": the town plaza + hut foundations, prayer rings at every obelisk, wreck ribs, tidal ripples, dens. |
 | **11.5** | **2026-07-17** | **The boss ground is a real island of unique terrain.** Two owner corrections in sequence: "it's over the water though" (the v11.4 marble stage painted across the open lake — and the sim never made that water walkable anyway) and "I don't like that we are layering shit just make it so that area has unique terrain." Fix in two layers of truth: **(1) map data** — `generate_overworld_map.py` carves a real grass island (r≈4.5 tiles) around `boss_1` in the hall lake, so the arena is genuinely walkable ground connected by the existing causeway (BFS validation still green); **(2) paint** — the island renders as its OWN first-class material, the hall's drowned marble-stone floor, using the exact same noise/grain/organic-edge treatment grass gets, with the hall's vein motif slightly denser; the road ribbon dissolves into the stone at the shore, and the v11.4 stage overlay (discs/rims/inlays/deck) is deleted. No layers: terrain, shoreline, done. Boss-phases + overworld + sweep e2e green on the new map. |
 | **11.4** | **2026-07-17** | **Fight grounds stop being stickers.** Owner: "the boss arenas look like trash. why are they just smacked on-top." Root cause: the baked clearings OVERWROTE everything under the disc (flat fill + dark ring, painted over grass motifs, mesas, even water). Re-cut in `paint_ground.py`: regular arenas are now **wear of the ground that's already there** — a radial falloff blends turf toward packed earth, patchy with noise so grass grinds through at the rim, broken wear arcs instead of stamped rings, clipped to never paint over mesas or open water. The boss ring becomes the one deliberate construction: **the Conductor's stage** — a near-true-circle pale marble round in the hall's own material, clean weathered concentric inlays, a defined dark-seam/pale-kerb double rim, and masonry deck edging where it bridges the lake. Screenshot-reviewed at all five arenas + in-game boss capture; 115 unit / e2e sweep green. |
 | **11.3** | **2026-07-16** | **The ground-variation pass — the ground carries the game.** Owner approved the proposed set ("yes do all of that"); all five land in `paint_ground.py`: **(1) region micro-motifs** — tide lines in the Shallows, crusted salt-vein crackle in the mines, ash + carnival confetti flecks in the Pit, ghostly floorboard seams (staggered joints, alternating board tone) through the Attic turf, faint marble veining in the Hall — five places with zero set dressing; **(2) drowned shapes** — pale gabled rooftops, chimneys, and hulls ghosting beneath mid-depth water (clustered at the Shallows + the hall lake), depth-faded; **(3) Nari's trail** — tiny toddler footprints stamped in runs along the BFS spawn→boss route, stepping in the route's true direction: the search told in ground paint; **(4) path hierarchy** — the BFS corridor is the MAIN road, all other path tiles paint as narrower, broken desire paths half-swallowed by turf (secret approaches stay subtle); **(5) value composition** — a soft macro light pool hugs the main road so the critical path sits a half-step brighter, guiding the eye without UI. All deterministic paint; crops + in-game sweep reviewed; 115 unit / e2e green. |
@@ -71,9 +72,11 @@ and [`docs/design/aaa-audit.md`](../design/aaa-audit.md).
 ## 1. Executive Summary
 
 *The Drowned Chorus* is a **single-player, browser-based, top-down rhythm-action RPG**.
-The player is **Mir**, a guitarist descending alone into one continuous, hand-authored
-drowned world of five joined regions, **searching for his missing toddler son, Nari**.
-Exploration is a first-class game loop: hidden paths, secret pockets,
+**Mir wakes lying on the ocean floor**, in a town whose people pray to an obelisk. He
+leaves the Fold for the surface, climbing one continuous, hand-authored world of five
+joined regions — and his toddler son **Nari follows him**. The surface is hostile and
+full of monsters, and Nari is **lost up there**: the rest of the game is the fight to
+find him. Exploration is a first-class game loop: hidden paths, secret pockets,
 and discoverable "echo" lore fragments reward leaving the road. Combat happens **in the
 world**: walking into a foe locks the camera to a room of the actual overworld and runs
 a real-time action fight there — 8-directional momentum movement, dashes with i-frames,
@@ -359,17 +362,21 @@ globally before judgment. Enemy attacks telegraph and land on the beat.
 song's grid; damage/knockback/Groove/dash-i-frames/parry windows scale per tier;
 HUD tier popups + per-tier analytics live.)*
 
-### 8.4 The cast — Mir, alone (v10.0)
+### 8.4 The cast — Mir and Nari (v12.0)
 
-The playable character is **Mir** — a lead guitarist, alone in the drowned world,
-searching for his toddler son **Nari**. He walks alone; no followers, no party.
+The playable character is **Mir** — a guitarist who wakes on the ocean floor. His
+toddler son **Nari** is with him.
 
 - **v1 (this spec):** the player controls Mir with one complete kit —
   light / heavy / special / ultimate / dash / parry per §8.2.
-- **Nari** is the campaign's object, not a mechanic: his absence is staged
-  environmentally along the critical path (§8.8.2 echoes may reference him; a small
-  physical trace per region is the direction), and he is found in the finale (§8.7).
-  He is never an escort, an inventory item, or a fail state.
+- **Nari follows** (v12.0): from the Fold, Nari trails Mir as a decorative single
+  follower — he never blocks tiles, triggers nothing, and pauses outside fight rooms.
+  On Mir's first step onto the surface (region 4 of the ascent — the Scar), the
+  **loss beat** fires once: Nari is gone (caption in the echo voice, sprite fades;
+  persists on the save). From then on the ground carries the search — his footprint
+  trail ends at a scuffle mark and continues only as sparse single-print clues — and
+  he is found in the finale (§8.7). He is never an escort objective, an inventory
+  item, or a fail state.
 - **v2 (target, out of v1 scope):** kit expansion for Mir (unlockable specials), and
   a possible **Lunal** confrontation as a post-Conductor fight (§18).
 
@@ -406,11 +413,11 @@ model; see §8.7 for how the boss escalates).
 
 | Region (node) | Foe(s) | Track (combat rotation/boss) | Curriculum |
 |---|---|---|---|
-| The Shallows (`opening_1`) | rot slime | combat rotation | Movement, light/heavy, first on-beat rewards; generous telegraphs |
-| The Salt Mines (`mid_1`) | drowned drifter | combat rotation | Dash timing, whiff punishment, first special |
-| The Pit Below (`mid_2`) | wraith + drifter pack | combat rotation | Multi-enemy spacing, target priority, crowd DI |
-| The Attic of Teeth (`mid_3`) | elite wraith | combat rotation | Parry as offense; cancel-window pressure; tighter telegraphs |
-| The Conductor's Hall (`boss_1`) | **the Conductor** | *Quotience* | Full system: phases, section changes, ultimate economy (§8.7) |
+| The Fold's edge (`opening_1`) | rot slime | combat rotation | Movement, light/heavy, first on-beat rewards; generous telegraphs |
+| The Kelp Shelf (`mid_1`) | drowned drifter | combat rotation | Dash timing, whiff punishment, first special |
+| The Breach (`mid_2`) | wraith + drifter pack | combat rotation | Multi-enemy spacing, target priority, crowd DI |
+| The Scar (`mid_3`) | elite wraith | combat rotation | Parry as offense; cancel-window pressure; tighter telegraphs |
+| The Stage (`boss_1`) | **the Conductor** | *Quotience* | Full system: phases, section changes, ultimate economy (§8.7) |
 
 Foe roster is **lyric-canon only** (v7.6): slime, drifter, elite wraith, the Conductor.
 *(Content-hygiene item: encounter/track file IDs still carry legacy names —
@@ -452,13 +459,18 @@ thresholds on the boss bar; `boss-phases-world.spec.ts` covers it on the product
 
 ### 8.8 Exploration — the second game
 
-**8.8.1 World structure.** One continuous hand-authored map (currently 130×34 tiles)
-of **five joined regions**, one per movement of the campaign, in order: the drowned
-coastal Shallows, the salt-crusted mine road, the carnival approach to the Pit, the
-claustrophobic exterior of the Attic, and the flooded plaza before the Conductor's
-hall. Regions are visually and structurally distinct (own dressing, obstacle logic,
-and accent hue — "one palette, five moods," §11.1.1) but seamlessly connected. The map
-is deliberately larger than its critical path so it can hold secrets.
+**8.8.1 World structure — the Ascent (v12.0).** One continuous hand-authored map
+(currently 130×34 tiles) of **five joined regions**, one per movement of the campaign,
+read as one climb from the sea bed to the open air: **the Fold** (the ocean-floor
+obelisk town Mir wakes in — silt streets, prayer rings, hut foundations), **the Kelp
+Shelf** (the drowned climb — kelp beds and the ribs of dead ships), **the Breach**
+(the shoreline: the painted **waterline** crosses this region — below it the world
+renders underwater, above it the air begins), **the Scar** (the surface: harsh light,
+clawed and scorched ground, monster dens — where Nari is lost), and **the Stage**
+(the stone ground where the Conductor rehearses and Lunal keeps Nari). Regions are
+visually and structurally distinct (own terrain bases, obstacle logic, accent hue —
+"one palette, five moods," §11.1.1) but seamlessly connected. The map is deliberately
+larger than its critical path so it can hold secrets.
 
 **8.8.2 Echoes — the found backstory.** An **echo** is a discoverable, hand-placed
 environmental-story beat off the critical path: a staged prop arrangement with a
@@ -478,9 +490,11 @@ never procedural.
 dialogue; not a second combat layer (no overworld enemies beyond the standing node
 foes); not procedural generation.
 
-**8.8.5 Save-obelisks.** A save-obelisk stands near each fight node (two tiles out, on
-walkable ground). Standing beside it prompts rest; resting persists the save in-world
-("THE CHORUS RESTS") without touching the fight trigger. Obelisks complement — not
+**8.8.5 Save-obelisks — the cult's prayer stones (v12.0).** The Fold prays to the
+obelisk, and its faith marks the whole ascent: a save-obelisk stands near each fight
+node (two tiles out, on walkable ground), ringed by a worn prayer circle painted into
+the ground. Standing beside it prompts prayer; praying persists the save in-world
+("THE OBELISK HEARS") without touching the fight trigger. Obelisks complement — not
 replace — autosave on progression.
 
 ---
@@ -684,13 +698,13 @@ in world space, and the fight locks its room onto that exact dressed ground. Eac
 stages an untold story (canon in [world-bible](../design/world-bible.md) §5a) readable
 without text:
 
-| Node | The place | Hue | The untold story its set pieces stage |
+| Node | The place | Hue | The untold story its ground stages (v12.0 — ground-first per the purge) |
 |---|---|---|---|
-| `opening_1` | **The Shallows** — a drowned village green | teal | A ring of boats moored around a sunken maypole; one empty boat still straining at its rope toward the surface. The village went under mid-festival — and somebody almost got away. |
-| `mid_1` | **The Salt Mines** — a gallery of the calcified | ember/gold | Miners turned to salt mid-swing, all facing one faintly glowing tunnel mouth; one statue faces the other way — mid-run. |
-| `mid_2` | **The Pit Below** — a sunken carnival ring | plum/magenta | A ring with ropes snapped **outward**, dead lantern strings overhead — two still burning — and every chair tipped over *away* from the ring. |
-| `mid_3` | **The Attic of Teeth** — a room that should not fit indoors | blood/rust | A bolted door with claw-gouges on the *inside*, walls black with scrawl — staves and bars scratched among it — and a small bed made of pens. |
-| `boss_1` | **The Conductor's Hall** — an orchestra with no orchestra | ink + ember | Empty stands holding blank pages (the last row's are full), melting clocks each stopped at a different time. He rehearses an unfinished ending with players who drowned rehearsing it. |
+| `opening_1` | **The Fold's edge** — where the town's silt streets end | deep teal | The last prayer ring before open water; the ring is scuffed where something was dragged across it, outward. The town prays facing the obelisk. The thing they pray about comes from the other way. |
+| `mid_1` | **The Kelp Shelf** — the drowned climb | kelp green | Ship ribs stitched up the slope like the rungs of a ladder — every wreck points UP. Whoever climbed before Mir used the dead as footholds. |
+| `mid_2` | **The Breach** — the waterline | sand/foam | Tidal ripples combed flat in one wide swathe, as if something enormous hauled itself ashore here. The foam line is broken exactly once. |
+| `mid_3` | **The Scar** — the surface | blood/rust | Claw-gouged turf and scorched rings around a den mouth; among the big prints, one set of very small ones, walking IN. This is where the trail ends. |
+| `boss_1` | **The Stage** — Lunal's ground | storm violet | A stone island whose floor is the hall's drowned marble, veins running toward its centre. The Conductor rehearses; the huntress watches; something small is kept behind the music. |
 
 Design rules: a specific place, not a theme (postcard test); story staged physically
 in 2–4 set pieces; fight-readable (story in dressing, play-space high-contrast; story
@@ -1056,10 +1070,12 @@ remaining test covers shipped code, which is the honest number.)*
 5. **Legacy ability/role content** (`src/data/content/abilities|heroes`) remains as
    validated data with no runtime consumer — earmarked as the seed of the v2
    moveset schema (§10.5), not deleted.
-6. **Nari + Lunal staging (§8.4/§8.7 — v10.0):** the narrative is specced and the
-   finale text re-staged, but the physical staging art (Nari at the finale, Lunal's
-   masks in the hall dressing, per-region Nari traces) and the search-voiced echo
-   lines are not yet authored — the solo pivot ships mechanically first.
+6. **Nari + Lunal staging (§8.4/§8.7):** v12.0 shipped the mechanical heart — Nari
+   follows as a real presence, the loss beat fires and persists, the ground carries
+   his trail/scuffle/clues, and every echo line is voiced to the search. Still open:
+   Nari appearing physically in the finale staging and Lunal's visual presence
+   (masks/silhouette) — both need character art, which awaits the post-purge
+   direction.
 
 *(Closed by v8.2–v8.3: four-tier judgment, ultimate, phased boss, §9.3 parity,
 Sightread v1, analytics parity, battle SFX first fill, the relics regression,

@@ -76,17 +76,19 @@ SPAWN: tuple[int, int] = wp(0, 3, 27)
 # Two echoes per region (10 total) -- lore text mirrors world-bible §5b
 # verbatim so the map data and the design doc never drift apart. Each is
 # (title, one-line found-text, region, local anchor near where its spur/pocket lands).
+# v12.0 Ascent: the echo voice carries the premise -- the Fold's faith, the
+# climb, the crossing, the hostile surface, and what waits on the Stage.
 ECHOES: list[tuple[str, str, str, int, tuple[int, int]]] = [
-    ("Baker's Ledger", "Everyone's boat but mine -- I'll follow once the last one's free.", "shallows", 0, wp(0, 9, 6)),
-    ("The Empty Cradle", "She untied every line but her own.", "shallows", 0, wp(0, 18, 30)),
-    ("The Foreman's Ledger", "Everyone's shift but mine ends at the sound. I keep counting anyway.", "saltmines", 1, wp(1, 8, 30)),
-    ("Listening Stones", "If you stack them right, they listen back.", "saltmines", 1, wp(1, 17, 5)),
-    ("Two Ticket Stubs", "Front row, both of us. He said don't blink.", "pit", 2, wp(2, 8, 27)),
-    ("The Fortune Wheel", "It never lands anywhere else now. I've checked.", "pit", 2, wp(2, 18, 6)),
-    ("The Boarded Window", "We didn't lock her in. We tried to keep it out.", "attic", 3, wp(3, 9, 6)),
-    ("The Handprint", "Not for help. For quiet.", "attic", 3, wp(3, 17, 28)),
-    ("The Program", "He wrote his own name in last, every time, like it might come out different.", "hall", 4, wp(4, 9, 25)),
-    ("The Standing Ovation", "They clapped until the water was over their heads. He never once turned around.", "hall", 4, wp(4, 15, 6)),
+    ("The First Prayer", "We didn't raise the obelisk. We woke on the floor and it was already listening.", "shallows", 0, wp(0, 9, 6)),
+    ("The Unlit Lamp", "Nobody leaves the Fold. It isn't a rule. It's just that nobody ever has.", "shallows", 0, wp(0, 18, 30)),
+    ("The Climber's Knot", "Rope enough to reach the light -- if you don't weigh anything anymore.", "saltmines", 1, wp(1, 8, 30)),
+    ("The First Wreck", "Every ship that ever sank points the same way. Up.", "saltmines", 1, wp(1, 17, 5)),
+    ("The Broken Foam", "The line between worlds is thinner than a footstep. His fit inside mine.", "pit", 2, wp(2, 8, 27)),
+    ("Salt in the Lungs", "The first breath burns. The second one is his name.", "pit", 2, wp(2, 18, 6)),
+    ("The Small Prints", "They walk IN. Toward the den. Why would he walk toward it?", "attic", 3, wp(3, 9, 6)),
+    ("What the Claws Keep", "It doesn't eat what it takes. It collects.", "attic", 3, wp(3, 17, 28)),
+    ("The Rehearsal", "The music stops every time the small one cries. Then it starts again, angrier.", "hall", 4, wp(4, 9, 25)),
+    ("The Huntress's Mark", "She doesn't hunt to kill. She hunts to keep.", "hall", 4, wp(4, 15, 6)),
 ]
 
 
