@@ -201,6 +201,33 @@ def main() -> None:
     vein_n = value_noise(PH, PW, 55)
     mix(r_mask & (np.abs(vein_n - 0.5) < 0.006), (0xC9, 0xC4, 0xD4), 0.30)
 
+    # --- the Conductor's ground (v11.5): UNIQUE TERRAIN, not an overlay ------
+    # Owner: "I don't like that we are layering shit just make it so that
+    # area has unique terrain." The boss island (carved as real land by the
+    # map generator) is painted as its OWN material -- the hall's drowned
+    # marble-stone floor -- with the exact same treatment grass gets (noise
+    # stack, grain, organic tile-mask edge). The road, shoreline, mesas, and
+    # light passes then treat it like any other ground. No discs, no rims.
+    _markers0 = [l for l in data["layers"] if l.get("name") == "markers"][0]["objects"]
+    _boss0 = next((o for o in _markers0 if o["name"] == "boss_1"), None)
+    stage_px = np.zeros((PH, PW), dtype=bool)
+    if _boss0 is not None:
+        btc, btr = int(_boss0["x"] // 16), int(_boss0["y"] // 16)
+        island_tiles = np.zeros_like(kind, dtype=bool)
+        for _r in range(max(0, btr - 6), min(H, btr + 7)):
+            for _c in range(max(0, btc - 6), min(W, btc + 7)):
+                if (_c - btc) ** 2 + (_r - btr) ** 2 <= 22 and kind[_r, _c] in (0, 1):
+                    island_tiles[_r, _c] = True
+        stage_px = organic_mask(island_tiles, jitter=0.24, blur=9)
+        stone = tint((0x6A, 0x64, 0x78), ACCENTS[4], 0.18)
+        scol = stone[None, None, :] * (1 + (n_low - 0.5) * 0.18 + (n_mid - 0.5) * 0.12 + (n_hi - 0.5) * 0.08)[..., None]
+        scol = scol * (1 + (grain - 0.5) * 0.10)[..., None]
+        canvas[stage_px] = scol[stage_px]
+        # the hall's marble veining, a little denser on the stone itself
+        vein_s = value_noise(PH, PW, 48)
+        vm = stage_px & (np.abs(vein_s - 0.5) < 0.007)
+        canvas[vm] = canvas[vm] * 0.6 + np.array((0xC9, 0xC4, 0xD4), dtype=np.float32)[None, :] * 0.4
+
     # --- path hierarchy: the main road vs desire-path spurs ------------------
     # BFS the road graph from spawn to the boss: that corridor (+1 tile of
     # slack) is the MAIN road; every other path tile is a side spur, painted
@@ -257,6 +284,9 @@ def main() -> None:
     # stair-steps; the wider falloff melts each corner into a curve while a
     # 1-tile spur (32px wide) still holds together comfortably
     path_mask = organic_mask(main_tiles, jitter=0.18, blur=11)
+    # the road dissolves into the island's stone -- one material there, no
+    # tan ribbon crossing the unique terrain (v11.5)
+    path_mask &= ~stage_px
     d_path = distance_bands(path_mask, 6)
     path_bases = [tint((0x8E, 0x83, 0x68), a, 0.18) for a in ACCENTS]
     path_col = blended(path_bases) * (1 + (n_mid - 0.5) * 0.12)[..., None]
@@ -290,7 +320,7 @@ def main() -> None:
     spur_px = np.zeros((PH, PW), dtype=bool)
     if spur_tiles.any():
         spur_band = organic_mask(spur_tiles, jitter=0.26, blur=7)
-        spur_px = spur_band & (value_noise(PH, PW, 12) > 0.34) & ~path_mask
+        spur_px = spur_band & (value_noise(PH, PW, 12) > 0.34) & ~path_mask & ~stage_px
         worn = canvas[spur_px] * 0.35 + path_col[spur_px] * 0.65
         canvas[spur_px] = canvas[spur_px] * 0.45 + worn * 0.55
 
@@ -470,59 +500,28 @@ def main() -> None:
     markers = [l for l in data["layers"] if l.get("name") == "markers"][0]["objects"]
     yy_g, xx_g = np.mgrid[0:PH, 0:PW].astype(np.float32)
     disc_noise = value_noise(PH, PW, 22)
-    # v11.4 (owner: "the boss arenas look like trash. why are they just
-    # smacked on-top"): the old pass OVERWROTE everything under the disc with
-    # a flat fill + dark ring -- a pasted sticker. Now the clearing is WEAR of
-    # the ground that's already there: a radial falloff blends the turf toward
-    # packed earth, patchy with noise so grass/motifs grind through at the
-    # rim, clipped so it never paints over mesas or open water. The boss ring
-    # is the one deliberate construction: where it bridges the hall lake it
-    # becomes built masonry (the causeway language) with inlaid arcs -- the
-    # Conductor's stage, not a stain.
+    # v11.5 (owner: "I don't like that we are layering shit"): fight wear is
+    # for REGULAR arenas only -- turf blending toward packed earth, patchy,
+    # clipped from mesas/water. The boss island needs nothing here: its
+    # ground IS the unique hall-stone terrain painted with the grass pass.
     for obj in markers:
-        if obj["name"] == "spawn":
+        if obj["name"] == "spawn" or obj["name"] == "boss_1":
             continue
         cx, cy = float(obj["x"]) * 2, float(obj["y"]) * 2
         reg = min(4, int(cx // (26 * S)))
-        boss = obj["name"] == "boss_1"
-        radius = 230.0 if boss else 132.0
-        # architecture is round: the boss stage keeps a near-true circle
-        # (gentle waver), organic wear keeps the loose ragged boundary
-        rr = np.sqrt((xx_g - cx) ** 2 + (yy_g - cy) ** 2) + (disc_noise - 0.5) * (16.0 if boss else 56.0)
+        radius = 132.0
+        rr = np.sqrt((xx_g - cx) ** 2 + (yy_g - cy) ** 2) + (disc_noise - 0.5) * 56
         t = np.clip((radius - rr) / radius, 0.0, 1.0)  # 0 at rim -> 1 at centre
-        if not boss:
-            # patchy trampled wear: strongest at centre, ground grinding through
-            wear = (t**0.65) * (0.45 + 0.55 * n_mid) * 0.8
-            land = ~water_mask & ~mesa_px & (wear > 0.02)
-            base = tint((0x6E, 0x61, 0x4A), ACCENTS[reg], 0.28)
-            earth = base[None, None, :] * (1 + (n_mid - 0.5) * 0.14 + (n_hi - 0.5) * 0.08)[..., None]
-            a = wear[..., None] * land[..., None]
-            canvas = canvas * (1 - a) + earth * a
-            # faded, BROKEN wear arcs (circling feet), never full stamped rings
-            arcs = land & (rr < radius - 10) & (np.abs((rr % 44) - 22.0) < 1.0) & (rr > 30) & (value_noise(PH, PW, 16) > 0.5)
-            canvas[arcs] *= 0.9
-            continue
-        # --- the Conductor's stage: BUILT, not worn ---------------------------
-        # A pale marble round (the hall's own material) laid over land and
-        # bridging the lake as masonry deck; clean concentric inlay circles,
-        # a defined double rim, weathered by noise only in tone, not in shape.
-        stage_r = radius * 0.86
-        on_stage = (rr < stage_r) & ~mesa_px
-        marble = np.array((0x8E, 0x86, 0x9A), dtype=np.float32)
-        tone = (1 + (n_mid - 0.5) * 0.16 + (n_hi - 0.5) * 0.06)
-        a = (np.clip((stage_r - rr) / 30.0, 0, 1) * 0.85)[..., None] * on_stage[..., None]
-        canvas = canvas * (1 - a) + (marble[None, None, :] * tone[..., None]) * a
-        # masonry deck edging where the stage meets open water
-        deck_dil = ~(erode(~(on_stage & water_mask), 3)[3])
-        canvas[deck_dil & water_mask & ~on_stage] *= 0.38
-        # clean concentric inlays, lightly broken by weathering
-        inlay = on_stage & (np.abs((rr % 58) - 29.0) < 1.3) & (rr > 34) & (value_noise(PH, PW, 40) > 0.22)
-        canvas[inlay] = canvas[inlay] * 0.66 + np.array((0xD6, 0xD0, 0xE0), dtype=np.float32)[None, :] * 0.34
-        # defined double rim: dark seam, pale kerb
-        seam = ~mesa_px & (np.abs(rr - stage_r) < 2.2)
-        kerb = ~mesa_px & (rr >= stage_r + 2.2) & (rr < stage_r + 6.0)
-        canvas[seam] *= 0.55
-        canvas[kerb] = canvas[kerb] * 0.6 + marble[None, :] * 0.4 * 1.1
+        # patchy trampled wear: strongest at centre, ground grinding through
+        wear = (t**0.65) * (0.45 + 0.55 * n_mid) * 0.8
+        land = ~water_mask & ~mesa_px & (wear > 0.02)
+        base = tint((0x6E, 0x61, 0x4A), ACCENTS[reg], 0.28)
+        earth = base[None, None, :] * (1 + (n_mid - 0.5) * 0.14 + (n_hi - 0.5) * 0.08)[..., None]
+        a = wear[..., None] * land[..., None]
+        canvas = canvas * (1 - a) + earth * a
+        # faded, BROKEN wear arcs (circling feet), never full stamped rings
+        arcs = land & (rr < radius - 10) & (np.abs((rr % 44) - 22.0) < 1.0) & (rr > 30) & (value_noise(PH, PW, 16) > 0.5)
+        canvas[arcs] *= 0.9
 
     # --- Nari's trail (v11.3): the search, told in the ground -----------------
     # Tiny toddler footprints march along the critical-path route toward the

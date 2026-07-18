@@ -246,6 +246,18 @@ def build_grid() -> list[list[int]]:
         jump_off = NODE_MARKERS[node_id]
         _carve_secret_spur(grid, rng, jump_off, anchor)
 
+    # the Conductor's stage is an ISLAND (v11.5). The boss node sits in the
+    # hall lake, previously reachable only by its causeway while the "arena"
+    # was painted over open water (owner: "it's over the water though....").
+    # Carve a real grass island around the node: the fight gets true walkable
+    # ground and the painted marble stage ends at a real shoreline.
+    bc, br = NODE_MARKERS["boss_1"]
+    for r in range(br - 5, br + 6):
+        for c in range(bc - 5, bc + 6):
+            if 0 <= c < MAP_W and 0 <= r < MAP_H and (c - bc) ** 2 + (r - br) ** 2 <= 20:
+                if grid[r][c] % 4 != PATH:
+                    grid[r][c] = tid(region_of(c), GRASS)
+
     # the main road: waypoint chain through spawn, every node, in campaign
     # order. Carved LAST so it's never accidentally resealed by a pocket ring.
     # Meandering (rng passed): a worn trail drifts, it doesn't run on rails.
