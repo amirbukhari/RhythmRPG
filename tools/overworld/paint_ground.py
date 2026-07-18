@@ -154,6 +154,21 @@ def main() -> None:
     sea = sea * (1 - bed) + grassy * bed
     canvas = canvas * (1 - w0[..., None]) + sea * w0[..., None]
 
+    # --- Scar sub-biomes (v13.1: "not sure our map has enough variation") ----
+    # The huge surface splits into three districts by coarse noise: pale ash
+    # wastes, the rust flats, and the deep-red thorn barrens -- one region,
+    # three moods, no seams (same noise stack, different keys).
+    district = value_noise(PH, PW, 260)
+    scar_px = region_px == 3
+    ashen = scar_px & (district < 0.4)
+    thorn = scar_px & (district > 0.66)
+    ash_c = np.array((0x54, 0x4C, 0x46), dtype=np.float32)
+    thorn_c = np.array((0x4E, 0x24, 0x1C), dtype=np.float32)
+    a_m = (np.clip((0.4 - district) / 0.08, 0, 1) * 0.5)[..., None]
+    t_m = (np.clip((district - 0.66) / 0.08, 0, 1) * 0.45)[..., None]
+    canvas = np.where(ashen[..., None], canvas * (1 - a_m) + ash_c[None, None, :] * a_m, canvas)
+    canvas = np.where(thorn[..., None], canvas * (1 - t_m) + thorn_c[None, None, :] * t_m, canvas)
+
     def stamp_tufts() -> None:
         """Individually hash-placed grass marks -- variation, not wallpaper."""
         ys, xs = np.where(kind == 0)
@@ -281,6 +296,84 @@ def main() -> None:
                 sub[(dd <= rr_s * 0.8) & subm] *= 0.85
                 bone = (dd <= rr_s * 0.7) & subm & ((yy_o * 5 + xx_o * 11) % 23 == 0)
                 sub[bone] = sub[bone] * 0.35 + np.array((0xCE, 0xC8, 0xB2), dtype=np.float32)[None, :] * 0.65
+
+    # --- one-off ground vignettes (v13.1): places that exist exactly once ----
+    bone_c = np.array((0xC9, 0xC2, 0xA8), dtype=np.float32)
+
+    def clip_ok(y: int, x: int) -> bool:
+        return 1 <= y < PH - 1 and 1 <= x < PW - 1 and grass_px[y, x]
+
+    # THE LEVIATHAN: a whale skeleton bleaching in the south-east Scar
+    wvx, wvy = 84 * S, 55 * S
+    for d in range(150):  # the spine
+        y, x = wvy + int(10 * np.sin(d / 26.0)), wvx - 60 + d
+        if clip_ok(y, x) and region_px[y, x] == 3:
+            canvas[y, x] = canvas[y, x] * 0.35 + bone_c * 0.65
+            canvas[y + 1, x] *= 0.72
+    for ri_ in range(9):  # the ribs, tallest amidships
+        rx = wvx - 42 + ri_ * 11
+        rh = int(26 - abs(ri_ - 4) * 4)
+        for d in range(rh):
+            bow = int((d * d) / max(1, rh * 1.6))
+            for sx_ in (-1, 1):
+                y, x = wvy + int(10 * np.sin((rx - wvx + 60) / 26.0)) - d, rx + sx_ * bow
+                if clip_ok(y, x) and region_px[y, x] == 3:
+                    canvas[y, x] = canvas[y, x] * 0.4 + bone_c * 0.6
+    # the skull: a pale mass at the head
+    for dy in range(-8, 9):
+        for dx in range(-11, 12):
+            if (dx / 11.0) ** 2 + (dy / 8.0) ** 2 <= 1:
+                y, x = wvy + int(10 * np.sin(90 / 26.0)) + dy, wvx + 90 + dx
+                if clip_ok(y, x) and region_px[y, x] == 3:
+                    canvas[y, x] = canvas[y, x] * 0.45 + bone_c * 0.55
+
+    # THE FALLEN OBELISK: shattered segments in a line, west Scar -- the cult's
+    # stone, face-down on the surface, a gouge trailing where it fell
+    fox, foy = 46 * S, 42 * S
+    for d in range(70):  # the impact gouge
+        y, x = foy + d // 5, fox - 30 - d
+        if clip_ok(y, x) and region_px[y, x] == 3:
+            canvas[y : y + 3, x] *= 0.74
+    seg_x = fox
+    for si, seg_len in enumerate((34, 26, 18, 12)):
+        for dy in range(-6, 7):
+            for dx in range(seg_len):
+                y, x = foy + dy + si * 2, seg_x + dx
+                if abs(dy) <= 6 - (1 if dx in (0, seg_len - 1) else 0) and clip_ok(y, x) and region_px[y, x] == 3:
+                    edge = abs(dy) >= 5 or dx in (0, seg_len - 1)
+                    tone = 0.55 if edge else 0.8
+                    canvas[y, x] = canvas[y, x] * (1 - tone) + np.array((0x8E, 0x92, 0x9E), dtype=np.float32) * tone
+        seg_x += seg_len + 6  # the breaks between shattered segments
+
+    # THE SILENT RING: ancient standing stones on the north Scar rise
+    srx, sry = 78 * S, 20 * S
+    ring_r = np.sqrt((xx_g - srx) ** 2 + ((yy_g - sry) * 1.4) ** 2)
+    worn = (np.abs(ring_r - 52) < 3) & grass_px & (region_px == 3)
+    canvas[worn] *= 0.85
+    for k in range(9):
+        ang = k * 0.698
+        px_, py_ = int(srx + 52 * np.cos(ang)), int(sry + 37 * np.sin(ang))
+        for dy in range(-5, 6):
+            for dx in range(-2, 3):
+                y, x = py_ + dy, px_ + dx
+                if clip_ok(y, x) and region_px[y, x] == 3:
+                    t_ = 0.75 if abs(dy) < 5 and abs(dx) < 2 else 0.5
+                    canvas[y, x] = canvas[y, x] * (1 - t_) + np.array((0x9A, 0x96, 0x8A), dtype=np.float32) * t_
+        # each stone leans its shadow the same way -- something passed here
+        for dsh in range(6):
+            y, x = py_ + 6 + dsh // 3, px_ + 3 + dsh
+            if clip_ok(y, x):
+                canvas[y, x] *= 0.8
+
+    # THE DRIED LAKEBED: a pale cracked pan in the east Scar
+    dlx, dly = 94 * S, 40 * S
+    pan = (((xx_g - dlx) / 90.0) ** 2 + ((yy_g - dly) / 55.0) ** 2 <= 1) & grass_px & (region_px == 3)
+    pan_c = np.array((0x9A, 0x8C, 0x74), dtype=np.float32)
+    canvas[pan] = canvas[pan] * 0.4 + pan_c[None, :] * 0.6
+    pan_crack = pan & (np.abs(value_noise(PH, PW, 22) - 0.5) < 0.012)
+    canvas[pan_crack] *= 0.6
+    rim = (np.abs(((xx_g - dlx) / 90.0) ** 2 + ((yy_g - dly) / 55.0) ** 2 - 1) < 0.06) & grass_px & (region_px == 3)
+    canvas[rim] *= 0.78
 
     # r4 hall: faint marble veining -- pale contour filaments
     r_mask = grass_px & (region_px == 4)
@@ -468,6 +561,15 @@ def main() -> None:
         sl[: ry + 1][blob[: ry + 1]] = base * 1.18  # top-light
         sl[-1:][blob[-1:]] = base * 0.62  # base shadow
 
+    # v13.1 road materials: silt lanes under the sea, packed dirt across the
+    # Scar, pale worn paving on the Stage approach -- one road, three makings
+    silt_road = path_mask & (w01 > 0.5)
+    canvas[silt_road] = canvas[silt_road] * 0.7 + np.array((0xA8, 0xA4, 0x8E), dtype=np.float32)[None, :] * 0.3
+    dirt_road = path_mask & (region_px == 3) & (w01 <= 0.5)
+    canvas[dirt_road] = canvas[dirt_road] * 0.65 + np.array((0x74, 0x58, 0x40), dtype=np.float32)[None, :] * 0.35
+    paved_road = path_mask & (region_px == 4)
+    canvas[paved_road] = canvas[paved_road] * 0.7 + np.array((0xA9, 0xA2, 0xB8), dtype=np.float32)[None, :] * 0.3
+
     # --- desire-path spurs ----------------------------------------------------
     # Side trails are half-swallowed by the turf: narrower, paler, and BROKEN
     # into worn patches -- you learn to read them, they never compete with the
@@ -490,6 +592,12 @@ def main() -> None:
     water_col = blended(shore_bases) * (1 - t) + deep[None, None, :] * t
     water_col *= (1 + (n_mid - 0.5) * 0.08)[..., None]
     canvas[water_mask] = water_col[water_mask]
+    # v13.1 water types: the Scar's pits are TAR (black-warm, no foam), the
+    # Stage's lake is deep ink-violet; the drowned pools keep their teal
+    tar = water_mask & (region_px == 3)
+    canvas[tar] = canvas[tar] * 0.45 + np.array((0x16, 0x0E, 0x0A), dtype=np.float32)[None, :] * 0.55
+    ink = water_mask & (region_px == 4)
+    canvas[ink] = canvas[ink] * 0.6 + np.array((0x0C, 0x08, 0x1E), dtype=np.float32)[None, :] * 0.4
     # sparse swell strokes (hashed, never a repeating row pattern)
     ys, xs = np.where(kind == 2)
     for ty, tx in zip(ys, xs):
@@ -507,7 +615,7 @@ def main() -> None:
             canvas[yy, seg][m] = np.minimum(row[m] * 1.5, 255)
     # shoreline: foam on the water side, dark bank on the land side
     dil = ~(erode(~water_mask, 2)[2])
-    foam_ring = water_mask & ~erode(water_mask, 2)[2]
+    foam_ring = water_mask & ~erode(water_mask, 2)[2] & (region_px != 3)  # tar doesn't foam
     bank_ring = dil & ~water_mask
     canvas[foam_ring] = canvas[foam_ring] * 0.45 + np.array((0x8F, 0xD8, 0xD0), dtype=np.float32) * 0.55 * 0.7
     canvas[bank_ring] *= 0.55

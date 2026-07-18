@@ -250,6 +250,34 @@ def build_grid() -> list[list[int]]:
 
     _dress_zones(grid, rng)
 
+    # --- macro landforms (v13.1: map-structure variation) --------------------
+    # The CANYON: two curved rock walls running down through the mid-Scar,
+    # with gap windows -- the surface gets corridors and chokepoints instead
+    # of open sprawl (the touring road punches its own gate through later).
+    for t100 in range(0, 101):
+        t = t100 / 100.0
+        cc = int(48 + t * 12 + 3.0 * __import__("math").sin(t * 6.0))
+        rr = int(14 + t * 44)
+        for side in (-4, 4):
+            wc = cc + side
+            if t100 % 23 < 3:  # gap windows through the walls
+                continue
+            if 2 <= wc < MAP_W - 2 and 2 <= rr < MAP_H - 2 and REGION_MAP[rr][wc] == 3:
+                grid[rr][wc] = tid(3, ROCK)
+                if 2 <= wc + (1 if side > 0 else -1) < MAP_W - 2:
+                    grid[rr][wc + (1 if side > 0 else -1)] = tid(3, ROCK)
+    # The CRATER: a broken rock ring with a dark pit at its heart (NE Scar)
+    crc, crr = 86, 44
+    for r in range(crr - 8, crr + 9):
+        for c in range(crc - 8, crc + 9):
+            if not (2 <= c < MAP_W - 2 and 2 <= r < MAP_H - 2) or REGION_MAP[r][c] != 3:
+                continue
+            d2 = (c - crc) ** 2 + (r - crr) ** 2
+            if 25 <= d2 <= 42 and (c + r * 3) % 9 != 0:  # ring, with breaches
+                grid[r][c] = tid(3, ROCK)
+            elif d2 <= 4:
+                grid[r][c] = tid(3, WATER)  # the pit
+
     # scattered texture obstacles, placed before carving so the road always wins
     for _ in range(160):
         c, r = rng.randrange(2, MAP_W - 2), rng.randrange(2, MAP_H - 2)
