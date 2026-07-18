@@ -132,6 +132,27 @@ def main() -> None:
     canvas = img  # float32 HxWx3
     yy_g, xx_g = np.mgrid[0:PH, 0:PW].astype(np.float32)
 
+    # --- the OCEAN FLOOR (v12.2 -- owner: "where's the ocean floor
+    # environment?"). The Fold's ground is not a lawn: it is rippled
+    # silt-sand with beds of dark eelgrass -- the material itself says
+    # seafloor. Cross-faded by the region weight so the Shelf inherits its
+    # fringe naturally.
+    w0 = weights[0] / wsum
+    sand = tint((0x67, 0x6F, 0x64), ACCENTS[0], 0.18)
+    sea = sand[None, None, :] * (1 + (n_low - 0.5) * 0.22 + (n_mid - 0.5) * 0.12 + (n_hi - 0.5) * 0.08)[..., None]
+    sea = sea * (1 + (grain - 0.5) * 0.10)[..., None]
+    # dune ripples: broad combed sand-waves, warped so they never read ruled
+    dune_wob = (value_noise(PH, PW, 90) - 0.5) * 34
+    dune = (yy_g + dune_wob) % 22
+    sea[dune < 2.2] *= 0.88
+    sea[(dune >= 2.2) & (dune < 3.6)] *= 1.08
+    # eelgrass beds: coarse patches of dark sea-green growth in the sand
+    bed_n = value_noise(PH, PW, 110)
+    bed = np.clip((bed_n - 0.55) / 0.12, 0, 1)[..., None]
+    grassy = tint((0x1F, 0x3B, 0x30), ACCENTS[0], 0.25)[None, None, :] * (1 + (n_mid - 0.5) * 0.16)[..., None]
+    sea = sea * (1 - bed) + grassy * bed
+    canvas = canvas * (1 - w0[..., None]) + sea * w0[..., None]
+
     def stamp_tufts() -> None:
         """Individually hash-placed grass marks -- variation, not wallpaper."""
         ys, xs = np.where(kind == 0)
@@ -682,10 +703,15 @@ def main() -> None:
     # behind his father. At the first route tile on the surface (the Scar,
     # region index 3) the trail ends in a scuffle -- prints circling, a drag
     # mark -- and beyond it only sparse single prints remain: clues.
-    def stamp_print(py: int, px: int) -> None:
-        if 1 <= py < PH - 2 and 1 <= px < PW - 1 and not water_mask[py, px]:
+    def stamp_print(py: int, px: int, drag: bool = False) -> None:
+        """Nari's print: a paired 2x2 sole WITH a heel dot -- and on every
+        other step, a faint drag tail (his right foot drags). This is his
+        learnable signature; decoy prints elsewhere carry none of it."""
+        if 1 <= py < PH - 3 and 1 <= px < PW - 4 and not water_mask[py, px]:
             canvas[py : py + 2, px : px + 2] *= 0.62  # sole
             canvas[py + 2, px] *= 0.7  # heel
+            if drag:
+                canvas[py + 1, px + 2 : px + 4] *= 0.8  # the drag tail
     loss_idx = next((i for i, (ty, tx) in enumerate(route) if tx // 26 >= 3), len(route))
     for i in range(3, min(loss_idx, len(route) - 1), 10):
         ty, tx = route[i]
@@ -698,7 +724,7 @@ def main() -> None:
             side = 3 if step % 2 else -3
             px_ = cx + dx * along + (dy * side)  # lateral offset perpendicular
             py_ = cy + dy * along + (dx * side)
-            stamp_print(py_ + (h >> step) % 2, px_ + (h >> (step + 3)) % 2)
+            stamp_print(py_ + (h >> step) % 2, px_ + (h >> (step + 3)) % 2, drag=step % 2 == 0)
     if loss_idx < len(route):
         ty, tx = route[loss_idx]
         cx, cy = tx * S + S // 2, ty * S + S // 2
@@ -716,7 +742,65 @@ def main() -> None:
         for i in range(loss_idx + 6, len(route) - 1, 24):
             ty, tx = route[i]
             h2 = (tx * 40503 ^ ty * 2654435761) & 0xFFFFFFFF
-            stamp_print(ty * S + (h2 >> 5) % S, tx * S + (h2 >> 11) % S)
+            stamp_print(ty * S + (h2 >> 5) % S, tx * S + (h2 >> 11) % S, drag=h2 % 2 == 0)
+
+    # --- other tracks (v12.2): WHICH prints are his? -------------------------
+    # Owner: "along with naris footsteps there's tracks of other people, we
+    # have to understand and distinguish which ones are actually naris."
+    # The world is walked. Pilgrims' adult prints pace the road margins;
+    # three-toed den creatures cross the Scar; and -- cruelest -- other
+    # SMALL prints wander regions beyond the Breach. Nari's signature is
+    # learnable while he walks behind you in the Fold: paired gait, heel
+    # dot, faint right-foot drag. Decoys are single-file, heel-less,
+    # drag-less. Reading the difference IS the tracking game.
+    def adult_print(py: int, px: int) -> None:
+        if 1 <= py < PH - 4 and 1 <= px < PW - 2 and not water_mask[py, px]:
+            canvas[py : py + 3, px : px + 2] *= 0.6  # long sole
+            canvas[py + 3, px] *= 0.66  # heavy heel
+    def small_decoy_print(py: int, px: int) -> None:
+        if 1 <= py < PH - 2 and 1 <= px < PW - 2 and not water_mask[py, px]:
+            canvas[py : py + 2, px : px + 2] *= 0.62  # sole only: no heel, no drag
+    def critter_print(py: int, px: int) -> None:
+        for dy, dx in ((0, 0), (2, -2), (2, 2)):  # three toes
+            y, x = py + dy, px + dx
+            if 1 <= y < PH and 1 <= x < PW and not water_mask[y, x]:
+                canvas[y, x] *= 0.5
+    # pilgrims: paired adult strides along the road margins, map-wide
+    if route:
+        for ti in range(26):
+            h = (ti * 2654435761 + 13) & 0xFFFFFFFF
+            i = (h >> 4) % max(1, len(route) - 1)
+            ty, tx = route[i]
+            ny, nx = route[min(i + 1, len(route) - 1)]
+            dy, dx = ny - ty, nx - tx
+            side = 1 if h % 2 else -1
+            cy0 = ty * S + S // 2 + dx * side * ((h >> 7) % 8 + 10)
+            cx0 = tx * S + S // 2 + dy * side * ((h >> 7) % 8 + 10)
+            for k in range(7 + (h >> 5) % 9):
+                lat = 3 if k % 2 else -3
+                adult_print(cy0 + dy * k * 11 + dx * lat, cx0 + dx * k * 11 + dy * lat)
+    # the decoys: single-file small prints wandering beyond the Breach
+    for ti in range(14):
+        h = (ti * 83492791 + 401) & 0xFFFFFFFF
+        tc = 2 * 26 + (h >> 4) % (3 * 26)
+        tr = 2 + (h >> 9) % (H - 4)
+        if kind[tr, tc] != 0:
+            continue
+        ang = ((h >> 11) % 628) / 100.0
+        sx, sy = np.cos(ang), np.sin(ang) * 0.5
+        for k in range(6 + (h >> 6) % 9):
+            small_decoy_print(int(tr * S + 16 + sy * k * 9), int(tc * S + 16 + sx * k * 9))
+    # den creatures: three-toed crossings on the Scar
+    for ti in range(10):
+        h = (ti * 40503 + 77) & 0xFFFFFFFF
+        tc = 3 * 26 + (h >> 4) % 26
+        tr = 2 + (h >> 9) % (H - 4)
+        if kind[tr, tc] != 0:
+            continue
+        ang = ((h >> 11) % 628) / 100.0
+        sx, sy = np.cos(ang), np.sin(ang) * 0.6
+        for k in range(5 + (h >> 6) % 7):
+            critter_print(int(tr * S + 16 + sy * k * 8), int(tc * S + 16 + sx * k * 8))
 
     # --- value composition (v11.3): the road carries the light ---------------
     # A soft macro pool of light hugs the main road so the critical path sits
