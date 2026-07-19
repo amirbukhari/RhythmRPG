@@ -278,6 +278,34 @@ def build_grid() -> list[list[int]]:
             elif d2 <= 4:
                 grid[r][c] = tid(3, WATER)  # the pit
 
+    # THE RIVER (v13.2): a winding channel spilling out of the drowned west,
+    # snaking across the Scar to the Stage lake -- a real water feature with
+    # FORDS (stone crossings) so it divides the surface into banks without
+    # sealing anything. Two tiles wide, banked by reeds-turned-rock.
+    import math as _m
+    river_pts = []
+    for t100 in range(0, 101):
+        t = t100 / 100.0
+        rc = int(30 + t * 62)
+        rr = int(24 + 18 * _m.sin(t * 5.5) + t * 6)
+        river_pts.append((rc, rr))
+    for i, (rc, rr) in enumerate(river_pts):
+        ford = (i % 20) < 3  # a stone ford every ~20 steps
+        for dw in (-1, 0, 1):
+            wr = rr + dw
+            if not (2 <= rc < MAP_W - 2 and 2 <= wr < MAP_H - 2):
+                continue
+            reg = REGION_MAP[wr][rc]
+            grid[wr][rc] = tid(reg, PATH if ford else WATER)
+
+    # A SANDBAR REEF field in the Breach shallows: scattered single rocks in
+    # the crossing water -- an archipelago read, not a solid mass
+    for _i in range(30):
+        rc = 30 + (_i * 37) % 12
+        rr = 20 + (_i * 53) % 28
+        if 2 <= rc < MAP_W - 2 and 2 <= rr < MAP_H - 2 and REGION_MAP[rr][rc] == 2:
+            grid[rr][rc] = tid(2, ROCK if _i % 2 else WATER)
+
     # scattered texture obstacles, placed before carving so the road always wins
     for _ in range(160):
         c, r = rng.randrange(2, MAP_W - 2), rng.randrange(2, MAP_H - 2)

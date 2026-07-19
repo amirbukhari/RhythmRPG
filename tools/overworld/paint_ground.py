@@ -154,6 +154,39 @@ def main() -> None:
     sea = sea * (1 - bed) + grassy * bed
     canvas = canvas * (1 - w0[..., None]) + sea * w0[..., None]
 
+    # --- ELEVATION: the world has RELIEF now (v13.2) -------------------------
+    # The single biggest variation lever the map was missing: it was dead
+    # flat. A smooth height field (low in the drowned SW, rising toward the
+    # Stage in the NE -- the ascent is literally uphill) is quantized into
+    # terraces; each step down toward the south casts a shadow cliff and the
+    # high side catches a lit rim. Applied globally so the WHOLE map rolls,
+    # not just isolated mesas. Water sits in the lows; the pass skips it.
+    grade = (xx_g / PW) * 0.35 + (1.0 - yy_g / PH) * 0.35  # NE is high
+    elev = np.clip(grade + (value_noise(PH, PW, 150) - 0.5) * 0.9 + (value_noise(PH, PW, 60) - 0.5) * 0.35, 0, 1)
+    LEVELS = 7
+    terr = np.floor(elev * LEVELS)
+    land_e = ~( (region_px >= 0) & False )  # all true; water masked out later
+    # tonal lift with height (high ground is lit, hollows pool dark)
+    canvas *= (0.82 + terr / LEVELS * 0.34)[..., None]
+    # step edges: where the terrace drops to the south (row+), a cast-shadow
+    # band; where it rises to the north, a bright lip
+    drop = (terr < np.roll(terr, 8, 0))   # lower than the tile 8px north => a south-facing face
+    rise = (terr > np.roll(terr, 8, 0))
+    face = np.zeros_like(terr, dtype=bool)
+    acc = drop.copy()
+    for _ in range(9):  # thicken the cliff face downward
+        acc = np.roll(acc, 1, 0) & (terr < np.roll(terr, 9, 0) + 1)
+        face |= acc
+    face |= drop
+    canvas[face] *= 0.6
+    stria = face & (value_noise(PH, PW, 3) > 0.5)
+    canvas[stria] *= 0.8
+    canvas[rise] = np.minimum(canvas[rise] * 1.22 + 8, 255)
+    # a WHISPER of terrace contour off the steps -- subtle, not a topo map
+    slope = np.abs(terr - np.roll(terr, 10, 0)) + np.abs(terr - np.roll(terr, 10, 1))
+    contour = (np.abs((elev * LEVELS) % 1.0) < 0.02) & (slope > 0)
+    canvas[contour] *= 0.96
+
     # --- Scar sub-biomes (v13.1: "not sure our map has enough variation") ----
     # The huge surface splits into three districts by coarse noise: pale ash
     # wastes, the rust flats, and the deep-red thorn barrens -- one region,
@@ -375,6 +408,113 @@ def main() -> None:
     rim = (np.abs(((xx_g - dlx) / 90.0) ** 2 + ((yy_g - dly) / 55.0) ** 2 - 1) < 0.06) & grass_px & (region_px == 3)
     canvas[rim] *= 0.78
 
+    # --- v13.2: MANY more one-offs -- the map earns places you remember ------
+    def blot(cx: int, cy: int, rx: int, ry: int, col: tuple, amt: float, only_reg=None) -> None:
+        sl_y, sl_x = slice(max(0, cy - ry), cy + ry + 1), slice(max(0, cx - rx), cx + rx + 1)
+        sub = canvas[sl_y, sl_x]
+        yy_o, xx_o = np.ogrid[-ry : ry + 1, -rx : rx + 1]
+        m = (xx_o / max(1, rx)) ** 2 + (yy_o / max(1, ry)) ** 2 <= 1
+        gm = grass_px[sl_y, sl_x]
+        if m.shape != sub.shape[:2]:
+            return
+        keep = m & gm
+        if only_reg is not None:
+            keep &= region_px[sl_y, sl_x] == only_reg
+        c = np.array(col, dtype=np.float32)
+        sub[keep] = sub[keep] * (1 - amt) + c[None, :] * amt
+
+    # THE GREAT WRECK: a colossal ship's hull run aground on the Breach shore
+    gwx, gwy = 40 * S, 20 * S
+    for d in range(200):  # the keel
+        y, x = gwy + int(24 * np.sin(d / 120.0)), gwx - 100 + d
+        if clip_ok(y, x):
+            canvas[y : y + 3, x] = canvas[y : y + 3, x] * 0.4 + np.array((0x3A, 0x2C, 0x22), dtype=np.float32) * 0.6
+    for hb in range(-90, 91, 6):  # hull ribs curving up from the keel
+        rh = int(30 * (1 - (hb / 90.0) ** 2))
+        for d in range(rh):
+            y, x = gwy + int(24 * np.sin(hb / 120.0)) - d, gwx + hb + int(d * hb / 200.0)
+            if clip_ok(y, x):
+                canvas[y, x] = canvas[y, x] * 0.45 + np.array((0x52, 0x3E, 0x30), dtype=np.float32) * 0.55
+    for m in range(3):  # broken masts fallen forward
+        mx = gwx - 40 + m * 40
+        for d in range(40):
+            y, x = gwy - 30 - d // 2, mx + d
+            if clip_ok(y, x):
+                canvas[y, x] *= 0.6
+
+    # THE BONEYARD: a battlefield of the fallen, west-central Scar
+    for k in range(60):
+        h = (k * 2654435761) & 0xFFFFFFFF
+        bx, by = 56 * S + ((h >> 3) % 400 - 200), 34 * S + ((h >> 13) % 260 - 130)
+        if not clip_ok(by, bx) or region_px[by, bx] != 3:
+            continue
+        if h % 3 == 0:  # a ribcage
+            for rib in range(-3, 4):
+                for d in range(5):
+                    y, x = by - d, bx + rib * 3 + int(d * 0.4 * (1 if rib > 0 else -1))
+                    if clip_ok(y, x):
+                        canvas[y, x] = canvas[y, x] * 0.4 + np.array((0xC4, 0xBD, 0xA4), dtype=np.float32) * 0.6
+        else:  # scattered long bones
+            ln = 4 + h % 6
+            ang = (h % 628) / 100.0
+            for d in range(ln):
+                y, x = by + int(d * np.sin(ang)), bx + int(d * np.cos(ang))
+                if clip_ok(y, x):
+                    canvas[y, x] = canvas[y, x] * 0.45 + np.array((0xC4, 0xBD, 0xA4), dtype=np.float32) * 0.55
+
+    # THE GEYSER FIELD: pale mineral pools ringed with crust, north Scar
+    for k in range(7):
+        gx, gy = 64 * S + (k * 47 % 240 - 120), 12 * S + (k * 71 % 130 - 65)
+        if clip_ok(gy, gx) and region_px[gy, gx] == 3:
+            blot(gx, gy, 9 + k % 5, 7 + k % 4, (0x8C, 0x9A, 0x86), 0.55, only_reg=3)
+            blot(gx, gy, 4 + k % 3, 3 + k % 2, (0x6C, 0xA8, 0x9E), 0.6, only_reg=3)  # the hot centre
+            ring = (np.abs(np.sqrt((xx_g - gx) ** 2 + (yy_g - gy) ** 2) - (11 + k % 4)) < 1.4) & grass_px & (region_px == 3)
+            canvas[ring] = canvas[ring] * 0.4 + np.array((0xD2, 0xCE, 0xBE), dtype=np.float32)[None, :] * 0.6
+
+    # THE MAST FOREST: dead ships' masts standing in the drowned Shelf like trees
+    for k in range(16):
+        h = (k * 40503 + 991) & 0xFFFFFFFF
+        mx, my = 18 * S + ((h >> 4) % 360 - 180), 20 * S + ((h >> 12) % 360 - 180)
+        if not clip_ok(my, mx) or region_px[my, mx] != 1:
+            continue
+        mh = 20 + h % 26
+        lean = ((h >> 3) % 5) - 2
+        for d in range(mh):
+            y, x = my - d, mx + int(d * lean / mh)
+            if clip_ok(y, x):
+                canvas[y, x] = canvas[y, x] * 0.5 + np.array((0x2A, 0x22, 0x1C), dtype=np.float32) * 0.5
+        for yard in (int(mh * 0.6), int(mh * 0.85)):  # cross-spars
+            for dx in range(-5, 6):
+                y, x = my - yard, mx + dx + int(yard * lean / mh)
+                if clip_ok(y, x):
+                    canvas[y, x] = canvas[y, x] * 0.55 + np.array((0x2A, 0x22, 0x1C), dtype=np.float32) * 0.45
+
+    # THE GIANT FOOTPRINT: one vast three-toed track pressed into the east Scar
+    fpx, fpy = 100 * S, 50 * S
+    heel = (((xx_g - fpx) / 28.0) ** 2 + ((yy_g - fpy) / 34.0) ** 2 <= 1) & grass_px & (region_px == 3)
+    canvas[heel] *= 0.62
+    for toe_a in (-0.6, 0.0, 0.6):
+        tx, ty = int(fpx + 40 * np.sin(toe_a)), int(fpy - 40 * np.cos(toe_a))
+        blot(tx, ty, 10, 14, (0x2E, 0x1C, 0x16), 0.45, only_reg=3)
+
+    # THE SALT FLATS: a blinding pale crust plain, far south Scar
+    sfx, sfy = 68 * S, 60 * S
+    flat = (((xx_g - sfx) / 130.0) ** 2 + ((yy_g - sfy) / 34.0) ** 2 <= 1) & grass_px & (region_px == 3)
+    canvas[flat] = canvas[flat] * 0.35 + np.array((0xC6, 0xC2, 0xB4), dtype=np.float32)[None, :] * 0.65
+    hexc = flat & (np.abs(value_noise(PH, PW, 14) - 0.5) < 0.02)  # polygonal salt cracks
+    canvas[hexc] *= 0.82
+
+    # THE SPIRE RUIN: a toppled lighthouse's round base + shadow, NE Scar edge
+    spx, spy = 90 * S, 30 * S
+    base = (np.sqrt((xx_g - spx) ** 2 + (yy_g - spy) ** 2) < 16) & grass_px & (region_px == 3)
+    canvas[base] = canvas[base] * 0.5 + np.array((0x6E, 0x66, 0x5E), dtype=np.float32)[None, :] * 0.5
+    inner = (np.sqrt((xx_g - spx) ** 2 + (yy_g - spy) ** 2) < 8) & grass_px & (region_px == 3)
+    canvas[inner] *= 0.7  # the hollow shaft
+    for d in range(70):  # the fallen tower lying east
+        y, x = spy + d // 6, spx + 16 + d
+        if clip_ok(y, x) and region_px[y, x] == 3:
+            canvas[y : y + 5, x] = canvas[y : y + 5, x] * 0.55 + np.array((0x6E, 0x66, 0x5E), dtype=np.float32) * 0.45
+
     # r4 hall: faint marble veining -- pale contour filaments
     r_mask = grass_px & (region_px == 4)
     vein_n = value_noise(PH, PW, 55)
@@ -592,6 +732,12 @@ def main() -> None:
     water_col = blended(shore_bases) * (1 - t) + deep[None, None, :] * t
     water_col *= (1 + (n_mid - 0.5) * 0.08)[..., None]
     canvas[water_mask] = water_col[water_mask]
+
+    # v13.2 river current: a flowing sheen streaking along Scar/Breach water
+    flow = value_noise(PH, PW, 40)
+    river_w = water_mask & (region_px == 3)
+    streak = river_w & (((xx_g * 0.6 + yy_g + flow * 30).astype(np.int32) % 14) < 2)
+    canvas[streak] = np.minimum(canvas[streak] * 1.4, 255)
     # v13.1 water types: the Scar's pits are TAR (black-warm, no foam), the
     # Stage's lake is deep ink-violet; the drowned pools keep their teal
     tar = water_mask & (region_px == 3)
