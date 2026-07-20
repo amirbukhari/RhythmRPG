@@ -819,6 +819,43 @@ def _salience_cqt(path, hop=256):
     return S, librosa.times_like(S, sr=sr, hop_length=hop)
 
 
+def skyline_melody(notes, min_dur=0.05, vmin=14):
+    """THE RIGHT WAY: the melody of a chords-plus-melody song is the top
+    voice — the highest note sounding at each moment (the 'skyline'). Built
+    from REAL transcribed note events, so every note was actually played
+    (no invented/unplayable jumps), it never drifts onto held bass (bass is
+    the LOWEST voice, never the skyline), and sections with notes keep them.
+    Returns a strictly-monophonic lead [[midi, s, e, vel], ...]."""
+    ns = sorted([[int(p), float(s), float(e), int(v)] for p, s, e, v in notes
+                 if e - s >= min_dur and v >= vmin], key=lambda n: n[1])
+    if not ns:
+        return []
+    bounds = sorted({round(t, 3) for n in ns for t in (n[1], n[2])})
+    starts = np.array([n[1] for n in ns])
+    ends = np.array([n[2] for n in ns])
+    pit = np.array([n[0] for n in ns])
+    vel = np.array([n[3] for n in ns])
+    segs = []
+    for a, b in zip(bounds, bounds[1:]):
+        if b - a < 0.03:
+            continue
+        mid = 0.5 * (a + b)
+        act = (starts <= mid) & (ends > mid)
+        if not act.any():
+            continue
+        k = int(np.argmax(np.where(act, pit, -1)))    # highest sounding note
+        segs.append([int(pit[k]), a, b, int(vel[k])])
+    # merge consecutive same-pitch segments (one held note, not a re-strike)
+    merged = []
+    for p, s, e, v in segs:
+        if merged and merged[-1][0] == p and s - merged[-1][2] <= 0.02:
+            merged[-1][2] = e
+            merged[-1][3] = max(merged[-1][3], v)
+        else:
+            merged.append([p, s, e, v])
+    return [n for n in merged if n[2] - n[1] >= min_dur]
+
+
 def _select_on_contour(guitar_notes, contour_notes, tol=3.5):
     """Keep the guitar's DENSE basic-pitch notes that lie on the melody
     CONTOUR (octave-folded to it) — full note density from transcription,
@@ -1304,7 +1341,8 @@ STYLE_ALIASES = {"clean": "tight", "balanced": "driving", "full": "wall"}
 
 def build_plan(name, stems, work_dir, duration, other_notes, drum_hits,
                bass_notes=None, trans=None, mix_path=None, wavetable="saw",
-               style="balanced", lead_source="salience", guitar_notes=None):
+               style="balanced", lead_source="salience", guitar_notes=None,
+               piano_notes=None):
     """Melody-first assembly. Returns (ChannelPlan, stats).
 
     lead_source picks HOW the guitar/synth melody is read from the 'other'
@@ -1335,17 +1373,17 @@ def build_plan(name, stems, work_dir, duration, other_notes, drum_hits,
     # GUITAR and SYNTH SHARE (extract_lead_melody); the rhythm chug and pads
     # don't reinforce, so the hook survives. Fall back to older paths if the
     # 6-stem guitar isn't available.
-    if lead_source == "riff":
+    if guitar_notes or piano_notes:
+        # THE RIGHT WAY: melody = skyline (top voice) of the real transcribed
+        # guitar + synth notes — the melody played over the chords, only ever
+        # notes that were actually struck.
+        mel = skyline_melody((guitar_notes or []) + (piano_notes or []))
+        mel_which = "skyline (top voice)"
+    elif lead_source == "riff":
         riff_top, _ = riff_lines(other_notes, grid)
         riff_top = _center(riff_top, 72)
         mel = [[_fold(int(p), 48, 84), s, e, v] for p, s, e, v in riff_top]
         mel_which = "basic-pitch riff"
-    elif stems.get("guitar") and os.path.exists(stems["guitar"]):
-        mel = extract_lead_melody(
-            stems["guitar"], stems.get("piano"), grid,
-            os.path.join(work_dir, f"{name}.melody.leadxstem.json"),
-            guitar_notes=guitar_notes)
-        mel_which = "guitar+synth shared"
     else:
         mel_src, mel_which = pick_melody_source(stems)
         mel = extract_melody(
