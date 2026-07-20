@@ -290,7 +290,10 @@ def render(input_path, output_path, work_dir, wavetable="saw", stereo=True,
 
     print("[3/5] transcribing stems (basic-pitch) + classifying drums")
     trans = {}
-    for stem in ("vocals", "bass", "other"):
+    tr_stems = ["vocals", "bass", "other"]
+    if stems.get("guitar"):
+        tr_stems.append("guitar")           # dense notes for the lead line
+    for stem in tr_stems:
         cache = os.path.join(work_dir, f"{name}.{stem}.notes.json")
         trans[stem] = transcribe_pitched(stems[stem], cache)
         print(f"      {stem}: {len(trans[stem])} raw notes")
@@ -303,7 +306,8 @@ def render(input_path, output_path, work_dir, wavetable="saw", stereo=True,
     plan, arr_stats = arrange.build_plan(
         name, stems, work_dir, duration, trans["other"], hits,
         bass_notes=trans["bass"], trans=trans, mix_path=input_path,
-        wavetable=wavetable, style=style, lead_source=lead_source)
+        wavetable=wavetable, style=style, lead_source=lead_source,
+        guitar_notes=trans.get("guitar"))
     counts = dict(pulse1=len(plan.pulse1), pulse2=len(plan.pulse2),
                   wave=len(plan.wave), noise=len(plan.noise))
     print(f"      events: {counts}")

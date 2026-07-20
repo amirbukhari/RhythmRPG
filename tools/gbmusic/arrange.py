@@ -817,17 +817,61 @@ def _salience_cqt(path, hop=256):
     return S, librosa.times_like(S, sr=sr, hop_length=hop)
 
 
-def extract_lead_melody(guitar_path, piano_path, grid, cache_path, hop=256):
+def _select_on_contour(guitar_notes, contour_notes, tol=3.5):
+    """Keep the guitar's DENSE basic-pitch notes that lie on the melody
+    CONTOUR (octave-folded to it) — full note density from transcription,
+    but only the notes on the lead line the salience contour identified.
+    This is what recovers the fast runs a single smooth contour drops."""
+    if not contour_notes:
+        return []
+    cn = sorted(contour_notes, key=lambda x: x[1])
+    starts = np.array([c[1] for c in cn])
+    ends = np.array([c[2] for c in cn])
+    pits = np.array([c[0] for c in cn])
+    out = []
+    for p, s, e, v in guitar_notes:
+        if e - s < 0.03:
+            continue
+        mid = (s + e) / 2
+        k = int(np.searchsorted(starts, mid) - 1)
+        # nearest contour segment covering (or just before) the note
+        if k < 0:
+            k = 0
+        if not (starts[k] - 0.2 <= mid <= ends[k] + 0.2):
+            # find closest by start
+            k = int(np.argmin(np.abs(starts - mid)))
+        cp = pits[k]
+        pf = p
+        while pf - cp > 6:
+            pf -= 12
+        while cp - pf > 6:
+            pf += 12
+        if abs(pf - cp) <= tol:
+            out.append([int(pf), float(s), float(e), int(v)])
+    out.sort(key=lambda n: n[1])
+    # strict monophony: later note trims the previous
+    mono = []
+    for p, s, e, v in out:
+        if mono and mono[-1][2] > s:
+            mono[-1][2] = s
+            if mono[-1][2] - mono[-1][1] < 0.03:
+                mono.pop()
+        if e - s >= 0.03:
+            mono.append([p, s, e, v])
+    return mono
+
+
+def extract_lead_melody(guitar_path, piano_path, grid, cache_path, hop=256,
+                        guitar_notes=None):
     """The doubled lead of a melodic-hardcore band: the melody is played by
-    guitar AND synth together, so the line they SHARE is the hook, while the
-    rhythm chug (guitar only) and pads (synth only) don't reinforce. Build a
-    combined salience = guitar + a bonus where the synth agrees, then
-    top-line Viterbi-track it. Falls back to guitar-only if synth is absent."""
+    guitar AND synth together, so the line they SHARE is the hook. Build a
+    combined salience = guitar + a bonus where the synth agrees, Viterbi-
+    track a coarse CONTOUR, then (if given basic-pitch guitar notes) snap the
+    dense transcribed notes onto that contour so fast runs keep their density.
+    """
     if os.path.exists(cache_path):
         with open(cache_path) as f:
             return [list(x) for x in json.load(f)]
-    import librosa
-    from scipy.ndimage import median_filter
     Sg, times = _salience_cqt(guitar_path, hop)
     combined = Sg.copy()
     if piano_path and os.path.exists(piano_path):
@@ -838,11 +882,50 @@ def extract_lead_melody(guitar_path, piano_path, grid, cache_path, hop=256):
             times = times[:n]
             gn = Sg[:, :n] / (Sg[:, :n].max() + 1e-9)
             pn = Sp[:, :n] / (Sp[:, :n].max() + 1e-9)
-            # agreement bonus: where BOTH stems are strong at the same pitch
             combined = combined + 1.5 * np.sqrt(gn * pn) * Sg[:, :n].max()
         except Exception:
             pass
-    return _viterbi_melody(combined, times, grid, cache_path)
+    # Contour = where the melody is (pitch/time). Combine the natural picking
+    # (onsets) with a 16th-grid floor so sustained fast sections keep their
+    # density — the union gives the lead its real note count, on the line.
+    midi, voiced, strength = _contour_path(combined, times)
+    onsets = _stem_onsets(guitar_path, hop)
+    on_notes = _onset_notes(midi, voiced, strength, times, onsets)
+    grid_notes = _onset_notes(midi, voiced, strength, times,
+                              [c[0] for c in grid.cells(32)])
+    mel = _merge_note_streams(on_notes, grid_notes)
+    with open(cache_path, "w") as f:
+        json.dump(mel, f)
+    return mel
+
+
+def _merge_note_streams(a, b):
+    """Union two monophonic note lists into one, keeping every distinct
+    attack (denser of the two wins in each region), strictly monophonic."""
+    alln = sorted(a + b, key=lambda n: n[1])
+    out = []
+    for p, s, e, v in alln:
+        if out and s < out[-1][2] - 0.02:
+            # overlaps the running note: keep whichever starts a new pitch
+            if p == out[-1][0]:
+                continue                     # same pitch already sounding
+            out[-1][2] = s                   # trim to this new attack
+            if out[-1][2] - out[-1][1] < 0.025:
+                out.pop()
+        if e - s >= 0.025:
+            out.append([int(p), float(s), float(e), int(v)])
+    return out
+
+
+def _stem_onsets(path, hop):
+    """Note-attack times in a stem — one per pick. Sensitive settings so fast
+    alternate-picked/tremolo runs each register (default onset detection
+    merges them and loses ~2/3 of the note density)."""
+    import librosa
+    y, sr = librosa.load(path, sr=22050, mono=True)
+    return librosa.onset.onset_detect(y=y, sr=sr, hop_length=hop, units="time",
+                                      backtrack=False, delta=0.02, wait=1,
+                                      pre_max=1, post_max=1)
 
 
 def extract_melody(src_path, grid, cache_path, hop=256):
@@ -855,27 +938,23 @@ def extract_melody(src_path, grid, cache_path, hop=256):
         with open(cache_path) as f:
             return [list(x) for x in json.load(f)]
     S, times = _salience_cqt(src_path, hop)
-    return _viterbi_melody(S, times, grid, cache_path)
+    return _viterbi_melody(S, times, grid, cache_path,
+                           onsets=_stem_onsets(src_path, hop))
 
 
-def _viterbi_melody(S, times, grid, cache_path):
-    """Shared melody tracker: restrict a salience matrix to the melody
-    register, Viterbi-track a top-line-biased path, segment into notes."""
+def _contour_path(S, times):
+    """Per-frame melody pitch (midi float) + voiced mask + strength, from a
+    top-line-biased Viterbi over the salience matrix restricted to the melody
+    register. This is WHERE the melody is at every instant."""
     import librosa
     from scipy.ndimage import median_filter
     lo = librosa.note_to_midi(MEL_RANGE[0]) - 24
     hi = librosa.note_to_midi(MEL_RANGE[1]) - 24
-    band = S[lo:hi + 1]                      # (nb, nframes)
+    band = S[lo:hi + 1]
     nb, nf = band.shape
-
-    # Viterbi pitch tracking: emission = per-frame salience (column-
-    # normalized), transition = a linear semitone-jump penalty solved per
-    # frame in O(nb) via a max-plus envelope — tracks the line through
-    # drop-outs, kills argmax octave jitter. Height bias: the LEAD rides
-    # above the rhythm power-chords, so higher bins are weighted up.
     height = np.linspace(0.72, 1.32, nb)[:, None]
     emit = band / (band.max(axis=0, keepdims=True) + 1e-9) * height
-    lam = 0.18
+    lam = 0.11                               # low: follow fast melodic runs
     dp = emit[:, 0].copy()
     back = np.zeros((nf, nb), dtype=np.int32)
     idxs = np.arange(nb)
@@ -900,39 +979,49 @@ def _viterbi_melody(S, times, grid, cache_path):
     path[-1] = int(np.argmax(dp))
     for f in range(nf - 1, 0, -1):
         path[f - 1] = back[f, path[f]]
-    midi = 24.0 + lo + path.astype(float)
-
+    midi = median_filter(24.0 + lo + path.astype(float), size=3)
     strength = band[path, np.arange(nf)]
-    voiced = strength > np.percentile(strength[strength > 0], 40)
-    midi = median_filter(midi, size=5)
+    voiced = strength > np.percentile(strength[strength > 0], 22)
+    return midi, voiced, strength
 
+
+def _onset_notes(midi, voiced, strength, times, onsets):
+    """One note PER PICK: split the contour at every onset and hold the
+    contour's pitch across each pick. This gives the render the actual note
+    density of fast alternate-picked/tremolo runs — the notes a single smooth
+    contour drops on the floor."""
+    p90 = np.percentile(strength[strength > 0], 90) or 1
+    bounds = sorted(set([0.0] + [float(o) for o in onsets] + [float(times[-1])]))
     notes = []
-    i, n = 0, len(midi)
-    while i < n:
-        if not voiced[i]:
-            i += 1
+    for a, b in zip(bounds, bounds[1:]):
+        if b - a < 0.02:
             continue
-        p = int(round(midi[i]))
-        j = i + 1
-        gap = 0
-        while j < n and abs(round(midi[j]) - p) <= 0 and gap <= 2:
-            if not voiced[j]:
-                gap += 1
-            else:
-                gap = 0
-            j += 1
-        s, e = float(times[i]), float(times[min(j, n - 1)])
-        if e - s >= 0.05:
-            vel = int(round(60 + 60 * min(1.0, float(np.mean(strength[i:j])) /
-                                          (np.percentile(strength[strength > 0], 90) or 1))))
-            notes.append([p, s, e, vel])
-        i = j
+        ia = int(np.argmin(np.abs(times - a)))
+        ib = int(np.argmin(np.abs(times - b)))
+        if ib <= ia:
+            continue
+        vm = voiced[ia:ib]
+        if vm.mean() < 0.2:                  # essentially silent -> no note
+            continue
+        seg = midi[ia:ib][vm] if vm.any() else midi[ia:ib]
+        p = int(round(float(np.median(seg))))
+        vel = int(round(60 + 60 * min(1.0, float(np.mean(strength[ia:ib])) / p90)))
+        notes.append([p, float(times[ia]), float(times[ib]), vel])
+    # glue immediately-adjacent identical pitches only across a sub-30ms gap
     merged = []
     for p, s, e, v in notes:
-        if merged and merged[-1][0] == p and s - merged[-1][2] <= 0.06:
+        if merged and merged[-1][0] == p and s - merged[-1][2] <= 0.015:
             merged[-1][2] = e
         else:
             merged.append([p, s, e, v])
+    return merged
+
+
+def _viterbi_melody(S, times, grid, cache_path, onsets=None):
+    """Melody as notes: contour path, then one note per pick (onset-driven)."""
+    midi, voiced, strength = _contour_path(S, times)
+    on = onsets if (onsets is not None and len(onsets)) else times[::8]
+    merged = _onset_notes(midi, voiced, strength, times, on)
     with open(cache_path, "w") as f:
         json.dump(merged, f)
     return merged
@@ -1213,7 +1302,7 @@ STYLE_ALIASES = {"clean": "tight", "balanced": "driving", "full": "wall"}
 
 def build_plan(name, stems, work_dir, duration, other_notes, drum_hits,
                bass_notes=None, trans=None, mix_path=None, wavetable="saw",
-               style="balanced", lead_source="salience"):
+               style="balanced", lead_source="salience", guitar_notes=None):
     """Melody-first assembly. Returns (ChannelPlan, stats).
 
     lead_source picks HOW the guitar/synth melody is read from the 'other'
@@ -1252,7 +1341,8 @@ def build_plan(name, stems, work_dir, duration, other_notes, drum_hits,
     elif stems.get("guitar") and os.path.exists(stems["guitar"]):
         mel = extract_lead_melody(
             stems["guitar"], stems.get("piano"), grid,
-            os.path.join(work_dir, f"{name}.melody.leadxstem.json"))
+            os.path.join(work_dir, f"{name}.melody.leadxstem.json"),
+            guitar_notes=guitar_notes)
         mel_which = "guitar+synth shared"
     else:
         mel_src, mel_which = pick_melody_source(stems)
