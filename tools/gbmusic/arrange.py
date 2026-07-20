@@ -784,11 +784,9 @@ def guarantee_coverage(plan, trans, grid, win=0.09, cap=4, passes=5):
 # extract_melody() pulls the dominant melodic line (with octave) a listener
 # actually follows, so the render can put THE MELODY on the lead, loud and
 # clear, instead of burying it under coverage.
-# The LEAD line sits ABOVE the rhythm guitars and bass. Starting the melody
-# register at C4 keeps the tracker off the low rhythm/bass chug (the band
-# said earlier versions grabbed those as the "lead" and missed the real
-# lead mid-song). C7 ceiling covers high synth/guitar leads.
-MEL_RANGE = ("C4", "C7")
+# Register that was actually finding the real lead (the band's "60%"):
+# C4+ overshot into high harmonics ("fake notes"), so keep the wider C3-C6.
+MEL_RANGE = ("C3", "C6")
 
 
 def stem_energy(path):
@@ -955,9 +953,8 @@ def _contour_path(S, times):
     hi = librosa.note_to_midi(MEL_RANGE[1]) - 24
     band = S[lo:hi + 1]
     nb, nf = band.shape
-    # Strong top-line bias: the lead is the highest prominent voice, so favor
-    # higher bins hard to stop the tracker sliding down onto rhythm doublings.
-    height = np.linspace(0.6, 1.7, nb)[:, None]
+    # Moderate top-line bias (a hard bias chased harmonics = fake notes).
+    height = np.linspace(0.72, 1.32, nb)[:, None]
     emit = band / (band.max(axis=0, keepdims=True) + 1e-9) * height
     lam = 0.11                               # low: follow fast melodic runs
     dp = emit[:, 0].copy()
