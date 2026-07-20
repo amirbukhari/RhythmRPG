@@ -784,7 +784,11 @@ def guarantee_coverage(plan, trans, grid, win=0.09, cap=4, passes=5):
 # extract_melody() pulls the dominant melodic line (with octave) a listener
 # actually follows, so the render can put THE MELODY on the lead, loud and
 # clear, instead of burying it under coverage.
-MEL_RANGE = ("C3", "C6")
+# The LEAD line sits ABOVE the rhythm guitars and bass. Starting the melody
+# register at C4 keeps the tracker off the low rhythm/bass chug (the band
+# said earlier versions grabbed those as the "lead" and missed the real
+# lead mid-song). C7 ceiling covers high synth/guitar leads.
+MEL_RANGE = ("C4", "C7")
 
 
 def stem_energy(path):
@@ -890,10 +894,9 @@ def extract_lead_melody(guitar_path, piano_path, grid, cache_path, hop=256,
     # density — the union gives the lead its real note count, on the line.
     midi, voiced, strength = _contour_path(combined, times)
     onsets = _stem_onsets(guitar_path, hop)
-    on_notes = _onset_notes(midi, voiced, strength, times, onsets)
-    grid_notes = _onset_notes(midi, voiced, strength, times,
-                              [c[0] for c in grid.cells(32)])
-    mel = _merge_note_streams(on_notes, grid_notes)
+    # ONSETS ONLY — one note per real pick. No grid "floor": that invented
+    # notes the song never played (the band caught it immediately).
+    mel = _onset_notes(midi, voiced, strength, times, onsets)
     with open(cache_path, "w") as f:
         json.dump(mel, f)
     return mel
@@ -952,7 +955,9 @@ def _contour_path(S, times):
     hi = librosa.note_to_midi(MEL_RANGE[1]) - 24
     band = S[lo:hi + 1]
     nb, nf = band.shape
-    height = np.linspace(0.72, 1.32, nb)[:, None]
+    # Strong top-line bias: the lead is the highest prominent voice, so favor
+    # higher bins hard to stop the tracker sliding down onto rhythm doublings.
+    height = np.linspace(0.6, 1.7, nb)[:, None]
     emit = band / (band.max(axis=0, keepdims=True) + 1e-9) * height
     lam = 0.11                               # low: follow fast melodic runs
     dp = emit[:, 0].copy()
