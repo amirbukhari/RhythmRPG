@@ -79,6 +79,8 @@ export class OverworldScene extends Phaser.Scene {
   private nearbyEcho: Echo | null = null;
   private obelisks: { col: number; row: number; glow: Phaser.GameObjects.Image }[] = [];
   private nearbyObelisk: { col: number; row: number; glow: Phaser.GameObjects.Image } | null = null;
+  /** The Fold's town-obelisk tile (v14.0), read from the "town_obelisk" marker. */
+  private townObeliskTile: GridPosition | null = null;
   /** Live in-world fight (areas-not-arenas); null while exploring. */
   private fight: WorldFight | null = null;
   /** Canopy landforms drawn ABOVE the player (PRD v7.15); they alpha-fade
@@ -162,13 +164,19 @@ export class OverworldScene extends Phaser.Scene {
       this.regions.push(rowRegions);
     }
 
-    // Marker names in the tilemap ARE campaign node ids (plus one "spawn").
+    // Marker names in the tilemap ARE campaign node ids, plus two named
+    // non-combat markers: "spawn" (Mir's start) and "town_obelisk" (the Fold's
+    // monolith, v14.0) -- both filtered out of the fightable node markers.
     const objects = map.getObjectLayer("markers")!.objects;
     const spawnObject = objects.find((o) => o.name === "spawn")!;
+    const townObeliskObject = objects.find((o) => o.name === "town_obelisk");
     this.markers = objects
-      .filter((o) => o.name !== "spawn")
+      .filter((o) => o.name !== "spawn" && o.name !== "town_obelisk")
       .map((o) => ({ nodeId: o.name, col: Math.floor(o.x! / TILE_SIZE), row: Math.floor(o.y! / TILE_SIZE) }));
     const spawnTile = { col: Math.floor(spawnObject.x! / TILE_SIZE), row: Math.floor(spawnObject.y! / TILE_SIZE) };
+    this.townObeliskTile = townObeliskObject
+      ? { col: Math.floor(townObeliskObject.x! / TILE_SIZE), row: Math.floor(townObeliskObject.y! / TILE_SIZE) }
+      : null;
 
     // Discoverable lore fragments scattered off the critical path (PRD
     // §8.8.2). Title/text/region are authored once, in the map data itself
@@ -215,6 +223,9 @@ export class OverworldScene extends Phaser.Scene {
     }
     for (const marker of this.markers) this.drawMarker(profile, marker);
     for (const echo of this.echoes) this.drawEcho(echo);
+    // The Fold's massive obelisk and its ring of worshippers -- the drowned
+    // town at prayer (v14.0). Doubles as the town's save point.
+    this.placeTownObelisk();
 
     // The player on the map is Mir, the guitarist (tools/pixelart/newband.py
     // generation, conformed by bake_cast.py). His sheets are side-facing
@@ -606,6 +617,7 @@ export class OverworldScene extends Phaser.Scene {
       duration: STEP_DURATION_MS,
       onComplete: () => {
         this.moving = false;
+        this.checkLeaveFold();
         this.checkNariLoss();
         this.checkEncounterTrigger();
       },
@@ -622,6 +634,19 @@ export class OverworldScene extends Phaser.Scene {
     else if (tx < this.nari.x) this.nari.setFlipX(false);
     if (this.nari.anims.getName() !== "nari_walk" || !this.nari.anims.isPlaying) this.nari.play("nari_walk");
     this.tweens.add({ targets: this.nari, x: tx, y: ty, duration: STEP_DURATION_MS + 30 });
+  }
+
+  /** The threshold beat (v14.0): Mir's first step OUT of the Fold (region 0,
+   * the underwater town) and onto the climb. This is where the campaign
+   * begins -- no foe stands inside the sanctuary, so the chorus only starts
+   * once the town is behind him. Fires once, persisted on the save. */
+  private checkLeaveFold(): void {
+    const profile = GameContext.activeProfile;
+    if (!profile || profile.leftFoldAt) return;
+    if ((this.regions[this.playerPos.row]?.[this.playerPos.col] ?? 0) === 0) return; // still in the Fold
+    profile.leftFoldAt = Date.now();
+    void GameContext.persistActiveProfile();
+    this.showToast("THE FOLD BEHIND YOU", "The chorus begins.");
   }
 
   /** The loss beat (§8.4 v12.0): Mir's first step onto the surface -- the
@@ -1095,6 +1120,136 @@ export class OverworldScene extends Phaser.Scene {
       this.add.rectangle(x, y - 7, 6, 14, 0x2c3a4a).setDepth(4);
     }
     this.obelisks.push({ col: spot.col, row: spot.row, glow });
+  }
+
+  /**
+   * The Fold's town obelisk (v14.0): a single MASSIVE monolith at the heart
+   * of the prayer plaza, ringed by kneeling worshippers -- the drowned town
+   * caught mid-prayer, the thing the two Fold echoes speak of ("we woke on
+   * the floor and it was already listening"). Drawn procedurally in the
+   * painterly, sprite-free register the world settled into (v11.2 purge), and
+   * registered as the town's save point so "E: pray" here saves like any
+   * obelisk. There is no fight in the Fold; this is what the sanctuary is for.
+   */
+  private placeTownObelisk(): void {
+    const tile = this.townObeliskTile;
+    if (!tile) return;
+    const reduced = Boolean(GameContext.activeProfile?.settings.reducedMotion);
+    const cx = tile.col * TILE_SIZE + TILE_SIZE / 2;
+    const baseY = tile.row * TILE_SIZE + TILE_SIZE; // feet at the tile's bottom edge
+
+    // Kneeling worshippers ring the dais first (drawn under the monolith), each
+    // bowed toward the obelisk. Deterministic ring so the town looks authored.
+    const RING = 26;
+    const count = 7;
+    for (let i = 0; i < count; i++) {
+      // Bias the ring to the near/side arcs so none sit dead in front of Mir's
+      // approach up the plaza; skip the top of the circle (behind the stone).
+      const ang = Math.PI * 0.5 + (i / count) * Math.PI * 1.6 + 0.2;
+      const wx = cx + Math.cos(ang) * RING;
+      const wy = baseY - 6 + Math.sin(ang) * (RING * 0.42);
+      this.drawWorshipper(wx, wy, wx < cx, reduced, i);
+    }
+
+    // A broad soft contact shadow, then a low stone dais the monolith stands on.
+    this.add.ellipse(cx, baseY, 58, 18, 0x05060a, 0.42).setDepth(3.2);
+    this.add.ellipse(cx, baseY - 1, 42, 12, 0x1b2530, 1).setDepth(3.3);
+    this.add.ellipse(cx, baseY - 3, 34, 9, 0x27343f, 1).setDepth(3.35);
+
+    // The monolith: a tall tapered stone with a pyramidion crown, on a squat
+    // plinth. Two faces (a lit left, a shadowed right) give it volume without
+    // any texture. Deliberately massive -- it dwarfs Mir and the save-stones.
+    const H = 96;
+    const wBase = 24;
+    const wTop = 7;
+    const g = this.add.graphics().setDepth(4.6);
+    // a stepped stone plinth the shaft rises from
+    g.fillStyle(0x151d25, 1);
+    g.fillRect(cx - 20, baseY - 10, 40, 10);
+    g.fillStyle(0x222e39, 1);
+    g.fillRect(cx - 16, baseY - 16, 32, 7);
+    g.fillStyle(0x1d2731, 1); // shadow face (whole silhouette)
+    g.fillPoints(
+      [
+        new Phaser.Geom.Point(cx - wBase / 2, baseY - 2),
+        new Phaser.Geom.Point(cx + wBase / 2, baseY - 2),
+        new Phaser.Geom.Point(cx + wTop / 2, baseY - 2 - H),
+        new Phaser.Geom.Point(cx, baseY - 2 - H - 9),
+        new Phaser.Geom.Point(cx - wTop / 2, baseY - 2 - H),
+      ],
+      true
+    );
+    g.fillStyle(0x2c3a47, 1); // lit face (left half)
+    g.fillPoints(
+      [
+        new Phaser.Geom.Point(cx - wBase / 2, baseY - 2),
+        new Phaser.Geom.Point(cx, baseY - 2),
+        new Phaser.Geom.Point(cx, baseY - 2 - H - 9),
+        new Phaser.Geom.Point(cx - wTop / 2, baseY - 2 - H),
+      ],
+      true
+    );
+    // A carved seam of glyphs down the lit face, lit teal -- the "listening".
+    g.fillStyle(0x49c6bd, 0.85);
+    for (let k = 0; k < 5; k++) {
+      const gy = baseY - 16 - k * 12;
+      g.fillRect(cx - 3, gy, 5, 2);
+    }
+
+    // The crown-light: a pulsing teal glow at the pyramidion, the beacon the
+    // whole ascent is drawn to. A fainter body-glow lifts the stone off the dark.
+    const bodyGlow = this.add
+      .image(cx, baseY - H * 0.55, "glow")
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setTint(0x49c6bd)
+      .setScale(1.0)
+      .setAlpha(0.22)
+      .setDepth(4.5);
+    const crownGlow = this.add
+      .image(cx, baseY - 2 - H - 6, "glow")
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setTint(0x8fe6dd)
+      .setScale(0.66)
+      .setAlpha(0.45)
+      .setDepth(4.7);
+    if (!reduced) {
+      this.tweens.add({ targets: crownGlow, alpha: 0.85, scale: 0.82, yoyo: true, repeat: -1, duration: 1900, ease: "Sine.inOut" });
+      this.tweens.add({ targets: bodyGlow, alpha: 0.32, yoyo: true, repeat: -1, duration: 2600, ease: "Sine.inOut" });
+    }
+
+    // Register as the town save point: standing on any of the dais-adjacent
+    // tiles and pressing E prays/saves, reusing the obelisk interaction.
+    this.obelisks.push({ col: tile.col, row: tile.row, glow: crownGlow });
+  }
+
+  /** One kneeling worshipper: a hunched silhouette bowed toward the obelisk,
+   * with a contact shadow and (motion permitting) a slow prayer sway. */
+  private drawWorshipper(x: number, y: number, faceRight: boolean, reduced: boolean, seed: number): void {
+    this.add.ellipse(x, y + 1, 11, 4, 0x05060a, 0.4).setDepth(4.36);
+    const lean = faceRight ? 1 : -1;
+    // Draw in LOCAL coords so setAngle pivots around the worshipper's ground
+    // point (x,y) rather than swinging the shape about the world origin.
+    const body = this.add.graphics().setDepth(4.4).setPosition(x, y);
+    // robe: a bowed dome, tilted toward the stone
+    body.fillStyle(0x233039, 1);
+    body.fillEllipse(lean * 1.5, -3, 10, 9);
+    body.fillStyle(0x2f4049, 1); // a rim of cold light along the back
+    body.fillEllipse(-lean * 1.5, -3.5, 6, 8);
+    // bowed head
+    body.fillStyle(0x18232b, 1);
+    body.fillCircle(lean * 3.2, -6, 2.6);
+    if (!reduced) {
+      body.setAngle(lean * -4);
+      this.tweens.add({
+        targets: body,
+        angle: lean * 2,
+        yoyo: true,
+        repeat: -1,
+        duration: 2200 + (seed % 5) * 260,
+        delay: (seed % 7) * 180,
+        ease: "Sine.inOut",
+      });
+    }
   }
 
   /** Rest at a save-obelisk: persist the save and acknowledge it in-world. */

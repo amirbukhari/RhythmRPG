@@ -92,14 +92,27 @@ def is_walkable_id(raw_id: int) -> bool:
 # world: out of the Fold, north up the Shelf, east across the Breach, a long
 # south-east swing through the Scar, then north-east to the Stage -- the
 # specific point where it ends.
+#
+# v14.0: the Fold is a SANCTUARY -- the drowned town at prayer round the
+# obelisk, and no fight happens inside it. The first fight (opening_1) is
+# lifted OUT of the Fold onto the Kelp Shelf, so combat begins only once Mir
+# climbs out of the underwater town. opening_1 sits at the Fold's mouth (the
+# first tile of region 1 on the climb), so the campaign starts the moment you
+# leave the sanctuary -- never before.
 NODE_MARKERS: dict[str, tuple[int, int]] = {
-    "opening_1": (20, 45),
+    "opening_1": (18, 30),  # the Fold's mouth, on the Kelp Shelf -- first fight OUTSIDE the town
     "mid_1": (22, 17),
     "mid_2": (36, 31),
     "mid_3": (66, 52),
     "boss_1": (96, 14),
 }
 SPAWN: tuple[int, int] = (8, 54)
+
+# The town obelisk the Fold prays to (v14.0): a single massive monolith three
+# tiles north of the spawn, at the heart of the prayer plaza. Kept in sync
+# with OverworldScene.placeTownObelisk / paint_ground.py's plaza dais so the
+# runtime structure, its worshippers, and the painted ground all agree.
+TOWN_OBELISK: tuple[int, int] = (SPAWN[0], SPAWN[1] - 3)
 
 # Two echoes per region territory (10 total), anchors ABSOLUTE. The echo
 # voice carries the Ascent premise -- the Fold's faith, the climb, the
@@ -375,7 +388,13 @@ def build_map_json(grid: list[list[int]]) -> dict:
             "properties": properties,
         }
 
-    marker_objects = [point_object(1, "spawn", *SPAWN, [])]
+    marker_objects = [
+        point_object(1, "spawn", *SPAWN, []),
+        # The Fold's town obelisk (v14.0): not a campaign node -- OverworldScene
+        # filters it out of the fight markers (like "spawn") and reads it to
+        # place the massive monolith + its worshippers at the plaza heart.
+        point_object(90, "town_obelisk", *TOWN_OBELISK, []),
+    ]
     marker_objects += [
         point_object(i + 2, node_id, col, row, [{"name": "nodeId", "type": "string", "value": node_id}])
         for i, (node_id, (col, row)) in enumerate(NODE_MARKERS.items())

@@ -27,6 +27,8 @@ export interface SaveProfile {
   campaignCompletedAt?: number;
   /** Epoch ms of the moment Nari was lost on the surface (v12.0 loss beat). Absent while he still follows. */
   nariLostAt?: number;
+  /** Epoch ms of the moment Mir first climbed out of the Fold, where the campaign begins (v14.0). Absent while still in the underwater town. */
+  leftFoldAt?: number;
 }
 
 export function createDefaultSaveProfile(slotId: string, startNodeId: string): SaveProfile {

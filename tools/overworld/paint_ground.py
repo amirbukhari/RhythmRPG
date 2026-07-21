@@ -595,15 +595,39 @@ def main() -> None:
         edge_m &= grass_px
         canvas[edge_m] *= 0.8
 
+    # --- the town obelisk's dais + cast shadow + focus rings (v14.0) ---------
+    # The massive monolith (drawn at runtime by OverworldScene.placeTownObelisk)
+    # stands on worked stone at the plaza heart; the town circles IT. Painted
+    # here so the ground under the structure reads as a real prayer platform,
+    # not turf. Kept in sync with the "town_obelisk" marker.
+    _tob = next((o for o in _markers0 if o["name"] == "town_obelisk"), None)
+    if _tob is not None:
+        obx, oby = int(_tob["x"] // 16) * S + S // 2, int(_tob["y"] // 16) * S + S // 2
+        rr_ob = np.sqrt((xx_g - obx) ** 2 + (yy_g - oby) ** 2)
+        # a long shadow cast SE across the plaza, as if from the tall stone
+        shadow = (((xx_g - obx - 30) / 46.0) ** 2 + ((yy_g - oby - 16) / 20.0) ** 2 <= 1) & grass_px
+        canvas[shadow] *= 0.7
+        # the worked stone dais: a bluer, darker platform under the base
+        dais_stone = tint((0x28, 0x34, 0x3E), ACCENTS[0], 0.10)
+        dcol = dais_stone[None, None, :] * (1 + (n_mid - 0.5) * 0.12 + (grain - 0.5) * 0.10)[..., None]
+        dais = (rr_ob < 30) & grass_px
+        canvas[dais] = dcol[dais]
+        rim = (np.abs(rr_ob - 29.0) < 2.0) & grass_px
+        canvas[rim] *= 0.72  # a stepped edge to the platform
+        # worn prayer-focus rings the worshippers have circled for generations
+        for radius in (46.0, 66.0, 88.0):
+            focus = (np.abs(rr_ob - radius) < 1.3) & grass_px & (rr_ob > 30)
+            canvas[focus] *= 0.8
+
     # --- prayer rings at every save-obelisk (v12.0) --------------------------
     # The Fold's faith marks the whole ascent. Mirrors OverworldScene's
     # deterministic obelisk placement (first walkable of fixed candidates).
     def _walk(c, r):
         return 0 <= c < W and 0 <= r < H and kind[r, c] in (0, 1)
-    node_names = {o["name"] for o in _markers0 if o["name"] != "spawn"}
+    node_names = {o["name"] for o in _markers0 if o["name"] not in ("spawn", "town_obelisk")}
     for o in _markers0:
-        if o["name"] == "spawn":
-            continue
+        if o["name"] in ("spawn", "town_obelisk"):
+            continue  # the town obelisk gets its own dais + focus rings above
         mc, mr = int(o["x"] // 16), int(o["y"] // 16)
         cand = [(mc - 2, mr), (mc + 2, mr), (mc, mr + 2), (mc, mr - 2), (mc - 2, mr + 1), (mc + 2, mr + 1)]
         spot = next(((c, r) for c, r in cand if _walk(c, r)), None)
