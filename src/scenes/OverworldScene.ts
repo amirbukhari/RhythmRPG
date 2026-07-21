@@ -818,6 +818,70 @@ export class OverworldScene extends Phaser.Scene {
         ease: "Sine.inOut",
       });
     }
+    this.addDrownedLife(map, ground);
+  }
+
+  /**
+   * The drowned regions (Fold + Kelp Shelf) are UNDERWATER, so the water
+   * column itself is alive (v14.1): sediment/bubbles rise off the seafloor and
+   * beds of eelgrass sway in the current. This replaces the water glints the
+   * drowned regions lost when their puddles were removed -- the area reads as
+   * submerged, not dry, and it MOVES. Deterministic, reduced-motion-gated
+   * (caller already returned under reduced motion), and a fixed pool of
+   * repeat:-1 tweens so nothing accumulates over a long session.
+   */
+  private addDrownedLife(map: Phaser.Tilemaps.Tilemap, ground: Phaser.Tilemaps.TilemapLayer): void {
+    for (let row = 2; row < map.height - 2; row++) {
+      for (let col = 2; col < map.width - 2; col++) {
+        const region = this.regions[row]?.[col] ?? 0;
+        if (region > 1) continue; // drowned regions only
+        const gid = ground.getTileAt(col, row)?.index;
+        if (gid == null || (gid - 1) % 4 !== 0) continue; // seafloor (grass/silt) only
+        const h = ((col * 26777) ^ (row * 2246822519)) >>> 0;
+        const bucket = h % 100;
+        const bx = col * TILE_SIZE + ((h >> 5) % TILE_SIZE);
+        const by = row * TILE_SIZE + ((h >> 9) % TILE_SIZE);
+        if (bucket < 3) {
+          // a rising sediment mote / bubble: born at the floor, drifts up the
+          // water column, fading as it goes, then loops from the floor again.
+          const mote = this.add
+            .image(bx, by, "glow")
+            .setBlendMode(Phaser.BlendModes.ADD)
+            .setTint(0x8fe0d8)
+            .setScale(0.05)
+            .setAlpha(0)
+            .setDepth(4.2);
+          this.tweens.add({
+            targets: mote,
+            y: { from: by + 2, to: by - 22 - (h % 14) },
+            alpha: { from: 0.42, to: 0 },
+            scaleX: 0.09,
+            scaleY: 0.09,
+            duration: 3200 + (h % 2600),
+            repeat: -1,
+            delay: h % 3400,
+            ease: "Sine.out",
+          });
+        } else if (bucket < 7) {
+          // an eelgrass frond rooted to the floor, swaying in the current
+          const tall = 7 + (h % 6);
+          const blade = this.add
+            .rectangle(bx, by + 4, 2, tall, 0x24463a)
+            .setOrigin(0.5, 1)
+            .setDepth(1.3)
+            .setAlpha(0.9);
+          this.tweens.add({
+            targets: blade,
+            angle: (h & 1) === 0 ? 9 : -9,
+            duration: 2600 + (h % 1900),
+            yoyo: true,
+            repeat: -1,
+            delay: h % 1500,
+            ease: "Sine.inOut",
+          });
+        }
+      }
+    }
   }
 
   /**

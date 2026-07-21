@@ -219,18 +219,17 @@ def _dress_zones(grid: list[list[int]], rng: random.Random) -> None:
         tiles = zone[ri]
         return [tiles[rng.randrange(len(tiles))] for _ in range(n)]
 
-    # the Fold: open silt with pools and rock knots; the town stays clear
-    for c, r in spots(0, 4):
-        if (c - SPAWN[0]) ** 2 + (r - SPAWN[1]) ** 2 > 64:
-            blob(c, r, rng.randrange(3, 6), rng.randrange(2, 5), WATER, 0)
-    for c, r in spots(0, 5):
+    # the Fold: open silt seafloor with rock knots. NO water pools -- the Fold
+    # is UNDERWATER (v14.1); a discrete puddle on the ocean floor reads wrong,
+    # so the drowned regions carry rock and silt, never standing water. The
+    # town stays clear near the spawn.
+    for c, r in spots(0, 7):
         if (c - SPAWN[0]) ** 2 + (r - SPAWN[1]) ** 2 > 49:
             blob(c, r, 2, 2, ROCK, 0)
-    # the Kelp Shelf: worked terrace ridges climbing the drowned slope
+    # the Kelp Shelf: worked terrace ridges climbing the drowned slope (also
+    # underwater -- rock terraces only, no pools).
     for c, r in spots(1, 14):
         blob(c, r, rng.randrange(3, 8), rng.choice((1, 2)), ROCK, 1)
-    for c, r in spots(1, 3):
-        blob(c, r, rng.randrange(3, 5), rng.randrange(2, 4), WATER, 1)
     # the Breach: tide pools along the crossing
     for c, r in spots(2, 6):
         blob(c, r, rng.randrange(2, 5), rng.randrange(2, 4), WATER, 2)
@@ -319,10 +318,14 @@ def build_grid() -> list[list[int]]:
         if 2 <= rc < MAP_W - 2 and 2 <= rr < MAP_H - 2 and REGION_MAP[rr][rc] == 2:
             grid[rr][rc] = tid(2, ROCK if _i % 2 else WATER)
 
-    # scattered texture obstacles, placed before carving so the road always wins
+    # scattered texture obstacles, placed before carving so the road always wins.
+    # In the drowned regions (Fold/Shelf) a scattered water tile is a puddle on
+    # the seafloor -- illogical underwater (v14.1), so those get rock only.
     for _ in range(160):
         c, r = rng.randrange(2, MAP_W - 2), rng.randrange(2, MAP_H - 2)
-        grid[r][c] = tid(REGION_MAP[r][c], ROCK if rng.random() < 0.6 else WATER)
+        underwater = REGION_MAP[r][c] in (0, 1)
+        local = ROCK if (underwater or rng.random() < 0.6) else WATER
+        grid[r][c] = tid(REGION_MAP[r][c], local)
 
     # secret spurs: each echo is reachable only by branching off the main
     # road at its region's node marker, then walking an L-bend corridor away
