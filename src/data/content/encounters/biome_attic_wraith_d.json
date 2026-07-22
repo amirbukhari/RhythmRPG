@@ -1,0 +1,17 @@
+{
+  "encounterId": "biome_attic_wraith_d",
+  "trackId": "pit_below_01",
+  "enemyWave": [
+    "elite_wraith",
+    "drifter",
+    "drifter"
+  ],
+  "accentProfile": null,
+  "victoryRewards": {
+    "xp": 205,
+    "currency": 100,
+    "relicChoices": [
+      "counter_charm"
+    ]
+  }
+}

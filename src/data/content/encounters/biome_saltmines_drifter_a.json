@@ -1,0 +1,12 @@
+{
+  "encounterId": "biome_saltmines_drifter_a",
+  "trackId": "mid_biome_1_01",
+  "enemyWave": [
+    "drifter"
+  ],
+  "accentProfile": null,
+  "victoryRewards": {
+    "xp": 80,
+    "currency": 35
+  }
+}

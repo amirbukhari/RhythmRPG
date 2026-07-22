@@ -16,6 +16,13 @@ import { composeWorldVenue } from "./env/ArenaComposer";
 import dressingData from "../data/content/overworld/dressing.json";
 import { worldScaleFor } from "./env/WorldScale";
 
+// v15.0 chunked ground: the painter emits a manifest describing the chunk
+// grid; the chunks themselves are loaded in BootScene as `ground_chunk_<r>_<c>`.
+type GroundManifest = { chunk: number; rows: number; cols: number; full_w: number; full_h: number; s: number };
+const GROUND_MANIFEST = Object.values(
+  import.meta.glob("../../assets/tilemaps/ground_plate_manifest.json", { eager: true, import: "default" })
+)[0] as GroundManifest | undefined;
+
 const TILE_SIZE = 16;
 const STEP_DURATION_MS = 160;
 const MARKER_COLORS: Record<NodeStatus, number> = { cleared: 0x44cc66, unlocked: 0xffe066, locked: 0x444444 };
@@ -87,6 +94,8 @@ export class OverworldScene extends Phaser.Scene {
   private nearbyObelisk: { col: number; row: number; glow: Phaser.GameObjects.Image } | null = null;
   /** The Fold's town-obelisk tile (v14.0), read from the "town_obelisk" marker. */
   private townObeliskTile: GridPosition | null = null;
+  /** v15.0 chunked painted ground; only the chunks in view are rendered. */
+  private groundChunks: { img: Phaser.GameObjects.Image; w: number; h: number }[] = [];
   /** Live refs for the dynamic-ambience pass (v14.2): beat-reactive sanctuary,
    * current surge, distant lightning. All motion is cosmetic. */
   private worshippers: { body: Phaser.GameObjects.Graphics; lean: number }[] = [];
@@ -158,6 +167,7 @@ export class OverworldScene extends Phaser.Scene {
     // / the finale restart the overworld) and re-runs create() -- without this
     // the ambient arrays keep references to destroyed objects and accumulate.
     this.ambient = [];
+    this.groundChunks = [];
     this.eelgrass = [];
     this.worshippers = [];
     this.townCrownGlow = null;
@@ -185,7 +195,7 @@ export class OverworldScene extends Phaser.Scene {
     // 2x texel density; rock as mesas, roads as ribbons, water as bodies) so
     // the ground lives in the same register as the AI-painted sprites.
     ground.setVisible(false);
-    this.add.image(0, 0, "ground_plate").setOrigin(0).setScale(0.5).setDepth(0);
+    this.placeGroundChunks();
 
     this.walkable = [];
     this.regions = [];
@@ -238,9 +248,10 @@ export class OverworldScene extends Phaser.Scene {
     // each fight node's authored venue -- its biome floor blended into the
     // map + its kitbash set pieces -- stands IN the world, under the foe
     for (const marker of this.markers) {
+      const venueBiome = REGION_BIOMES[this.regions[marker.row]?.[marker.col] ?? 0];
       composeWorldVenue(
         this,
-        marker.nodeId,
+        `arena_${venueBiome}`,
         marker.col * TILE_SIZE + TILE_SIZE / 2,
         marker.row * TILE_SIZE + TILE_SIZE / 2,
         // scale/placement audit: venue set pieces must stand on land (grass
@@ -481,6 +492,7 @@ export class OverworldScene extends Phaser.Scene {
   update(_time: number, deltaMs: number): void {
     if (!this.player) return;
     this.repositionPinned();
+    this.cullGroundChunks();
     // Ambience runs only while exploring: during an in-world fight it is
     // off-screen (camera locked to the fight room), so hide + pause it so the
     // fight owns the whole frame budget (fixes CI fight-timing on weak GPUs).
@@ -884,7 +896,7 @@ export class OverworldScene extends Phaser.Scene {
         const gid = ground.getTileAt(col, row)?.index;
         if (gid == null || (gid - 1) % 4 !== 0) continue; // seafloor (grass/silt) only
         const h = ((col * 26777) ^ (row * 2246822519)) >>> 0;
-        const bucket = h % 100;
+        const bucket = h % 1200; // v15.0: sparser per-tile on the ~10x world so total stays bounded
         const bx = col * TILE_SIZE + ((h >> 5) % TILE_SIZE);
         const by = row * TILE_SIZE + ((h >> 9) % TILE_SIZE);
         if (bucket < 3) {
@@ -1013,7 +1025,7 @@ export class OverworldScene extends Phaser.Scene {
         const h = ((col * 374761393) ^ (row * 668265263)) >>> 0;
         const bx = col * TILE_SIZE + 8;
         const by = row * TILE_SIZE + 8;
-        if (h % 521 < 2) {
+        if (h % 5210 < 2) {
           // a loose school: 3 fish clustered, patrolling together
           const size = h % 2 === 0 ? 1 : 0.8;
           for (let f = 0; f < 3; f++) {
@@ -1040,7 +1052,7 @@ export class OverworldScene extends Phaser.Scene {
             });
             this.tweens.add({ targets: fish, y: fy - 6, duration: 1500 + (fh % 900), yoyo: true, repeat: -1, ease: "Sine.inOut" });
           }
-        } else if (h % 617 < 2) {
+        } else if (h % 6170 < 2) {
           // a jellyfish: drifts up the column, bell pulsing, then loops
           const jelly = this.amb(this.add.graphics().setDepth(4.18).setPosition(bx, by).setAlpha(0.9));
           jelly.fillStyle(0x6fd8cf, 0.5);
@@ -1051,7 +1063,7 @@ export class OverworldScene extends Phaser.Scene {
           for (let t = -3; t <= 3; t += 2) jelly.lineBetween(t, 3, t + 1, 12);
           this.tweens.add({ targets: jelly, y: by - 66, alpha: 0, duration: 9000 + (h % 4000), repeat: -1, delay: h % 5000, ease: "Sine.inOut" });
           this.tweens.add({ targets: jelly, scaleY: 0.72, duration: 1300 + (h % 700), yoyo: true, repeat: -1, ease: "Sine.inOut" });
-        } else if (h % 640 < 2) {
+        } else if (h % 6400 < 2) {
           // a crab scuttling sideways on the floor, with pauses
           const crab = this.amb(this.add.graphics().setDepth(4.16).setPosition(bx, by));
           crab.fillStyle(0x835043, 0.95);
@@ -1070,7 +1082,7 @@ export class OverworldScene extends Phaser.Scene {
             repeat: -1,
             ease: "Sine.inOut",
           });
-        } else if (!eelPlaced && h % 907 < 2) {
+        } else if (!eelPlaced && h % 9070 < 2) {
           // one eel, coiled by the rocks, undulating in place
           const eel = this.amb(this.add.graphics().setDepth(4.17).setPosition(bx, by));
           eel.fillStyle(0x223129, 0.95);
@@ -1098,7 +1110,7 @@ export class OverworldScene extends Phaser.Scene {
         const gid = ground.getTileAt(col, row)?.index ?? 0;
         if ((gid - 1) % 4 !== 0) continue; // walkable ground only
         const h = ((col * 2246822519) ^ (row * 3266489917)) >>> 0;
-        const bucket = h % 100;
+        const bucket = h % 2400; // v15.0: sparser per-tile on the ~10x world
         const px = col * TILE_SIZE + ((h >> 5) % TILE_SIZE);
         const py = row * TILE_SIZE + ((h >> 9) % TILE_SIZE);
         if (region === 3) {
@@ -1437,8 +1449,9 @@ export class OverworldScene extends Phaser.Scene {
     const node = getCampaignNode(marker.nodeId);
     const reduced = profile.settings.reducedMotion;
 
-    // Representative foe: the first enemy of the node's first pool encounter.
-    const encounterId = node.encounterPool?.[0];
+    // Representative foe: the first enemy of the node's first pool encounter,
+    // or its fixed encounter (the boss uses a fixed encounterId, not a pool).
+    const encounterId = node.encounterPool?.[0] ?? node.encounterId;
     const foeId = encounterId ? getEncounter(encounterId).enemyWave[0] : null;
 
     if (!foeId) {
@@ -1557,6 +1570,39 @@ export class OverworldScene extends Phaser.Scene {
    * registered as the town's save point so "E: pray" here saves like any
    * obelisk. There is no fight in the Fold; this is what the sanctuary is for.
    */
+  /**
+   * v15.0: place every painted ground chunk at its world position. A chunk of
+   * `chunk` px at S density covers `chunk*(TILE_SIZE/s)` world px; with S==16
+   * that is 1:1, so a 1024px chunk covers 1024 world px at scale 1. Chunks are
+   * culled to the camera view each frame in cullGroundChunks (bounds overdraw).
+   */
+  private placeGroundChunks(): void {
+    if (!GROUND_MANIFEST) return;
+    const { chunk, rows, cols, s } = GROUND_MANIFEST;
+    const scale = TILE_SIZE / s; // world px per plate px
+    const cpx = chunk * scale; // world px per chunk
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const key = `ground_chunk_${r}_${c}`;
+        if (!this.textures.exists(key)) continue;
+        const src = this.textures.get(key).getSourceImage();
+        const img = this.add.image(c * cpx, r * cpx, key).setOrigin(0, 0).setScale(scale).setDepth(0);
+        this.groundChunks.push({ img, w: src.width * scale, h: src.height * scale });
+      }
+    }
+  }
+
+  /** Render only the ground chunks intersecting the camera view (+margin). */
+  private cullGroundChunks(): void {
+    if (!this.groundChunks.length) return;
+    const v = this.cameras.main.worldView;
+    const m = 48;
+    for (const { img, w, h } of this.groundChunks) {
+      const vis = img.x < v.right + m && img.x + w > v.left - m && img.y < v.bottom + m && img.y + h > v.top - m;
+      if (img.visible !== vis) img.setVisible(vis);
+    }
+  }
+
   private placeTownObelisk(): void {
     const tile = this.townObeliskTile;
     if (!tile) return;

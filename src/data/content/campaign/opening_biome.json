@@ -5,8 +5,8 @@
       "nodeId": "opening_1",
       "type": "battle",
       "encounterPool": [
-        "opening_biome_slime_01",
-        "opening_biome_slime_02"
+        "biome_shallows_slime_a",
+        "biome_shallows_slime_b"
       ],
       "next": [
         "mid_1"
@@ -16,30 +16,224 @@
       "nodeId": "mid_1",
       "type": "battle",
       "encounterPool": [
-        "mid_biome_1_drifter_01",
-        "mid_biome_1_drifter_02"
+        "biome_saltmines_drifter_a",
+        "biome_saltmines_drifter_b",
+        "biome_saltmines_drifter_c"
       ],
       "next": [
-        "mid_2"
+        "node_03"
       ]
     },
     {
-      "nodeId": "mid_2",
-      "type": "elite",
+      "nodeId": "node_03",
+      "type": "battle",
       "encounterPool": [
-        "pit_pack_01",
-        "pit_pack_02"
+        "biome_saltmines_drifter_a",
+        "biome_saltmines_drifter_b",
+        "biome_saltmines_drifter_c"
       ],
       "next": [
-        "mid_3"
+        "node_04"
       ]
     },
     {
-      "nodeId": "mid_3",
+      "nodeId": "node_04",
       "type": "elite",
       "encounterPool": [
-        "mid_biome_3_elite_01",
-        "mid_biome_3_elite_02"
+        "biome_saltmines_drifter_a",
+        "biome_saltmines_drifter_b",
+        "biome_saltmines_drifter_c"
+      ],
+      "next": [
+        "node_05"
+      ]
+    },
+    {
+      "nodeId": "node_05",
+      "type": "battle",
+      "encounterPool": [
+        "biome_saltmines_drifter_a",
+        "biome_saltmines_drifter_b",
+        "biome_saltmines_drifter_c"
+      ],
+      "next": [
+        "node_06"
+      ]
+    },
+    {
+      "nodeId": "node_06",
+      "type": "battle",
+      "encounterPool": [
+        "biome_pit_pack_a",
+        "biome_pit_pack_b",
+        "biome_pit_pack_c"
+      ],
+      "next": [
+        "node_07"
+      ]
+    },
+    {
+      "nodeId": "node_07",
+      "type": "battle",
+      "encounterPool": [
+        "biome_pit_pack_a",
+        "biome_pit_pack_b",
+        "biome_pit_pack_c"
+      ],
+      "next": [
+        "node_08"
+      ]
+    },
+    {
+      "nodeId": "node_08",
+      "type": "elite",
+      "encounterPool": [
+        "biome_pit_pack_a",
+        "biome_pit_pack_b",
+        "biome_pit_pack_c"
+      ],
+      "next": [
+        "node_09"
+      ]
+    },
+    {
+      "nodeId": "node_09",
+      "type": "battle",
+      "encounterPool": [
+        "biome_attic_wraith_a",
+        "biome_attic_wraith_b",
+        "biome_attic_wraith_c",
+        "biome_attic_wraith_d"
+      ],
+      "next": [
+        "node_10"
+      ]
+    },
+    {
+      "nodeId": "node_10",
+      "type": "battle",
+      "encounterPool": [
+        "biome_attic_wraith_a",
+        "biome_attic_wraith_b",
+        "biome_attic_wraith_c",
+        "biome_attic_wraith_d"
+      ],
+      "next": [
+        "node_11"
+      ]
+    },
+    {
+      "nodeId": "node_11",
+      "type": "battle",
+      "encounterPool": [
+        "biome_attic_wraith_a",
+        "biome_attic_wraith_b",
+        "biome_attic_wraith_c",
+        "biome_attic_wraith_d"
+      ],
+      "next": [
+        "node_12"
+      ]
+    },
+    {
+      "nodeId": "node_12",
+      "type": "elite",
+      "encounterPool": [
+        "biome_attic_wraith_a",
+        "biome_attic_wraith_b",
+        "biome_attic_wraith_c",
+        "biome_attic_wraith_d"
+      ],
+      "next": [
+        "node_13"
+      ]
+    },
+    {
+      "nodeId": "node_13",
+      "type": "battle",
+      "encounterPool": [
+        "biome_attic_wraith_a",
+        "biome_attic_wraith_b",
+        "biome_attic_wraith_c",
+        "biome_attic_wraith_d"
+      ],
+      "next": [
+        "node_14"
+      ]
+    },
+    {
+      "nodeId": "node_14",
+      "type": "battle",
+      "encounterPool": [
+        "biome_attic_wraith_a",
+        "biome_attic_wraith_b",
+        "biome_attic_wraith_c",
+        "biome_attic_wraith_d"
+      ],
+      "next": [
+        "node_15"
+      ]
+    },
+    {
+      "nodeId": "node_15",
+      "type": "battle",
+      "encounterPool": [
+        "biome_attic_wraith_a",
+        "biome_attic_wraith_b",
+        "biome_attic_wraith_c",
+        "biome_attic_wraith_d"
+      ],
+      "next": [
+        "node_16"
+      ]
+    },
+    {
+      "nodeId": "node_16",
+      "type": "elite",
+      "encounterPool": [
+        "biome_attic_wraith_a",
+        "biome_attic_wraith_b",
+        "biome_attic_wraith_c",
+        "biome_attic_wraith_d"
+      ],
+      "next": [
+        "node_17"
+      ]
+    },
+    {
+      "nodeId": "node_17",
+      "type": "battle",
+      "encounterPool": [
+        "biome_attic_wraith_a",
+        "biome_attic_wraith_b",
+        "biome_attic_wraith_c",
+        "biome_attic_wraith_d"
+      ],
+      "next": [
+        "node_18"
+      ]
+    },
+    {
+      "nodeId": "node_18",
+      "type": "battle",
+      "encounterPool": [
+        "biome_attic_wraith_a",
+        "biome_attic_wraith_b",
+        "biome_attic_wraith_c",
+        "biome_attic_wraith_d"
+      ],
+      "next": [
+        "node_19"
+      ]
+    },
+    {
+      "nodeId": "node_19",
+      "type": "battle",
+      "encounterPool": [
+        "biome_attic_wraith_a",
+        "biome_attic_wraith_b",
+        "biome_attic_wraith_c",
+        "biome_attic_wraith_d"
       ],
       "next": [
         "boss_1"

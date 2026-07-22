@@ -46,19 +46,15 @@ export const NODE_VENUE: Record<string, string> = {
  */
 export function composeWorldVenue(
   scene: Phaser.Scene,
-  nodeId: string,
+  venueKey: string,
   cx: number,
   cy: number,
   canPlace?: (x: number, y: number) => boolean
 ): void {
-  const key = NODE_VENUE[nodeId];
-  const layout = key ? ARENA_LAYOUTS[key] : undefined;
-  if (!key || !layout) return;
-  // NO floor patch (owner: "you just overlayed the boss arenas on-top of
-  // normal places and you can see through... straight up squares destroy the
-  // aesthetic"). The venue is its SET PIECES standing on the real painted
-  // ground; the world itself is the arena floor.
-  // focal stage-light: fights read as lit stages from across the map
+  // v15.0: venues are keyed by BIOME ("arena_<biome>"), so all ~20 fight nodes
+  // reuse the five authored kits (was a per-node-id table for the old 5 nodes).
+  // focal stage-light: every fight reads as a lit stage from across the map,
+  // even where the kit's set pieces have no shipped art yet.
   scene.add
     .image(cx, cy, "glow")
     .setBlendMode(Phaser.BlendModes.ADD)
@@ -66,6 +62,10 @@ export function composeWorldVenue(
     .setScale(1.5)
     .setAlpha(0.12)
     .setDepth(1.4);
+  const layout = ARENA_LAYOUTS[venueKey];
+  if (!layout) return;
+  // NO floor patch: the venue is its SET PIECES standing on the real painted
+  // ground; the world itself is the arena floor.
   // kit pieces, offset from the layout's arena space onto the node's spot
   const ox = cx - BASE_WIDTH / 2;
   const oy = cy - BASE_HEIGHT * 0.56;

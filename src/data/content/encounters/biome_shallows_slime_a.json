@@ -1,0 +1,12 @@
+{
+  "encounterId": "biome_shallows_slime_a",
+  "trackId": "opening_biome_01",
+  "enemyWave": [
+    "slime"
+  ],
+  "accentProfile": null,
+  "victoryRewards": {
+    "xp": 40,
+    "currency": 20
+  }
+}

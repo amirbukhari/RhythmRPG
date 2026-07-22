@@ -18,9 +18,16 @@ const ENV_URLS = import.meta.glob("../../assets/sprites/env/*/*.png", {
   query: "?url",
   import: "default",
 }) as Record<string, string>;
+// v15.0: the ~10x world's painted ground ships as a GRID of chunk PNGs
+// (tools/overworld/paint_ground.py) -- one texture would exceed WebGL's max
+// size. Loaded here as `ground_chunk_<r>_<c>`; OverworldScene places + culls them.
+const GROUND_CHUNK_URLS = import.meta.glob("../../assets/tilemaps/ground_plate_*_*.png", {
+  eager: true,
+  query: "?url",
+  import: "default",
+}) as Record<string, string>;
 import uiPanelUrl from "../../assets/ui/panel.png";
 import wordmarkUrl from "../../assets/ui/wordmark.png";
-import groundPlateUrl from "../../assets/tilemaps/ground_plate.png";
 import uiPanelBossUrl from "../../assets/ui/panel_boss.png";
 import glowUrl from "../../assets/fx/glow.png";
 import sparkUrl from "../../assets/fx/spark.png";
@@ -54,7 +61,11 @@ export class BootScene extends Phaser.Scene {
     this.load.image("ui_panel", uiPanelUrl);
     this.load.image("ui_panel_boss", uiPanelBossUrl);
     this.load.image("wordmark", wordmarkUrl);
-    this.load.image("ground_plate", groundPlateUrl);
+    // Ground chunks: `.../ground_plate_2_3.png` -> key `ground_chunk_2_3`.
+    for (const [path, url] of Object.entries(GROUND_CHUNK_URLS)) {
+      const m = /ground_plate_(\d+)_(\d+)\.png$/.exec(path);
+      if (m) this.load.image(`ground_chunk_${m[1]}_${m[2]}`, url);
+    }
     this.load.image("glow", glowUrl);
     this.load.image("spark", sparkUrl);
     // Overworld atmosphere: seamless drifting fog, raking god-ray shafts, and

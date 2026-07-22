@@ -1,0 +1,15 @@
+{
+  "encounterId": "biome_attic_wraith_a",
+  "trackId": "mid_biome_3_syncopated_01",
+  "enemyWave": [
+    "elite_wraith"
+  ],
+  "accentProfile": null,
+  "victoryRewards": {
+    "xp": 160,
+    "currency": 80,
+    "relicChoices": [
+      "groove_amp"
+    ]
+  }
+}

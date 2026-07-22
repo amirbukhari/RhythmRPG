@@ -32,7 +32,9 @@ ROOT = Path(__file__).resolve().parents[2]
 MAP = ROOT / "assets" / "tilemaps" / "overworld.json"
 OUT = ROOT / "assets" / "tilemaps" / "ground_plate.png"
 
-S = 32  # px per tile cell (2x the runtime 16px -> denser texels, HLD register)
+S = 16  # px per tile cell. v15.0: dropped from 32 (2x) to 16 (1x) so the ~10x
+# world's chunked ground stays a sane RAM/bake/repo weight; the runtime draws
+# chunks at scale 1.0 (S == TILE_SIZE).
 RNG = np.random.default_rng(20260714)
 
 # v12.0 Ascent accents: the Fold (deep teal), the Kelp Shelf (kelp green),
@@ -337,7 +339,7 @@ def main() -> None:
         return 1 <= y < PH - 1 and 1 <= x < PW - 1 and grass_px[y, x]
 
     # THE LEVIATHAN: a whale skeleton bleaching in the south-east Scar
-    wvx, wvy = 84 * S, 55 * S
+    wvx, wvy = 267 * S, 172 * S
     for d in range(150):  # the spine
         y, x = wvy + int(10 * np.sin(d / 26.0)), wvx - 60 + d
         if clip_ok(y, x) and region_px[y, x] == 3:
@@ -362,7 +364,7 @@ def main() -> None:
 
     # THE FALLEN OBELISK: shattered segments in a line, west Scar -- the cult's
     # stone, face-down on the surface, a gouge trailing where it fell
-    fox, foy = 46 * S, 42 * S
+    fox, foy = 146 * S, 131 * S
     for d in range(70):  # the impact gouge
         y, x = foy + d // 5, fox - 30 - d
         if clip_ok(y, x) and region_px[y, x] == 3:
@@ -379,7 +381,7 @@ def main() -> None:
         seg_x += seg_len + 6  # the breaks between shattered segments
 
     # THE SILENT RING: ancient standing stones on the north Scar rise
-    srx, sry = 78 * S, 20 * S
+    srx, sry = 248 * S, 63 * S
     ring_r = np.sqrt((xx_g - srx) ** 2 + ((yy_g - sry) * 1.4) ** 2)
     worn = (np.abs(ring_r - 52) < 3) & grass_px & (region_px == 3)
     canvas[worn] *= 0.85
@@ -399,7 +401,7 @@ def main() -> None:
                 canvas[y, x] *= 0.8
 
     # THE DRIED LAKEBED: a pale cracked pan in the east Scar
-    dlx, dly = 94 * S, 40 * S
+    dlx, dly = 299 * S, 125 * S
     pan = (((xx_g - dlx) / 90.0) ** 2 + ((yy_g - dly) / 55.0) ** 2 <= 1) & grass_px & (region_px == 3)
     pan_c = np.array((0x9A, 0x8C, 0x74), dtype=np.float32)
     canvas[pan] = canvas[pan] * 0.4 + pan_c[None, :] * 0.6
@@ -424,7 +426,7 @@ def main() -> None:
         sub[keep] = sub[keep] * (1 - amt) + c[None, :] * amt
 
     # THE GREAT WRECK: a colossal ship's hull run aground on the Breach shore
-    gwx, gwy = 40 * S, 20 * S
+    gwx, gwy = 127 * S, 63 * S
     for d in range(200):  # the keel
         y, x = gwy + int(24 * np.sin(d / 120.0)), gwx - 100 + d
         if clip_ok(y, x):
@@ -445,7 +447,7 @@ def main() -> None:
     # THE BONEYARD: a battlefield of the fallen, west-central Scar
     for k in range(60):
         h = (k * 2654435761) & 0xFFFFFFFF
-        bx, by = 56 * S + ((h >> 3) % 400 - 200), 34 * S + ((h >> 13) % 260 - 130)
+        bx, by = 178 * S + ((h >> 3) % 400 - 200), 106 * S + ((h >> 13) % 260 - 130)
         if not clip_ok(by, bx) or region_px[by, bx] != 3:
             continue
         if h % 3 == 0:  # a ribcage
@@ -464,7 +466,7 @@ def main() -> None:
 
     # THE GEYSER FIELD: pale mineral pools ringed with crust, north Scar
     for k in range(7):
-        gx, gy = 64 * S + (k * 47 % 240 - 120), 12 * S + (k * 71 % 130 - 65)
+        gx, gy = 203 * S + (k * 47 % 240 - 120), 38 * S + (k * 71 % 130 - 65)
         if clip_ok(gy, gx) and region_px[gy, gx] == 3:
             blot(gx, gy, 9 + k % 5, 7 + k % 4, (0x8C, 0x9A, 0x86), 0.55, only_reg=3)
             blot(gx, gy, 4 + k % 3, 3 + k % 2, (0x6C, 0xA8, 0x9E), 0.6, only_reg=3)  # the hot centre
@@ -474,7 +476,7 @@ def main() -> None:
     # THE MAST FOREST: dead ships' masts standing in the drowned Shelf like trees
     for k in range(16):
         h = (k * 40503 + 991) & 0xFFFFFFFF
-        mx, my = 18 * S + ((h >> 4) % 360 - 180), 20 * S + ((h >> 12) % 360 - 180)
+        mx, my = 57 * S + ((h >> 4) % 360 - 180), 63 * S + ((h >> 12) % 360 - 180)
         if not clip_ok(my, mx) or region_px[my, mx] != 1:
             continue
         mh = 20 + h % 26
@@ -490,7 +492,7 @@ def main() -> None:
                     canvas[y, x] = canvas[y, x] * 0.55 + np.array((0x2A, 0x22, 0x1C), dtype=np.float32) * 0.45
 
     # THE GIANT FOOTPRINT: one vast three-toed track pressed into the east Scar
-    fpx, fpy = 100 * S, 50 * S
+    fpx, fpy = 318 * S, 156 * S
     heel = (((xx_g - fpx) / 28.0) ** 2 + ((yy_g - fpy) / 34.0) ** 2 <= 1) & grass_px & (region_px == 3)
     canvas[heel] *= 0.62
     for toe_a in (-0.6, 0.0, 0.6):
@@ -498,14 +500,14 @@ def main() -> None:
         blot(tx, ty, 10, 14, (0x2E, 0x1C, 0x16), 0.45, only_reg=3)
 
     # THE SALT FLATS: a blinding pale crust plain, far south Scar
-    sfx, sfy = 68 * S, 60 * S
+    sfx, sfy = 216 * S, 188 * S
     flat = (((xx_g - sfx) / 130.0) ** 2 + ((yy_g - sfy) / 34.0) ** 2 <= 1) & grass_px & (region_px == 3)
     canvas[flat] = canvas[flat] * 0.35 + np.array((0xC6, 0xC2, 0xB4), dtype=np.float32)[None, :] * 0.65
     hexc = flat & (np.abs(value_noise(PH, PW, 14) - 0.5) < 0.02)  # polygonal salt cracks
     canvas[hexc] *= 0.82
 
     # THE SPIRE RUIN: a toppled lighthouse's round base + shadow, NE Scar edge
-    spx, spy = 90 * S, 30 * S
+    spx, spy = 286 * S, 94 * S
     base = (np.sqrt((xx_g - spx) ** 2 + (yy_g - spy) ** 2) < 16) & grass_px & (region_px == 3)
     canvas[base] = canvas[base] * 0.5 + np.array((0x6E, 0x66, 0x5E), dtype=np.float32)[None, :] * 0.5
     inner = (np.sqrt((xx_g - spx) ** 2 + (yy_g - spy) ** 2) < 8) & grass_px & (region_px == 3)
@@ -868,7 +870,14 @@ def main() -> None:
     rock_top = blended(rock_top_bases)
     crack_col = 0.5
     mesa_px = np.zeros((PH, PW), dtype=bool)  # union, so later passes respect the mesas
+    # v15.0 perf: skip tiny rock specks CHEAPLY (one bincount) before the
+    # per-component full-canvas organic_mask. On the ~10x map the thousands of
+    # single-tile scattered rocks were each triggering an 18M-px blur -> a
+    # ~20-minute bake. Only real clusters (>=4 tiles) become mesas.
+    comp_sizes = np.bincount(labels.ravel(), minlength=nxt + 1)
     for comp in range(1, nxt + 1):
+        if comp_sizes[comp] < 4:
+            continue
         cm = organic_mask(labels == comp, jitter=0.34, blur=8)
         if not cm.any():
             continue
@@ -1105,10 +1114,23 @@ def main() -> None:
     # v11.0 beauty pivot: the quantized-ramp + ordered-dither "HLD floor
     # signature" is retired -- the plate ships its painted gradients at full
     # fidelity (smooth renderer, no chunky register to match anymore).
-    out = Image.fromarray(np.clip(canvas, 0, 255).astype(np.uint8), "RGB")
+    canvas_u8 = np.clip(canvas, 0, 255).astype(np.uint8)
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    out.save(OUT, optimize=True)
-    print(f"wrote {OUT.relative_to(ROOT)} ({out.width}x{out.height})")
+    # v15.0: the world is ~10x bigger, so the painted ground exceeds WebGL's
+    # max texture size and must ship as a GRID of chunk PNGs that the runtime
+    # loads and CAMERA-CULLS. Delete any stale single/legacy chunk files first.
+    for old in OUT.parent.glob("ground_plate*.png"):
+        old.unlink()
+    CHUNK = 1024
+    rows = (PH + CHUNK - 1) // CHUNK
+    cols = (PW + CHUNK - 1) // CHUNK
+    for r in range(rows):
+        for c in range(cols):
+            sub = canvas_u8[r * CHUNK:(r + 1) * CHUNK, c * CHUNK:(c + 1) * CHUNK]
+            Image.fromarray(sub, "RGB").save(OUT.parent / f"ground_plate_{r}_{c}.png", optimize=True)
+    (OUT.parent / "ground_plate_manifest.json").write_text(json.dumps(
+        {"chunk": CHUNK, "rows": rows, "cols": cols, "full_w": PW, "full_h": PH, "s": S}) + "\n")
+    print(f"wrote {rows}x{cols} ground chunks ({PW}x{PH}, chunk {CHUNK}px, S={S})")
 
 
 if __name__ == "__main__":

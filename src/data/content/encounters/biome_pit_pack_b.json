@@ -1,0 +1,14 @@
+{
+  "encounterId": "biome_pit_pack_b",
+  "trackId": "mid_biome_1_01",
+  "enemyWave": [
+    "drifter",
+    "drifter",
+    "slime"
+  ],
+  "accentProfile": null,
+  "victoryRewards": {
+    "xp": 135,
+    "currency": 60
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "encounterId": "biome_attic_wraith_c",
+  "trackId": "pit_below_01",
+  "enemyWave": [
+    "elite_wraith",
+    "elite_wraith"
+  ],
+  "accentProfile": null,
+  "victoryRewards": {
+    "xp": 220,
+    "currency": 110,
+    "relicChoices": [
+      "groove_amp"
+    ]
+  }
+}

@@ -86,17 +86,17 @@ test.describe("overworld", () => {
       nodeId: window.__meterfallDebug.GameContext.pendingNodeId,
     }));
     expect(pending.nodeId).toBe("opening_1");
-    // opening_1 resolves randomly from its encounterPool each visit.
-    expect(["opening_biome_slime_01", "opening_biome_slime_02"]).toContain(pending.encounterId);
+    // opening_1 resolves randomly from its encounterPool each visit (v15.0 pool).
+    expect(["biome_shallows_slime_a", "biome_shallows_slime_b"]).toContain(pending.encounterId);
   });
 
   test("locked and cleared markers do not trigger battles", async ({ page }) => {
     await bootToOverworld(page);
 
-    // mid_2 is past the fresh save's frontier: locked, must be a no-op.
+    // node_10 is deep past the fresh save's frontier: locked, must be a no-op.
     await page.evaluate(() => {
       const scene = window.__meterfallDebug.game.scene.getScene("OverworldScene") as unknown as OverworldSeams;
-      scene.debugTeleportToNode("mid_2");
+      scene.debugTeleportToNode("node_10");
     });
     await page.waitForTimeout(500);
     expect(await page.evaluate(() => (window.__meterfallDebug.game.scene.getScene("OverworldScene") as unknown as OverworldSeams).isFightActive())).toBe(false);
