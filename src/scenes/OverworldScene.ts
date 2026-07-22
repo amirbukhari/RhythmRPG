@@ -153,6 +153,20 @@ export class OverworldScene extends Phaser.Scene {
     this.fight = null;
     this.canopies = [];
     this.pinned = [];
+    // v14.2 dynamic-ambience state: MUST be reset here, not just at field-init,
+    // because Phaser reuses the scene instance across restarts (a fight victory
+    // / the finale restart the overworld) and re-runs create() -- without this
+    // the ambient arrays keep references to destroyed objects and accumulate.
+    this.ambient = [];
+    this.eelgrass = [];
+    this.worshippers = [];
+    this.townCrownGlow = null;
+    this.lightningFlash = null;
+    this.ambientHidden = false;
+    this.beatAccumMs = 0;
+    this.surgeAccumMs = 0;
+    this.lightningAccumMs = 0;
+    this.overworldSongMap = null;
     this.nodeFoeVisuals.clear();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.fight?.destroy();

@@ -10,13 +10,16 @@ import { defineConfig, devices } from "@playwright/test";
 // 1.x -- recent tooling versions assume newer Node's native TS support).
 export default defineConfig({
   testDir: "./tests/e2e",
-  // 60s (was 30s): the game renders real pixel-art scenes (painted battle
-  // backdrops, per-scene backdrops, sprite sheets) under this sandbox's
+  // 120s (was 60s, was 30s): the game renders real pixel-art scenes (painted
+  // battle backdrops, per-scene backdrops, sprite sheets) under this sandbox's
   // *software* WebGL, so scene loads/transitions are genuinely slower here
   // than on a GPU. The waits are for real state, not arbitrary sleeps; the
   // extra ceiling just stops a slow software-rendered frame from tripping a
-  // 30s wait. Real hardware is far under this.
-  timeout: 60_000,
+  // wait. The in-world fight sim in particular runs at only a few FPS on the
+  // slowest CI runners (measured: ~3 FPS under a 6x CPU throttle), where the
+  // real-time fight specs (beat-truth, boss-phases, finale) wait on game-time
+  // progression; 60s was too tight for those there. Real hardware is far under.
+  timeout: 120_000,
   fullyParallel: false, // each test drives one shared game instance's page lifecycle; keep runs predictable
   workers: 1, // headless WebGL under software rendering in this environment is resource-heavy; concurrency caused real flakiness
   retries: 2, // timing-sensitive input/rhythm specs under software WebGL occasionally drop a synthetic input or run a slow frame; retries absorb it (see tests/e2e/README.md)
