@@ -99,6 +99,12 @@ export class OverworldScene extends Phaser.Scene {
   private surgeAccumMs = 0;
   private lightningFlash: Phaser.GameObjects.Image | null = null;
   private lightningAccumMs = 0;
+  /** Every dynamic-ambience object, so the whole layer can be hidden + its
+   * tweens paused while an in-world fight runs (the camera locks to the fight
+   * room, so ambient is off-screen; keeping it animating just burns the frame
+   * budget and, on weak hardware, drops fight-timing FPS / peaks memory). */
+  private ambient: Phaser.GameObjects.GameObject[] = [];
+  private ambientHidden = false;
   /** Live in-world fight (areas-not-arenas); null while exploring. */
   private fight: WorldFight | null = null;
   /** Canopy landforms drawn ABOVE the player (PRD v7.15); they alpha-fade
@@ -461,7 +467,15 @@ export class OverworldScene extends Phaser.Scene {
   update(_time: number, deltaMs: number): void {
     if (!this.player) return;
     this.repositionPinned();
-    this.driveAmbience(deltaMs);
+    // Ambience runs only while exploring: during an in-world fight it is
+    // off-screen (camera locked to the fight room), so hide + pause it so the
+    // fight owns the whole frame budget (fixes CI fight-timing on weak GPUs).
+    if (this.fight) {
+      this.setAmbientHidden(true);
+    } else {
+      this.setAmbientHidden(false);
+      this.driveAmbience(deltaMs);
+    }
     if (this.regionGrade) {
       const tc = Math.floor(this.cameras.main.midPoint.x / TILE_SIZE);
       const tr = Math.floor(this.cameras.main.midPoint.y / TILE_SIZE);
@@ -862,13 +876,13 @@ export class OverworldScene extends Phaser.Scene {
         if (bucket < 3) {
           // a rising sediment mote / bubble: born at the floor, drifts up the
           // water column, fading as it goes, then loops from the floor again.
-          const mote = this.add
+          const mote = this.amb(this.add
             .image(bx, by, "glow")
             .setBlendMode(Phaser.BlendModes.ADD)
             .setTint(0x8fe0d8)
             .setScale(0.05)
             .setAlpha(0)
-            .setDepth(4.2);
+            .setDepth(4.2));
           this.tweens.add({
             targets: mote,
             y: { from: by + 2, to: by - 22 - (h % 14) },
@@ -885,11 +899,11 @@ export class OverworldScene extends Phaser.Scene {
           // current surge that bends every blade at once) is driven in
           // driveAmbience so a swell can roll the whole bed together (v14.2).
           const tall = 7 + (h % 6);
-          const blade = this.add
+          const blade = this.amb(this.add
             .rectangle(bx, by + 4, 2, tall, 0x24463a)
             .setOrigin(0.5, 1)
             .setDepth(1.3)
-            .setAlpha(0.9);
+            .setAlpha(0.9));
           this.eelgrass.push({ blade, phase: (h % 628) / 100 });
         }
       }
@@ -898,6 +912,27 @@ export class OverworldScene extends Phaser.Scene {
     this.addSurfaceAmbience(map, ground);
     this.addRoamingNPCs(map, ground);
     this.addWeather();
+  }
+
+  /** Register a dynamic-ambience object so it can be hidden/paused during fights. */
+  private amb<T extends Phaser.GameObjects.GameObject>(o: T): T {
+    this.ambient.push(o);
+    return o;
+  }
+
+  /** Hide (stop rendering) and pause the tweens of all ambient objects, or
+   * restore them. Called on fight enter/exit so the ambient layer costs nothing
+   * while the fight owns the frame. */
+  private setAmbientHidden(hidden: boolean): void {
+    if (hidden === this.ambientHidden) return;
+    this.ambientHidden = hidden;
+    for (const o of this.ambient) {
+      (o as unknown as { setVisible?: (v: boolean) => unknown }).setVisible?.(!hidden);
+      for (const t of this.tweens.getTweensOf(o)) {
+        if (hidden) t.pause();
+        else t.resume();
+      }
+    }
   }
 
   /** Per-frame cosmetic ambience (v14.2): the sanctuary pulses on the song's
@@ -964,14 +999,14 @@ export class OverworldScene extends Phaser.Scene {
         const h = ((col * 374761393) ^ (row * 668265263)) >>> 0;
         const bx = col * TILE_SIZE + 8;
         const by = row * TILE_SIZE + 8;
-        if (h % 331 < 2) {
+        if (h % 521 < 2) {
           // a loose school: 3 fish clustered, patrolling together
           const size = h % 2 === 0 ? 1 : 0.8;
           for (let f = 0; f < 3; f++) {
             const fh = (h + f * 2654435761) >>> 0;
             const fx = bx + ((fh >> 3) % 14) - 7;
             const fy = by + ((fh >> 7) % 12) - 6;
-            const fish = this.add.graphics().setDepth(4.15).setPosition(fx, fy).setScale(size);
+            const fish = this.amb(this.add.graphics().setDepth(4.15).setPosition(fx, fy).setScale(size));
             fish.fillStyle(0x315f56, 0.92);
             fish.fillEllipse(0, 0, 9, 4);
             fish.fillTriangle(-4, 0, -8, -3, -8, 3);
@@ -993,7 +1028,7 @@ export class OverworldScene extends Phaser.Scene {
           }
         } else if (h % 617 < 2) {
           // a jellyfish: drifts up the column, bell pulsing, then loops
-          const jelly = this.add.graphics().setDepth(4.18).setPosition(bx, by).setAlpha(0.9);
+          const jelly = this.amb(this.add.graphics().setDepth(4.18).setPosition(bx, by).setAlpha(0.9));
           jelly.fillStyle(0x6fd8cf, 0.5);
           jelly.fillEllipse(0, 0, 13, 9);
           jelly.fillStyle(0x9ff0e6, 0.35);
@@ -1002,9 +1037,9 @@ export class OverworldScene extends Phaser.Scene {
           for (let t = -3; t <= 3; t += 2) jelly.lineBetween(t, 3, t + 1, 12);
           this.tweens.add({ targets: jelly, y: by - 66, alpha: 0, duration: 9000 + (h % 4000), repeat: -1, delay: h % 5000, ease: "Sine.inOut" });
           this.tweens.add({ targets: jelly, scaleY: 0.72, duration: 1300 + (h % 700), yoyo: true, repeat: -1, ease: "Sine.inOut" });
-        } else if (h % 421 < 2) {
+        } else if (h % 640 < 2) {
           // a crab scuttling sideways on the floor, with pauses
-          const crab = this.add.graphics().setDepth(4.16).setPosition(bx, by);
+          const crab = this.amb(this.add.graphics().setDepth(4.16).setPosition(bx, by));
           crab.fillStyle(0x835043, 0.95);
           crab.fillEllipse(0, 0, 7, 4);
           crab.lineStyle(1, 0x6a3f34, 0.9);
@@ -1023,7 +1058,7 @@ export class OverworldScene extends Phaser.Scene {
           });
         } else if (!eelPlaced && h % 907 < 2) {
           // one eel, coiled by the rocks, undulating in place
-          const eel = this.add.graphics().setDepth(4.17).setPosition(bx, by);
+          const eel = this.amb(this.add.graphics().setDepth(4.17).setPosition(bx, by));
           eel.fillStyle(0x223129, 0.95);
           for (let s = 0; s < 6; s++) eel.fillCircle(s * 4 - 10, Math.sin(s) * 2, 3 - s * 0.25);
           eel.fillStyle(0x8fe0d8, 0.5);
@@ -1053,24 +1088,24 @@ export class OverworldScene extends Phaser.Scene {
         const px = col * TILE_SIZE + ((h >> 5) % TILE_SIZE);
         const py = row * TILE_SIZE + ((h >> 9) % TILE_SIZE);
         if (region === 3) {
-          if (bucket < 2) {
+          if (bucket < 1) {
             // ash: a grey fleck drifting down and sideways on the hot wind
-            const ash = this.add.rectangle(px, py, 2, 2, 0x6b6157, 0.5).setDepth(4.2);
+            const ash = this.amb(this.add.rectangle(px, py, 2, 2, 0x6b6157, 0.5).setDepth(4.2));
             this.tweens.add({ targets: ash, y: py + 20 + (h % 12), x: px + 10 - (h % 20), alpha: 0, duration: 4200 + (h % 2600), repeat: -1, delay: h % 3800, ease: "Sine.in" });
-          } else if (bucket < 4) {
+          } else if (bucket < 3) {
             // ember: a warm spark lifting off the scorched ground
-            const ember = this.add.image(px, py, "glow").setBlendMode(Phaser.BlendModes.ADD).setTint(0xff8a3c).setScale(0.05).setAlpha(0).setDepth(4.25);
+            const ember = this.amb(this.add.image(px, py, "glow").setBlendMode(Phaser.BlendModes.ADD).setTint(0xff8a3c).setScale(0.05).setAlpha(0).setDepth(4.25));
             this.tweens.add({ targets: ember, y: py - 18 - (h % 14), alpha: { from: 0.5, to: 0 }, duration: 3000 + (h % 2200), repeat: -1, delay: h % 3400, ease: "Sine.out" });
           }
         } else if (region === 4) {
-          if (bucket < 3) {
+          if (bucket < 2) {
             // Stage: violet spores drifting slowly up toward the far light
-            const spore = this.add.image(px, py, "glow").setBlendMode(Phaser.BlendModes.ADD).setTint(0xb18cf0).setScale(0.045).setAlpha(0).setDepth(4.22);
+            const spore = this.amb(this.add.image(px, py, "glow").setBlendMode(Phaser.BlendModes.ADD).setTint(0xb18cf0).setScale(0.045).setAlpha(0).setDepth(4.22));
             this.tweens.add({ targets: spore, y: py - 24 - (h % 16), x: px + 6 - (h % 12), alpha: { from: 0.36, to: 0 }, duration: 5200 + (h % 3200), repeat: -1, delay: h % 4200, ease: "Sine.inOut" });
           }
-        } else if (region === 2 && bucket < 2) {
+        } else if (region === 2 && bucket < 1) {
           // Breach: faint pale sea-spray over the crossing
-          const spray = this.add.image(px, py, "glow").setBlendMode(Phaser.BlendModes.ADD).setTint(0xd8efe6).setScale(0.05).setAlpha(0).setDepth(4.2);
+          const spray = this.amb(this.add.image(px, py, "glow").setBlendMode(Phaser.BlendModes.ADD).setTint(0xd8efe6).setScale(0.05).setAlpha(0).setDepth(4.2));
           this.tweens.add({ targets: spray, y: py - 14 - (h % 10), alpha: { from: 0.3, to: 0 }, duration: 3600 + (h % 2000), repeat: -1, delay: h % 3000, ease: "Sine.out" });
         }
       }
@@ -1086,8 +1121,8 @@ export class OverworldScene extends Phaser.Scene {
   private addRoamingNPCs(map: Phaser.Tilemaps.Tilemap, ground: Phaser.Tilemaps.TilemapLayer): void {
     const isPath = (c: number, r: number) => ((ground.getTileAt(c, r)?.index ?? 0) - 1) % 4 === 1;
     let pilgrims = 0;
-    for (let row = 3; row < map.height - 3 && pilgrims < 6; row++) {
-      for (let col = 3; col < map.width - 3 && pilgrims < 6; col++) {
+    for (let row = 3; row < map.height - 3 && pilgrims < 4; row++) {
+      for (let col = 3; col < map.width - 3 && pilgrims < 4; col++) {
         if (!isPath(col, row)) continue;
         const h = ((col * 40503) ^ (row * 1900987)) >>> 0;
         if (h % 43 !== 0) continue; // sparse
@@ -1106,7 +1141,7 @@ export class OverworldScene extends Phaser.Scene {
         const bRow = useH ? row : row + south;
         const ax = aCol * TILE_SIZE + 8, ay = aRow * TILE_SIZE + 12;
         const bx = bCol * TILE_SIZE + 8, by = bRow * TILE_SIZE + 12;
-        const p = this.drawPilgrim(ax, ay);
+        const p = this.amb(this.drawPilgrim(ax, ay));
         this.tweens.add({
           targets: p,
           x: bx,
@@ -1137,12 +1172,12 @@ export class OverworldScene extends Phaser.Scene {
         if (!waterEast && !waterWest) continue;
         const fx = col * TILE_SIZE + 8, fy = row * TILE_SIZE + 12;
         const face = waterEast ? 1 : -1;
-        const fisher = this.drawPilgrim(fx, fy);
+        const fisher = this.amb(this.drawPilgrim(fx, fy));
         fisher.scaleX = face;
-        const rod = this.add.graphics().setDepth(4.41);
+        const rod = this.amb(this.add.graphics().setDepth(4.41));
         rod.lineStyle(1, 0x2a2018, 0.9);
         rod.lineBetween(fx + face * 3, fy - 12, fx + face * 12, fy - 18);
-        const float = this.add.image(fx + face * 14, fy - 6, "glow").setBlendMode(Phaser.BlendModes.ADD).setTint(0xf4d27a).setScale(0.04).setAlpha(0.5).setDepth(4.42);
+        const float = this.amb(this.add.image(fx + face * 14, fy - 6, "glow").setBlendMode(Phaser.BlendModes.ADD).setTint(0xf4d27a).setScale(0.04).setAlpha(0.5).setDepth(4.42));
         this.tweens.add({ targets: float, y: fy - 3, duration: 1700, yoyo: true, repeat: -1, ease: "Sine.inOut" });
         done = true;
         break;
@@ -1174,13 +1209,13 @@ export class OverworldScene extends Phaser.Scene {
   private addWeather(): void {
     const boss = this.markers.find((m) => m.nodeId === "boss_1");
     if (boss) {
-      this.lightningFlash = this.add
+      this.lightningFlash = this.amb(this.add
         .image(boss.col * TILE_SIZE + 8, boss.row * TILE_SIZE - 36, "glow")
         .setBlendMode(Phaser.BlendModes.ADD)
         .setTint(0xbfe8ff)
         .setScale(3.4)
         .setAlpha(0)
-        .setDepth(11);
+        .setDepth(11));
     }
     // tide shimmers: bright bars sweeping a few Breach-water tiles
     let shimmers = 0;
@@ -1190,7 +1225,7 @@ export class OverworldScene extends Phaser.Scene {
         const h = ((col * 917) ^ (row * 337)) >>> 0;
         if (h % 29 !== 0) continue;
         const sx = col * TILE_SIZE + 8, sy = row * TILE_SIZE + 8;
-        const bar = this.add.rectangle(sx, sy, 18, 2, 0xd8efe6, 0.28).setBlendMode(Phaser.BlendModes.ADD).setDepth(1.25);
+        const bar = this.amb(this.add.rectangle(sx, sy, 18, 2, 0xd8efe6, 0.28).setBlendMode(Phaser.BlendModes.ADD).setDepth(1.25));
         this.tweens.add({ targets: bar, x: sx + 14, alpha: 0.06, duration: 2600 + (h % 1800), yoyo: true, repeat: -1, delay: h % 2200, ease: "Sine.inOut" });
         shimmers++;
       }
