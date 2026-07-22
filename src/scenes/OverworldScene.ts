@@ -1,6 +1,8 @@
 import Phaser from "phaser";
 import { GameContext } from "../state/GameContext";
-import { campaign, getCampaignNode, getEncounter } from "../data/ContentRegistry";
+import { campaign, getCampaignNode, getEncounter, songMaps } from "../data/ContentRegistry";
+import { nearestBeatDistanceSeconds } from "../systems/audio/SongBeat";
+import type { SongMap } from "../data/schemas/SongMap";
 import { resolveEncounterId } from "../systems/progression/CampaignSelection";
 import { nodeStatus, type NodeStatus } from "../systems/progression/CampaignReachability";
 import { stepTarget, isWalkable, type Direction, type GridPosition } from "../systems/overworld/OverworldMovement";
@@ -46,6 +48,10 @@ interface Echo {
 const DECORATIVE_PROP_COUNT = 6;
 const ECHO_RUNE_FRAME = DECORATIVE_PROP_COUNT;
 const REGION_BIOMES = ["shallows", "saltmines", "pit", "attic", "hall"];
+// Per-region accent (Fold teal, Shelf green, Breach pale sand, Scar rust, Stage
+// violet) -- mirrors paint_ground's ACCENTS. Used by the region grade wash and
+// the v14.2 per-region ambient particles.
+const REGION_ACCENTS = [0x49c6bd, 0x58c07a, 0xe8d9a8, 0xc25424, 0x7a4eb4];
 
 /**
  * Walkable pixel-art overworld (tilemap + tile-snapped movement + camera
@@ -81,6 +87,18 @@ export class OverworldScene extends Phaser.Scene {
   private nearbyObelisk: { col: number; row: number; glow: Phaser.GameObjects.Image } | null = null;
   /** The Fold's town-obelisk tile (v14.0), read from the "town_obelisk" marker. */
   private townObeliskTile: GridPosition | null = null;
+  /** Live refs for the dynamic-ambience pass (v14.2): beat-reactive sanctuary,
+   * current surge, distant lightning. All motion is cosmetic. */
+  private worshippers: { body: Phaser.GameObjects.Graphics; lean: number }[] = [];
+  private townCrownGlow: Phaser.GameObjects.Image | null = null;
+  private eelgrass: { blade: Phaser.GameObjects.Rectangle; phase: number }[] = [];
+  private overworldSongMap: SongMap | null = null;
+  /** Cosmetic beat accumulator for the sanctuary pulse (visual only; never gameplay judgment). */
+  private beatAccumMs = 0;
+  /** Current-surge accumulator: a swell rolls the drowned flora every ~20s. */
+  private surgeAccumMs = 0;
+  private lightningFlash: Phaser.GameObjects.Image | null = null;
+  private lightningAccumMs = 0;
   /** Live in-world fight (areas-not-arenas); null while exploring. */
   private fight: WorldFight | null = null;
   /** Canopy landforms drawn ABOVE the player (PRD v7.15); they alpha-fade
@@ -443,12 +461,12 @@ export class OverworldScene extends Phaser.Scene {
   update(_time: number, deltaMs: number): void {
     if (!this.player) return;
     this.repositionPinned();
+    this.driveAmbience(deltaMs);
     if (this.regionGrade) {
-      const ACCENTS = [0x49c6bd, 0x58c07a, 0xe8d9a8, 0xc25424, 0x7a4eb4];
       const tc = Math.floor(this.cameras.main.midPoint.x / TILE_SIZE);
       const tr = Math.floor(this.cameras.main.midPoint.y / TILE_SIZE);
       const ri = this.regions[tr]?.[tc] ?? 0;
-      this.regionGrade.fillColor = ACCENTS[ri];
+      this.regionGrade.fillColor = REGION_ACCENTS[ri];
     }
     this.playerShadow.setPosition(this.player.x, this.player.y + 2);
     this.playerGlow.setPosition(this.player.x, this.player.y - 6);
@@ -863,23 +881,318 @@ export class OverworldScene extends Phaser.Scene {
             ease: "Sine.out",
           });
         } else if (bucket < 7) {
-          // an eelgrass frond rooted to the floor, swaying in the current
+          // an eelgrass frond rooted to the floor. Its sway (and the periodic
+          // current surge that bends every blade at once) is driven in
+          // driveAmbience so a swell can roll the whole bed together (v14.2).
           const tall = 7 + (h % 6);
           const blade = this.add
             .rectangle(bx, by + 4, 2, tall, 0x24463a)
             .setOrigin(0.5, 1)
             .setDepth(1.3)
             .setAlpha(0.9);
+          this.eelgrass.push({ blade, phase: (h % 628) / 100 });
+        }
+      }
+    }
+    this.addFauna(map, ground);
+    this.addSurfaceAmbience(map, ground);
+    this.addRoamingNPCs(map, ground);
+    this.addWeather();
+  }
+
+  /** Per-frame cosmetic ambience (v14.2): the sanctuary pulses on the song's
+   * beat, the drowned beds sway and periodically surge, and distant lightning
+   * flickers over the Stage. Purely visual -- never gameplay-timing judgment,
+   * which stays on TransportClock (PRD §10.2). Skipped under reduced motion. */
+  private driveAmbience(deltaMs: number): void {
+    if (GameContext.activeProfile?.settings.reducedMotion) return;
+    this.beatAccumMs += deltaMs;
+    // distance (seconds) to the nearest beat: the real deereater grid when the
+    // song is audible, else a steady 103.36-BPM fallback so it still breathes.
+    const beatMs = 60000 / 103.36;
+    let beatDist: number;
+    const pos = music.position();
+    if (this.overworldSongMap && pos !== null) {
+      beatDist = nearestBeatDistanceSeconds(this.overworldSongMap, pos);
+    } else {
+      const phase = (this.beatAccumMs % beatMs) / beatMs;
+      beatDist = Math.min(phase, 1 - phase) * (beatMs / 1000);
+    }
+    const beat = Math.max(0, 1 - beatDist / 0.16); // 1 on the beat, 0 between
+    const breathe = 0.5 + 0.5 * Math.sin(this.beatAccumMs / 1100);
+    if (this.townCrownGlow) {
+      this.townCrownGlow.setAlpha(0.4 + beat * 0.5).setScale(0.6 + beat * 0.24 + breathe * 0.03);
+    }
+    for (const w of this.worshippers) w.body.setAngle(w.lean * -(2.5 + beat * 6)); // the congregation bows on the beat
+
+    // the current surge: a swell rolls through the drowned beds every ~20s
+    this.surgeAccumMs += deltaMs;
+    const sp = this.surgeAccumMs % 20000;
+    const surge = sp < 2600 ? Math.sin((sp / 2600) * Math.PI) : 0;
+    const swayT = this.beatAccumMs / 1000;
+    for (const e of this.eelgrass) e.blade.setAngle(Math.sin(swayT * 1.3 + e.phase) * 7 + surge * 15);
+
+    // distant lightning over the Stage -- gated behind photosensitivity safe mode
+    this.lightningAccumMs += deltaMs;
+    if (this.lightningFlash && this.lightningAccumMs > 16000) {
+      this.lightningAccumMs = 0;
+      if (!GameContext.activeProfile?.settings.photosensitivitySafeMode) {
+        const f = this.lightningFlash;
+        this.tweens.killTweensOf(f);
+        f.setAlpha(0);
+        this.tweens.add({ targets: f, alpha: 0.42, duration: 80, yoyo: true, repeat: 1, repeatDelay: 70, ease: "Quad.out" });
+      }
+    }
+  }
+
+  private isDrownedFloor(col: number, row: number, ground: Phaser.Tilemaps.TilemapLayer): boolean {
+    if ((this.regions[row]?.[col] ?? 9) > 1) return false;
+    const gid = ground.getTileAt(col, row)?.index ?? 0;
+    return (gid - 1) % 4 === 0;
+  }
+
+  /**
+   * Drifting fauna (v14.2): loose fish schools and pulsing jellyfish in the
+   * drowned water column, crabs scuttling the seafloor, and an eel coiled by
+   * the rocks. Deterministic hash placement, fixed pools of repeat:-1 tweens.
+   */
+  private addFauna(map: Phaser.Tilemaps.Tilemap, ground: Phaser.Tilemaps.TilemapLayer): void {
+    let eelPlaced = false;
+    for (let row = 3; row < map.height - 3; row++) {
+      for (let col = 3; col < map.width - 3; col++) {
+        if (!this.isDrownedFloor(col, row, ground)) continue;
+        const h = ((col * 374761393) ^ (row * 668265263)) >>> 0;
+        const bx = col * TILE_SIZE + 8;
+        const by = row * TILE_SIZE + 8;
+        if (h % 331 < 2) {
+          // a loose school: 3 fish clustered, patrolling together
+          const size = h % 2 === 0 ? 1 : 0.8;
+          for (let f = 0; f < 3; f++) {
+            const fh = (h + f * 2654435761) >>> 0;
+            const fx = bx + ((fh >> 3) % 14) - 7;
+            const fy = by + ((fh >> 7) % 12) - 6;
+            const fish = this.add.graphics().setDepth(4.15).setPosition(fx, fy).setScale(size);
+            fish.fillStyle(0x315f56, 0.92);
+            fish.fillEllipse(0, 0, 9, 4);
+            fish.fillTriangle(-4, 0, -8, -3, -8, 3);
+            fish.fillStyle(0x8fe0d8, 0.5);
+            fish.fillCircle(2, -1, 0.8);
+            const range = 34 + (fh % 34);
+            this.tweens.add({
+              targets: fish,
+              x: fx + range,
+              duration: 3000 + (fh % 2400),
+              yoyo: true,
+              repeat: -1,
+              delay: (fh % 1200),
+              ease: "Sine.inOut",
+              onYoyo: () => (fish.scaleX = -size),
+              onRepeat: () => (fish.scaleX = size),
+            });
+            this.tweens.add({ targets: fish, y: fy - 6, duration: 1500 + (fh % 900), yoyo: true, repeat: -1, ease: "Sine.inOut" });
+          }
+        } else if (h % 617 < 2) {
+          // a jellyfish: drifts up the column, bell pulsing, then loops
+          const jelly = this.add.graphics().setDepth(4.18).setPosition(bx, by).setAlpha(0.9);
+          jelly.fillStyle(0x6fd8cf, 0.5);
+          jelly.fillEllipse(0, 0, 13, 9);
+          jelly.fillStyle(0x9ff0e6, 0.35);
+          jelly.fillEllipse(0, -1, 8, 5);
+          jelly.lineStyle(1, 0x6fd8cf, 0.4);
+          for (let t = -3; t <= 3; t += 2) jelly.lineBetween(t, 3, t + 1, 12);
+          this.tweens.add({ targets: jelly, y: by - 66, alpha: 0, duration: 9000 + (h % 4000), repeat: -1, delay: h % 5000, ease: "Sine.inOut" });
+          this.tweens.add({ targets: jelly, scaleY: 0.72, duration: 1300 + (h % 700), yoyo: true, repeat: -1, ease: "Sine.inOut" });
+        } else if (h % 421 < 2) {
+          // a crab scuttling sideways on the floor, with pauses
+          const crab = this.add.graphics().setDepth(4.16).setPosition(bx, by);
+          crab.fillStyle(0x835043, 0.95);
+          crab.fillEllipse(0, 0, 7, 4);
+          crab.lineStyle(1, 0x6a3f34, 0.9);
+          crab.lineBetween(-3, 0, -5, 2);
+          crab.lineBetween(3, 0, 5, 2);
+          const dir = (h & 1) === 0 ? 1 : -1;
           this.tweens.add({
-            targets: blade,
-            angle: (h & 1) === 0 ? 9 : -9,
-            duration: 2600 + (h % 1900),
+            targets: crab,
+            x: bx + dir * (10 + (h % 8)),
+            duration: 1500,
             yoyo: true,
+            hold: 900,
+            repeatDelay: 1400,
             repeat: -1,
-            delay: h % 1500,
             ease: "Sine.inOut",
           });
+        } else if (!eelPlaced && h % 907 < 2) {
+          // one eel, coiled by the rocks, undulating in place
+          const eel = this.add.graphics().setDepth(4.17).setPosition(bx, by);
+          eel.fillStyle(0x223129, 0.95);
+          for (let s = 0; s < 6; s++) eel.fillCircle(s * 4 - 10, Math.sin(s) * 2, 3 - s * 0.25);
+          eel.fillStyle(0x8fe0d8, 0.5);
+          eel.fillCircle(-11, 0, 0.9);
+          this.tweens.add({ targets: eel, angle: 9, duration: 1900, yoyo: true, repeat: -1, ease: "Sine.inOut" });
+          eelPlaced = true;
         }
+      }
+    }
+  }
+
+  /**
+   * Region-keyed airborne ambience for the surfaced world (v14.2): pale spray
+   * over the Breach waterline, ash + rising embers across the Scar, drifting
+   * violet spores on the Stage approach. Each region gets its own signature so
+   * all five biomes breathe, not just the drowned ones.
+   */
+  private addSurfaceAmbience(map: Phaser.Tilemaps.Tilemap, ground: Phaser.Tilemaps.TilemapLayer): void {
+    for (let row = 2; row < map.height - 2; row++) {
+      for (let col = 2; col < map.width - 2; col++) {
+        const region = this.regions[row]?.[col] ?? 0;
+        if (region < 2) continue; // drowned regions handled by addDrownedLife
+        const gid = ground.getTileAt(col, row)?.index ?? 0;
+        if ((gid - 1) % 4 !== 0) continue; // walkable ground only
+        const h = ((col * 2246822519) ^ (row * 3266489917)) >>> 0;
+        const bucket = h % 100;
+        const px = col * TILE_SIZE + ((h >> 5) % TILE_SIZE);
+        const py = row * TILE_SIZE + ((h >> 9) % TILE_SIZE);
+        if (region === 3) {
+          if (bucket < 2) {
+            // ash: a grey fleck drifting down and sideways on the hot wind
+            const ash = this.add.rectangle(px, py, 2, 2, 0x6b6157, 0.5).setDepth(4.2);
+            this.tweens.add({ targets: ash, y: py + 20 + (h % 12), x: px + 10 - (h % 20), alpha: 0, duration: 4200 + (h % 2600), repeat: -1, delay: h % 3800, ease: "Sine.in" });
+          } else if (bucket < 4) {
+            // ember: a warm spark lifting off the scorched ground
+            const ember = this.add.image(px, py, "glow").setBlendMode(Phaser.BlendModes.ADD).setTint(0xff8a3c).setScale(0.05).setAlpha(0).setDepth(4.25);
+            this.tweens.add({ targets: ember, y: py - 18 - (h % 14), alpha: { from: 0.5, to: 0 }, duration: 3000 + (h % 2200), repeat: -1, delay: h % 3400, ease: "Sine.out" });
+          }
+        } else if (region === 4) {
+          if (bucket < 3) {
+            // Stage: violet spores drifting slowly up toward the far light
+            const spore = this.add.image(px, py, "glow").setBlendMode(Phaser.BlendModes.ADD).setTint(0xb18cf0).setScale(0.045).setAlpha(0).setDepth(4.22);
+            this.tweens.add({ targets: spore, y: py - 24 - (h % 16), x: px + 6 - (h % 12), alpha: { from: 0.36, to: 0 }, duration: 5200 + (h % 3200), repeat: -1, delay: h % 4200, ease: "Sine.inOut" });
+          }
+        } else if (region === 2 && bucket < 2) {
+          // Breach: faint pale sea-spray over the crossing
+          const spray = this.add.image(px, py, "glow").setBlendMode(Phaser.BlendModes.ADD).setTint(0xd8efe6).setScale(0.05).setAlpha(0).setDepth(4.2);
+          this.tweens.add({ targets: spray, y: py - 14 - (h % 10), alpha: { from: 0.3, to: 0 }, duration: 3600 + (h % 2000), repeat: -1, delay: h % 3000, ease: "Sine.out" });
+        }
+      }
+    }
+  }
+
+  /**
+   * Roaming ambient life (v14.2): pilgrims pacing the roads (the world is
+   * peopled, not just dressed) and a lone fisher at the Breach waterline. Each
+   * walks a short pre-validated segment on a repeat tween -- no pathfinding,
+   * nothing added per frame.
+   */
+  private addRoamingNPCs(map: Phaser.Tilemaps.Tilemap, ground: Phaser.Tilemaps.TilemapLayer): void {
+    const isPath = (c: number, r: number) => ((ground.getTileAt(c, r)?.index ?? 0) - 1) % 4 === 1;
+    let pilgrims = 0;
+    for (let row = 3; row < map.height - 3 && pilgrims < 6; row++) {
+      for (let col = 3; col < map.width - 3 && pilgrims < 6; col++) {
+        if (!isPath(col, row)) continue;
+        const h = ((col * 40503) ^ (row * 1900987)) >>> 0;
+        if (h % 43 !== 0) continue; // sparse
+        // measure the road run around this tile on each axis; walk the longer
+        let west = 0, east = 0, north = 0, south = 0;
+        while (west < 4 && isPath(col - west - 1, row)) west++;
+        while (east < 4 && isPath(col + east + 1, row)) east++;
+        while (north < 4 && isPath(col, row - north - 1)) north++;
+        while (south < 4 && isPath(col, row + south + 1)) south++;
+        const horiz = west + east, vert = north + south;
+        if (Math.max(horiz, vert) < 2) continue;
+        const useH = horiz >= vert;
+        const aCol = useH ? col - west : col;
+        const aRow = useH ? row : row - north;
+        const bCol = useH ? col + east : col;
+        const bRow = useH ? row : row + south;
+        const ax = aCol * TILE_SIZE + 8, ay = aRow * TILE_SIZE + 12;
+        const bx = bCol * TILE_SIZE + 8, by = bRow * TILE_SIZE + 12;
+        const p = this.drawPilgrim(ax, ay);
+        this.tweens.add({
+          targets: p,
+          x: bx,
+          y: by,
+          duration: 2600 + (h % 1800) * (useH ? horiz : vert),
+          yoyo: true,
+          repeat: -1,
+          hold: 500 + (h % 900),
+          repeatDelay: 500 + (h % 900),
+          delay: h % 1600,
+          ease: "Sine.inOut",
+          onStart: () => (p.scaleX = bx >= ax ? 1 : -1),
+          onYoyo: () => (p.scaleX = bx >= ax ? -1 : 1),
+          onRepeat: () => (p.scaleX = bx >= ax ? 1 : -1),
+        });
+        this.tweens.add({ targets: p, scaleY: 0.94, duration: 340, yoyo: true, repeat: -1, ease: "Sine.inOut" });
+        pilgrims++;
+      }
+    }
+    // the fisher: a Breach-shore tile facing open water, line bobbing on the tide
+    for (let row = 3; row < map.height - 3; row++) {
+      let done = false;
+      for (let col = 3; col < map.width - 3; col++) {
+        if ((this.regions[row]?.[col] ?? 0) !== 2) continue;
+        if (((ground.getTileAt(col, row)?.index ?? 0) - 1) % 4 !== 0) continue; // stand on ground
+        const waterEast = ((ground.getTileAt(col + 1, row)?.index ?? 0) - 1) % 4 === 2;
+        const waterWest = ((ground.getTileAt(col - 1, row)?.index ?? 0) - 1) % 4 === 2;
+        if (!waterEast && !waterWest) continue;
+        const fx = col * TILE_SIZE + 8, fy = row * TILE_SIZE + 12;
+        const face = waterEast ? 1 : -1;
+        const fisher = this.drawPilgrim(fx, fy);
+        fisher.scaleX = face;
+        const rod = this.add.graphics().setDepth(4.41);
+        rod.lineStyle(1, 0x2a2018, 0.9);
+        rod.lineBetween(fx + face * 3, fy - 12, fx + face * 12, fy - 18);
+        const float = this.add.image(fx + face * 14, fy - 6, "glow").setBlendMode(Phaser.BlendModes.ADD).setTint(0xf4d27a).setScale(0.04).setAlpha(0.5).setDepth(4.42);
+        this.tweens.add({ targets: float, y: fy - 3, duration: 1700, yoyo: true, repeat: -1, ease: "Sine.inOut" });
+        done = true;
+        break;
+      }
+      if (done) break;
+    }
+  }
+
+  /** A standing hooded figure (pilgrim/fisher): shadow, robe, bowed head, all
+   * in one graphics so it translates and flips as a unit. */
+  private drawPilgrim(x: number, y: number): Phaser.GameObjects.Graphics {
+    const p = this.add.graphics().setDepth(4.42).setPosition(x, y);
+    p.fillStyle(0x05060a, 0.35);
+    p.fillEllipse(0, 2, 9, 3); // shadow
+    p.fillStyle(0x222f38, 1);
+    p.fillEllipse(0, -7, 7, 13); // robe
+    p.fillStyle(0x2e3f48, 1);
+    p.fillEllipse(-1.5, -7, 4, 12); // front light
+    p.fillStyle(0x18232b, 1);
+    p.fillCircle(0, -14, 2.7); // head
+    return p;
+  }
+
+  /**
+   * Weather beats (v14.2): a distant lightning glow poised over the Stage
+   * (fired from driveAmbience, gated by photosensitivity safe mode) and a few
+   * tide shimmers sweeping the Breach waterline.
+   */
+  private addWeather(): void {
+    const boss = this.markers.find((m) => m.nodeId === "boss_1");
+    if (boss) {
+      this.lightningFlash = this.add
+        .image(boss.col * TILE_SIZE + 8, boss.row * TILE_SIZE - 36, "glow")
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setTint(0xbfe8ff)
+        .setScale(3.4)
+        .setAlpha(0)
+        .setDepth(11);
+    }
+    // tide shimmers: bright bars sweeping a few Breach-water tiles
+    let shimmers = 0;
+    for (let row = 2; row < this.regions.length - 2 && shimmers < 5; row++) {
+      for (let col = 2; col < (this.regions[row]?.length ?? 0) - 2 && shimmers < 5; col++) {
+        if ((this.regions[row]?.[col] ?? 0) !== 2) continue;
+        const h = ((col * 917) ^ (row * 337)) >>> 0;
+        if (h % 29 !== 0) continue;
+        const sx = col * TILE_SIZE + 8, sy = row * TILE_SIZE + 8;
+        const bar = this.add.rectangle(sx, sy, 18, 2, 0xd8efe6, 0.28).setBlendMode(Phaser.BlendModes.ADD).setDepth(1.25);
+        this.tweens.add({ targets: bar, x: sx + 14, alpha: 0.06, duration: 2600 + (h % 1800), yoyo: true, repeat: -1, delay: h % 2200, ease: "Sine.inOut" });
+        shimmers++;
       }
     }
   }
@@ -1276,19 +1589,27 @@ export class OverworldScene extends Phaser.Scene {
       .setScale(0.66)
       .setAlpha(0.45)
       .setDepth(4.7);
+    // The body-glow breathes on its own; the CROWN pulses on the song's beat,
+    // driven from driveAmbience (v14.2) -- the obelisk is "listening" to the
+    // chorus, so it lights on the beat. Store the ref for that driver.
     if (!reduced) {
-      this.tweens.add({ targets: crownGlow, alpha: 0.85, scale: 0.82, yoyo: true, repeat: -1, duration: 1900, ease: "Sine.inOut" });
       this.tweens.add({ targets: bodyGlow, alpha: 0.32, yoyo: true, repeat: -1, duration: 2600, ease: "Sine.inOut" });
     }
+    this.townCrownGlow = crownGlow;
+    // Resolve the overworld song's beat grid once (deereater, "explore" mode)
+    // so the beat driver can pulse the sanctuary on the real beat.
+    const songId = music.currentSongId();
+    this.overworldSongMap = songId ? (songMaps.get(songId) ?? null) : null;
 
     // Register as the town save point: standing on any of the dais-adjacent
     // tiles and pressing E prays/saves, reusing the obelisk interaction.
     this.obelisks.push({ col: tile.col, row: tile.row, glow: crownGlow });
   }
 
-  /** One kneeling worshipper: a hunched silhouette bowed toward the obelisk,
-   * with a contact shadow and (motion permitting) a slow prayer sway. */
-  private drawWorshipper(x: number, y: number, faceRight: boolean, reduced: boolean, seed: number): void {
+  /** One kneeling worshipper: a hunched silhouette bowed toward the obelisk.
+   * The bow itself is driven collectively on the beat by driveAmbience, so the
+   * whole congregation nods to the chorus together (v14.2). */
+  private drawWorshipper(x: number, y: number, faceRight: boolean, reduced: boolean, _seed: number): void {
     this.add.ellipse(x, y + 1, 11, 4, 0x05060a, 0.4).setDepth(4.36);
     const lean = faceRight ? 1 : -1;
     // Draw in LOCAL coords so setAngle pivots around the worshipper's ground
@@ -1302,18 +1623,8 @@ export class OverworldScene extends Phaser.Scene {
     // bowed head
     body.fillStyle(0x18232b, 1);
     body.fillCircle(lean * 3.2, -6, 2.6);
-    if (!reduced) {
-      body.setAngle(lean * -4);
-      this.tweens.add({
-        targets: body,
-        angle: lean * 2,
-        yoyo: true,
-        repeat: -1,
-        duration: 2200 + (seed % 5) * 260,
-        delay: (seed % 7) * 180,
-        ease: "Sine.inOut",
-      });
-    }
+    body.setAngle(lean * -3);
+    if (!reduced) this.worshippers.push({ body, lean });
   }
 
   /** Rest at a save-obelisk: persist the save and acknowledge it in-world. */
