@@ -189,20 +189,62 @@ def main() -> None:
     contour = (np.abs((elev * LEVELS) % 1.0) < 0.02) & (slope > 0)
     canvas[contour] *= 0.96
 
-    # --- Scar sub-biomes (v13.1: "not sure our map has enough variation") ----
-    # The huge surface splits into three districts by coarse noise: pale ash
-    # wastes, the rust flats, and the deep-red thorn barrens -- one region,
-    # three moods, no seams (same noise stack, different keys).
-    district = value_noise(PH, PW, 260)
-    scar_px = region_px == 3
-    ashen = scar_px & (district < 0.4)
-    thorn = scar_px & (district > 0.66)
-    ash_c = np.array((0x54, 0x4C, 0x46), dtype=np.float32)
-    thorn_c = np.array((0x4E, 0x24, 0x1C), dtype=np.float32)
-    a_m = (np.clip((0.4 - district) / 0.08, 0, 1) * 0.5)[..., None]
-    t_m = (np.clip((district - 0.66) / 0.08, 0, 1) * 0.45)[..., None]
-    canvas = np.where(ashen[..., None], canvas * (1 - a_m) + ash_c[None, None, :] * a_m, canvas)
-    canvas = np.where(thorn[..., None], canvas * (1 - t_m) + thorn_c[None, None, :] * t_m, canvas)
+    # --- sub-districts (v15.1: "more variation in areas / biomes / theming") -
+    # Every big region splits into several painted DISTRICTS by two coarse
+    # noise fields, so the world reads as ~15 distinct places, not 5 blocks --
+    # and the huge Scar in particular stops being one brown expanse. Pure
+    # palette mixes on the same noise stack: organic blobs, softly cross-faded,
+    # never a seam. (region, d-lo, d-hi, rgb, strength, which-noise 0=d1/1=d2)
+    d1 = value_noise(PH, PW, 320)
+    d2 = value_noise(PH, PW, 190)
+    _gp = np.asarray(Image.fromarray(((kind == 0) * 255).astype(np.uint8)).resize((PW, PH), Image.NEAREST)) > 127
+    DISTRICTS: list[tuple[int, float, float, tuple[int, int, int], float, int]] = [
+        # the Scar (region 3): six moods across the surface
+        (3, 0.00, 0.20, (0x58, 0x50, 0x49), 0.52, 0),   # ash wastes -- pale grey
+        (3, 0.20, 0.35, (0x6E, 0x68, 0x36), 0.44, 0),   # sulfur crust -- sickly ochre
+        (3, 0.51, 0.66, (0x8C, 0x7E, 0x66), 0.46, 0),   # bone fields -- pale bone
+        (3, 0.66, 0.82, (0x4E, 0x24, 0x1C), 0.48, 0),   # thorn barrens -- deep red
+        (3, 0.82, 1.01, (0x2C, 0x26, 0x22), 0.52, 0),   # scorch flats -- charcoal
+        (3, 0.00, 0.28, (0x3A, 0x4A, 0x5C), 0.30, 1),   # cold basalt overlay (d2)
+        # the Kelp Shelf (region 1): deep kelp vs worked terrace
+        (1, 0.00, 0.42, (0x22, 0x42, 0x2E), 0.36, 0),   # deep kelp beds
+        (1, 0.60, 1.01, (0x5C, 0x54, 0x3A), 0.30, 0),   # tan terrace stone
+        # the Breach (region 2): wet flats vs dry crossing
+        (2, 0.00, 0.42, (0x94, 0xA2, 0x90), 0.30, 0),   # wet tidal flats
+        (2, 0.60, 1.01, (0xCA, 0xC0, 0x98), 0.30, 0),   # dry pale sand
+        # the Stage (region 4): deep violet vs pale marble
+        (4, 0.00, 0.44, (0x5E, 0x4E, 0x80), 0.34, 0),   # deep violet hall
+        (4, 0.58, 1.01, (0xBA, 0xB2, 0xCC), 0.28, 0),   # pale marble
+        # the Fold (region 0): subtle deep silt vs pale shoal
+        (0, 0.00, 0.42, (0x22, 0x3A, 0x38), 0.24, 0),   # deep silt
+        (0, 0.62, 1.01, (0x4E, 0x6A, 0x62), 0.22, 0),   # pale shoal
+    ]
+    for reg, lo, hi, rgb, amt, which in DISTRICTS:
+        field = d2 if which else d1
+        band = (region_px == reg) & (field >= lo) & (field < hi)
+        if not band.any():
+            continue
+        # operate ONLY on the band's pixels (a (N,3) gather), not the full 18M-px
+        # canvas -- keeps this ~15-district pass to ~1s instead of minutes.
+        fb = field[band]
+        soft = (np.clip(np.minimum(fb - lo, hi - fb) / 0.045, 0, 1) * amt)[:, None]
+        c = np.array(rgb, dtype=np.float32)[None, :]
+        canvas[band] = canvas[band] * (1 - soft) + c * soft
+
+    # district signature textures: scorch flats crack, bone fields fleck --
+    # so a district reads distinct by MATERIAL, not just tint.
+    scorch = (region_px == 3) & (d1 >= 0.82) & _gp
+    if scorch.any():
+        cracks = (value_noise(PH, PW, 3) > 0.72) & scorch
+        canvas[cracks] *= 0.6
+    bonef = (region_px == 3) & (d1 >= 0.51) & (d1 < 0.66) & _gp
+    if bonef.any():
+        flecks = (RNG.random((PH, PW), dtype=np.float32) > 0.992) & bonef
+        canvas[flecks] = np.minimum(canvas[flecks] * 1.6 + 30, 235)
+    sulfur = (region_px == 3) & (d1 >= 0.20) & (d1 < 0.35) & _gp
+    if sulfur.any():
+        crust = (value_noise(PH, PW, 10) > 0.7) & sulfur
+        canvas[crust] = canvas[crust] * 0.7 + np.array((0x7A, 0x74, 0x30), dtype=np.float32)[None, :] * 0.3
 
     def stamp_tufts() -> None:
         """Individually hash-placed grass marks -- variation, not wallpaper."""
