@@ -1,5 +1,20 @@
 # The Drowned Chorus — Art Generation Prompt Catalog (AAA manifest)
 
+> **PARTLY SUPERSEDED — read with the current canon.** Two things below no
+> longer match the shipped game and should be reinterpreted, not taken literally:
+> **(1) Cast (PRD v10.0 solo pivot).** There is no playable *band*. The cast is
+> solo **Mir** — the former **Amir** guitarist slot, renamed — plus his toddler
+> son **Nari** (a follower), the huntress **Lunal**, and the Conductor. The
+> Bassist / Vocalist / Drummer slots in §1 are **retired fiction** (the "band"
+> is now the in-universe soundtrack act *Inhalants*, §11.2). Generate Mir where
+> this doc says "Amir"; skip the other three bandmates. See
+> [`world-bible.md`](world-bible.md) §4 and PRD §8.4.
+> **(2) Aesthetic (PRD v11.0 beauty pivot).** The game is **painterly HD, not
+> pixel art** — ignore "pixel-art title," the quantize/slice pixel pipeline, and
+> per-frame pixel budgets here; the current pipeline imports art at native
+> painterly fidelity (PRD §11.1/§11.1.2). The slot list and per-asset *content*
+> prompts below remain a useful inventory; the *style* wrapper does not.
+
 Every art asset the game needs to be a real AAA pixel-art title — **~575 named
 slots, thousands of frames** — each with a generation prompt. This is the 1:1
 companion to **PRD §11.5 (AAA art asset manifest)**. The engine loads PNGs
