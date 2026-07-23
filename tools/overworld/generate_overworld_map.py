@@ -171,6 +171,11 @@ _ECHO_POOL: dict[str, list[tuple[str, str]]] = {
         ("The Last Harvest", "The water came with the first verse, gently. Most of us didn't run."),
         ("Salt for the Doorways", "We marked the lintels so the sea would pass us over. It read the marks as an invitation."),
         ("The Floor That Hums", "Press your ear to the silt. That is the sound we were born owing."),
+        # cosmology: the drowning is forgotten; time is stuck
+        ("What We Don't Remember", "No one here recalls the drowning. That mercy is the first thing the song takes."),
+        ("Why the Clocks Melt", "Nothing ends here, so nothing moves on. Even the hours pool at our feet."),
+        # Mir: the one who remembers, and leaves
+        ("The Man Who Remembers", "One of us woke asking a small name. We told him to pray. He put on his boots instead."),
     ],
     "saltmines": [
         ("The Climber's Knot", "Rope enough to reach the light -- if you don't weigh anything anymore."),
@@ -181,6 +186,11 @@ _ECHO_POOL: dict[str, list[tuple[str, str]]] = {
         ("Pillar of Salt", "When you're turning to salt, it's when you're staring ahead too long."),
         ("Three Steps From the Lift", "The foreman covered his ears and ran. He calcified mid-stride, facing away."),
         ("The Cold Cargo", "Whatever the hold was carrying, it is still carrying it, and still cold."),
+        # bargaining: the ascent costs everything you hold
+        ("The Weight We Keep", "The ones who climb highest loved least. I am not going to climb well."),
+        ("The Gallery That Sang", "We dug until the rock sang back. We should have dug the other way."),
+        # Nari: still with him, here
+        ("A Small Handhold", "Little prints on the mast beside mine. He was still with me here. Still with me here."),
     ],
     "pit": [
         ("The Broken Foam", "The line between worlds is thinner than a footstep. His fit inside mine."),
@@ -191,6 +201,10 @@ _ECHO_POOL: dict[str, list[tuple[str, str]]] = {
         ("The Champion's Last Bout", "Something came up through the ring floor. The ropes snapped outward when it left with him."),
         ("The Tipped Chairs", "In the end no one could watch. The crowd is still down there, in a sense."),
         ("The Ferryman's Coin", "He'll take you across for what you love most. Everyone finds they can pay."),
+        # the loss beat, read in the mud
+        ("The Last Step Together", "The scuffle is two feet, then one, then none. I have read it a hundred times."),
+        ("What Crossed With Us", "Something followed through the seam behind him. It did not have a face yet."),
+        ("The Surface Air", "Up here the song is quieter. Not a comfort. It means it already took what it wanted."),
     ],
     "attic": [
         ("The Small Prints", "They walk IN. Toward the den. Why would he walk toward it?"),
@@ -201,6 +215,10 @@ _ECHO_POOL: dict[str, list[tuple[str, str]]] = {
         ("Scorch and Claw", "The surface does not want you. It has left instructions, in gouges."),
         ("The Collector's Shelf", "Little things, arranged by size. A shoe. A comb. A tooth too small to be yours."),
         ("Tracks That Walk In", "Learn his gait or lose him: paired stride, a heel dot, the faint right-foot drag."),
+        # the false trails, then the colder truth
+        ("The Wrong Feet", "I followed the paired stride a mile before I saw it had no heel dot. A mile."),
+        ("No Blood at the Mouth", "There is nothing spilled at the den's mouth. I don't know if that is worse."),
+        ("Who Walks Him In", "The small prints never wander. Something sets them down, gently, one at a time, facing in."),
     ],
     "hall": [
         ("The Rehearsal", "The music stops every time the small one cries. Then it starts again, angrier."),
@@ -211,6 +229,11 @@ _ECHO_POOL: dict[str, list[tuple[str, str]]] = {
         ("The Ending He Rehearses", "He's been trying to describe a sound again. When he finds it, it ends."),
         ("The Last Row", "Play it right and he will never, ever let you leave."),
         ("What the Baton Remembers", "Every downbeat since the world drowned. It has not missed one. Neither can you."),
+        # Lunal: who she was, why she keeps
+        ("The One Before Him", "She conducted first. She learned it never ends -- so she stopped ending things and started keeping them."),
+        ("Her Mercy", "Caged, the song can never rewrite him. Kept whole. Kept hers. Call it love if you can."),
+        # the thesis of the ending
+        ("The Last Chord", "Land the note and it all resolves -- the song, the water, the keeping. Everything gets to rest."),
     ],
 }
 
