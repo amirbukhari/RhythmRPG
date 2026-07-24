@@ -121,7 +121,10 @@ def main() -> None:
 
     # --- ground field (v12.0: each region's "grass" is its own material) ----
     # silt streets / kelp turf / wet sand / ashen scrub / stone moor
-    GROUND_BASES = [(0x2E, 0x46, 0x44), (0x24, 0x44, 0x2F), (0x86, 0x76, 0x54), (0x40, 0x30, 0x28), (0x3A, 0x34, 0x46)]
+    # Fold pushed bluer, Shelf pushed a clearly brighter kelp-green, so the two
+    # drowned regions stop reading as the same green (owner: "is there a grass
+    # biome? it feels the same as the fold biome").
+    GROUND_BASES = [(0x26, 0x40, 0x4A), (0x30, 0x52, 0x28), (0x86, 0x76, 0x54), (0x40, 0x30, 0x28), (0x3A, 0x34, 0x46)]
     grass_bases = [tint(b, a, 0.22) for b, a in zip(GROUND_BASES, ACCENTS)]
     img = blended(grass_bases)
     n_low = value_noise(PH, PW, 160)
@@ -189,62 +192,111 @@ def main() -> None:
     contour = (np.abs((elev * LEVELS) % 1.0) < 0.02) & (slope > 0)
     canvas[contour] *= 0.96
 
-    # --- sub-districts (v15.1: "more variation in areas / biomes / theming") -
-    # Every big region splits into several painted DISTRICTS by two coarse
-    # noise fields, so the world reads as ~15 distinct places, not 5 blocks --
-    # and the huge Scar in particular stops being one brown expanse. Pure
-    # palette mixes on the same noise stack: organic blobs, softly cross-faded,
-    # never a seam. (region, d-lo, d-hi, rgb, strength, which-noise 0=d1/1=d2)
-    d1 = value_noise(PH, PW, 320)
-    d2 = value_noise(PH, PW, 190)
+    # --- AUTHORED DISTRICTS (owner: "biomes are all one colour ... no unique
+    # sections within any of the biomes ... everything should feel
+    # intentional"). NOT noise bands: each sub-zone is a HAND-PLACED place with
+    # its own bold palette + signature texture, positioned deliberately and
+    # lined up with the landmark that sits on it -- bone-pale earth under the
+    # Boneyard, salt crust under the Salt Flats, mineral teal under the Geysers,
+    # charcoal under the scorch. The world reads as a MAP OF PLACES, not five
+    # flat fields. A low-freq noise only WARPS each blob's border so a placed
+    # place never reads as a stamped clean ellipse.
+    _warp = value_noise(PH, PW, 40)
     _gp = np.asarray(Image.fromarray(((kind == 0) * 255).astype(np.uint8)).resize((PW, PH), Image.NEAREST)) > 127
-    DISTRICTS: list[tuple[int, float, float, tuple[int, int, int], float, int]] = [
-        # the Scar (region 3): six moods across the surface
-        (3, 0.00, 0.20, (0x58, 0x50, 0x49), 0.52, 0),   # ash wastes -- pale grey
-        (3, 0.20, 0.35, (0x6E, 0x68, 0x36), 0.44, 0),   # sulfur crust -- sickly ochre
-        (3, 0.51, 0.66, (0x8C, 0x7E, 0x66), 0.46, 0),   # bone fields -- pale bone
-        (3, 0.66, 0.82, (0x4E, 0x24, 0x1C), 0.48, 0),   # thorn barrens -- deep red
-        (3, 0.82, 1.01, (0x2C, 0x26, 0x22), 0.52, 0),   # scorch flats -- charcoal
-        (3, 0.00, 0.28, (0x3A, 0x4A, 0x5C), 0.30, 1),   # cold basalt overlay (d2)
-        # the Kelp Shelf (region 1): deep kelp vs worked terrace
-        (1, 0.00, 0.42, (0x22, 0x42, 0x2E), 0.36, 0),   # deep kelp beds
-        (1, 0.60, 1.01, (0x5C, 0x54, 0x3A), 0.30, 0),   # tan terrace stone
-        # the Breach (region 2): wet flats vs dry crossing
-        (2, 0.00, 0.42, (0x94, 0xA2, 0x90), 0.30, 0),   # wet tidal flats
-        (2, 0.60, 1.01, (0xCA, 0xC0, 0x98), 0.30, 0),   # dry pale sand
-        # the Stage (region 4): deep violet vs pale marble
-        (4, 0.00, 0.44, (0x5E, 0x4E, 0x80), 0.34, 0),   # deep violet hall
-        (4, 0.58, 1.01, (0xBA, 0xB2, 0xCC), 0.28, 0),   # pale marble
-        # the Fold (region 0): subtle deep silt vs pale shoal
-        (0, 0.00, 0.42, (0x22, 0x3A, 0x38), 0.24, 0),   # deep silt
-        (0, 0.62, 1.01, (0x4E, 0x6A, 0x62), 0.22, 0),   # pale shoal
-    ]
-    for reg, lo, hi, rgb, amt, which in DISTRICTS:
-        field = d2 if which else d1
-        band = (region_px == reg) & (field >= lo) & (field < hi)
-        if not band.any():
-            continue
-        # operate ONLY on the band's pixels (a (N,3) gather), not the full 18M-px
-        # canvas -- keeps this ~15-district pass to ~1s instead of minutes.
-        fb = field[band]
-        soft = (np.clip(np.minimum(fb - lo, hi - fb) / 0.045, 0, 1) * amt)[:, None]
-        c = np.array(rgb, dtype=np.float32)[None, :]
-        canvas[band] = canvas[band] * (1 - soft) + c * soft
 
-    # district signature textures: scorch flats crack, bone fields fleck --
-    # so a district reads distinct by MATERIAL, not just tint.
-    scorch = (region_px == 3) & (d1 >= 0.82) & _gp
-    if scorch.any():
-        cracks = (value_noise(PH, PW, 3) > 0.72) & scorch
-        canvas[cracks] *= 0.6
-    bonef = (region_px == 3) & (d1 >= 0.51) & (d1 < 0.66) & _gp
-    if bonef.any():
-        flecks = (RNG.random((PH, PW), dtype=np.float32) > 0.992) & bonef
-        canvas[flecks] = np.minimum(canvas[flecks] * 1.6 + 30, 235)
-    sulfur = (region_px == 3) & (d1 >= 0.20) & (d1 < 0.35) & _gp
-    if sulfur.any():
-        crust = (value_noise(PH, PW, 10) > 0.7) & sulfur
-        canvas[crust] = canvas[crust] * 0.7 + np.array((0x7A, 0x74, 0x30), dtype=np.float32)[None, :] * 0.3
+    def district(cx_t, cy_t, rx_t, ry_t, reg, rgb, amt, feather=0.62):
+        cx, cy, rx, ry = cx_t * S, cy_t * S, rx_t * S, ry_t * S
+        dd = np.sqrt(((xx_g - cx) / rx) ** 2 + ((yy_g - cy) / ry) ** 2) + (_warp - 0.5) * 0.30
+        m = (dd <= 1.0) & (region_px == reg)
+        if not m.any():
+            return m
+        soft = (np.clip((1.0 - dd[m]) / feather, 0, 1) * amt)[:, None]
+        canvas[m] = canvas[m] * (1 - soft) + np.array(rgb, dtype=np.float32)[None, :] * soft
+        return m
+
+    # name / cx(tile) / cy / rx / ry / region / rgb / strength
+    AUTHORED = [
+        # THE SCAR (region 3) -- the 60% surface, now ~10 NAMED places. Dark
+        # districts get bold amt + high-contrast palettes so they read against
+        # the dark-brown base; the whole east is filled so nothing stays blank.
+        ("boneyard",  178, 106, 26, 20, 3, (0xB8, 0xB2, 0x9A), 0.60),  # bleached bone earth (under the bones)
+        ("geyserpan", 203,  42, 22, 16, 3, (0x8C, 0xA6, 0x9C), 0.52),  # mineral teal-grey crust (under the geysers)
+        ("ashwaste",  146,  54, 26, 20, 3, (0x7C, 0x78, 0x72), 0.56),  # pale cool ash grey, NW Scar
+        ("basalt",    268,  84, 30, 23, 3, (0x4A, 0x52, 0x5A), 0.58),  # cool blue-grey basalt flats, central-E (breaks the brown)
+        ("rustdunes", 306,  50, 40, 30, 3, (0xC4, 0x60, 0x22), 0.68),  # VIVID burnt-orange oxide dunes, NE Scar
+        ("verdigris", 342,  98, 22, 22, 3, (0x46, 0x74, 0x5A), 0.54),  # oxidised teal-green seep, far-E Scar
+        ("scorch",    334, 132, 26, 24, 3, (0x1C, 0x16, 0x16), 0.72),  # near-black scorchreach, E Scar
+        ("sulfur",    252, 152, 25, 21, 3, (0x7C, 0x78, 0x38), 0.56),  # sickly sulfur barrens, SE Scar
+        ("tarpit",    300, 172, 22, 18, 3, (0x22, 0x1C, 0x1A), 0.62),  # black tar seeps, far SE Scar
+        ("bloodmire", 114, 152, 24, 20, 3, (0x54, 0x22, 0x26), 0.64),  # dark blood-maroon bog, SW Scar
+        ("saltpan",   216, 186, 32, 12, 3, (0xC0, 0xBA, 0xAC), 0.54),  # pale salt crust (under the Salt Flats)
+        # THE KELP SHELF (region 1) -- vary it AND separate it from the Fold
+        ("kelpforest", 34,  44, 22, 26, 1, (0x1C, 0x44, 0x22), 0.52),  # deep saturated kelp green
+        ("mastsilt",   57,  63, 18, 16, 1, (0x48, 0x50, 0x38), 0.44),  # brown-grey silt (mast-forest floor)
+        ("paleshoal",  74,  22, 22, 16, 1, (0x5E, 0x6A, 0x46), 0.42),  # lighter sandy-green upper shelf
+        # THE FOLD (region 0) -- keep it deep + blue, distinct from Shelf green
+        ("eelgrass",   20, 185, 17, 14, 0, (0x14, 0x30, 0x2E), 0.46),  # near-black eelgrass deeps
+        ("praysilt",   33, 162, 15, 12, 0, (0x40, 0x5C, 0x5E), 0.36),  # pale teal silt clearing (the town)
+        # THE BREACH (region 2)
+        ("tidepool",   85, 138, 18, 16, 2, (0x62, 0x82, 0x82), 0.42),  # bluer tidal shallows
+        ("drysand",   126,  92, 18, 16, 2, (0xC6, 0xB6, 0x8A), 0.42),  # warm dry crossing sand
+        # THE STAGE (region 4)
+        ("inkreach",  336,  24, 16, 14, 4, (0x20, 0x1A, 0x30), 0.52),  # deep violet-black
+        ("marble",    308,  46, 14, 12, 4, (0xB0, 0xAA, 0xC2), 0.44),  # pale marble plaza (boss approach)
+    ]
+    dmask = {}
+    for name, cx, cy, rx, ry, reg, rgb, amt in AUTHORED:
+        dmask[name] = district(cx, cy, rx, ry, reg, rgb, amt)
+
+    # district signature TEXTURES -- each place reads distinct by MATERIAL, not
+    # only tint. Keyed to the placed masks above (grass tiles only).
+    def dtex(name):
+        m = dmask.get(name)
+        return (m & _gp) if m is not None and m.any() else None
+    m = dtex("scorch")            # pale ASH cracks in the char (darkening a
+    if m is not None:             # near-black zone is invisible -- lighten them)
+        crk = (value_noise(PH, PW, 3) > 0.70) & m
+        canvas[crk] = canvas[crk] * 0.55 + np.array((0x6E, 0x66, 0x5E), dtype=np.float32)[None, :] * 0.45
+    m = dtex("tarpit")            # oily near-black seeps with a faint sheen
+    if m is not None:
+        seep = (value_noise(PH, PW, 20) > 0.6) & m
+        canvas[seep] *= 0.55
+        sheen = (value_noise(PH, PW, 20) > 0.82) & m
+        canvas[sheen] = canvas[sheen] * 0.7 + np.array((0x3A, 0x40, 0x44), dtype=np.float32)[None, :] * 0.3
+    m = dtex("basalt")            # angular columnar fracture (cool dark seams)
+    if m is not None:
+        seam = (np.abs(value_noise(PH, PW, 16) - 0.5) < 0.03) & m
+        canvas[seam] = canvas[seam] * 0.6 + np.array((0x2A, 0x30, 0x38), dtype=np.float32)[None, :] * 0.4
+    m = dtex("verdigris")         # mottled oxidised copper-green blotches
+    if m is not None:
+        blot_v = (value_noise(PH, PW, 12) > 0.62) & m
+        canvas[blot_v] = canvas[blot_v] * 0.7 + np.array((0x58, 0x88, 0x68), dtype=np.float32)[None, :] * 0.3
+    m = dtex("rustdunes")         # streaked oxide banding
+    if m is not None:
+        streak = (((yy_g * 0.5 + value_noise(PH, PW, 60) * 40) % 26) < 4) & m
+        canvas[streak] = canvas[streak] * 0.82 + np.array((0xA8, 0x5C, 0x30), dtype=np.float32)[None, :] * 0.18
+    m = dtex("sulfur")            # crusted yellow granules
+    if m is not None:
+        gr = (value_noise(PH, PW, 9) > 0.72) & m
+        canvas[gr] = canvas[gr] * 0.7 + np.array((0x9E, 0x96, 0x40), dtype=np.float32)[None, :] * 0.3
+    m = dtex("bloodmire")         # pooled dark water blots
+    if m is not None:
+        pool = (value_noise(PH, PW, 22) > 0.64) & m
+        canvas[pool] = canvas[pool] * 0.5 + np.array((0x20, 0x10, 0x14), dtype=np.float32)[None, :] * 0.5
+    m = dtex("boneyard")          # pale bone flecks in the bleached earth
+    if m is not None:
+        fleck = (RNG.random((PH, PW), dtype=np.float32) > 0.990) & m
+        canvas[fleck] = np.minimum(canvas[fleck] * 1.4 + 24, 232)
+    m = dtex("saltpan")           # polygonal salt hex cracks
+    if m is not None:
+        canvas[(np.abs(value_noise(PH, PW, 14) - 0.5) < 0.02) & m] *= 0.84
+    m = dtex("geyserpan")         # pale mineral speckle
+    if m is not None:
+        spk = (value_noise(PH, PW, 8) > 0.74) & m
+        canvas[spk] = np.minimum(canvas[spk] * 1.3 + 18, 225)
+    m = dtex("kelpforest")        # dark frond mottle
+    if m is not None:
+        canvas[(value_noise(PH, PW, 18) > 0.66) & m] *= 0.78
 
     def stamp_tufts() -> None:
         """Individually hash-placed grass marks -- variation, not wallpaper."""
