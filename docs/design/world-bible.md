@@ -261,9 +261,21 @@ paired stride, a heel dot, a faint right-foot drag):
   This is where the reader (never Mir, not yet) starts to understand: the keeper
   is not a beast. The keeper is careful. The keeper is a person who loves him.
 
-*(Design note: the 11 Scar nodes currently draw one fight pool. These three
-sub-stretches are the intended progression for giving that long climb distinct
-beats — §10.)*
+**The Oasis** *(a secret, off the road).* One impossible thing survives in the
+dead surface: a small pocket of *living* green — warm moss, and a clear spring
+at its heart — the single place the drowning never reached. It rhymes with Nari:
+he is the **unwritten voice**, the one thing the song has not claimed, and the
+oasis is the one ground the song has not drowned. It is never on the critical
+path; a player has to leave the road to find it. Finding it is finding, in
+miniature, the exact thing Mir is climbing to protect — proof that one live
+thing can persist in a world built to sink everything.
+
+*(Design note: the 11 Scar nodes currently draw one fight pool, and the Scar is
+one arena kit — so the long back half plays as one biome. The painted district
+zones (bone fields, sulfur barrens, scorchreach, salt pan, basalt flats, the
+oasis…) make *crossing* it read as varied land; giving those sub-stretches
+distinct fights/foes, and spreading more of the 20 nodes into the other biomes,
+is the campaign-side fix — §10.)*
 
 ### 6.5 The Conductor's Stage — the truth
 

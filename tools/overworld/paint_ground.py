@@ -184,9 +184,11 @@ def main() -> None:
         acc = np.roll(acc, 1, 0) & (terr < np.roll(terr, 9, 0) + 1)
         face |= acc
     face |= drop
-    canvas[face] *= 0.6
+    # softer cliff-shadow (was *0.6): the hard terrace bands read as abstract
+    # topo-map contour lines. Gentler now -- relief without the drafting look.
+    canvas[face] *= 0.76
     stria = face & (value_noise(PH, PW, 3) > 0.5)
-    canvas[stria] *= 0.8
+    canvas[stria] *= 0.88
     canvas[rise] = np.minimum(canvas[rise] * 1.22 + 8, 255)
     # a WHISPER of terrace contour off the steps -- subtle, not a topo map
     slope = np.abs(terr - np.roll(terr, 10, 0)) + np.abs(terr - np.roll(terr, 10, 1))
@@ -208,12 +210,17 @@ def main() -> None:
     def district(cx_t, cy_t, rx_t, ry_t, reg, rgb, amt, feather=0.62):
         cx, cy, rx, ry = cx_t * S, cy_t * S, rx_t * S, ry_t * S
         dd = np.sqrt(((xx_g - cx) / rx) ** 2 + ((yy_g - cy) / ry) ** 2) + (_warp - 0.5) * 0.30
-        m = (dd <= 1.0) & (region_px == reg)
+        m = dd <= 1.0
         if not m.any():
-            return m
-        soft = (np.clip((1.0 - dd[m]) / feather, 0, 1) * amt)[:, None]
+            return m & (region_px == reg)
+        # Gate the colour by SOFT region membership (the blurred weight field),
+        # NOT a hard region cut -- so a district that reaches a region seam
+        # fades out across it instead of showing a blocky 16px-stepped edge
+        # (this was the jagged rust-vs-Stage seam). Bounded by the radius too.
+        memb = (weights[reg] / wsum)[m]
+        soft = (np.clip((1.0 - dd[m]) / feather, 0, 1) * amt * memb)[:, None]
         canvas[m] = canvas[m] * (1 - soft) + np.array(rgb, dtype=np.float32)[None, :] * soft
-        return m
+        return m & (region_px == reg)  # hard-clipped disc for the texture pass
 
     # name / cx(tile) / cy / rx / ry / region / rgb / strength
     AUTHORED = [
@@ -223,7 +230,8 @@ def main() -> None:
         ("boneyard",  178, 106, 26, 20, 3, (0xB8, 0xB2, 0x9A), 0.60),  # bleached bone earth (under the bones)
         ("geyserpan", 203,  42, 22, 16, 3, (0x8C, 0xA6, 0x9C), 0.52),  # mineral teal-grey crust (under the geysers)
         ("ashwaste",  146,  54, 26, 20, 3, (0x7C, 0x78, 0x72), 0.56),  # pale cool ash grey, NW Scar
-        ("basalt",    268,  84, 30, 23, 3, (0x4A, 0x52, 0x5A), 0.58),  # cool blue-grey basalt flats, central-E (breaks the brown)
+        ("basalt",    268,  84, 30, 23, 3, (0x52, 0x54, 0x50), 0.58),  # neutral slate basalt flats, central-E (breaks the brown, not Stage-purple)
+        ("oasis",     236, 120, 15, 13, 3, (0x4E, 0x70, 0x36), 0.66),  # the ONE living thing: a hidden green oasis (the unwritten voice)
         ("rustdunes", 306,  50, 40, 30, 3, (0xC4, 0x60, 0x22), 0.68),  # VIVID burnt-orange oxide dunes, NE Scar
         ("verdigris", 342,  98, 21, 21, 3, (0x4C, 0x60, 0x52), 0.50),  # muted oxidised-copper seep (mineral, not meadow), far-E Scar
         ("scorch",    334, 132, 26, 24, 3, (0x1C, 0x16, 0x16), 0.72),  # near-black scorchreach, E Scar
@@ -298,6 +306,17 @@ def main() -> None:
     m = dtex("kelpforest")        # dark frond mottle
     if m is not None:
         canvas[(value_noise(PH, PW, 18) > 0.66) & m] *= 0.78
+    m = dtex("oasis")             # THE OASIS: living moss + a bright spring pool
+    if m is not None:
+        # bright living-green tufts (warm, unlike the cold drowned kelp)
+        tuft = (value_noise(PH, PW, 20) > 0.55) & m
+        canvas[tuft] = canvas[tuft] * 0.55 + np.array((0x6E, 0x92, 0x3E), dtype=np.float32)[None, :] * 0.45
+        # a spring pool at its heart: clear water, the one place still alive
+        ox, oy = 236 * S, 120 * S
+        pool = (((xx_g - ox) / (5 * S)) ** 2 + ((yy_g - oy) / (4 * S)) ** 2 <= 1) & (region_px == 3)
+        canvas[pool] = canvas[pool] * 0.3 + np.array((0x2E, 0x6A, 0x74), dtype=np.float32)[None, :] * 0.7
+        rim = (np.abs(((xx_g - ox) / (5 * S)) ** 2 + ((yy_g - oy) / (4 * S)) ** 2 - 1) < 0.10) & (region_px == 3)
+        canvas[rim] = canvas[rim] * 0.5 + np.array((0x8A, 0xA8, 0x54), dtype=np.float32)[None, :] * 0.5
 
     def stamp_tufts() -> None:
         """Individually hash-placed grass marks -- variation, not wallpaper."""
