@@ -121,10 +121,11 @@ def main() -> None:
 
     # --- ground field (v12.0: each region's "grass" is its own material) ----
     # silt streets / kelp turf / wet sand / ashen scrub / stone moor
-    # Fold pushed bluer, Shelf pushed a clearly brighter kelp-green, so the two
-    # drowned regions stop reading as the same green (owner: "is there a grass
-    # biome? it feels the same as the fold biome").
-    GROUND_BASES = [(0x26, 0x40, 0x4A), (0x30, 0x52, 0x28), (0x86, 0x76, 0x54), (0x40, 0x30, 0x28), (0x3A, 0x34, 0x46)]
+    # Fold + Shelf are BOTH underwater (the waterline is at the Breach), so both
+    # are cool/submerged -- but distinct: the Fold is a bluer silt town-floor,
+    # the Shelf a greener drowned KELP slope. Not a sunlit meadow (owner: "the
+    # transition from the fold straight to grass doesn't make sense").
+    GROUND_BASES = [(0x26, 0x40, 0x4A), (0x22, 0x44, 0x3C), (0x86, 0x76, 0x54), (0x40, 0x30, 0x28), (0x3A, 0x34, 0x46)]
     grass_bases = [tint(b, a, 0.22) for b, a in zip(GROUND_BASES, ACCENTS)]
     img = blended(grass_bases)
     n_low = value_noise(PH, PW, 160)
@@ -224,16 +225,16 @@ def main() -> None:
         ("ashwaste",  146,  54, 26, 20, 3, (0x7C, 0x78, 0x72), 0.56),  # pale cool ash grey, NW Scar
         ("basalt",    268,  84, 30, 23, 3, (0x4A, 0x52, 0x5A), 0.58),  # cool blue-grey basalt flats, central-E (breaks the brown)
         ("rustdunes", 306,  50, 40, 30, 3, (0xC4, 0x60, 0x22), 0.68),  # VIVID burnt-orange oxide dunes, NE Scar
-        ("verdigris", 342,  98, 22, 22, 3, (0x46, 0x74, 0x5A), 0.54),  # oxidised teal-green seep, far-E Scar
+        ("verdigris", 342,  98, 21, 21, 3, (0x4C, 0x60, 0x52), 0.50),  # muted oxidised-copper seep (mineral, not meadow), far-E Scar
         ("scorch",    334, 132, 26, 24, 3, (0x1C, 0x16, 0x16), 0.72),  # near-black scorchreach, E Scar
         ("sulfur",    252, 152, 25, 21, 3, (0x7C, 0x78, 0x38), 0.56),  # sickly sulfur barrens, SE Scar
         ("tarpit",    300, 172, 22, 18, 3, (0x22, 0x1C, 0x1A), 0.62),  # black tar seeps, far SE Scar
         ("bloodmire", 114, 152, 24, 20, 3, (0x54, 0x22, 0x26), 0.64),  # dark blood-maroon bog, SW Scar
         ("saltpan",   216, 186, 32, 12, 3, (0xC0, 0xBA, 0xAC), 0.54),  # pale salt crust (under the Salt Flats)
-        # THE KELP SHELF (region 1) -- vary it AND separate it from the Fold
-        ("kelpforest", 34,  44, 22, 26, 1, (0x1C, 0x44, 0x22), 0.52),  # deep saturated kelp green
-        ("mastsilt",   57,  63, 18, 16, 1, (0x48, 0x50, 0x38), 0.44),  # brown-grey silt (mast-forest floor)
-        ("paleshoal",  74,  22, 22, 16, 1, (0x5E, 0x6A, 0x46), 0.42),  # lighter sandy-green upper shelf
+        # THE KELP SHELF (region 1) -- all SUBMERGED tones (drowned, not a meadow)
+        ("kelpforest", 34,  44, 22, 26, 1, (0x18, 0x40, 0x30), 0.52),  # dense dark kelp beds (bluer green)
+        ("mastsilt",   57,  63, 18, 16, 1, (0x38, 0x4A, 0x46), 0.44),  # cool grey seafloor silt (mast forest)
+        ("paleshoal",  74,  22, 22, 16, 1, (0x44, 0x60, 0x5A), 0.42),  # pale teal shoal (shallow submerged sand)
         # THE FOLD (region 0) -- keep it deep + blue, distinct from Shelf green
         ("eelgrass",   20, 185, 17, 14, 0, (0x14, 0x30, 0x2E), 0.46),  # near-black eelgrass deeps
         ("praysilt",   33, 162, 15, 12, 0, (0x40, 0x5C, 0x5E), 0.36),  # pale teal silt clearing (the town)
@@ -1064,9 +1065,16 @@ def main() -> None:
     # a cool depth grade, caustic light webs playing over the ground, and
     # drifting sediment. The line itself is a broken foam seam; the surface
     # side dries out of it, wet sand darkening right at the crossing.
-    depth_u = np.clip((w01 - 0.35) / 0.3, 0.0, 1.0)
-    deep_sea = np.array((0x10, 0x2E, 0x36), dtype=np.float32)
-    canvas = canvas * (1 - (depth_u * 0.22)[..., None]) + deep_sea[None, None, :] * (depth_u * 0.22)[..., None]
+    # A FLOOR cool-wash covers the WHOLE drowned territory the moment you're
+    # west of the waterline (w01 > 0.5) -- so the Shelf reads submerged, not a
+    # sunlit meadow -- PLUS a depth ramp that keeps deepening toward the Fold
+    # core. The two together make the Fold->Shelf seam a gradual seafloor slope
+    # instead of an underwater->grass jump.
+    submerged = np.clip((w01 - 0.5) / 0.05, 0.0, 1.0)      # 0 at the waterline -> 1 just inside
+    depth_u = np.clip((w01 - 0.5) / 0.24, 0.0, 1.0)        # continues deepening to the Fold
+    deep_sea = np.array((0x12, 0x30, 0x3A), dtype=np.float32)
+    wash = (submerged * 0.18 + depth_u * 0.14)[..., None]
+    canvas = canvas * (1 - wash) + deep_sea[None, None, :] * wash
     # (v12.1 -- owner: "why are we still placing shit on-top of everything":
     # the caustic-web + sediment overlay crossed every material at uniform
     # strength and read as a decal layer; deleted. The depth grade, the
