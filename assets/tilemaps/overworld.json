@@ -71671,7 +71671,7 @@
             {
               "name": "text",
               "type": "string",
-              "value": "We didn't raise the obelisk. We woke on the floor and it was already listening."
+              "value": "We didn't raise the obelisk. We woke on the floor, and it was already listening."
             },
             {
               "name": "region",
@@ -71695,12 +71695,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "The Unlit Lamp"
+              "value": "The Way of Living"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "Nobody leaves the Fold. It isn't a rule. It's just that nobody ever has."
+              "value": "Once a year the obelisk opens and the stone child speaks a new rule. Once a year we obey."
             },
             {
               "name": "region",
@@ -71724,12 +71724,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "The Baker's Ledger"
+              "value": "The Stone Child"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "Everyone's boat but mine -- I'll follow once the last one's free."
+              "value": "A baby's face, and no breath behind it. When its mouth opens, the whole Fold goes still."
             },
             {
               "name": "region",
@@ -71753,12 +71753,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "The Empty Cradle"
+              "value": "This Year's Rule"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "She untied every line but her own."
+              "value": "The unnamed voice is owed to the deep. We all knew at once whose small voice it meant."
             },
             {
               "name": "region",
@@ -71782,12 +71782,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "The Drowned Bell"
+              "value": "Why Nobody Leaves"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "It still rings on the tide. Nobody is left to pull the rope."
+              "value": "It isn't a law. Leaving means admitting there's an up -- and an up means we fell."
             },
             {
               "name": "region",
@@ -71811,12 +71811,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "The Last Harvest"
+              "value": "The Father Who Would Not Kneel"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "The water came with the first verse, gently. Most of us didn't run."
+              "value": "He didn't dispute the rule when it was read. He started packing a bag for the climb."
             },
             {
               "name": "region",
@@ -71840,12 +71840,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "Salt for the Doorways"
+              "value": "The Mother's Question"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "We marked the lintels so the sea would pass us over. It read the marks as an invitation."
+              "value": "She didn't dispute it either. She only asked where a thing could be hidden from the song."
             },
             {
               "name": "region",
@@ -71869,12 +71869,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "The Floor That Hums"
+              "value": "The Child Between Them"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "Press your ear to the silt. That is the sound we were born owing."
+              "value": "One of us wanted to run. One of us wanted to hide him. He slept between us, owing nothing yet."
             },
             {
               "name": "region",
@@ -71903,7 +71903,7 @@
             {
               "name": "text",
               "type": "string",
-              "value": "No one here recalls the drowning. That mercy is the first thing the song takes."
+              "value": "No one recalls a year before the rules, or who we were. That became a rule as well."
             },
             {
               "name": "region",
@@ -71927,12 +71927,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "Why the Clocks Melt"
+              "value": "Salt for the Doorways"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "Nothing ends here, so nothing moves on. Even the hours pool at our feet."
+              "value": "We marked the lintels so the sea would pass us over. It read the marks as an invitation."
             },
             {
               "name": "region",
@@ -71956,12 +71956,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "The Man Who Remembers"
+              "value": "The Floor That Hums"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "One of us woke asking a small name. We told him to pray. He put on his boots instead."
+              "value": "Press your ear to the silt. That is the sound we were all born owing."
             },
             {
               "name": "region",
@@ -72043,12 +72043,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "The Foreman's Ledger"
+              "value": "Fleeing Up"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "Everyone's shift but mine ends at the sound. I keep counting anyway."
+              "value": "We aren't climbing toward anything. We're climbing away from a rule. That is enough to move a man."
             },
             {
               "name": "region",
@@ -72072,12 +72072,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "Listening Stones"
+              "value": "A Small Handhold"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "If you stack them right, they listen back."
+              "value": "Little prints on the mast beside mine. He was still with me here. Still with me here."
             },
             {
               "name": "region",
@@ -72101,12 +72101,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "The Mast Forest"
+              "value": "The Weight We Keep"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "Dead ships stand like trees down here. We climb them to feel tall."
+              "value": "The ones who climb highest loved least. I am not going to climb well."
             },
             {
               "name": "region",
@@ -72188,12 +72188,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "The Cold Cargo"
+              "value": "The Mast Forest"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "Whatever the hold was carrying, it is still carrying it, and still cold."
+              "value": "Dead ships stand like trees down here. We climb them to feel tall."
             },
             {
               "name": "region",
@@ -72217,12 +72217,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "The Weight We Keep"
+              "value": "Listening Stones"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "The ones who climb highest loved least. I am not going to climb well."
+              "value": "If you stack them right, they listen back."
             },
             {
               "name": "region",
@@ -72246,12 +72246,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "The Gallery That Sang"
+              "value": "The Foreman's Ledger"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "We dug until the rock sang back. We should have dug the other way."
+              "value": "Everyone's shift but mine ends at the sound. I keep counting anyway."
             },
             {
               "name": "region",
@@ -72275,12 +72275,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "A Small Handhold"
+              "value": "The Gallery That Sang"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "Little prints on the mast beside mine. He was still with me here. Still with me here."
+              "value": "We dug until the rock sang back. We should have dug the other way."
             },
             {
               "name": "region",
@@ -72295,6 +72295,35 @@
           "type": "",
           "point": true,
           "x": 1320.0,
+          "y": 2184.0,
+          "width": 0,
+          "height": 0,
+          "rotation": 0,
+          "visible": true,
+          "properties": [
+            {
+              "name": "title",
+              "type": "string",
+              "value": "The Waterline"
+            },
+            {
+              "name": "text",
+              "type": "string",
+              "value": "Cross here and the sky remembers you have a face. It does not approve."
+            },
+            {
+              "name": "region",
+              "type": "string",
+              "value": "pit"
+            }
+          ]
+        },
+        {
+          "id": 123,
+          "name": "echo_23",
+          "type": "",
+          "point": true,
+          "x": 1912.0,
           "y": 2184.0,
           "width": 0,
           "height": 0,
@@ -72319,35 +72348,6 @@
           ]
         },
         {
-          "id": 123,
-          "name": "echo_23",
-          "type": "",
-          "point": true,
-          "x": 1912.0,
-          "y": 2184.0,
-          "width": 0,
-          "height": 0,
-          "rotation": 0,
-          "visible": true,
-          "properties": [
-            {
-              "name": "title",
-              "type": "string",
-              "value": "Salt in the Lungs"
-            },
-            {
-              "name": "text",
-              "type": "string",
-              "value": "The first breath burns. The second one is his name."
-            },
-            {
-              "name": "region",
-              "type": "string",
-              "value": "pit"
-            }
-          ]
-        },
-        {
           "id": 124,
           "name": "echo_24",
           "type": "",
@@ -72362,12 +72362,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "Two Ticket Stubs"
+              "value": "Salt in the Lungs"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "Front row, both of us. He said don't blink."
+              "value": "The first breath of surface air burns. The second one is his name."
             },
             {
               "name": "region",
@@ -72391,12 +72391,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "The Fortune Wheel"
+              "value": "The Last Step Together"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "It never lands anywhere else now. I've checked."
+              "value": "The scuffle in the mud is two feet, then one, then none. I have read it a hundred times."
             },
             {
               "name": "region",
@@ -72420,12 +72420,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "The Waterline"
+              "value": "Who Was Behind Him"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "Cross here and the sky remembers you have a face. It does not approve."
+              "value": "I turned for one measure. When I turned back, both of them were gone. She was always so quiet."
             },
             {
               "name": "region",
@@ -72449,12 +72449,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "The Champion's Last Bout"
+              "value": "The Familiar Hands"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "Something came up through the ring floor. The ropes snapped outward when it left with him."
+              "value": "Whatever lifted him did not frighten him. He did not cry out. That is the part I cannot forgive."
             },
             {
               "name": "region",
@@ -72478,12 +72478,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "The Tipped Chairs"
+              "value": "She Crossed First"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "In the end no one could watch. The crowd is still down there, in a sense."
+              "value": "One set of prints reaches the surface ahead of ours. Small heels. Someone who knew the way out."
             },
             {
               "name": "region",
@@ -72507,12 +72507,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "The Ferryman's Coin"
+              "value": "Two Ticket Stubs"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "He'll take you across for what you love most. Everyone finds they can pay."
+              "value": "Front row, both of us. He said don't blink."
             },
             {
               "name": "region",
@@ -72536,12 +72536,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "The Last Step Together"
+              "value": "The Champion's Last Bout"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "The scuffle is two feet, then one, then none. I have read it a hundred times."
+              "value": "Something came up through the ring floor. The ropes snapped outward when it left with him."
             },
             {
               "name": "region",
@@ -72565,12 +72565,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "What Crossed With Us"
+              "value": "The Surface Air"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "Something followed through the seam behind him. It did not have a face yet."
+              "value": "Up here the song is quieter. Not a comfort. It means it already took what it wanted."
             },
             {
               "name": "region",
@@ -72594,12 +72594,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "The Surface Air"
+              "value": "The Ferryman's Coin"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "Up here the song is quieter. Not a comfort. It means it already took what it wanted."
+              "value": "He'll take you across for what you love most. Everyone finds they can pay."
             },
             {
               "name": "region",
@@ -72913,12 +72913,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "Who Walks Him In"
+              "value": "A Second Set of Prints"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "The small prints never wander. Something sets them down, gently, one at a time, facing in."
+              "value": "Beside the small ones, always: a woman's stride. Not chasing. Leading."
             },
             {
               "name": "region",
@@ -73000,12 +73000,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "The Blank Pages"
+              "value": "The Cage of Small Bones"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "He erases every attempt except the last row's -- the only players who ever got it right."
+              "value": "It is exactly the size of a boy who stopped growing when the water came."
             },
             {
               "name": "region",
@@ -73029,12 +73029,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "Melting Clocks"
+              "value": "Whose Cage It Is"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "Each stopped at the moment a player gave up. He keeps re-conducting those moments."
+              "value": "A mother built it. That is why the bars are padded, and there is no door on the inside."
             },
             {
               "name": "region",
@@ -73058,12 +73058,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "The Cage of Small Bones"
+              "value": "What She Fled With"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "It is exactly the size of a boy who stopped growing when the water came."
+              "value": "She didn't outrun the Fold's rule. She outran it all the way here, the child under her coat."
             },
             {
               "name": "region",
@@ -73087,12 +73087,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "The Ending He Rehearses"
+              "value": "How She Took the Hall"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "He's been trying to describe a sound again. When he finds it, it ends."
+              "value": "She didn't fight the Conductor. She gave him a reason to keep playing, and took the baton."
             },
             {
               "name": "region",
@@ -73116,12 +73116,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "The Last Row"
+              "value": "Her Mercy"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "Play it right and he will never, ever let you leave."
+              "value": "Caged, the song can never rewrite him. Kept whole. Kept hers. Call it love if you can."
             },
             {
               "name": "region",
@@ -73145,12 +73145,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "What the Baton Remembers"
+              "value": "The Blank Pages"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "Every downbeat since the world drowned. It has not missed one. Neither can you."
+              "value": "He erases every attempt except the last row's -- the only players who ever got it right."
             },
             {
               "name": "region",
@@ -73174,12 +73174,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "The One Before Him"
+              "value": "Melting Clocks"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "She conducted first. She learned it never ends -- so she stopped ending things and started keeping them."
+              "value": "Each stopped at the moment a player gave up. He keeps re-conducting those moments."
             },
             {
               "name": "region",
@@ -73203,12 +73203,12 @@
             {
               "name": "title",
               "type": "string",
-              "value": "Her Mercy"
+              "value": "The Ending He Rehearses"
             },
             {
               "name": "text",
               "type": "string",
-              "value": "Caged, the song can never rewrite him. Kept whole. Kept hers. Call it love if you can."
+              "value": "He's been trying to describe a sound again. When he finds it, it ends -- all of it."
             },
             {
               "name": "region",
@@ -73237,7 +73237,7 @@
             {
               "name": "text",
               "type": "string",
-              "value": "Land the note and it all resolves -- the song, the water, the keeping. Everything gets to rest."
+              "value": "Land the note and it all resolves -- the rule, the song, the cage. Everything gets to rest."
             },
             {
               "name": "region",

@@ -163,48 +163,46 @@ NODE_MARKERS, NODE_META = _build_nodes()
 # A curated pool per biome; each is hand-placed off the road within its region.
 _ECHO_POOL: dict[str, list[tuple[str, str]]] = {
     "shallows": [
-        ("The First Prayer", "We didn't raise the obelisk. We woke on the floor and it was already listening."),
-        ("The Unlit Lamp", "Nobody leaves the Fold. It isn't a rule. It's just that nobody ever has."),
-        ("The Baker's Ledger", "Everyone's boat but mine -- I'll follow once the last one's free."),
-        ("The Empty Cradle", "She untied every line but her own."),
-        ("The Drowned Bell", "It still rings on the tide. Nobody is left to pull the rope."),
-        ("The Last Harvest", "The water came with the first verse, gently. Most of us didn't run."),
+        ("The First Prayer", "We didn't raise the obelisk. We woke on the floor, and it was already listening."),
+        ("The Way of Living", "Once a year the obelisk opens and the stone child speaks a new rule. Once a year we obey."),
+        ("The Stone Child", "A baby's face, and no breath behind it. When its mouth opens, the whole Fold goes still."),
+        ("This Year's Rule", "The unnamed voice is owed to the deep. We all knew at once whose small voice it meant."),
+        ("Why Nobody Leaves", "It isn't a law. Leaving means admitting there's an up -- and an up means we fell."),
+        ("The Father Who Would Not Kneel", "He didn't dispute the rule when it was read. He started packing a bag for the climb."),
+        ("The Mother's Question", "She didn't dispute it either. She only asked where a thing could be hidden from the song."),
+        ("The Child Between Them", "One of us wanted to run. One of us wanted to hide him. He slept between us, owing nothing yet."),
+        # cosmology: the drowning and the years before the rules are forgotten
+        ("What We Don't Remember", "No one recalls a year before the rules, or who we were. That became a rule as well."),
         ("Salt for the Doorways", "We marked the lintels so the sea would pass us over. It read the marks as an invitation."),
-        ("The Floor That Hums", "Press your ear to the silt. That is the sound we were born owing."),
-        # cosmology: the drowning is forgotten; time is stuck
-        ("What We Don't Remember", "No one here recalls the drowning. That mercy is the first thing the song takes."),
-        ("Why the Clocks Melt", "Nothing ends here, so nothing moves on. Even the hours pool at our feet."),
-        # Mir: the one who remembers, and leaves
-        ("The Man Who Remembers", "One of us woke asking a small name. We told him to pray. He put on his boots instead."),
+        ("The Floor That Hums", "Press your ear to the silt. That is the sound we were all born owing."),
     ],
     "saltmines": [
         ("The Climber's Knot", "Rope enough to reach the light -- if you don't weigh anything anymore."),
         ("The First Wreck", "Every ship that ever sank points the same way. Up."),
-        ("The Foreman's Ledger", "Everyone's shift but mine ends at the sound. I keep counting anyway."),
-        ("Listening Stones", "If you stack them right, they listen back."),
-        ("The Mast Forest", "Dead ships stand like trees down here. We climb them to feel tall."),
+        # the flight: climbing away from the rule, child in tow
+        ("Fleeing Up", "We aren't climbing toward anything. We're climbing away from a rule. That is enough to move a man."),
+        ("A Small Handhold", "Little prints on the mast beside mine. He was still with me here. Still with me here."),
+        ("The Weight We Keep", "The ones who climb highest loved least. I am not going to climb well."),
         ("Pillar of Salt", "When you're turning to salt, it's when you're staring ahead too long."),
         ("Three Steps From the Lift", "The foreman covered his ears and ran. He calcified mid-stride, facing away."),
-        ("The Cold Cargo", "Whatever the hold was carrying, it is still carrying it, and still cold."),
-        # bargaining: the ascent costs everything you hold
-        ("The Weight We Keep", "The ones who climb highest loved least. I am not going to climb well."),
+        ("The Mast Forest", "Dead ships stand like trees down here. We climb them to feel tall."),
+        ("Listening Stones", "If you stack them right, they listen back."),
+        ("The Foreman's Ledger", "Everyone's shift but mine ends at the sound. I keep counting anyway."),
         ("The Gallery That Sang", "We dug until the rock sang back. We should have dug the other way."),
-        # Nari: still with him, here
-        ("A Small Handhold", "Little prints on the mast beside mine. He was still with me here. Still with me here."),
     ],
     "pit": [
-        ("The Broken Foam", "The line between worlds is thinner than a footstep. His fit inside mine."),
-        ("Salt in the Lungs", "The first breath burns. The second one is his name."),
-        ("Two Ticket Stubs", "Front row, both of us. He said don't blink."),
-        ("The Fortune Wheel", "It never lands anywhere else now. I've checked."),
         ("The Waterline", "Cross here and the sky remembers you have a face. It does not approve."),
+        ("The Broken Foam", "The line between worlds is thinner than a footstep. His fit inside mine."),
+        ("Salt in the Lungs", "The first breath of surface air burns. The second one is his name."),
+        # the taking: it was Lunal, and he knew her
+        ("The Last Step Together", "The scuffle in the mud is two feet, then one, then none. I have read it a hundred times."),
+        ("Who Was Behind Him", "I turned for one measure. When I turned back, both of them were gone. She was always so quiet."),
+        ("The Familiar Hands", "Whatever lifted him did not frighten him. He did not cry out. That is the part I cannot forgive."),
+        ("She Crossed First", "One set of prints reaches the surface ahead of ours. Small heels. Someone who knew the way out."),
+        ("Two Ticket Stubs", "Front row, both of us. He said don't blink."),
         ("The Champion's Last Bout", "Something came up through the ring floor. The ropes snapped outward when it left with him."),
-        ("The Tipped Chairs", "In the end no one could watch. The crowd is still down there, in a sense."),
-        ("The Ferryman's Coin", "He'll take you across for what you love most. Everyone finds they can pay."),
-        # the loss beat, read in the mud
-        ("The Last Step Together", "The scuffle is two feet, then one, then none. I have read it a hundred times."),
-        ("What Crossed With Us", "Something followed through the seam behind him. It did not have a face yet."),
         ("The Surface Air", "Up here the song is quieter. Not a comfort. It means it already took what it wanted."),
+        ("The Ferryman's Coin", "He'll take you across for what you love most. Everyone finds they can pay."),
     ],
     "attic": [
         ("The Small Prints", "They walk IN. Toward the den. Why would he walk toward it?"),
@@ -215,25 +213,25 @@ _ECHO_POOL: dict[str, list[tuple[str, str]]] = {
         ("Scorch and Claw", "The surface does not want you. It has left instructions, in gouges."),
         ("The Collector's Shelf", "Little things, arranged by size. A shoe. A comb. A tooth too small to be yours."),
         ("Tracks That Walk In", "Learn his gait or lose him: paired stride, a heel dot, the faint right-foot drag."),
-        # the false trails, then the colder truth
+        # the wrong search: Mir reads "monster", the clues say "a careful person"
         ("The Wrong Feet", "I followed the paired stride a mile before I saw it had no heel dot. A mile."),
         ("No Blood at the Mouth", "There is nothing spilled at the den's mouth. I don't know if that is worse."),
-        ("Who Walks Him In", "The small prints never wander. Something sets them down, gently, one at a time, facing in."),
+        ("A Second Set of Prints", "Beside the small ones, always: a woman's stride. Not chasing. Leading."),
     ],
     "hall": [
         ("The Rehearsal", "The music stops every time the small one cries. Then it starts again, angrier."),
         ("The Huntress's Mark", "She doesn't hunt to kill. She hunts to keep."),
+        ("The Cage of Small Bones", "It is exactly the size of a boy who stopped growing when the water came."),
+        # the reveal: the keeper is his mother
+        ("Whose Cage It Is", "A mother built it. That is why the bars are padded, and there is no door on the inside."),
+        ("What She Fled With", "She didn't outrun the Fold's rule. She outran it all the way here, the child under her coat."),
+        ("How She Took the Hall", "She didn't fight the Conductor. She gave him a reason to keep playing, and took the baton."),
+        ("Her Mercy", "Caged, the song can never rewrite him. Kept whole. Kept hers. Call it love if you can."),
         ("The Blank Pages", "He erases every attempt except the last row's -- the only players who ever got it right."),
         ("Melting Clocks", "Each stopped at the moment a player gave up. He keeps re-conducting those moments."),
-        ("The Cage of Small Bones", "It is exactly the size of a boy who stopped growing when the water came."),
-        ("The Ending He Rehearses", "He's been trying to describe a sound again. When he finds it, it ends."),
-        ("The Last Row", "Play it right and he will never, ever let you leave."),
-        ("What the Baton Remembers", "Every downbeat since the world drowned. It has not missed one. Neither can you."),
-        # Lunal: who she was, why she keeps
-        ("The One Before Him", "She conducted first. She learned it never ends -- so she stopped ending things and started keeping them."),
-        ("Her Mercy", "Caged, the song can never rewrite him. Kept whole. Kept hers. Call it love if you can."),
+        ("The Ending He Rehearses", "He's been trying to describe a sound again. When he finds it, it ends -- all of it."),
         # the thesis of the ending
-        ("The Last Chord", "Land the note and it all resolves -- the song, the water, the keeping. Everything gets to rest."),
+        ("The Last Chord", "Land the note and it all resolves -- the rule, the song, the cage. Everything gets to rest."),
     ],
 }
 
