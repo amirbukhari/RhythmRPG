@@ -29,6 +29,8 @@ export interface SaveProfile {
   nariLostAt?: number;
   /** Epoch ms of the moment Mir first climbed out of the Fold, where the campaign begins (v14.0). Absent while still in the underwater town. */
   leftFoldAt?: number;
+  /** Narrative flags: cutscenes already played ("seen_rite") and NPC side-story progress ("met_sella"). See content/cutscenes.ts + content/dialogue.ts. */
+  storyFlags?: string[];
 }
 
 export function createDefaultSaveProfile(slotId: string, startNodeId: string): SaveProfile {
@@ -42,6 +44,7 @@ export function createDefaultSaveProfile(slotId: string, startNodeId: string): S
     relicInventory: [],
     analyticsConsent: false,
     echoesFound: [],
+    storyFlags: [],
   };
 }
 

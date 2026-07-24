@@ -15,6 +15,17 @@ import { WorldFight } from "./overworld/WorldFight";
 import { composeWorldVenue } from "./env/ArenaComposer";
 import dressingData from "../data/content/overworld/dressing.json";
 import { worldScaleFor } from "./env/WorldScale";
+import { NPCS, type NpcDef, type NpcLook } from "../data/content/dialogue";
+import { CutsceneScene } from "./CutsceneScene";
+
+/** A dialogue NPC placed on a walkable tile in the world. */
+interface PlacedNpc {
+  def: NpcDef;
+  col: number;
+  row: number;
+  fig: Phaser.GameObjects.Container;
+  label: Phaser.GameObjects.Text;
+}
 
 // v15.0 chunked ground: the painter emits a manifest describing the chunk
 // grid; the chunks themselves are loaded in BootScene as `ground_chunk_<r>_<c>`.
@@ -90,6 +101,14 @@ export class OverworldScene extends Phaser.Scene {
   private echoCountText!: Phaser.GameObjects.Text;
   private echoPanel: Phaser.GameObjects.Container | null = null;
   private nearbyEcho: Echo | null = null;
+  // Talkable NPCs (dialogue.ts) + the dialogue panel state.
+  private npcs: PlacedNpc[] = [];
+  private nearbyNpc: PlacedNpc | null = null;
+  private dialoguePanel: Phaser.GameObjects.Container | null = null;
+  private dialogueLines: string[] = [];
+  private dialogueIdx = 0;
+  private dialogueSets: string | null = null;
+  private dialogueName = "";
   private obelisks: { col: number; row: number; glow: Phaser.GameObjects.Image }[] = [];
   private nearbyObelisk: { col: number; row: number; glow: Phaser.GameObjects.Image } | null = null;
   /** The Fold's town-obelisk tile (v14.0), read from the "town_obelisk" marker. */
@@ -178,6 +197,9 @@ export class OverworldScene extends Phaser.Scene {
     this.lightningAccumMs = 0;
     this.overworldSongMap = null;
     this.nodeFoeVisuals.clear();
+    this.npcs = [];
+    this.nearbyNpc = null;
+    this.dialoguePanel = null;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.fight?.destroy();
       this.fight = null;
@@ -378,6 +400,12 @@ export class OverworldScene extends Phaser.Scene {
       .setOrigin(0.5, 1)
       .setDepth(21)
       .setVisible(false);
+
+    // The opening cutscene -- the Rite (the obelisk opens, the litho speaks the
+    // rule that condemns Nari). Self-gates on the "seen_rite" flag so it plays
+    // once, at the start of a new game. Deferred a tick so create() settles
+    // before the scene pauses under the overlay.
+    this.time.delayedCall(20, () => CutsceneScene.play(this, "rite_opening"));
   }
 
   private updateEchoCountText(): void {
@@ -533,10 +561,14 @@ export class OverworldScene extends Phaser.Scene {
       this.fog.tilePositionY -= 0.03;
     }
     this.updateNearbyEcho();
+    this.updateNearbyNpc();
     if (Phaser.Input.Keyboard.JustDown(this.interactKey) && !this.echoPanel) {
-      if (this.nearbyEcho) this.discoverEcho(this.nearbyEcho);
+      if (this.dialoguePanel) this.advanceDialogue();
+      else if (this.nearbyNpc) this.openDialogue(this.nearbyNpc);
+      else if (this.nearbyEcho) this.discoverEcho(this.nearbyEcho);
       else if (this.nearbyObelisk) this.restAtObelisk(this.nearbyObelisk);
     }
+    if (this.dialoguePanel) return; // frozen while talking
     if (this.moving) return;
     const dir = this.heldDirection();
     if (dir) this.tryStep(dir);
@@ -614,6 +646,161 @@ export class OverworldScene extends Phaser.Scene {
   private dismissEchoPanel(): void {
     this.echoPanel?.destroy();
     this.echoPanel = null;
+  }
+
+  // --- talkable NPCs + dialogue (content/dialogue.ts) ----------------------
+  /** Place each authored NPC on the nearest walkable tile, drawn as a small
+   *  procedural figure with a name label shown only when the player is near. */
+  private placeNpcs(map: Phaser.Tilemaps.Tilemap, ground: Phaser.Tilemaps.TilemapLayer): void {
+    const walkable = (c: number, r: number) => {
+      const k = ((ground.getTileAt(c, r)?.index ?? 0) - 1) % 4;
+      return k === 0 || k === 1; // grass or path
+    };
+    for (const def of NPCS) {
+      const snapped = this.nearestWalkable(def.col, def.row, walkable, map);
+      if (!snapped) continue;
+      const [col, row] = snapped;
+      const x = col * TILE_SIZE + TILE_SIZE / 2;
+      const y = row * TILE_SIZE + TILE_SIZE - 2;
+      const fig = this.drawNpc(x, y, def.look);
+      const label = this.add
+        .text(x, y - 20, def.name, { fontFamily: "monospace", fontSize: "6px", color: "#d8ceb6", stroke: "#05060a", strokeThickness: 3 })
+        .setOrigin(0.5, 1)
+        .setDepth(21)
+        .setVisible(false);
+      this.npcs.push({ def, col, row, fig, label });
+    }
+  }
+
+  /** Nearest grass/path tile to (c0,r0) within a small radius, or null. */
+  private nearestWalkable(
+    c0: number,
+    r0: number,
+    walkable: (c: number, r: number) => boolean,
+    map: Phaser.Tilemaps.Tilemap
+  ): [number, number] | null {
+    for (let rad = 0; rad <= 6; rad++) {
+      for (let dr = -rad; dr <= rad; dr++) {
+        for (let dc = -rad; dc <= rad; dc++) {
+          if (Math.max(Math.abs(dr), Math.abs(dc)) !== rad) continue;
+          const c = c0 + dc;
+          const r = r0 + dr;
+          if (c < 1 || r < 1 || c >= map.width - 1 || r >= map.height - 1) continue;
+          if (walkable(c, r)) return [c, r];
+        }
+      }
+    }
+    return null;
+  }
+
+  /** A small standing figure, tinted by role; idle bob unless reduced motion. */
+  private drawNpc(x: number, y: number, look: NpcLook): Phaser.GameObjects.Container {
+    const palette: Record<NpcLook, [number, number, number]> = {
+      elder: [0x2b2a33, 0x3a3944, 0x14131a],
+      woman: [0x33272f, 0x463743, 0x1a1319],
+      man: [0x263038, 0x33424a, 0x14202a],
+      child: [0x394a3a, 0x4a604c, 0x1e2a1e],
+      pilgrim: [0x222f38, 0x2e3f48, 0x18232b],
+      hooded: [0x201d28, 0x2c2838, 0x100e16],
+    };
+    const [robe, lit, head] = palette[look];
+    const scale = look === "child" ? 0.72 : 1;
+    const g = this.add.graphics();
+    g.fillStyle(0x05060a, 0.35).fillEllipse(0, 2, 9, 3); // shadow
+    g.fillStyle(robe, 1).fillEllipse(0, -7, 7, 13); // robe
+    g.fillStyle(lit, 1).fillEllipse(-1.5, -7, 4, 12); // front light
+    g.fillStyle(head, 1).fillCircle(0, -14, 2.7); // head
+    const c = this.add.container(x, y, [g]).setDepth(4.45).setScale(scale);
+    if (!GameContext.activeProfile?.settings.reducedMotion) {
+      this.tweens.add({ targets: c, y: y - 1.2, duration: 1500 + (Math.floor(x * 7) % 700), yoyo: true, repeat: -1, ease: "Sine.inOut" });
+    }
+    return c;
+  }
+
+  /** Finds the NPC within one tile of the player and points the "E: talk"
+   *  prompt at it (NPCs take priority over echoes/obelisks for the hint). */
+  private updateNearbyNpc(): void {
+    if (this.dialoguePanel) {
+      this.nearbyNpc = null;
+      return;
+    }
+    const near = this.npcs.find((n) => Math.abs(n.col - this.playerPos.col) <= 1 && Math.abs(n.row - this.playerPos.row) <= 1) ?? null;
+    for (const n of this.npcs) n.label.setVisible(n === near);
+    this.nearbyNpc = near;
+    if (near) {
+      this.interactHint
+        .setText("E: talk")
+        .setPosition(near.col * TILE_SIZE + TILE_SIZE / 2, near.row * TILE_SIZE - 8)
+        .setVisible(true);
+    }
+  }
+
+  /** Narrative flags satisfied right now: explicit save flags + derived beats. */
+  private storyFlagSet(): Set<string> {
+    const p = GameContext.activeProfile;
+    const s = new Set<string>(p?.storyFlags ?? []);
+    if (p?.leftFoldAt) s.add("leftFold");
+    if (p?.nariLostAt) s.add("nariLost");
+    for (const id of p?.campaignProgress.clearedNodeIds ?? []) s.add(`cleared:${id}`);
+    return s;
+  }
+
+  private openDialogue(npc: PlacedNpc): void {
+    const flags = this.storyFlagSet();
+    const beat = npc.def.beats.find((b) => !b.requires || flags.has(b.requires));
+    if (!beat) return;
+    this.dialogueLines = beat.lines;
+    this.dialogueIdx = 0;
+    this.dialogueSets = beat.sets ?? null;
+    this.dialogueName = npc.def.name;
+    this.showDialoguePanel();
+  }
+
+  private advanceDialogue(): void {
+    if (this.dialogueIdx < this.dialogueLines.length - 1) {
+      this.dialogueIdx++;
+      this.showDialoguePanel();
+    } else {
+      this.closeDialogue();
+    }
+  }
+
+  private showDialoguePanel(): void {
+    this.dialoguePanel?.destroy();
+    const panelW = Math.min(BASE_WIDTH - 20, 240);
+    const panel = this.add.nineslice(0, 0, "ui_panel", undefined, panelW, 46, 5, 5, 5, 5);
+    const name = this.add
+      .text(-panelW / 2 + 8, -18, this.dialogueName.toUpperCase(), { fontFamily: "monospace", fontSize: "7px", color: "#f4d27a" })
+      .setOrigin(0, 0.5);
+    const body = this.add
+      .text(0, -4, this.dialogueLines[this.dialogueIdx], { fontFamily: "monospace", fontSize: "7px", color: "#e8e2d4", align: "center", wordWrap: { width: panelW - 18 } })
+      .setOrigin(0.5, 0);
+    const more = this.dialogueIdx < this.dialogueLines.length - 1;
+    const hint = this.add
+      .text(panelW / 2 - 8, 18, more ? "E ▸" : "E ✕", { fontFamily: "monospace", fontSize: "6px", color: "#9fb0c0" })
+      .setOrigin(1, 0.5);
+    this.dialoguePanel = this.pinToScreen(
+      this.add.container(BASE_WIDTH / 2, BASE_HEIGHT - 32, [panel, name, body, hint]).setDepth(26),
+      BASE_WIDTH / 2,
+      BASE_HEIGHT - 32
+    );
+    this.repositionPinned();
+  }
+
+  private closeDialogue(): void {
+    this.dialoguePanel?.destroy();
+    this.dialoguePanel = null;
+    if (this.dialogueSets) {
+      const p = GameContext.activeProfile;
+      if (p) {
+        const flags = p.storyFlags ?? (p.storyFlags = []);
+        if (!flags.includes(this.dialogueSets)) {
+          flags.push(this.dialogueSets);
+          void GameContext.persistActiveProfile();
+        }
+      }
+      this.dialogueSets = null;
+    }
   }
 
   /** Grid position test seam, read via the DEV-only __meterfallDebug hook. */
@@ -704,7 +891,9 @@ export class OverworldScene extends Phaser.Scene {
     if ((this.regions[this.playerPos.row]?.[this.playerPos.col] ?? 0) === 0) return; // still in the Fold
     profile.leftFoldAt = Date.now();
     void GameContext.persistActiveProfile();
-    this.showToast("THE FOLD BEHIND YOU", "The chorus begins.");
+    // The threshold cutscene (leaving the Fold); falls back to a toast if it's
+    // already been seen.
+    if (!CutsceneScene.play(this, "leaving_fold")) this.showToast("THE FOLD BEHIND YOU", "The chorus begins.");
   }
 
   /** The loss beat (§8.4 v12.0): Mir's first step onto the surface -- the
@@ -734,7 +923,8 @@ export class OverworldScene extends Phaser.Scene {
         },
       });
     }
-    this.showToast("NARI?", "He was right behind you.");
+    // The taking cutscene (Nari lost at the Breach); falls back to a toast.
+    if (!CutsceneScene.play(this, "nari_taken")) this.showToast("NARI?", "He was right behind you.");
   }
 
   /** Flips Mir to face the walk direction. Only horizontal moves change the
@@ -937,6 +1127,7 @@ export class OverworldScene extends Phaser.Scene {
     this.addFauna(map, ground);
     this.addSurfaceAmbience(map, ground);
     this.addRoamingNPCs(map, ground);
+    this.placeNpcs(map, ground);
     this.addWeather();
   }
 
