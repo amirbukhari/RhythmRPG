@@ -72,7 +72,14 @@ export class CutsceneScene extends Phaser.Scene {
     this.input.keyboard?.on("keydown-ENTER", () => this.advance());
     this.input.on("pointerdown", () => this.advance());
 
-    this.showFrame();
+    // Defensive: a cutscene must NEVER leave the overworld paused. If drawing a
+    // frame throws, bail straight to finish() (which resumes the paused scene).
+    try {
+      this.showFrame();
+    } catch (e) {
+      console.error("[cutscene] failed, resuming world:", e);
+      this.finish();
+    }
   }
 
   private reduced(): boolean {
@@ -84,7 +91,11 @@ export class CutsceneScene extends Phaser.Scene {
     const frame = this.cutscene.frames[this.frameIdx];
     this.lineIdx = 0;
     this.stageLayer.removeAll(true);
-    this.drawStage(frame);
+    try {
+      this.drawStage(frame);
+    } catch (e) {
+      console.error("[cutscene] stage draw failed:", e); // the lines still play
+    }
     this.textLayer.removeAll(true);
     this.showLine(frame);
   }
