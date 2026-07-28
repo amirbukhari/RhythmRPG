@@ -3,6 +3,7 @@ import { GameContext } from "../state/GameContext";
 import { DEFAULT_ACCESSIBILITY_SETTINGS, type AccessibilitySettings } from "../systems/accessibility/AccessibilitySettings";
 import {BASE_WIDTH, BASE_HEIGHT, retinaCamera } from "../config/GameConfig";
 import { TextMenu, type TextMenuItem } from "../ui/components/TextMenu";
+import { music } from "../systems/audio/SongPlayer";
 
 const SPEED_STEPS: AccessibilitySettings["gameSpeed"][] = [0.7, 0.85, 1.0];
 const VOLUME_STEPS = [0, 0.25, 0.5, 0.75, 1.0];
@@ -152,7 +153,12 @@ export class SettingsOverlay extends Phaser.Scene {
   private controlsItems(): TextMenuItem[] {
     const s = this.settings;
     const items: TextMenuItem[] = [
-      { label: `Music Volume: ${Math.round(s.volumeMusic * 100)}%`, onSelect: () => this.update_(() => (s.volumeMusic = nextInCycle(VOLUME_STEPS, s.volumeMusic))) },
+      {
+        label: `Music Volume: ${Math.round(s.volumeMusic * 100)}%`,
+        // apply LIVE so the slider is audible immediately (it used to only take
+        // effect on the next scene load, which read as a dead/fake control).
+        onSelect: () => this.update_(() => { s.volumeMusic = nextInCycle(VOLUME_STEPS, s.volumeMusic); music.setVolume(s.volumeMusic); }),
+      },
       { label: `SFX Volume: ${Math.round(s.volumeSfx * 100)}%`, onSelect: () => this.update_(() => (s.volumeSfx = nextInCycle(VOLUME_STEPS, s.volumeSfx))) },
       { label: `UI Volume: ${Math.round(s.volumeUi * 100)}%`, onSelect: () => this.update_(() => (s.volumeUi = nextInCycle(VOLUME_STEPS, s.volumeUi))) },
       ...REMAP_ACTIONS.map(({ key, label, fallback }) => ({

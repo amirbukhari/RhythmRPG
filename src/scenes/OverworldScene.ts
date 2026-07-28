@@ -35,7 +35,7 @@ const GROUND_MANIFEST = Object.values(
 )[0] as GroundManifest | undefined;
 
 const TILE_SIZE = 16;
-const STEP_DURATION_MS = 160;
+const STEP_DURATION_MS = 96; // was 160 -- walking felt sluggish (owner feedback)
 const MARKER_COLORS: Record<NodeStatus, number> = { cleared: 0x44cc66, unlocked: 0xffe066, locked: 0x444444 };
 const NODE_TYPE_LABEL: Record<string, string> = { battle: "B", elite: "E", boss: "!", camp: "C" };
 // Emissive accent per foe for its overworld aura (mirrors ActionBattleScene).
@@ -370,7 +370,11 @@ export class OverworldScene extends Phaser.Scene {
     // texel density (the follow camera centers, so no centerOn needed).
     this.cameras.main.setZoom(RENDER_SCALE);
     this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
-    this.cameras.main.startFollow(this.player, true, 1, 1);
+    // roundPixels was TRUE: on a 4x-zoomed camera it snaps the scroll to whole
+    // world-pixels every frame, so following the smoothly-tweening player made
+    // the whole screen JITTER. Off = smooth. A gentle lerp softens the grid.
+    this.cameras.main.startFollow(this.player, false, 0.55, 0.55);
+    this.cameras.main.roundPixels = false;
 
     const keyboard = this.input.keyboard!;
     this.cursors = keyboard.createCursorKeys();
