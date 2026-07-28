@@ -27,6 +27,37 @@ interface PlacedNpc {
   label: Phaser.GameObjects.Text;
 }
 
+/**
+ * Per-role figure spec for drawNpc. These are drawn (not sprited) little
+ * people -- so each role gets a distinct silhouette: robed vs. legged,
+ * hooded vs. bare-headed, staffed, stooped, with skin/hair/robe tones that
+ * read at 4x zoom. The point is that an elder, a child and a hooded stranger
+ * are recognizably different bodies, not recolored blobs.
+ */
+type FigureSpec = {
+  robe: number;
+  robeLit: number;
+  robeDark: number;
+  skin: number;
+  skinShade: number;
+  hair: number;
+  hood: boolean; // full cowl, face lost in shadow
+  legs: boolean; // legs+tunic instead of a floor-length robe
+  staff: boolean; // leans on a walking staff
+  beard: boolean;
+  stoop: number; // px the head/torso tips forward (age, reverence)
+  scale: number;
+  shoulder: number; // shoulder span
+};
+const FIGURE_SPECS: Record<NpcLook, FigureSpec> = {
+  elder: { robe: 0x2f3742, robeLit: 0x46515d, robeDark: 0x1b2028, skin: 0xb99a7e, skinShade: 0x876c55, hair: 0xccd1d6, hood: false, legs: false, staff: true, beard: true, stoop: 1.5, scale: 0.98, shoulder: 8.5 },
+  woman: { robe: 0x4a2f3b, robeLit: 0x6a4553, robeDark: 0x2b1a22, skin: 0xc59a80, skinShade: 0x926e58, hair: 0x281a16, hood: false, legs: false, staff: false, beard: false, stoop: 0, scale: 0.95, shoulder: 7.8 },
+  man: { robe: 0x2c3a44, robeLit: 0x415560, robeDark: 0x18232b, skin: 0xba8f72, skinShade: 0x84634e, hair: 0x22190f, hood: false, legs: true, staff: false, beard: false, stoop: 0, scale: 1.0, shoulder: 9.6 },
+  child: { robe: 0x3f5a3e, robeLit: 0x587659, robeDark: 0x243624, skin: 0xc9a184, skinShade: 0x977256, hair: 0x2f2219, hood: false, legs: true, staff: false, beard: false, stoop: 0, scale: 0.66, shoulder: 7.4 },
+  pilgrim: { robe: 0x2a3742, robeLit: 0x3f505c, robeDark: 0x172029, skin: 0xb2896f, skinShade: 0x80604e, hair: 0x2b251f, hood: false, legs: false, staff: true, beard: false, stoop: 0.7, scale: 0.98, shoulder: 8.2 },
+  hooded: { robe: 0x20222c, robeLit: 0x34394b, robeDark: 0x101018, skin: 0x6a5c50, skinShade: 0x3f362e, hair: 0x24273a, hood: true, legs: false, staff: false, beard: false, stoop: 0, scale: 1.0, shoulder: 8.4 },
+};
+
 // v15.0 chunked ground: the painter emits a manifest describing the chunk
 // grid; the chunks themselves are loaded in BootScene as `ground_chunk_<r>_<c>`.
 type GroundManifest = { chunk: number; rows: number; cols: number; full_w: number; full_h: number; s: number };
@@ -697,24 +728,143 @@ export class OverworldScene extends Phaser.Scene {
     return null;
   }
 
-  /** A small standing figure, tinted by role; idle bob unless reduced motion. */
+  /**
+   * A little drawn person, built from a role spec: contact shadow, staff,
+   * a far arm, legs-or-robe, a tapered torso with a cool rim-light, a near
+   * arm, neck, and a head with hair (or a full hood, face in shadow), a
+   * shaded cheek and eyes. Elders stoop over a staff; children are small
+   * with legs; the hooded stranger has no face. Idle bob unless reduced
+   * motion. Deliberately NOT two stacked ellipses.
+   */
   private drawNpc(x: number, y: number, look: NpcLook): Phaser.GameObjects.Container {
-    const palette: Record<NpcLook, [number, number, number]> = {
-      elder: [0x2b2a33, 0x3a3944, 0x14131a],
-      woman: [0x33272f, 0x463743, 0x1a1319],
-      man: [0x263038, 0x33424a, 0x14202a],
-      child: [0x394a3a, 0x4a604c, 0x1e2a1e],
-      pilgrim: [0x222f38, 0x2e3f48, 0x18232b],
-      hooded: [0x201d28, 0x2c2838, 0x100e16],
-    };
-    const [robe, lit, head] = palette[look];
-    const scale = look === "child" ? 0.72 : 1;
+    const S = FIGURE_SPECS[look];
+    const lean = S.stoop;
     const g = this.add.graphics();
-    g.fillStyle(0x05060a, 0.35).fillEllipse(0, 2, 9, 3); // shadow
-    g.fillStyle(robe, 1).fillEllipse(0, -7, 7, 13); // robe
-    g.fillStyle(lit, 1).fillEllipse(-1.5, -7, 4, 12); // front light
-    g.fillStyle(head, 1).fillCircle(0, -14, 2.7); // head
-    const c = this.add.container(x, y, [g]).setDepth(4.45).setScale(scale);
+
+    // soft contact shadow
+    g.fillStyle(0x05060a, 0.3).fillEllipse(0, 2.5, 12, 3.5);
+
+    // walking staff, planted just ahead of the figure (drawn behind the body)
+    if (S.staff) {
+      g.lineStyle(1.5, 0x3a2b1c, 1);
+      g.beginPath();
+      g.moveTo(4.4, 2.5);
+      g.lineTo(3.6, -18);
+      g.strokePath();
+      g.fillStyle(0x574632, 1).fillCircle(3.5, -18.4, 1.7);
+    }
+
+    // far arm, shadowed, tucked along the back side
+    g.fillStyle(S.robeDark, 1);
+    g.fillRoundedRect(lean - 5.3, -11.4, 2.4, 7.4, 1.1);
+
+    // lower body: legs + short tunic, or a floor-length robe
+    if (S.legs) {
+      g.fillStyle(S.robeDark, 1);
+      g.fillRoundedRect(-3.0, -6.4, 2.7, 6.8, 1); // back leg
+      g.fillStyle(S.robe, 1);
+      g.fillRoundedRect(0.4, -6.4, 2.7, 6.8, 1); // front leg
+      g.fillStyle(0x141110, 1); // shoes
+      g.fillEllipse(-1.7, 0.7, 3.6, 1.9);
+      g.fillEllipse(2.0, 0.7, 3.6, 1.9);
+    } else {
+      g.fillStyle(S.robe, 1); // robe flared to the ground
+      g.fillPoints(
+        [
+          new Phaser.Geom.Point(-4.4, -12),
+          new Phaser.Geom.Point(4.4, -12),
+          new Phaser.Geom.Point(3.2, -7),
+          new Phaser.Geom.Point(6.2, 1.2),
+          new Phaser.Geom.Point(-6.2, 1.2),
+          new Phaser.Geom.Point(-3.2, -7),
+        ],
+        true
+      );
+      g.fillStyle(S.robeDark, 0.55); // a fold shadow down the center
+      g.fillTriangle(0.6, -7, 2.4, 1.2, -1.2, 1.2);
+    }
+
+    // torso, tapered from shoulders to waist and tipped forward by the lean
+    const tx = lean * 0.3;
+    g.fillStyle(S.robe, 1);
+    g.fillPoints(
+      [
+        new Phaser.Geom.Point(-4.3 + tx, -12),
+        new Phaser.Geom.Point(4.3 + tx, -12),
+        new Phaser.Geom.Point(3.0, -6.4),
+        new Phaser.Geom.Point(-3.0, -6.4),
+      ],
+      true
+    );
+    g.fillStyle(S.robeLit, 0.9); // cool rim-light down the front-left edge
+    g.fillPoints(
+      [
+        new Phaser.Geom.Point(-4.3 + tx, -12),
+        new Phaser.Geom.Point(-2.1 + tx, -12),
+        new Phaser.Geom.Point(-1.4, -6.4),
+        new Phaser.Geom.Point(-3.0, -6.4),
+      ],
+      true
+    );
+
+    // shoulders / collar
+    g.fillStyle(S.robeLit, 1);
+    g.fillEllipse(tx, -12, S.shoulder, 3.4);
+
+    // near arm, across the front
+    g.fillStyle(S.robe, 1);
+    g.fillRoundedRect(2.7 + lean * 0.4, -11.4, 2.5, 7.1, 1.1);
+    g.fillStyle(S.robeLit, 0.45);
+    g.fillRoundedRect(2.7 + lean * 0.4, -11.4, 1.1, 7.1, 1.1);
+
+    // neck
+    g.fillStyle(S.skinShade, 1);
+    g.fillRect(lean - 1.1, -15, 2.2, 3);
+
+    // head (skin), with a shaded far cheek
+    const hx = lean;
+    const hy = -16.6;
+    g.fillStyle(S.skin, 1);
+    g.fillCircle(hx, hy, 2.9);
+    g.fillStyle(S.skinShade, 1);
+    g.fillEllipse(hx + 1.2, hy + 0.3, 2.3, 4.4);
+
+    if (S.hood) {
+      // full cowl: cloth over the crown, the face lost in interior shadow
+      g.fillStyle(S.hair, 1);
+      g.fillPoints(
+        [
+          new Phaser.Geom.Point(hx - 4.0, -12.4),
+          new Phaser.Geom.Point(hx - 3.3, -18),
+          new Phaser.Geom.Point(hx, -20.4),
+          new Phaser.Geom.Point(hx + 3.3, -18),
+          new Phaser.Geom.Point(hx + 4.0, -12.4),
+        ],
+        true
+      );
+      g.fillStyle(0x05060a, 0.82); // the dark inside the hood
+      g.fillEllipse(hx, hy + 0.2, 3.4, 4.2);
+      g.fillStyle(S.robeLit, 0.75); // a rim of light on the hood's crest
+      g.fillEllipse(hx - 1.5, -18.3, 2.2, 2.0);
+    } else {
+      // hair: a cap over the crown, then carve the face back out beneath it
+      g.fillStyle(S.hair, 1);
+      g.fillEllipse(hx, hy - 1.3, 6.2, 4.2);
+      g.fillRect(hx - 3.1, hy - 1.5, 6.2, 2.0);
+      g.fillStyle(S.skin, 1);
+      g.fillEllipse(hx + 0.2, hy + 0.9, 4.2, 3.5);
+      g.fillStyle(S.skinShade, 1);
+      g.fillEllipse(hx + 1.3, hy + 1.0, 1.9, 3.1);
+      if (S.beard) {
+        g.fillStyle(S.hair, 1);
+        g.fillEllipse(hx, hy + 2.5, 4.0, 3.0);
+      }
+      g.fillStyle(0x0c0a10, 0.7); // two eye shadows so a face reads
+      g.fillCircle(hx - 0.9, hy + 0.2, 0.5);
+      g.fillCircle(hx + 1.2, hy + 0.2, 0.5);
+    }
+
+    const c = this.add.container(x, y, [g]).setDepth(4.45).setScale(S.scale);
     if (!GameContext.activeProfile?.settings.reducedMotion) {
       this.tweens.add({ targets: c, y: y - 1.2, duration: 1500 + (Math.floor(x * 7) % 700), yoyo: true, repeat: -1, ease: "Sine.inOut" });
     }
@@ -1900,20 +2050,28 @@ export class OverworldScene extends Phaser.Scene {
    * The bow itself is driven collectively on the beat by driveAmbience, so the
    * whole congregation nods to the chorus together (v14.2). */
   private drawWorshipper(x: number, y: number, faceRight: boolean, reduced: boolean, _seed: number): void {
-    this.add.ellipse(x, y + 1, 11, 4, 0x05060a, 0.4).setDepth(4.36);
+    this.add.ellipse(x, y + 1.5, 13, 4.5, 0x05060a, 0.4).setDepth(4.36);
     const lean = faceRight ? 1 : -1;
     // Draw in LOCAL coords so setAngle pivots around the worshipper's ground
     // point (x,y) rather than swinging the shape about the world origin.
     const body = this.add.graphics().setDepth(4.4).setPosition(x, y);
-    // robe: a bowed dome, tilted toward the stone
-    body.fillStyle(0x233039, 1);
-    body.fillEllipse(lean * 1.5, -3, 10, 9);
-    body.fillStyle(0x2f4049, 1); // a rim of cold light along the back
-    body.fillEllipse(-lean * 1.5, -3.5, 6, 8);
-    // bowed head
-    body.fillStyle(0x18232b, 1);
-    body.fillCircle(lean * 3.2, -6, 2.6);
-    body.setAngle(lean * -3);
+    // the robe pooled on the ground where they kneel
+    body.fillStyle(0x1a252e, 1);
+    body.fillEllipse(0, -0.6, 13, 5.5);
+    // hunched back/torso, bowed toward the stone
+    body.fillStyle(0x243139, 1);
+    body.fillEllipse(lean * 1.8, -4.4, 10.5, 9);
+    body.fillStyle(0x30414a, 0.9); // cold rim-light up the curve of the spine
+    body.fillEllipse(-lean * 2.6, -5, 4.2, 8.2);
+    // an arm laid forward toward the obelisk
+    body.fillStyle(0x1c2830, 1);
+    body.fillEllipse(lean * 4.2, -3.4, 5.4, 2.8);
+    // bowed head, and a faint hood crest catching the light
+    body.fillStyle(0x121b22, 1);
+    body.fillCircle(lean * 4.4, -7.4, 2.8);
+    body.fillStyle(0x2a3842, 0.85);
+    body.fillEllipse(lean * 3.9, -9.0, 3.2, 2.3);
+    body.setAngle(lean * -4);
     if (!reduced) this.worshippers.push({ body, lean });
   }
 
