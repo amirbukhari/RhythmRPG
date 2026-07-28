@@ -50,12 +50,12 @@ type FigureSpec = {
   shoulder: number; // shoulder span
 };
 const FIGURE_SPECS: Record<NpcLook, FigureSpec> = {
-  elder: { robe: 0x2f3742, robeLit: 0x46515d, robeDark: 0x1b2028, skin: 0xb99a7e, skinShade: 0x876c55, hair: 0xccd1d6, hood: false, legs: false, staff: true, beard: true, stoop: 1.5, scale: 0.98, shoulder: 8.5 },
-  woman: { robe: 0x4a2f3b, robeLit: 0x6a4553, robeDark: 0x2b1a22, skin: 0xc59a80, skinShade: 0x926e58, hair: 0x281a16, hood: false, legs: false, staff: false, beard: false, stoop: 0, scale: 0.95, shoulder: 7.8 },
-  man: { robe: 0x2c3a44, robeLit: 0x415560, robeDark: 0x18232b, skin: 0xba8f72, skinShade: 0x84634e, hair: 0x22190f, hood: false, legs: true, staff: false, beard: false, stoop: 0, scale: 1.0, shoulder: 9.6 },
-  child: { robe: 0x3f5a3e, robeLit: 0x587659, robeDark: 0x243624, skin: 0xc9a184, skinShade: 0x977256, hair: 0x2f2219, hood: false, legs: true, staff: false, beard: false, stoop: 0, scale: 0.66, shoulder: 7.4 },
-  pilgrim: { robe: 0x2a3742, robeLit: 0x3f505c, robeDark: 0x172029, skin: 0xb2896f, skinShade: 0x80604e, hair: 0x2b251f, hood: false, legs: false, staff: true, beard: false, stoop: 0.7, scale: 0.98, shoulder: 8.2 },
-  hooded: { robe: 0x20222c, robeLit: 0x34394b, robeDark: 0x101018, skin: 0x6a5c50, skinShade: 0x3f362e, hair: 0x24273a, hood: true, legs: false, staff: false, beard: false, stoop: 0, scale: 1.0, shoulder: 8.4 },
+  elder: { robe: 0x2f3742, robeLit: 0x46515d, robeDark: 0x1b2028, skin: 0xa88d72, skinShade: 0x6f5844, hair: 0xccd1d6, hood: false, legs: false, staff: true, beard: true, stoop: 2.1, scale: 0.98, shoulder: 6.6 },
+  woman: { robe: 0x4a2f3b, robeLit: 0x6a4553, robeDark: 0x2b1a22, skin: 0xba8f76, skinShade: 0x7c5c49, hair: 0x281a16, hood: false, legs: false, staff: false, beard: false, stoop: 0.5, scale: 0.95, shoulder: 6.0 },
+  man: { robe: 0x2c3a44, robeLit: 0x415560, robeDark: 0x18232b, skin: 0xac846a, skinShade: 0x6f5340, hair: 0x22190f, hood: false, legs: true, staff: false, beard: false, stoop: 0.4, scale: 1.0, shoulder: 7.2 },
+  child: { robe: 0x3f5a3e, robeLit: 0x587659, robeDark: 0x243624, skin: 0xbe967a, skinShade: 0x836248, hair: 0x2f2219, hood: false, legs: true, staff: false, beard: false, stoop: 0.3, scale: 0.64, shoulder: 6.2 },
+  pilgrim: { robe: 0x2a3742, robeLit: 0x3f505c, robeDark: 0x172029, skin: 0xa5805f, skinShade: 0x6c5142, hair: 0x2b251f, hood: false, legs: false, staff: true, beard: false, stoop: 1.0, scale: 0.98, shoulder: 6.4 },
+  hooded: { robe: 0x20222c, robeLit: 0x34394b, robeDark: 0x101018, skin: 0x6a5c50, skinShade: 0x3f362e, hair: 0x24273a, hood: true, legs: false, staff: false, beard: false, stoop: 0.3, scale: 1.0, shoulder: 6.6 },
 };
 
 // v15.0 chunked ground: the painter emits a manifest describing the chunk
@@ -741,127 +741,146 @@ export class OverworldScene extends Phaser.Scene {
     const lean = S.stoop;
     const g = this.add.graphics();
 
-    // soft contact shadow
-    g.fillStyle(0x05060a, 0.3).fillEllipse(0, 2.5, 12, 3.5);
+    // soft contact shadow (narrow -- they take up little room)
+    g.fillStyle(0x05060a, 0.3).fillEllipse(0, 2.5, 10, 3.2);
 
     // walking staff, planted just ahead of the figure (drawn behind the body)
     if (S.staff) {
-      g.lineStyle(1.5, 0x3a2b1c, 1);
+      g.lineStyle(1.4, 0x3a2b1c, 1);
       g.beginPath();
       g.moveTo(4.4, 2.5);
       g.lineTo(3.6, -18);
       g.strokePath();
-      g.fillStyle(0x574632, 1).fillCircle(3.5, -18.4, 1.7);
+      g.fillStyle(0x574632, 1).fillCircle(3.5, -18.4, 1.6);
     }
 
-    // far arm, shadowed, tucked along the back side
+    // far arm, shadowed, tucked along the back side -- thin and bony
     g.fillStyle(S.robeDark, 1);
-    g.fillRoundedRect(lean - 5.3, -11.4, 2.4, 7.4, 1.1);
+    g.fillRoundedRect(lean - 4.4, -11.2, 1.8, 7.6, 0.9);
 
     // lower body: legs + short tunic, or a floor-length robe
     if (S.legs) {
       g.fillStyle(S.robeDark, 1);
-      g.fillRoundedRect(-3.0, -6.4, 2.7, 6.8, 1); // back leg
+      g.fillRoundedRect(-2.5, -6.4, 2.0, 6.8, 0.9); // back leg
       g.fillStyle(S.robe, 1);
-      g.fillRoundedRect(0.4, -6.4, 2.7, 6.8, 1); // front leg
+      g.fillRoundedRect(0.5, -6.4, 2.0, 6.8, 0.9); // front leg
       g.fillStyle(0x141110, 1); // shoes
-      g.fillEllipse(-1.7, 0.7, 3.6, 1.9);
-      g.fillEllipse(2.0, 0.7, 3.6, 1.9);
+      g.fillEllipse(-1.4, 0.7, 3.2, 1.8);
+      g.fillEllipse(1.7, 0.7, 3.2, 1.8);
     } else {
-      g.fillStyle(S.robe, 1); // robe flared to the ground
+      g.fillStyle(S.robe, 1); // robe hanging off a thin frame
       g.fillPoints(
         [
-          new Phaser.Geom.Point(-4.4, -12),
-          new Phaser.Geom.Point(4.4, -12),
-          new Phaser.Geom.Point(3.2, -7),
-          new Phaser.Geom.Point(6.2, 1.2),
-          new Phaser.Geom.Point(-6.2, 1.2),
-          new Phaser.Geom.Point(-3.2, -7),
+          new Phaser.Geom.Point(-3.7, -12),
+          new Phaser.Geom.Point(3.7, -12),
+          new Phaser.Geom.Point(2.5, -7),
+          new Phaser.Geom.Point(5.2, 1.2),
+          new Phaser.Geom.Point(-5.2, 1.2),
+          new Phaser.Geom.Point(-2.5, -7),
         ],
         true
       );
-      g.fillStyle(S.robeDark, 0.55); // a fold shadow down the center
-      g.fillTriangle(0.6, -7, 2.4, 1.2, -1.2, 1.2);
+      g.fillStyle(S.robeDark, 0.5); // fold shadows down the hanging cloth
+      g.fillTriangle(0.5, -7, 2.1, 1.2, -1.0, 1.2);
+      g.fillRect(lean - 2.6, -6.5, 0.7, 7); // a slack side fold
+      g.fillStyle(S.robeLit, 0.35);
+      g.fillRect(-1.3, -6, 0.6, 6.4); // a thread of light on a raised fold
     }
 
-    // torso, tapered from shoulders to waist and tipped forward by the lean
+    // torso, narrow and hollow, tipped forward by the lean
     const tx = lean * 0.3;
     g.fillStyle(S.robe, 1);
     g.fillPoints(
       [
-        new Phaser.Geom.Point(-4.3 + tx, -12),
-        new Phaser.Geom.Point(4.3 + tx, -12),
-        new Phaser.Geom.Point(3.0, -6.4),
-        new Phaser.Geom.Point(-3.0, -6.4),
+        new Phaser.Geom.Point(-3.4 + tx, -12),
+        new Phaser.Geom.Point(3.4 + tx, -12),
+        new Phaser.Geom.Point(2.1, -6.4),
+        new Phaser.Geom.Point(-2.1, -6.4),
       ],
       true
     );
     g.fillStyle(S.robeLit, 0.9); // cool rim-light down the front-left edge
     g.fillPoints(
       [
-        new Phaser.Geom.Point(-4.3 + tx, -12),
-        new Phaser.Geom.Point(-2.1 + tx, -12),
-        new Phaser.Geom.Point(-1.4, -6.4),
-        new Phaser.Geom.Point(-3.0, -6.4),
+        new Phaser.Geom.Point(-3.4 + tx, -12),
+        new Phaser.Geom.Point(-1.7 + tx, -12),
+        new Phaser.Geom.Point(-1.1, -6.4),
+        new Phaser.Geom.Point(-2.1, -6.4),
       ],
       true
     );
+    g.fillStyle(S.robeDark, 0.4); // a hollow-chest shadow down the sternum
+    g.fillRect(tx - 0.4, -11, 0.8, 4.4);
 
-    // shoulders / collar
+    // narrow, bony shoulders
     g.fillStyle(S.robeLit, 1);
-    g.fillEllipse(tx, -12, S.shoulder, 3.4);
+    g.fillEllipse(tx, -12, S.shoulder, 2.9);
+    g.fillStyle(S.robeDark, 0.45); // hollow above the collarbone
+    g.fillEllipse(tx, -10.6, S.shoulder * 0.68, 1.3);
 
-    // near arm, across the front
+    // near arm, across the front -- thin, ending in a bony hand
+    const ax = 2.2 + lean * 0.4;
     g.fillStyle(S.robe, 1);
-    g.fillRoundedRect(2.7 + lean * 0.4, -11.4, 2.5, 7.1, 1.1);
-    g.fillStyle(S.robeLit, 0.45);
-    g.fillRoundedRect(2.7 + lean * 0.4, -11.4, 1.1, 7.1, 1.1);
+    g.fillRoundedRect(ax, -11.2, 1.9, 6.9, 0.9);
+    g.fillStyle(S.robeLit, 0.4);
+    g.fillRoundedRect(ax, -11.2, 0.9, 6.9, 0.9);
+    g.fillStyle(S.skinShade, 1); // the hand
+    g.fillEllipse(ax + 0.95, -3.9, 1.9, 1.7);
 
-    // neck
+    // a long, thin neck (gaunt) with a hollow at the throat
+    g.fillStyle(S.skin, 1);
+    g.fillRect(lean - 0.9, -15.2, 1.8, 3.4);
     g.fillStyle(S.skinShade, 1);
-    g.fillRect(lean - 1.1, -15, 2.2, 3);
+    g.fillEllipse(lean, -12.1, 2.2, 1.2);
 
-    // head (skin), with a shaded far cheek
+    // head (skin) -- narrower skull, sunken far cheek + temple hollow
     const hx = lean;
     const hy = -16.6;
     g.fillStyle(S.skin, 1);
-    g.fillCircle(hx, hy, 2.9);
+    g.fillCircle(hx, hy, 2.7);
     g.fillStyle(S.skinShade, 1);
-    g.fillEllipse(hx + 1.2, hy + 0.3, 2.3, 4.4);
+    g.fillEllipse(hx + 1.1, hy + 0.4, 2.1, 4.6); // hollow far cheek
+    g.fillEllipse(hx + 1.5, hy - 1.1, 1.4, 1.7); // temple hollow
 
     if (S.hood) {
       // full cowl: cloth over the crown, the face lost in interior shadow
       g.fillStyle(S.hair, 1);
       g.fillPoints(
         [
-          new Phaser.Geom.Point(hx - 4.0, -12.4),
-          new Phaser.Geom.Point(hx - 3.3, -18),
-          new Phaser.Geom.Point(hx, -20.4),
-          new Phaser.Geom.Point(hx + 3.3, -18),
-          new Phaser.Geom.Point(hx + 4.0, -12.4),
+          new Phaser.Geom.Point(hx - 3.7, -12.4),
+          new Phaser.Geom.Point(hx - 3.1, -18),
+          new Phaser.Geom.Point(hx, -20.3),
+          new Phaser.Geom.Point(hx + 3.1, -18),
+          new Phaser.Geom.Point(hx + 3.7, -12.4),
         ],
         true
       );
-      g.fillStyle(0x05060a, 0.82); // the dark inside the hood
-      g.fillEllipse(hx, hy + 0.2, 3.4, 4.2);
+      g.fillStyle(0x05060a, 0.84); // the dark inside the hood
+      g.fillEllipse(hx, hy + 0.2, 3.1, 4.2);
       g.fillStyle(S.robeLit, 0.75); // a rim of light on the hood's crest
-      g.fillEllipse(hx - 1.5, -18.3, 2.2, 2.0);
+      g.fillEllipse(hx - 1.4, -18.3, 2.0, 1.9);
     } else {
-      // hair: a cap over the crown, then carve the face back out beneath it
+      // hair: a cap over the crown, then carve a gaunt face out beneath it
       g.fillStyle(S.hair, 1);
-      g.fillEllipse(hx, hy - 1.3, 6.2, 4.2);
-      g.fillRect(hx - 3.1, hy - 1.5, 6.2, 2.0);
+      g.fillEllipse(hx, hy - 1.4, 5.7, 4.0);
+      g.fillRect(hx - 2.85, hy - 1.6, 5.7, 1.9);
       g.fillStyle(S.skin, 1);
-      g.fillEllipse(hx + 0.2, hy + 0.9, 4.2, 3.5);
-      g.fillStyle(S.skinShade, 1);
-      g.fillEllipse(hx + 1.3, hy + 1.0, 1.9, 3.1);
+      g.fillEllipse(hx + 0.2, hy + 1.0, 3.5, 3.3); // narrow jaw
+      g.fillStyle(S.skinShade, 1); // hollow cheeks (both sides)
+      g.fillEllipse(hx + 1.2, hy + 1.1, 1.6, 3.0);
+      g.fillStyle(S.skinShade, 0.6);
+      g.fillEllipse(hx - 1.2, hy + 1.4, 1.2, 2.0);
+      g.fillStyle(S.skin, 1); // a catchlight on the near cheekbone
+      g.fillEllipse(hx - 0.7, hy + 0.1, 1.3, 1.1);
       if (S.beard) {
-        g.fillStyle(S.hair, 1);
-        g.fillEllipse(hx, hy + 2.5, 4.0, 3.0);
+        g.fillStyle(S.hair, 1); // a thin, straggly beard
+        g.fillEllipse(hx, hy + 2.6, 3.3, 2.7);
       }
-      g.fillStyle(0x0c0a10, 0.7); // two eye shadows so a face reads
-      g.fillCircle(hx - 0.9, hy + 0.2, 0.5);
-      g.fillCircle(hx + 1.2, hy + 0.2, 0.5);
+      g.fillStyle(0x0c0a10, 0.5); // a sunken shadow band across the eye sockets
+      g.fillEllipse(hx, hy + 0.15, 3.6, 1.5);
+      g.fillStyle(0x0c0a10, 0.85); // deep-set eyes
+      g.fillCircle(hx - 0.9, hy + 0.2, 0.55);
+      g.fillCircle(hx + 1.1, hy + 0.2, 0.55);
     }
 
     const c = this.add.container(x, y, [g]).setDepth(4.45).setScale(S.scale);
@@ -920,24 +939,51 @@ export class OverworldScene extends Phaser.Scene {
   }
 
   private showDialoguePanel(): void {
+    // Fully tear down the previous panel (container.destroy() takes its child
+    // text objects with it) so nothing from the last line lingers underneath.
     this.dialoguePanel?.destroy();
-    const panelW = Math.min(BASE_WIDTH - 20, 240);
-    const panel = this.add.nineslice(0, 0, "ui_panel", undefined, panelW, 46, 5, 5, 5, 5);
+    this.dialoguePanel = null;
+
+    const PAD = 9;
+    const GAP = 3;
+    const panelW = Math.min(BASE_WIDTH - 16, 236);
+    const wrapW = panelW - PAD * 2;
+
+    // Build the children left-aligned inside the padding, measure the wrapped
+    // body, then size the panel to fit name + body + hint (auto-height: long
+    // lines grow the box instead of spilling out of a fixed 46px frame).
     const name = this.add
-      .text(-panelW / 2 + 8, -18, this.dialogueName.toUpperCase(), { fontFamily: "monospace", fontSize: "7px", color: "#f4d27a" })
-      .setOrigin(0, 0.5);
+      .text(0, 0, this.dialogueName.toUpperCase(), { fontFamily: "monospace", fontSize: "7px", color: "#f4d27a" })
+      .setOrigin(0, 0);
     const body = this.add
-      .text(0, -4, this.dialogueLines[this.dialogueIdx], { fontFamily: "monospace", fontSize: "7px", color: "#e8e2d4", align: "center", wordWrap: { width: panelW - 18 } })
-      .setOrigin(0.5, 0);
+      .text(0, 0, this.dialogueLines[this.dialogueIdx], {
+        fontFamily: "monospace",
+        fontSize: "7px",
+        color: "#e8e2d4",
+        align: "left",
+        lineSpacing: 2,
+        wordWrap: { width: wrapW, useAdvancedWrap: true },
+      })
+      .setOrigin(0, 0);
     const more = this.dialogueIdx < this.dialogueLines.length - 1;
     const hint = this.add
-      .text(panelW / 2 - 8, 18, more ? "E ▸" : "E ✕", { fontFamily: "monospace", fontSize: "6px", color: "#9fb0c0" })
-      .setOrigin(1, 0.5);
-    this.dialoguePanel = this.pinToScreen(
-      this.add.container(BASE_WIDTH / 2, BASE_HEIGHT - 32, [panel, name, body, hint]).setDepth(26),
-      BASE_WIDTH / 2,
-      BASE_HEIGHT - 32
-    );
+      .text(0, 0, more ? "E ▸" : "E ✕", { fontFamily: "monospace", fontSize: "6px", color: "#9fb0c0" })
+      .setOrigin(1, 1);
+
+    const nameH = 9;
+    const hintH = 8;
+    const panelH = PAD + nameH + GAP + body.height + GAP + hintH + PAD - 6;
+    const panel = this.add.nineslice(0, 0, "ui_panel", undefined, panelW, panelH, 5, 5, 5, 5).setOrigin(0, 0);
+
+    name.setPosition(PAD, PAD - 1);
+    body.setPosition(PAD, PAD + nameH + GAP);
+    hint.setPosition(panelW - PAD, panelH - PAD + 3);
+
+    // Anchor the (top-left origin) panel bottom-centered, clear of the HUD.
+    const px = Math.round((BASE_WIDTH - panelW) / 2);
+    const py = Math.round(BASE_HEIGHT - panelH - 8);
+    const container = this.add.container(px, py, [panel, name, body, hint]).setDepth(26);
+    this.dialoguePanel = this.pinToScreen(container, px, py);
     this.repositionPinned();
   }
 
@@ -2057,20 +2103,24 @@ export class OverworldScene extends Phaser.Scene {
     const body = this.add.graphics().setDepth(4.4).setPosition(x, y);
     // the robe pooled on the ground where they kneel
     body.fillStyle(0x1a252e, 1);
-    body.fillEllipse(0, -0.6, 13, 5.5);
-    // hunched back/torso, bowed toward the stone
+    body.fillEllipse(0, -0.6, 11.5, 5);
+    // hunched back/torso, bowed toward the stone -- thin and starved
     body.fillStyle(0x243139, 1);
-    body.fillEllipse(lean * 1.8, -4.4, 10.5, 9);
-    body.fillStyle(0x30414a, 0.9); // cold rim-light up the curve of the spine
-    body.fillEllipse(-lean * 2.6, -5, 4.2, 8.2);
-    // an arm laid forward toward the obelisk
+    body.fillEllipse(lean * 1.9, -4.4, 8.4, 8.8);
+    body.fillStyle(0x1a242c, 0.5); // a hollow shadow down the curled spine
+    body.fillEllipse(lean * 1.2, -4.2, 2.0, 7.4);
+    body.fillStyle(0x30414a, 0.9); // cold rim-light up the curve of the back
+    body.fillEllipse(-lean * 2.4, -5, 3.4, 7.8);
+    // a thin arm laid forward toward the obelisk, a bony hand at its end
     body.fillStyle(0x1c2830, 1);
-    body.fillEllipse(lean * 4.2, -3.4, 5.4, 2.8);
+    body.fillEllipse(lean * 4.0, -3.2, 5.0, 2.2);
+    body.fillStyle(0x0f1720, 1);
+    body.fillEllipse(lean * 6.0, -2.8, 1.8, 1.6);
     // bowed head, and a faint hood crest catching the light
     body.fillStyle(0x121b22, 1);
-    body.fillCircle(lean * 4.4, -7.4, 2.8);
+    body.fillCircle(lean * 4.3, -7.4, 2.5);
     body.fillStyle(0x2a3842, 0.85);
-    body.fillEllipse(lean * 3.9, -9.0, 3.2, 2.3);
+    body.fillEllipse(lean * 3.8, -9.0, 2.9, 2.1);
     body.setAngle(lean * -4);
     if (!reduced) this.worshippers.push({ body, lean });
   }
