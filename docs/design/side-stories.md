@@ -51,31 +51,31 @@ understand it.** These deepen; they never gate.
 
 ## The Climber — the one thread that spans the world
 
-**The single most valuable thing in this document.** Five marks, one per region,
-left by the last person to refuse a rule and leave the Fold — generations before
-Mir, walking this exact route, carrying a child.
+**The single most valuable thing in this document.** Five marks, laid along the
+whole route, left by the last person to refuse a rule and leave the Fold —
+generations before Mir, walking this exact path, carrying a child.
 
-He is the **Conductor**, and the player fights him in the Keep. Nothing ever says
-so. The marks are just marks. But a player who has found all five walks into that
-pit already knowing who is holding the baton, and that fight becomes the best
-scene in the game for them and a merely good one for everyone else.
+He is **the Harrow**, the man Mir meets at the den at the end of the Scar
+(world-bible §5). Nothing ever says so. The marks are just marks. But a player
+who has been following them walks into that den already knowing, and that scene
+becomes the best in the game for them and a merely good one for everyone else.
 
-The through-line is **the notches** — a climber's habit, a mark cut at each stage
-to measure a child's height against. Same tool, same hand, five times, climbing.
+The through-line is **the notches** — a mark cut at each stage to measure a
+child's height against. Same tool, same hand, five times, climbing.
 
 | # | Region | The mark | What it says without saying it |
 |---|---|---|---|
-| 1 | **The Fold** | A doorframe at the back of an abandoned house, two notches cut in it — an adult's height, and a small one. Fresh cuts, old wood, no dust in the grooves. | Someone measured a child here, in a town where children do not grow. Which means they expected the number to change. |
-| 2 | **The Kelp Shelf** | The same two notches on a mast, at the same heights. A third cut started and abandoned halfway. | He is still measuring. Nothing has moved. He is trying anyway. |
-| 3 | **The Breach** | On a ticket booth post: the small notch, cut **higher**. Beside it, scratched hard enough to split the wood: a single vertical stroke. | Air. The boy grew, the first time anything in this world ever did — and the mark for it is a slash, because whoever cut it had no word. |
-| 4 | **The Scar** | Notches on a den post, four of them now, climbing. Then a fifth cut *below* the others, deep, gouged over and over in the same groove until the post is nearly through. | The measurements stopped. What happened after that is in how many times the knife went into that one line. |
-| 5 | **The Keep** | On the pit's back wall, behind the stands, where a conductor would stand with his back to it: the same two original notches, cut fresh into new stone. Adult, and small. Recut, recently, hundreds of times, one over the other, the wall worn hollow. | He is still measuring a child who is not there. He has been doing it for generations. He starts every rehearsal by cutting the same two marks. |
+| 1 | **The Fold** | A doorframe at the back of an abandoned house: two notches, an adult's height and a small one. Fresh cuts in old wood, no dust in the grooves. | Someone measured a child here, in a town where children do not grow. Which means they expected the number to change. |
+| 2 | **The Kelp Shelf** | The same two notches on a mast, at the same heights. A third cut started and abandoned halfway. | Still measuring. Nothing has moved. Trying anyway. |
+| 3 | **The Breach** | On a ticket-booth post: the small notch, cut **higher**. Beside it, scratched hard enough to split the wood, a single vertical stroke. | Air. The boy grew — the first time anything in this world ever did — and the mark for it is a slash, because whoever cut it had no word for it. |
+| 4 | **The Scar, early** | On a survey stake at the edge of the first dig: four notches now, climbing, each a good hand apart. The stake is driven into ground that has been turned over and raked flat. | He kept measuring for a while up here. And he was already digging. |
+| 5 | **The Scar, the den** | On the doorpost, the same two original heights — adult, and small — cut fresh, over and over, one on top of the other, for so long the post is worn hollow and has been replaced at least twice. | He is still measuring a child who is not there. He has been doing it for generations. He starts every day by cutting the same two marks. |
 
-**Design notes.** All five are silent — no text, ever, including the fifth. Same
+**Design notes.** All five are silent — no text, ever, including the last. Same
 prop kit, same cut angle, so they read as one hand. Each is off the critical path
 and takes real curiosity. Nothing tracks them, nothing counts them, no achievement
-fires. If a player finds only #5 it is a strange detail; if they found #1 first it
-is a knife.
+fires. If a player finds only #5 it is a strange detail at a doorway; if they
+found #1 first it is a knife.
 
 ---
 
@@ -241,8 +241,13 @@ the road. Somebody is still maintaining the meeting point.
 
 ## The Scar
 
-The surface. Its stories are about **searching**, and about the thing the region
-keeps quietly proving: that whatever takes things up here is careful.
+The surface — and the region with a second meaning. On the way in it reads as
+monster country. On the way out, after the den, the player knows the gouges are
+tool marks and the whole waste is **one man's search** (world-bible §6.4).
+
+Its vignettes have to work twice: sinister on first read, unbearable on second.
+Stage them so nothing has to be re-lit or re-dressed — the *same object* means
+something else once you have met him.
 
 **S1 — The Collector's Shelf** *(silent)*
 *Staging:* inside the den, a shelf of small objects arranged by size — a shoe, a
@@ -282,7 +287,31 @@ Nothing happens here. There is no reward, no echo, no marker, no fight. It is th
 thing Mir is climbing for, in miniature, and it is placed where only a player who
 has stopped hurrying will ever stand in it.
 
-**S7 — The Gentle Trail** *(silent — the evidence, laid out)*
+**S7 — The Grid** *(silent — reads twice)*
+*Staging:* from a rise, a long view over a stretch of the Scar. First read: random
+devastation. Held for a second: the gouges run in **parallel lines**, evenly
+spaced, turned at the ends like ploughed furrows, and the burned rings sit at
+regular intervals along them. Somebody has been working this ground methodically
+for a very long time.
+The single most important vignette in the region and the one that makes the den
+land. Place it where the camera naturally rests, and never point at it.
+
+**S8 — The Tools** *(silent)*
+*Staging:* a cache under an overhang — dozens of digging tools, worn down to
+stubs, arranged by how much is left of them. The oldest are worn to the socket.
+Nobody replaces a tool that many times unless they have been doing one job for
+longer than tools last.
+
+**S9 — The Sorted Pits** *(silent — near the den)*
+*Staging:* rows of shallow pits, and beside them everything small that has been
+dug out of this ground, laid out on cloth. Sorted by size, then by kind. Shoes.
+Buttons. Bones too small to be an adult's. All of it clean. All of it kept.
+None of it thrown away.
+*(This is the Harrow's, not Lunal's — see S1 for hers. His is a landscape; hers
+is a room. Do not let the two collections look alike: his is exhaustive and
+unsorted-by-meaning, hers is chosen.)*
+
+**S10 — The Gentle Trail** *(silent — the evidence, laid out)*
 *Staging:* a long stretch where the two sets of prints run side by side. The
 small ones wander. The adult ones stop *every time the small ones stop*, and wait,
 and go on. At one point the small set climbs onto a rock and the adult set circles
@@ -293,29 +322,37 @@ for an hour.
 
 ## The Keep
 
-The hall. Its stories are about **not being able to stop**, and they are all in
-the Conductor's orbit.
+A drowned hall that Lunal found empty and took. Its dead are **dressing, not
+characters** — nobody in this room is anybody's story, which is exactly why she
+chose it. The region's vignettes are about a woman living alone somewhere
+enormous while she builds one small thing.
 
-**H1 — The Blank Pages** *(silent)*
-*Staging:* every stand in the pit holds sheet music. Every sheet is blank. The
-stack beside the podium is not blank — it is enormous, thousands of pages, every
-one of them a full score, every one of them scored through end to end in a single
-diagonal stroke.
+**H1 — The Performance** *(silent)*
+*Staging:* the hall drowned mid-performance. Stands, chairs, instruments, all
+still in position, all still facing the same way. The house seats are full. Not
+one of them is turned toward an exit.
+Beautiful, and it means nothing. Resist every temptation to give it a story — the
+Keep's power is that it is a magnificent room where nothing happened, containing
+one small room where everything did.
 
-**H2 — The Last Row** *(silent)*
-*Staging:* the back row of the orchestra is the only one whose players are
-intact, seated, and in position. Their chairs are bolted to the floor. The bolts
-are new. They are the only ones who ever got it right and he has never let them
-leave.
+**H2 — The Swept Aisle** *(silent)*
+*Staging:* the hall is filthy, silted, undisturbed — except one path. A single
+route, swept clean, from a side door to the stage and back. Walked so many times
+the stone is dished. She has been here a long time and she has only ever needed
+to go one place.
 
-**H3 — The Clocks** *(silent)*
-*Staging:* the hall is full of clocks, all stopped, all at different times.
-They are not decorative — each one is mounted directly above a seat in the
-orchestra. The occupied seats have clocks. The empty ones have nails.
+**H3 — Her Camp** *(silent)*
+*Staging:* in a wing off the stage, where she actually lives: a bedroll, a lamp,
+a cooking pot, and nothing else — no chair, no table, no comfort of any kind. She
+built a warm room with a rug and a cup and a wooden animal in it, forty feet
+away, and gave herself a stone floor.
 
-**H4 — The Measuring Wall** *(silent — Climber #5)*
-See **The Climber**, above. The two notches, recut into the stone until the wall
-is hollow.
+**H4 — The Barred Door** *(silent)*
+*Staging:* the hall's main doors, barred — from the inside, with an enormous
+amount of work, timber hauled from somewhere else entirely and fitted properly.
+Every other entrance to the building is barred the same way. She did not fortify
+this place against a monster. She fortified it against **a rule**, and against
+one man she knew was coming.
 
 **H5 — The Room** *(silent — and it is the whole game)*
 *Staging:* the cage, before the fight, seen from below through the stage boards:
@@ -342,20 +379,25 @@ hers looks like love, because it is.
 | The Fold | 4 | 2 | 0 | 6 *(+1 NPC)* |
 | The Kelp Shelf | 4 | 1 | 1 | 6 |
 | The Breach | 4 | 2 | 0 | 6 |
-| The Scar | 6 | 1 | 0 | 7 |
+| The Scar | 9 | 1 | 0 | 10 |
 | The Keep | 5 | 1 | 0 | 6 |
-| **The Climber** | 5 | 0 | 0 | 5 *(one per region)* |
-| **Total** | **28** | **7** | **1** | **36** |
+| **The Climber** | 5 | 0 | 0 | 5 |
+| **Total** | **31** | **7** | **1** | **39** |
 
-Roughly 78% silent, which is the right ratio. The previous canon ran ~55 echo
+Roughly 80% silent, which is the right ratio. The previous canon ran ~55 echo
 lines and zero silent vignettes; that inversion is the point of this document.
 
-**Retired with the cosmology:** every old echo about the hum, the note, the
-accumulated grief, the song that owns voices, the chorus resting, and the
-Conductor-as-machinery. Those lines were explaining a system that no longer
-exists. The ones worth keeping — the foreman, the ledger, the shoe, the boat
-ring, the collector's shelf, the padded bars — survive here, restaged as physical
-evidence rather than narration.
+The Scar carries the heaviest load (10) because it is the longest region *and*
+because its vignettes do double duty — every one of them has to read as monster
+country on the way in and as one man's search on the way out.
+
+**Retired:** every old echo about the hum, the unresolved note, the accumulated
+grief, the song that owns voices, the chorus resting, and the Conductor's
+orchestra, blank scores, bolted chairs, and rehearsal. The first group explained
+a cosmology that no longer exists; the second belonged to a character who has
+been replaced by a man with a shovel. What survives — the foreman, the ledger,
+the shoe, the boat ring, the collector's shelf, the padded bars — is restaged
+here as physical evidence rather than narration.
 
 ## Open
 
