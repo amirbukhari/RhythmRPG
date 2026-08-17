@@ -12,10 +12,11 @@ now stripped that out:
 - **The Keeping revision** cut the cosmology (an unresolved note, grief-as-time,
   the obelisk's machinery), collapsed the obelisk and the litho into one thing,
   and moved the finale to Lunal — where the actual stakes were the whole time.
-- **This revision** finishes the job. Mir is no longer a guitarist. The Conductor
-  is gone entirely, replaced by a figure whose grief is a *physical object* the
-  player walks through for eleven nodes without knowing it. And the rhythm
-  mechanic is no longer justified in-fiction at all.
+- **This revision** finishes the job. Mir is no longer a guitarist — he is a
+  **clock-keeper**, sedentary and unfit, chosen so the climb costs him instead of
+  equipping him. The Conductor is gone entirely, replaced by a figure whose grief
+  is a *physical object* the player walks through for eleven nodes without
+  knowing it. And the rhythm mechanic is no longer justified in-fiction at all.
 
 The rule that produced all three fixes, worth keeping: **an abstraction is not an
 image.** "He rehearses the same passage forever" cannot be seen, so it cannot
@@ -152,15 +153,38 @@ the game. It is why Mir cannot stop. It is why Lunal cannot be reasoned with.
 
 ### Mir — *up*
 
-A **rigger** — rope, knots, load, moorings — in a town where rope does not fray.
-His trade is quietly obsolete and he does it anyway, the way everyone here does
-their obsolete work, because the alternative is noticing.
+A **clock-keeper.** He maintains the Fold's clocks: the plaza faces, the
+tide-bells, the little bench-work brought to him in cloth by neighbours. He sits
+in a small warm room with tiny tools and a lens, hunched over mechanisms, and he
+has done it every day for as long as he can account for.
 
-He is not chosen, not strong, and not good at anything the game rewards. What he
-has is unglamorous and exactly right for what the story asks of him: he knows
-what a thing weighs, he knows what will hold, and he can carry a load up a bad
-face without killing them both. When he hauls his son up the Kelp Shelf he is
-doing the only competent thing he will do all game.
+**The clocks do not work.** Not one of them in the whole town keeps time or
+agrees with any other. He knows this. He winds them anyway, cleans them, adjusts
+them, hands them back, and takes the next one — and the Fold lets him, and pays
+him, and nobody has ever once said the obvious thing out loud, because his job is
+the town's whole sickness in miniature: **maintaining the fiction that time is
+passing.**
+
+Which means his want is not a metaphor bolted on later. **He spends every day
+trying to make time move inside a box, and failing, and going home to a son who
+is not getting any older.** He is the one person in the Fold with a daily,
+physical, losing relationship with the idea that things should change. That is
+why "I want my son to get older" comes out of him and out of nobody else in town.
+
+And it is why he is **catastrophically the wrong man for this.** He is sedentary,
+soft-handed, indoor, unfit, and forty. He has never climbed anything. He has fine
+motor control and no stamina whatsoever, and every physical thing the game asks
+of him is a thing he has no business doing. He nearly kills them both on the
+Shelf — twice — and Lunal is not exaggerating when she says so at the Keep. She
+watched.
+
+**His only real competence is that he does not stop**, which is not a skill, and
+which is the exact thing the Harrow also has, and which is why they are the same
+man thirty years apart.
+
+**The one thing he takes with him.** A clock-keeper's turning tool — small,
+fine, precise, and useless for absolutely everything on the climb. He carries it
+the whole game for no reason he could defend. See §8.
 
 His answer is **up**. Not because the surface is safe — he has no idea what it
 is, and is wrong about it in every particular — but because up is where the rule
@@ -285,11 +309,14 @@ Ship skeletons standing like a dead forest, every hull pointing up, and the
 salt-wracked remains of a mining town that dug into something and stayed.
 
 Nari is *with him* here, and this region exists to make that hurt later. Small
-prints beside big ones. The boy has to be carried over the bad gaps — and this is
-where Mir's rigging is the only thing keeping them alive, which the player will
-remember when Lunal says he nearly dropped him twice. He talks to Nari constantly
-because he is terrified. This is the last time they are together and the player
-should not know that.
+prints beside big ones. The boy has to be carried over the bad gaps by a man with
+no business carrying anything anywhere — and this is where the two near-drops
+happen, both of them the player's own hands on the controller, both of them
+recoverable, neither of them remarked on. Lunal brings them up at the Keep and
+she is not exaggerating.
+
+He talks to Nari constantly because he is terrified. This is the last time they
+are together and the player should not know that.
 
 ### 6.3 The Breach — *the taking*
 
@@ -387,7 +414,19 @@ prevent what she sincerely believes is his murder.
 
 ## 8. The ending
 
-He gets past her. He opens the room.
+He gets past her. And then — **he does not break the cage open.**
+
+The lock is on the outside, and it is a good one, and Mir sits down in front of
+it with the small turning tool he has carried since the Fold and picks it, the
+way he has opened a thousand mechanisms at a bench in a warm room, with hands
+that are now wrecked. It takes a while. Lunal is behind him on the floor and does
+not stop him. Nari is on the other side of the bars watching a stranger work.
+
+**This is the whole reason he has a sedentary trade.** The climb never once
+rewarded it. It is not a hidden strength and it never saved anybody. It is
+simply the thing he was doing while nothing changed — and it turns out to be what
+opens the only door that mattered. A man whose life's work was fine, patient,
+pointless mechanism, finally with something on the other side of one.
 
 **Nari does not know him at once.** He has been kept a while. That beat is the
 price of the climb and it should be allowed to be ugly for a few seconds.
@@ -465,6 +504,13 @@ bread that never goes stale.
 The horror is in images: a stone baby that speaks a death sentence, clocks that
 do not agree, a room with padded bars, a shelf of small things arranged by size,
 a field of pits with a man still digging, a mother who is right.
+
+**The hands.** The one visual arc that runs the whole game and needs no dialogue.
+Mir starts with a clock-keeper's hands — clean, soft, precise. The Harrow's, when
+Mir finally sees them at the den, are ruined past use: that is what pursuit does
+to a body over generations. By the Keep, Mir's are on their way there. Whatever
+the art register ends up being, portraits and idle poses should be built to carry
+this, because it is the entire character in one place the player can see.
 
 **Naming.** Tagline: *a rhythm of rust and tide*. Soundtrack: six recorded tracks
 by **Inhalants** — *Sunshine Sally*, *Deereater*, *Glassriff*, *John's Anus*,
