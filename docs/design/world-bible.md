@@ -1,420 +1,565 @@
 # World & Story Bible — *The Drowned Chorus*
 
-Status: **canonical** as of 2026-07-24 (the Rite revision). This is the
-narrative and world foundation the game's tone, content, and UX are built on. It
-supersedes the placeholder "Project Meterfall" codename (PRD §18's open naming
-question is resolved here: the game is **The Drowned Chorus**).
+Status: **canonical draft** as of 2026-08-17 (the Keeping revision). Supersedes
+the 2026-07-24 Rite revision.
 
-The world is built from the recorded setlist of the band **Inhalants** — the
-game's world *is* those songs, sunk and given a place. The playable character is
-**Mir** alone (PRD v10.0), but the *story* is a family of three: Mir, his partner
-**Lunal**, and their toddler son **Nari**. (History: an earlier draft cast four
-song-title heroes; v10.0 made it solo; the 2026-07-24 Rite revision moved the
-inciting event *inside* the Fold and made Lunal Nari's mother. Those four old
-names survive only as the soundtrack's songs, §11.)
+**What changed and why.** The previous canon was built in two layers that were
+written years apart in project time: a cosmology derived from the Inhalants
+setlist (an unresolved note, a song made of accumulated grief, a Conductor who
+was the obelisk's machinery), and — much later — a family tragedy about two
+parents who disagree about how to save their son. The second one is the game.
+The first one was scaffolding, and it was doing three harmful things:
 
-**How the story is told.** Almost none of what follows is ever spoken. The game
-narrates through *place* (arena staging, §7), through *ground* (the footprint
-trail, the tracking puzzle, §6.4), through ~55 found **echoes** (§8), and through
-three lines at the very end (§9). This bible is the canon *beneath* all of that.
-The rule is the game's oldest one: **found, not told.**
+1. **It stacked five antagonists in a chain of custody** — chorus → obelisk →
+   litho → Conductor → Lunal-behind-him — so Mir never once faced a will that
+   wanted something *from him*.
+2. **It explained its metaphors as physics.** A note that never resolves, so
+   time can't move. Written down, that stops being eerie and becomes a system
+   with no rules anyone can break, which means nothing is at stake inside it.
+3. **It gave the finale to the wrong person.** The last fight was against
+   someone with no personal stake in Nari, standing in front of the person who
+   did.
+
+This revision cuts the cosmology entirely, collapses the obelisk and the litho
+into one thing, makes **Lunal the final confrontation**, and re-casts the
+**Conductor as the parent who climbed before Mir** — the penultimate fight, and
+a mirror rather than a machine.
+
+> **Pending reconciliation:** PRD §8.6/§8.7 still describe the old
+> Conductor-as-final-boss structure. Encounter structure is deliberately *not*
+> settled in this document — the story is being fixed first. §12 lists what the
+> fight design has to deliver; the PRD updates land once that's approved.
+
+---
+
+## 0. How the story is told (the doctrine)
+
+The old rule was "**found, not told**," applied to everything. That was wrong for
+the main line and right for everything else. The split, now explicit:
+
+**The spine is TOLD.** Mir's story — the rule, the flight, the taking, the
+search, the offer, the choice — is delivered directly and without coyness:
+scripted scenes at the six turning points, NPCs who talk to him and change what
+they say as the story moves, and a climax that is an argument in words before it
+is a fight. If the player can miss it, it isn't the spine. A player who walks the
+critical path and touches nothing optional should finish this game gutted.
+
+**The world is FOUND.** Everything that is not Mir's story is staged physically
+and never narrated: dozens of complete little tragedies that happened in this
+world before he ever walked through it, told in wreckage, arrangement, and
+absence. No pop-ups, no journals, no lore dumps. If the player wants to know what
+happened to the baker's daughter, they can stand where it happened and work it
+out. The catalog is [`side-stories.md`](side-stories.md).
+
+The two layers are not equal and shouldn't be. The spine carries the game. The
+world makes it a place worth being gutted in.
+
+**Corollary — what we do NOT do.** No narrator explaining the world's rules. No
+codex. No character stating the theme out loud (Lunal comes closest, in §7, and
+she's *arguing*, not explaining). Nothing in this bible that isn't dramatized is
+canon that anyone needs to know.
 
 ---
 
 ## 1. Logline
 
-In a drowned town ruled once a year by a new commandment, a stone idol decrees
-that the youngest voice belongs to the deep — so a father runs, carrying his son
-up toward a surface that was never going to save either of them, singing back on
-the beat against the song that wants them both.
+In a drowned town where nothing has changed in living memory, a stone idol
+sentences the one child who was never entered in its ledger — so his father
+carries him up toward the surface, and finds at the top that the person who took
+his son was the boy's own mother, who has built him somewhere he will be safe
+forever, and who is not wrong.
 
-## 2. Premise — the Rite, and the flight from it
+---
 
-At the bottom of a lightless sea lies **the Fold**, a gothic town whose people
-pray to a massive **obelisk**. They did not raise it; they woke on the ocean
-floor and it was already there, already listening. Time is broken here — the
-clocks melt, nothing rots, nothing rests — because the whole drowned realm hums
-one endless composition, **the drowned chorus**, and the obelisk is that chorus
-made monument.
+## 2. The Fold — what the player sees, and what is never explained
 
-The Fold does not merely worship the obelisk. It is *governed* by it. **Once a
-year the obelisk opens, and the litho comes out**: a small, baby-shaped stone
-idol, a child's face with no breath behind it, that speaks a single new **rule**
-into the way-of-living. And the Fold obeys — the way it has obeyed every rule
-before it, back further than anyone can remember, until no one recalls a year
-without a new commandment, or who they were before the commandments. A whole
-people legislated out of their own lives, one rule a year, and grateful for it.
+At the bottom of a lightless sea lies **the Fold**, a gothic town built in the
+silt around a massive **obelisk**. The people of the Fold woke there. None of
+them remember arriving, none of them remember drowning, and none of them find
+that strange, because it happened to all of them and there is no one to compare
+notes with.
 
-**Mir**, his partner **Lunal**, and their toddler son **Nari** live there, and
-pray there, like everyone. Then the obelisk opens, and the litho speaks this
-year's rule: *the unnamed voice is owed to the deep.* It is phrased as law,
-general on its face — but the whole Fold knows at once whose small voice it
-means. The rule will kill Nari.
+Four facts about the Fold. The game states all four plainly and explains none of
+them, ever:
 
-The two parents cannot agree on how to save him, and that disagreement is the
-whole story (§5). Mir chooses the only heresy left: he takes his son and **runs**
-— up out of the Fold, up the drowned Shelf, across the Breach where the world
-crosses the waterline, toward the surface, because up is the one direction the
-rule does not point. He is not climbing toward safety. He is climbing away from a
-lawful execution. And at the top of the climb, the thing that finally takes Nari
-is not a monster of the surface. It is the boy's own mother, saving him her way.
-The rest of the game is a father fighting up through a world he misreads, toward
-a truth that will break him worse than the rule did.
+- **They did not raise the obelisk.** It was there.
+- **Once a year, the obelisk opens, and hands down a rule.** A small stone idol
+  with an infant's face and no breath behind it comes out of the stone, speaks
+  one new commandment into the way of living, and goes back in. The Fold obeys.
+  It has always obeyed. No one can recall a year without a new rule, or a time
+  before the rules, or who they were then.
+- **The deep is owed a voice.** Every rule is small. Most of them are about
+  lamps, or doorways, or which way to face. Every so often one of them names a
+  person, and that person walks out past the last prayer-ring and does not come
+  back, and the Fold calls it a debt paid.
+- **Nothing in the Fold grows.** Bread does not stale. Wounds do not close.
+  Rope does not fray. The clocks in the plaza have hands and no agreement. And
+  the children — the children are the age they have always been. Nari has been
+  three years old for longer than his father can account for, and so has every
+  other child in town, and nobody says so out loud, because saying it out loud
+  would mean asking how long.
 
-## 3. The Chorus and the obelisk — what the world *is*
+That last one is the horror, and it is the whole engine of the story. **The Fold
+is a place where nothing is at risk because nothing is in motion.** The people
+call that peace. It is the exact thing Lunal wants to give her son forever, and
+the exact thing Mir is willing to lose him to escape.
 
-*(Canon subtext. Never stated outright; it's the physics the images obey.)*
+*(Design note: resist every urge to answer "why." Why the obelisk, why the
+tithe, why the stillness — the game does not know, and it is not withholding a
+twist. The images have to behave consistently; they do not have to have a
+mechanism. Anything written here that a player could not deduce from standing in
+the world is a warning sign, not lore.)*
 
-Long ago — or outside of time, which here is the same thing — something sang a
-note that did not resolve: the first phrase of a composition with no ending.
-Because the chord never lands, time cannot move forward; that is why the clocks
-melt and nothing heals. The unresolved note is a kind of gravity that pulls
-things *down*, world after world, sinking into the black — and everything that
-sinks is pressed into the sound. **The chorus is the accumulated grief of
-everything that ever drowned, held open, unable to finish.**
+### 2.1 Why it is called *The Drowned Chorus*
 
-The **obelisk** is the chorus given a face and a jurisdiction. The **rules** are
-how it tightens its hold: each commandment binds the Fold a little further into
-the song, one year at a time, so gently that the people mistake their own
-narrowing for devotion. The **litho** — the baby-shaped idol — is the obelisk's
-mouth. That it wears an infant's face is the cruelest joke in the world: *a stone
-child that legislates the death of a living one.* The obelisk offers the Fold a
-false, breathless baby every year in exchange for their obedience, and this year
-it means to trade it for the real one.
+Not because of a cosmic composition. Because of the **town**. The Fold keeps one
+time: the prayer-drums, the work-songs, the tide-bells, the responses in the
+plaza — everyone on the same beat, every day, the same hymn, for as long as
+anyone can remember. Stand at the edge of town and it sounds like one enormous
+voice that has never once changed key.
 
-Three truths follow, and the whole game rests on them:
+That is the chorus. It is a thing people do, not a thing the universe is.
 
-- **The chorus erases the drowning.** The drowned wake in the Fold not
-  remembering going under — that mercy-theft is the first thing the song takes.
-  It is why the town can pray in peace to the thing that drowned it.
-- **Nari is an *unwritten voice*.** Every other soul in the deep was long ago
-  pressed into the sound; Nari has not been, because he is a child who has only
-  ever been at his parents' heel, sheltered in the deepest, oldest part of the
-  Fold. An unwritten voice is the one thing the chorus does not yet own — and so
-  the one thing it will change a rule to claim.
-- **To resonate against the note is to resist it.** A voice carrying its own
-  unresolved grief beats against the world's and refuses to be absorbed. That is
-  what "singing back on the beat" is, mechanically and literally (§4) — and it is
-  why Mir, a father who will not let go, can fight and climb where the resigned
-  drowned cannot.
+---
 
-## 4. The rhythm is diegetic
+## 3. The rhythm is diegetic (without any metaphysics)
 
-The combat mechanic is the story. A battle is a passage of the drowned chorus;
-every ability is a phrase sung into it. Hitting the beat (PRD §8.3) is **singing
-back** — countering the song; missing lets it take the phrase. The things Mir
-fights are the song made flesh, drowned voices the chorus already owns, each one
-the note reaching to pull him under too.
+The combat mechanic is characterizing, not explanatory.
 
-- **Focus** — a breath held for a difficult line, spent on specials.
-- **Groove** (the swelling meter) — the chorus turning in *Mir's* favour; spent
-  in full on an **ultimate**, a verse loud enough to break the song.
-- **Sightread** — literally *seeing the music*: a forecast of the next bars and
-  the strikes riding them (PRD §8.4's forecast assist).
+**Everything down here moves on the same beat.** The drowned keep the town's
+time even out on the Shelf, even in the Scar — the drifters sway to it, the
+wraiths wind up on it, the tide answers it. That is what living in the Fold does
+to a body. It is why enemy telegraphs land on the grid, and it needs no further
+justification than that.
 
-Grief and rhythm are the same substance here. Mir fights by refusing to miss a
-beat, because that is exactly how he refuses to stop running toward his son.
+**Mir is a guitarist.** The one thing he is genuinely good at is time — pushing
+it, dragging it, landing on it exactly when he means to. He is not resisting a
+cosmic force. He is a frightened man doing the only competent thing he has, and
+the reason he can fight what the drowned cannot is not destiny; it is that they
+are all playing the same part and he can play against it.
 
-## 5. The family — one doomed child, three answers
+- **Focus** — a held breath before a hard line. Spent on specials.
+- **Groove** — his nerve, building. Spent in full on the ultimate: the loudest a
+  scared man gets.
+- **Sightread** — seeing the bar before it arrives. He does this at work.
 
-The rule condemns Nari. Everyone who loves him answers it differently, and the
-tragedy is that none of the answers are villainous at the root — they are three
-kinds of love, and only one of them is survivable.
+The thematic payload comes free and stays unspoken: a man keeping time is a man
+who has not fallen apart yet, and the fights get harder to hold together in
+exactly the places the story does.
 
-### Mir — love as *pursuit*
+---
 
-A guitarist, and a father. When the litho named his son, Mir did not dispute the
-rule; he started packing a bag for the climb. He is not a chosen hero and not
-especially strong — he is simply the one soul in the Fold who would rather commit
-the unthinkable heresy (leave) than perform the unthinkable obedience (hand over
-his boy). He can sing back where the drowned cannot because he has not finished
-drowning: his refusal to let go is an unresolved chord of his own, and it will
-not lie flat against the world's. His kit (light / heavy / special / ultimate /
-dash / parry, PRD §8.2) is verses sung against the chorus; his ultimate is the
-loudest a single voice can get before the song drowns it. He runs, and fights,
-and climbs, and he is *wrong about almost everything* — about what the surface
-is, about what took his son — and he is right about the only thing that matters,
-which is that you do not stop.
+## 4. The rule that starts it
 
-### Lunal — love as *keeping*
+**Mir**, his partner **Lunal**, and their son **Nari** live in the Fold, pray in
+the Fold, and are unremarkable in it.
 
-Nari's mother, Mir's partner. She did not dispute the rule either — she only
-asked where a thing could be hidden that the song could not find. Where Mir
-believes in running, Lunal believes running is a lie: *you cannot outclimb the
-obelisk, and the surface is not freedom.* So she chose the one thing she thought
-could actually work — **to keep him.** To take the boy somewhere the rule and the
-song can never reach, and hold him there, exactly as he is, forever: never given
-to the deep, never grown, never changed, never lost. In her logic the cage is
-*mercy.* *"She doesn't hunt to kill. She hunts to keep."* At the Breach, while
-Mir's back was turned for a single measure, **she is the one who takes Nari** —
-and the boy does not cry out, because the hands that lift him are his mother's.
-She carries him up and away to the Stage and builds him a cage a mother builds:
-padded bars, no door on the inside. She is the antagonist, and she is not wrong
-that the Fold would have killed him. That is what makes her unbearable. Her
-horror is the horror of preservation — **love as taxidermy.** (She is revealed
-only through staging, at the finale — the mask clatters where she stood, PRD
-§8.7. A playable Lunal confrontation is a v2 candidate, §18.)
+The Fold enters its children in the obelisk's **ledger** — a naming, done in the
+plaza, the year a child is judged old enough. It is the town's one real
+ceremony, and it is not optional, and Mir and Lunal have quietly not done it.
+Three times the Cantor has raised it, and three times they have found a reason —
+he's small for it, he's ill that week, next year. Neither of them has ever said
+the real reason out loud to the other, because the real reason is superstitious
+and shameful and true: **they did not want their son written down in that
+thing.**
 
-### The Conductor — love as *endless revision*
+Then the obelisk opens, and this year's rule is:
 
-The obelisk's instrument at the far end of the world, and the final boss (PRD
-§8.7): gaunt, black-coated, a clock where a heart should tick, a baton raised
-over a drowned orchestra. He is the one who actually *makes* the chorus — forever
-*trying to describe a sound* that will not resolve, re-conducting the moment of
-loss over and over, erasing every attempt but the one that came closest. He is
-not the family's enemy by choice; he is the Stage's warden, the machine that
-keeps the drowned song stable. **Lunal did not fight him — she offered him the
-one thing he lacked, a reason to keep playing, and took up the baton behind him**
-(§6.5), turning the Conductor's endless rehearsal into the wall of the fortress
-that holds her son. His three phases are three real attempts at the ending: a
-stable **4/4** that fractures into **3/4**, then a desperate **5/4 → 7/8 → 4/4 →
-3/4** as the composition comes apart. The music falters every time the small one
-in the cage cries — then starts again, angrier. Beat him and the baton comes free
-of Lunal's hand, and the last chord can finally land.
+> *The unnamed voice is owed to the deep.*
 
-### Nari — the unwritten voice
+It is general on its face. It could mean anyone. There is exactly one unnamed
+voice in the Fold, and it is three years old, and it has been three years old for
+a very long time.
 
-Mir and Lunal's toddler son, and the one thing in the deep the chorus does not
-own (§3). He is never an escort objective, an inventory item, or a fail state
-(PRD §8.4) — he is the *reason*, rendered entirely in the world: a small follower
-at Mir's heel through the Fold and the climb, then a footprint trail that ends at
-a scuffle on the surface, then sparse clues, then a cage. Everyone who loves him
-is trying to save him, and being loved by these three, in this world, is its own
-kind of doom.
+**Their love is what marked him.** The one protective thing they did — keeping
+him off the ledger — is the thing that selected him. Both parents understand this
+within a second of hearing the rule, and neither of them ever says it, and it is
+underneath every single thing they do for the rest of the game. It is why Mir
+cannot stop. It is why Lunal cannot be reasoned with.
 
-## 6. The Ascent — regions as movements, and as the shape of the flight
+---
 
-The campaign graph (`opening_biome.json`) is one continuous climb from the
-seafloor to the Stage: **20 fight-nodes** across five regions, and the road tours
-the whole world before it arrives. Each region is a movement of the chorus and a
-stage of the flight. Combat begins only once Mir leaves the Fold; the generator
-*asserts* no fight lands inside the sanctuary — because the Fold's violence is a
-*law*, not a brawl, and the fighting only starts once Mir breaks it.
+## 5. Three answers
 
-| Region | Movement | What it is now | Staged as | Foe |
-|---|---|---|---|---|
-| **The Fold** | *the rule* | home, and the law that condemns the boy | the drowned harvest village + the obelisk rite | *none — Nari still follows* |
-| **The Kelp Shelf** | *the flight* | the climb away from the rule, child in tow | the drowned salt mine | salt-wracked drifters |
-| **The Breach** | *the taking* | the waterline — where Lunal takes Nari | the drowned carnival | drifter packs |
-| **The Scar** | *the wrong search* | the hostile surface; Mir hunts a "monster" | the collector's den | elite wraiths |
-| **The Conductor's Stage** | *the truth* | the mother's fortress and the cage | the drowned concert hall | **the Conductor** (Lunal behind him) |
+The rule condemns the boy. The two people who love him answer it in ways that
+cannot coexist, and a third — met much later — is what happens to a person who
+answered the way Mir is answering and never stopped.
 
-### 6.1 The Fold — the rule
+### Mir — *up*
 
-Mir wakes — has always woken — on the silt among people who pray to the obelisk
-and live by its yearly rules. This is the one region with no combat: the Fold's
-horror is bureaucratic, not martial. The obelisk opens (the town's plaza is built
-around it; it doubles as the game's first save-point and the site of the
-threshold beat). The litho comes out and speaks: *the unnamed voice is owed to
-the deep.* And then the quiet catastrophe of two parents in a house, one packing
-a bag and one testing locks, the child asleep between them. Mir's first step out
-of the Fold fires the threshold beat once (*"THE FOLD BEHIND YOU / The chorus
-begins."*): the moment he stops being a worshipper and becomes a fugitive.
+A guitarist and a father, not chosen and not strong. When the rule was read he
+did not argue it; he started packing.
 
-### 6.2 The Kelp Shelf — the flight
+His answer is **up**. Not because the surface is safe — he has no idea what the
+surface is, and he is wrong about it in every particular — but because up is
+where the rule does not point, and because of the thing he has never been able
+to say in the Fold: **he wants his son to get older.** He wants Nari heavier next
+year than this year. He wants to be argued with, eventually. He has been
+watching a boy not change for longer than he can stand, in a town that calls that
+a blessing, and somewhere underneath the panic about the rule is a much older
+panic that he has never had a word for.
 
-The drowned climb: ship skeletons standing like a dead forest, every wreck that
-ever sank pointing the same way, *up*. Mir carries or leads Nari through it — the
-boy's small prints still beside his on the masts (the follower is still with him
-here; treasure it, it does not last). This is the region of bargains with weight
-and gravity, of *"rope enough to reach the light if you don't weigh anything
-anymore,"* and Mir climbs it badly, because he is carrying the one weight he will
-never set down. Its people are the miners who listened to a singing gallery until
-they turned to salt — the Fold's fate in miniature, and a warning Mir is too
-frightened to hear.
+He is wrong about almost everything in this game — about what the surface is,
+about what took his son, about who he is hunting — and right about the only
+thing that matters, which is that a life has to be allowed to move.
 
-### 6.3 The Breach — the taking
+### Lunal — *keep*
 
-The waterline: the one seam in the world where the drowned dark meets the air,
-thin as a footstep — thin enough that a small thing can slip through it, or be
-carried through it. Staged as a carnival that kept performing after the water
-came. **This is where Nari is taken, and it is Lunal who takes him.** On Mir's
-first step onto the surface the loss beat fires once (*"NARI? / He was right
-behind you."*): Mir turns for a single measure and the boy is simply gone, the
-follower sprite fading, the fact persisted forever on the save. Mir reads it as
-an ambush by the surface. The ground tells the truer story to anyone who studies
-it — the scuffle is two feet, then one, then none; there is no blood; a second,
-adult set of prints reaches the surface *ahead* of theirs. He does not cry out.
-Everything after the Breach is *after* the taking, and Mir spends all of it
-hunting the wrong culprit.
+Nari's mother. She did not argue the rule either. She asked a different question:
+*where can a thing be put that the rule cannot reach it?*
 
-### 6.4 The Scar — the wrong search *(the long middle: 11 nodes)*
+She thinks Mir's answer is a fantasy, and she is largely correct. You cannot
+outrun a town's law by walking; the surface is not a sanctuary, it is a waste
+full of things that will kill a child in a week; and a man carrying a toddler up
+a cliff is a man who will drop him. She has thought about this more carefully
+than he has, which is what makes her terrifying.
 
-The hostile surface, and the heart of the game — a huge ruined monster-strewn
-waste of claw gouges and scorch, where *"the surface does not want you."* The
-Scar's length is the point: despair is long, and a father searching for a stolen
-child will walk a hundred wrong miles. Mir believes a beast took his son to a
-den, and the surface obliges the belief with horrors. The search runs as a real
-progression in the ground (the v12.2 tracking mystery — Nari's gait is learnable:
-paired stride, a heel dot, a faint right-foot drag):
+Her answer is **to keep him.** To find the one place the rule cannot enter, put
+him inside it, and hold it shut. Safe. Whole. Fed. Exactly as he is. Forever —
+and *forever* is not a figure of speech to a woman from a town where nothing
+grows; it is a known, achievable, observed condition. She is not proposing
+something unnatural. She is proposing the Fold, refined, with the tithe removed
+and herself at the door.
 
-- **The Fresh Trail** *(early Scar).* Prints still clear, Mir close behind. Hope
-  with teeth.
-- **The False Trails** *(mid Scar).* Pilgrims' strides, three-toed den-things,
-  single-file decoys that double back. He loses the trail and finds it and loses
-  it — *"they walk IN. Toward the den. Why would he walk toward it?"*
-- **The Den's Mouth** *(late Scar).* The tracks all lead one way and none lead
-  back. A collector's shelf: little things arranged by size. Whatever keeps this
-  place does not *eat* what it takes; it collects. And the clues rot Mir's
-  monster-story from underneath — no blood, prints set down *gently* one at a
-  time, a woman's stride always beside the small ones, *leading, not chasing.*
-  This is where the reader (never Mir, not yet) starts to understand: the keeper
-  is not a beast. The keeper is careful. The keeper is a person who loves him.
+She is not a monster and the game must never let the player file her as one. She
+does not hunt to kill. She hunts to keep. Her horror is the horror of
+preservation, and the reason it lands is that **her plan works.** Nari is alive
+at the end of it. Fed. Unharmed. Three years old.
 
-**The Oasis** *(a secret, off the road).* One impossible thing survives in the
-dead surface: a small pocket of *living* green — warm moss, and a clear spring
-at its heart — the single place the drowning never reached. It rhymes with Nari:
-he is the **unwritten voice**, the one thing the song has not claimed, and the
-oasis is the one ground the song has not drowned. It is never on the critical
-path; a player has to leave the road to find it. Finding it is finding, in
-miniature, the exact thing Mir is climbing to protect — proof that one live
-thing can persist in a world built to sink everything.
+### The Conductor — *what Mir becomes*
 
-*(Design note: the 11 Scar nodes currently draw one fight pool, and the Scar is
-one arena kit — so the long back half plays as one biome. The painted district
-zones (bone fields, sulfur barrens, scorchreach, salt pan, basalt flats, the
-oasis…) make *crossing* it read as varied land; giving those sub-stretches
-distinct fights/foes, and spreading more of the 20 nodes into the other biomes,
-is the campaign-side fix — §10.)*
+Met at the very end, in the pit beneath the Keep. Gaunt, black-coated, a baton,
+an orchestra of the drowned who will not leave him.
 
-### 6.5 The Conductor's Stage — the truth
+He is not the obelisk's instrument, not a machine, and not anyone's servant. He
+is **a parent who climbed this route before Mir did**, generations back — the
+last person to refuse a rule and leave the Fold, before Mir. He got further than
+anyone. He reached the Keep. And he lost the child anyway, somewhere on the way
+or after, and the game never specifies how, because it does not matter and he
+cannot get through the sentence.
 
-A drowned concert plaza and the hall beyond it. Here is the cage, the Conductor
-at his stand, and behind the baton, Lunal — who did not battle her way to the
-Stage but *bargained* her way to it, giving the Conductor a reason to keep
-playing and taking his strings in exchange, so that his endless rehearsal walls
-off the one room in the world the obelisk's rule cannot enter. The Stage poses
-the game's real question as a fight: Lunal is offering Mir *her* answer, made
-real — your son, kept, whole, safe, forever, in the only place the song can't
-touch. To win is to refuse it: to break the Conductor's hold and let the last
-chord land, knowing that landing it ends the stillness that keeps the boy exactly
-as he is. Mir chooses rest over keeping. That choice — a father overruling a
-mother about what love is allowed to do — is the ending.
+What he did instead of stopping: he found the drowned in this hall, and he found
+that they would follow a beat, and he has spent every year since **conducting the
+same passage** — the last few bars he had with his child, over and over,
+adjusting, cutting, trying to get it right. The pages on the stands are blank
+because no attempt has ever been the one. The players never leave because he has
+given them the one thing the Fold never did, which is something to be *for*.
 
-## 7. The untold stories (canonical arena staging)
+He is love as pursuit, continued past the point where it had anywhere to go. He
+is what Mir looks like in thirty years if Mir gets to the top and finds nothing.
+He does not want to fight Mir; he wants him to sit in the pit and play. When Mir
+beats him it should feel like nothing — no triumph, no catharsis, a man putting
+down a mirror.
 
-Each movement is fought inside a place staged to imply a past the game never
-narrates (PRD §11.1.1). Never surfaced as text in-game; it exists so the art
-stays coherent.
+**And Lunal learned from him.** She did not battle her way to the Keep. She got
+here first, found him already rehearsing, and understood him instantly — someone
+else who could not accept a loss. She gave him a reason to keep playing and took
+the run of the hall in exchange. His endless rehearsal is the wall around her
+nursery. She improved on his answer: he keeps a *moment*, she keeps the *boy*.
 
-- **The Fold (the drowned village + the rite).** The village drowned during its
-  harvest festival — the ring of boats was a blessing rite for the fleet; the
-  water came *with* the first verse, and most didn't run. Now the survivors pray
-  to the obelisk they woke to, and once a year it opens and the stone child
-  legislates. One boat still strains at its mooring: the baker's daughter cut
-  everyone else's loose first, and hers ran out of rope — the Fold's whole ethic
-  in one image, self-sacrifice curdled into obedience. Mir is the first in living
-  memory to refuse the rule and leave.
-- **The Kelp Shelf (the salt mine).** Miners broke into a gallery that sang back
-  and stayed to listen; turning to salt is what listening too long *is*, down
-  here. The one statue facing away is the foreman, who covered his ears and ran,
-  and calcified anyway, mid-stride, three steps from the lift.
-- **The Breach (the carnival).** A carnival that kept performing after the water
-  came. The champion's final match was against something that came up through the
-  ring floor; the ropes snapped outward when it left with him. This is the
-  waterline, the seam thin enough that a small thing is carried through. The
-  tipped chairs face away because in the end no one could watch.
-- **The Scar (the collector's den).** The tracks all lead one way, *in*, and none
-  lead back. Whatever keeps this place collects rather than kills, arranged by
-  size. Mir reads it as a monster's larder; the staging quietly contradicts him —
-  the care, the arrangement, the gentleness of it — because it was never a beast.
-  (An older tenant is staged here too: a room boarded from the inside, where
-  someone locked themselves in to transcribe the sound before it finished
-  transcribing them.)
-- **The Conductor's Stage (the concert hall).** The orchestra drowned rehearsing
-  the ending. The Conductor kept conducting; the stands' pages are blank because
-  he erases every attempt but the last row's, the only players who ever got it
-  right and whom he could never let leave. The clocks each stopped at the moment
-  a player gave up. The music falters every time the small one in the cage cries.
-  Behind the baton, a mother watches, and keeps.
+### Nari
 
-## 8. The echoes — the explorable world (PRD §8.8)
+Three years old for an unknown number of years. He is never an escort objective,
+never an inventory item, never a fail state. He is a small follower at his
+father's heel through the Fold and the climb, then a set of footprints, then a
+sound behind a door.
 
-Strewn off the critical path are **~55 echoes** (11 per region) — hand-placed
-lore fragments, each surfacing one line when found (PRD §8.8.2). No echo text is
-ever shown automatically; the player must walk to it and interact. They carry the
-braided threads of the Rite story:
+He should be *specific* — a real toddler, not a symbol. He walks behind Mir for
+no reason except that his father is walking. He has one word he overuses. He is
+frightened of the wrong things and unbothered by the right ones. Every minute the
+player spends with him early is the loan the rest of the game collects on.
 
-- **The Fold** plants the whole engine of the plot before Mir ever leaves: the
-  yearly rite (*"Once a year the obelisk opens and the stone child speaks a new
-  rule. Once a year we obey."*), the litho (*"A baby's face, and no breath behind
-  it."*), the rule (*"The unnamed voice is owed to the deep. We all knew whose
-  small voice it meant."*), and the split (*"One of us wanted to run. One of us
-  wanted to hide him. He slept between us."*).
-- **The Kelp Shelf** is the flight: *"We aren't climbing toward anything. We're
-  climbing away from a rule."* — *"Little prints on the mast beside mine. He was
-  still with me here."*
-- **The Breach** is the taking, seen wrong and seen true: *"The scuffle is two
-  feet, then one, then none."* — *"Whatever lifted him did not frighten him. He
-  did not cry out. That is the part I cannot forgive."*
-- **The Scar** is the wrong search rotting into dread: *"It doesn't eat what it
-  takes. It collects."* — *"Beside the small ones, always: a woman's stride. Not
-  chasing. Leading."*
-- **The Stage** is the truth: *"She doesn't hunt to kill. She hunts to keep."* —
-  *"A mother built it. That is why the bars are padded, and there is no door on
-  the inside."* — *"Land the note and it all resolves — the rule, the song, the
-  cage. Everything gets to rest."*
+---
 
-**Secrets (PRD §8.8.3).** Each region hides at least one non-obvious traversal
-element gating a relic or echo, never critical-path content — hand-placed,
-because a discoverable secret has to be a decision someone made.
+## 6. The climb
 
-## 9. The ending
+Five regions, one continuous ascent. Each is an act, and each one is a stage of
+Mir being wrong in a new way.
 
-Beat the Conductor and the baton comes free of Lunal's hand. Her fortress fails;
-the mask clatters where she stood — grief's keeper unmade, revealed as no
-monster and no huntress but the boy's own mother, who could not tell rescue from
-imprisonment. And with no one left re-conducting the moment of loss, the chorus
-does the one thing it has never been allowed to do: it **lands the last chord.**
-The unresolved note resolves. The composition ends — and the world with it — not
-destroyed, but at last permitted to rest. The rule dies with the song that made
-it. The cage opens because there is no longer a song to keep the boy from.
+| Region | Act | What it is | Foe |
+|---|---|---|---|
+| **The Fold** | *the rule* | home, and the law that names his son | *none — Nari follows* |
+| **The Kelp Shelf** | *the flight* | the climb out, child in tow | salt-wracked drifters |
+| **The Breach** | *the taking* | the waterline — where Nari is taken | drifter packs |
+| **The Scar** | *the search* | the surface; Mir hunts the wrong thing | elite wraiths |
+| **The Keep** | *the offer* | a drowned concert hall, made into a nursery | the Conductor, then Lunal |
 
-The three lines the game actually says:
+### 6.1 The Fold — *the rule*
 
-> *The hall falls silent. A mask clatters where the huntress stood.*
-> *Then — not silence. Rain, far above. And under it, small: a laugh.*
-> *Nari. Found. The chorus rests.*
+No combat. The Fold's violence is procedural, not physical, and the fighting
+only starts once Mir breaks a law.
 
-Personal and cosmic in the same chord: the note landing *is* Nari freed — from
-the rule that condemned him and the cage that "saved" him both at once. Rain far
-above and a small laugh: the surface, air, a child. **Found** does not mean
-un-drowned; it means the family at rest, in a world that finally stopped holding
-everyone open. Whether Lunal is there in the quiet, or only her mask, is left
-exactly as ambiguous as it should be. The world stays open afterward — the echoes
-remain findable — so the ending returns Mir to the drowned world rather than
-hard-stopping: rest, not erasure.
+This region is the loan. It is where the player learns Nari's walk cycle, hears
+the plaza hymn, meets the neighbours, and is taught — flatly, by NPCs who think
+they are describing a comfort — that nothing here changes and everyone is glad.
+It should be slow, warm, and slightly wrong, and the player should like it here.
 
-## 10. Open story threads (design)
+**The Rite** (scripted, opens the game): the obelisk opens, the stone child
+speaks, and the whole plaza understands at once. Then the house: two parents and
+a sleeping boy, one packing a bag, one already gone out the door to arrange
+something she does not explain. They do not have the argument. **That is the
+point** — they each go do their own answer without ever putting it to the other,
+which is the actual failure the entire game is downstream of.
 
-- **The Scar's 20-node arc.** The Scar carries 11 of the 20 fight-nodes but draws
-  a single fight pool, so the long middle plays as one enemy repeated. §6.4
-  defines the intended three sub-stretches (Fresh Trail → False Trails → Den's
-  Mouth); wiring distinct foes/beats/echoes to them is the next content pass, and
-  it is also where the "keeper is a person, not a beast" reveal should build.
-- **The litho / the rite as a set-piece.** The obelisk opening and the litho
-  speaking is currently told only in echoes and staging. A scripted opening beat
-  in the Fold — the rite Mir is fleeing, shown once — is the strongest way to
-  seat the premise before the threshold.
-- **The Lunal fight (v2, §18).** She is revealed only by staging at the finale. A
-  post-Conductor confrontation — a mother, not a monster — is the strongest v2
-  story beat, and the hardest to write kindly.
+**The threshold** (scripted): Mir carries Nari past the last prayer-ring. Behind
+him, the lamps and the hymn. He is now the first person in living memory to
+refuse a rule, and the town's one time no longer applies to him.
 
-## 11. Tone & naming
+### 6.2 The Kelp Shelf — *the flight*
 
-**Tone.** Beautiful-grim. Surreal, poetic, melancholy dread — Blasphemous /
-Hollow-Knight register, not splatter. The horror is in the *images* (a stone baby
-that speaks a death, melting clocks, a cage with padded bars, a trail of small
-prints walking the wrong way) — rendered as gorgeous moody painterly 2D. Minimal
-text; the world speaks through place, sprite, and song.
+The drowned climb. Ship skeletons standing like a dead forest — every hull that
+ever sank down here is pointing the same way, up — and the salt-wracked remains
+of a mining town that dug into something and stayed to listen.
 
-**Naming.**
+Nari is *with him* here, and this region exists to make that hurt later. Small
+prints beside big ones on the masts. The boy has to be carried over the bad gaps.
+Mir talks to him constantly because Mir is terrified. This is the last time they
+are together and the player should not know that.
 
-- **Title:** *The Drowned Chorus*
-- **Tagline:** *a rhythm of rust and tide*
-- **Soundtrack:** six real recorded tracks by the band **Inhalants** (PRD §11.2)
-  — *Sunshine Sally*, *Deereater*, *Glassriff*, *John's Anus*, *Truckers for
-  Christ*, *Quotience*. (These titles were briefly hero names in a retired draft;
-  they are songs, not characters.)
-- Prior codename "Project Meterfall" is retired (kept only in git history and
-  older PRD revision entries).
+### 6.3 The Breach — *the taking*
+
+The waterline: the one seam where the drowned dark meets the air, staged as a
+carnival that kept performing after the water came. Mir crosses it and takes his
+first breath of surface air, and it is agony, and it is the best moment of his
+life.
+
+**Then the taking** (scripted). He turns for one measure — one — and the boy is
+gone. No blood. No struggle worth the name. Nari did not cry out.
+
+Mir reads: ambush. Something up here took my son.
+
+The ground reads differently, and the player is given every piece: the scuffle is
+two feet, then one, then none. A second, adult set of prints reaches the surface
+*ahead* of theirs — someone crossed first and was waiting. And the boy went
+quietly, because the hands that lifted him were hands he knew.
+
+**Everything after this is after the taking**, and Mir spends all of it hunting
+the wrong culprit. The player should be ahead of him, and should hate it.
+
+### 6.4 The Scar — *the search*
+
+The hostile surface, and the long middle of the game: a huge ruined waste of
+claw-gouge and scorch that does not want him. Its length is the point — despair
+is long, and a father looking for a stolen child walks a hundred wrong miles.
+
+The search is a real progression in the ground. Nari's gait is learnable: paired
+stride, a heel dot, a faint right-foot drag. Three stretches:
+
+- **The fresh trail.** Prints clear, Mir close behind, hope with teeth.
+- **The false trails.** Pilgrim strides, three-toed den-things, decoys that
+  double back. He finds it and loses it and finds it. *"They walk toward the den.
+  Why would he walk toward it?"*
+- **The den's mouth.** The tracks all lead one way and none lead back. A shelf of
+  small things arranged by size. Whatever keeps this place does not eat what it
+  takes; it collects.
+
+And the whole time, the clues rot his monster-story from underneath. No blood
+anywhere. Prints set down gently, one at a time, never dragged. And beside the
+small ones, always, a woman's stride — **not chasing. Leading.**
+
+**The reveal is not a twist; it is an arrival.** The player has known since the
+Breach. The drama is watching Mir refuse to know it, and then watching him know
+it — and the game should give him a scene where he sits down on the ground with
+it, alone, and the fight music does not come back for a while.
+
+**The Oasis** *(optional, off the road)*. One pocket of living green in the dead
+surface — warm moss, a clear spring, things visibly *growing*. It is the only
+place in the game where anything is in motion, and it is what Mir is climbing
+for, in miniature, and he will walk past it if the player does not turn off the
+road. No reward but itself.
+
+### 6.5 The Keep — *the offer*
+
+A drowned concert hall. Lunal did not take it by force; she arrived first,
+recognized what was already living in the orchestra pit, and made an arrangement.
+
+**Below: the pit.** The Conductor and his players, mid-rehearsal, as they have
+been for generations. He is glad to see Mir. He has not had a visitor who could
+keep time in a very long time, and he offers him a chair, and the offer is
+sincere and it is the worst thing anyone says to Mir in the whole game. Mir has
+to go through him to reach the stairs, and it is not a triumph; when the music
+finally stops, the silence is the first thing you hear — and then, from the room
+above, a child.
+
+**Above: the stage.** And on it, built where an orchestra used to sit: a room. A
+good one. Warm, lit, stocked, comfortable. **Padded bars, and no door on the
+inside.**
+
+Lunal is not hiding. She has been waiting. She left the trail; she wanted him to
+come; she has wanted, this entire time, for him to walk in, see it, and **agree.**
+
+---
+
+## 7. The climax — the argument, then the fight
+
+The last confrontation is a conversation before it is a fight, and the
+conversation is the point. In brief, and it should be played close to this:
+
+She shows him the boy. Alive, fed, unhurt, three years old, entirely himself. She
+tells him the truth: the Fold would have killed him; the surface would have
+killed him in a week; Mir would have dropped him on the Shelf, and nearly did,
+twice, and she watched. She is right about all of it and Mir knows she is right.
+
+Then she makes the actual offer — which is not "leave," it is **"stay."** Both of
+them. Here. A family, kept, in the one room in the world nothing can get into.
+
+And Mir refuses, and has to say why, and the reason is the hardest thing in the
+game to say out loud: **he wants his son to be able to be lost.** He wants him
+heavier next year. He wants him to get sick, and get better, and get sick again.
+He wants to be argued with when the boy is fifteen, and he wants, eventually, to
+die first — which is a thing that cannot happen to anyone in the Fold, and which
+is the only version of loving someone that Mir can recognize.
+
+Lunal's answer to that, and the last argument she makes, is the true one:
+
+> *"You're choosing a boy who can die. Say it plainly. Say that's what you came
+> all this way to give him."*
+
+And he says yes.
+
+**Then the fight.** She does not try to kill him — she tries to *stop* him, and
+the fight should read that way in its mechanics: holds, blocks, disarms, her body
+between him and the room. Three phases are three arguments, each one after she
+has already lost the last one. She is fighting a man she loves, in front of their
+son, to prevent something she sincerely believes is his murder.
+
+*(Encounter design is deliberately unspecified here — see §12.)*
+
+---
+
+## 8. The ending
+
+He gets past her. He opens the cage.
+
+**Nari does not know him at once.** He has been kept a while. That beat is the
+price of the whole climb and it should be allowed to be ugly for a few seconds.
+
+Lunal does not stop them and cannot. She is not killed; killing her would let the
+player off. She is left in the hall with the empty room, and the last thing she
+says to his back is not a curse — it is the same argument, one more time, because
+she will never be finished with it.
+
+They go up. It rains.
+
+The last lines the game says:
+
+> *He is heavier than he was. That is the first miracle.*
+>
+> *He has never seen rain. He puts out a hand, and pulls it back, and laughs.*
+>
+> *And then he asks me where we're going.*
+>
+> *He has never asked that before. Nothing where we come from was ever going
+> anywhere.*
+>
+> *I don't know, Nari. I don't know. Isn't it good?*
+
+The ending is not a victory over a villain and there is no cosmic resolution to
+be had. A father chose motion over safety on his son's behalf, without his son's
+consent, against the wishes of the boy's mother, and he may have chosen wrong,
+and the rain is falling on all three of them either way. **A child asking where
+they are going is the entire payoff**: a question about the future, from a boy
+who has never had one.
+
+The world stays open afterward. The Fold is still down there, still on the beat,
+still owed a voice next year.
+
+---
+
+## 9. What the game says out loud (the told spine)
+
+Six scripted beats. This is the whole of the direct narration; everything else is
+NPCs, staging, and side stories.
+
+| # | Beat | Where | What it does |
+|---|---|---|---|
+| 1 | **The Rite** | Fold, on new game | The obelisk, the stone child, the rule. Establishes the ledger and the stillness. |
+| 2 | **The House** | Fold, before the threshold | Two parents, one sleeping boy, two plans, no conversation. |
+| 3 | **The Threshold** | Leaving the Fold | He becomes the first heretic in living memory. Nari follows. |
+| 4 | **The Taking** | First step onto the surface | One measure. Gone. No blood. He was not afraid. |
+| 5 | **The Sitting-Down** | Late Scar | Mir finally reads his own evidence. The worst scene in the game, and the one it's for. |
+| 6 | **The Offer** | The Keep, pre-fight | The argument. Her case, his answer, the word *yes*. |
+
+Plus the ending (§8). Note beat 5 has no equivalent in the old canon and is the
+most important addition here: the old story had the reveal happen *to the
+player*, off-screen from Mir, which is why the finale had nothing to land on.
+
+---
+
+## 10. NPCs — the told layer, continued
+
+The Fold is a town, so it is a town of people, and they carry the spine between
+scripted beats. Every significant NPC has beats keyed to story flags
+(`leftFold`, `nariLost`, per-node clears) so the same person says something
+different before Mir leaves, after he leaves, and after the taking.
+
+The load-bearing ones:
+
+- **The Cantor** — the town's faith, entirely sincere, entirely awful. He is the
+  one who kept asking about the ledger. He does not gloat about it, and he
+  should never be written as a hypocrite; his grief for Mir is real, which is
+  worse.
+- **Meret** — a mother who lost a child to a rule three years ago and folded. She
+  is what Lunal refused to become. Her scene after the taking is the game's
+  cruellest kindness.
+- **The Ledger-Keeper** — writes the names. His hands shake now. He has entered
+  every child in the Fold and cannot remember doing most of it.
+- **A neighbour who saw Lunal leave** — plants, before Mir ever goes up, that
+  she went out that night and came back with mud on her boots from somewhere
+  there is no mud. Available early, easy to miss, devastating in retrospect.
+
+---
+
+## 11. Tone
+
+Beautiful-grim, and — new in this revision — **warm where it counts.** The old
+canon was uniformly cold and aphoristic, which is why it read as pastiche. The
+Fold section has to be genuinely lovely or the rest is just misery: neighbours
+who like each other, a boy who is funny, a town with good bread that never goes
+stale.
+
+The horror is in images, not gore: a stone baby that speaks a death sentence,
+clocks that do not agree, a room with padded bars, a shelf of small things
+arranged by size, a mother who is right.
+
+**Naming.** Title: *The Drowned Chorus*. Tagline: *a rhythm of rust and tide*.
+Soundtrack: six recorded tracks by **Inhalants** — *Sunshine Sally*, *Deereater*,
+*Glassriff*, *John's Anus*, *Truckers for Christ*, *Quotience*.
+
+---
+
+## 12. What the fight design has to deliver (open — story-first)
+
+Encounter structure is deliberately unsettled. When it is designed, it has to
+carry these, or the story doesn't land:
+
+1. **The Conductor is an anticlimax on purpose.** Hard fight, no triumph. The
+   reward for winning is silence, and then a sound from upstairs.
+2. **Lunal fights to stop, not to kill.** Her whole kit should read as
+   prevention — holds, walls, disarms, positioning between Mir and the room. A
+   phase that reads as "trying to win" is a design bug.
+3. **Three phases are three arguments**, each one after she has already lost the
+   previous one. Escalation is desperation, not power.
+4. **Nari is visible during the final fight.** In the room, watching his parents.
+   Non-interactive. This is the single strongest staging decision available and
+   the fight should be built around it.
+5. **The player must be able to hesitate.** Whatever the mechanism, refusing to
+   swing at her for a while should be *possible* and should be noticed.
+6. Whether the Conductor and Lunal are two nodes, two phases of one node, or a
+   single continuous ascent from pit to stage is open.
+
+## 13. Open threads
+
+- **The Scar's length.** Eleven of twenty fight nodes are in the Scar drawing one
+  foe pool, so the long middle currently plays as one enemy repeated. §6.4's
+  three stretches (fresh trail → false trails → den's mouth) want distinct foes,
+  distinct ground, and distinct echo clusters.
+- **How much Nari talks.** He needs to be specific enough to miss. Too much and
+  he's a mascot; too little and he's a prop. Erring toward few words, heavily
+  repeated.
+- **Whether Lunal survives in the player's sight.** Currently: left alive in the
+  hall, no confirmation, no epilogue. Tempting to resolve it. Don't.
+- **The Conductor's child.** Never specified — not the loss, not the name, not
+  the ending. Some of the side-story trail (§`side-stories.md`, *The Climber*)
+  brushes against it. It should stay unfinished; he cannot finish the sentence,
+  and neither should the game.
