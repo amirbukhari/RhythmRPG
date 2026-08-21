@@ -1,6 +1,6 @@
 # World & Story Bible — *The Drowned Chorus*
 
-Status: **canonical draft** as of 2026-08-17 (the Harrow revision). Supersedes
+Status: **canonical draft** as of 2026-08-21 (the Harrow revision). Supersedes
 the Keeping revision of the same day, and the 2026-07-24 Rite revision.
 
 **What changed and why.** This canon was originally reverse-engineered from the
@@ -24,9 +24,10 @@ land. A room with padded bars and no door on the inside can be seen in one
 second, and it lands in one second. Every remaining piece of this story has to
 survive that test.
 
-> **Pending reconciliation:** PRD §8.6/§8.7 still describe the retired
-> Conductor-as-final-boss structure. Encounter design is deliberately *not*
-> settled here — story first. §12 lists what the fights have to deliver.
+> **PRD reconciled at v16.0.** §8.4, §8.6, §8.7 (re-spec'd, with §8.7.1 carrying
+> the fight constraints from §12 below), §11.1.1, §11.5, §16.2 and §18 now match
+> this document; the shipped build still runs the retired finale and every gap is
+> itemised in PRD §20.2 item 7.
 
 ---
 
@@ -37,7 +38,7 @@ the main line and right for everything else. The split, now explicit:
 
 **The spine is TOLD.** Mir's story — the rule, the flight, the taking, the
 search, the offer, the choice — is delivered directly and without coyness:
-scripted scenes at the six turning points, NPCs who talk to him and change what
+scripted scenes at the seven turning points (§9), NPCs who talk to him and change what
 they say as the story moves, and a climax that is an argument in words before it
 is a fight. If the player can miss it, it isn't the spine. A player who walks the
 critical path and touches nothing optional should finish this game gutted.

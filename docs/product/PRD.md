@@ -6,11 +6,11 @@
 |---|---|
 | Document title | *The Drowned Chorus* — Browser Rhythm-Action RPG PRD |
 | Working codename | Project Meterfall (historical; the game is titled *The Drowned Chorus*) |
-| Status | **Active v13.2** (2026-07-17). Current shape: a single-player painterly-2D (not pixel-art, §11.1) rhythm-action RPG — **the Ascent**: Mir wakes on the ocean floor in the obelisk-cult Fold, climbs an open world (drowned west → the Breach waterline → the sprawling Scar surface → the Stage), his toddler **Nari** following until lost on the surface; he fights to find him (§1, §8.4, §8.8). The world is an open 112×64 map of organic region territories with elevation relief, a river, and one-off landmarks, told almost entirely in the painted ground plate; all figure art is minimal placeholder glow-shapes since the v11.2 purge (real character art is the open direction). **Full change history: the revision table below.** |
+| Status | **Active v16.0** (2026-08-21). Current shape: a single-player painterly-2D (not pixel-art, §11.1) rhythm-action RPG — **the Ascent**: Mir wakes on the ocean floor in the obelisk-cult Fold, climbs an open world (drowned west → the Breach waterline → the sprawling Scar surface → the Keep), his toddler **Nari** following until taken on the surface; he climbs to find him and discovers his own partner took him (§1, §8.4, §8.7, §8.8). **Story canon was re-cut at v16.0** — see the [world bible](../design/world-bible.md); §8.7 is re-spec'd and the shipped boss content still carries retired names (§20.2). The world is an open 112×64 map of organic region territories with elevation relief, a river, and one-off landmarks, told almost entirely in the painted ground plate; all figure art is minimal placeholder glow-shapes since the v11.2 purge (real character art is the open direction). **Full change history: the revision table below.** |
 | Owner | Amir Bukhari |
 | Author | Amir Bukhari (compiled from concept notes, deep research, and live-play feedback) |
 | Created | 2026-07-08 |
-| Last updated | 2026-07-17 |
+| Last updated | 2026-08-21 |
 | Source material | Concept screenshots + [Deep Research Report](../research/deep-research-report.md) + Skatopia setlist lyrics + six recorded Inhalants tracks + [world bible](../design/world-bible.md) |
 | Distribution | Product, Engineering, Art, Audio, QA, Accessibility |
 | Approval required from | Product sponsor, Engineering lead, Art lead, Audio lead, QA lead *(names TBD)* |
@@ -25,6 +25,7 @@ and [`docs/design/aaa-audit.md`](../design/aaa-audit.md).
 
 | Version | Date | Change |
 |---|---|---|
+| **16.0** | **2026-08-21** | **The story re-cut — cosmology out, the finale to Lunal, and the grief put in the ground.** Owner: "honestly this story feels so weird. the chorus and conductor parts dont feel right" → "I don't like that he's a rigger. he needs a sedentary job so it shows how much he has to change." Root cause: the canon was reverse-engineered from the setlist, leaving everything **music-coded** — a guitarist hero, a conductor antagonist, and a cosmology made of music — which stacked five antagonists in a chain of custody (chorus → obelisk → litho → Conductor → Lunal) so Mir never faced a will that wanted anything *from him*. Three cuts: **(1) the cosmology is deleted** (no unresolved note, no grief-as-time); the Fold now rests on four flatly-stated, never-explained facts, of which the load-bearing one is new — **nothing in the Fold grows**, and Nari has been three years old for longer than his father can account for. **(2) The rule now cuts**: children are entered in the obelisk's ledger, Mir and Lunal quietly never entered Nari, so *"the unnamed voice is owed to the deep"* condemns exactly the child his parents tried to protect. **(3) The Conductor is replaced by the Harrow** — the parent who climbed before Mir, whose grief is a physical object the player walks through for eleven nodes: **the Scar is his search**, the gouges are tool marks, the burned rings are ground cleared to see it better. He *delivers* the reveal instead of gating it. **Lunal is the finale** (§8.7), an argument before a fight, and her offer is "stay," not "leave." Mir is re-cast from guitarist to **clock-keeper** — sedentary, unfit, and maintaining clocks that do not work in a town where time does not pass, so the climb costs him instead of equipping him; the trade pays off once, at the end, when he picks the cage's lock instead of breaking it. The **rhythm mechanic loses all in-fiction justification** (the world moves on a beat the way it has gravity; no character remarks on it). Narrative doctrine splits: the **spine is told** (seven scripted beats, reactive NPCs, a climax in words) and *found-not-told* is reserved for the world — see the new [side-stories.md](../design/side-stories.md), 39 staged vignettes, 80% silent, including a five-region notch thread that is the Harrow's backstory and is never labelled as such. Docs-only; no engine, content, or asset changes — the shipped boss still runs the retired Conductor and is tracked in §20.2. |
 | **15.1** | **2026-07-23** | **District theming — breaking up the monotonous mega-regions.** Owner: "I think the map neeeds more variation in areas/biomes/ just theming." v15.0's ~10x world left each biome a single flat colour — worst in the **61% brown Scar**, which read as one endless plain. The painter (`paint_ground.py`) now splits every region into painted **sub-districts** keyed off two coarse value-noise fields (`d1` @320, `d2` @190): the Scar alone gets six moods — **ash wastes, sulfur crust, bone fields, thorn barrens, scorch flats, and a cold-basalt overlay** — plus signature textures (scorch cracks, bone flecks, sulfur crust granules) painted only where they belong. The Shelf (deep kelp / tan terrace), Breach (wet flats / dry sand), Stage (deep violet / pale marble), and Fold (deep silt / pale shoal) each split too. Blending is soft-edged (a `min(field-lo, hi-field)` ramp) so districts fade into each other rather than hard-banding, and the whole pass uses **boolean-indexed assignment** (`canvas[band] = canvas[band]*(1-soft) + c*soft`) to stay memory-bounded on the 18M-px canvas (a full-canvas `np.where` first draft ran 7.7GB / 15min+; the indexed version cut RAM to 5.6GB). No engine, content, or asset-key changes — pure ground-paint variation. 128 unit + full Chromium e2e green. |
 | **15.0** | **2026-07-22** | **The Great Expansion — a ~10x world with way more content.** Owner: "this map isn't enough. there needs to be like 10x as big with way more content." The map goes **112x64 -> 356x200 (9.9x area)**, and the single painted plate (which would blow past WebGL's max texture size) becomes a **grid of 24 chunk PNGs** (`paint_ground.py` at S=16, ~23MB total) that BootScene loads and OverworldScene **camera-culls** (`placeGroundChunks`/`cullGroundChunks`). The five biomes stay (no risky tileset/arena/art rework) but are re-shaped: the Fold is a **contained SW sanctuary** (7%), the Scar a **huge 61% surface**, with painted sub-variation + rescaled landmarks (whale, crater, river, canyon, spire, salt flats, ...) filling the space. Content scales with it, **co-generated** so nothing drifts: a **20-fight campaign** touring the whole world (`generate_overworld_map.py` emits the campaign graph + 13 biome encounters reusing the 4 foes + 4 beatmaps, varied by wave/rewards), **40 echoes** (from 10), and every node's venue re-keyed by biome (`composeWorldVenue`). Perf: ambient per-tile density scaled ~10x down so a 10x world stays bounded; the painter's rock-mesa pass got a bincount size-gate (a 22-min bake -> 9 min). BFS-validated; 128 unit + full Chromium e2e green. |
 | **14.4** | **2026-07-22** | **The real deploy-gate fix: a scene-restart leak + a too-tight test ceiling.** v14.3's "pause ambience during fights" did NOT fix CI — a CPU-throttled repro proved it: with the whole ambient pass **disabled**, the in-world fight still ran at the same ~3 FPS under a 6× throttle (300ms/frame, ambient ON 300 vs OFF 299). So the ambience was never the cause. Two actual fixes: **(1) scene-restart reset** — `create()` now resets the v14.2 ambient state (`ambient/eelgrass/worshippers/townCrownGlow/lightningFlash/flags`), which it must because Phaser reuses the scene instance and a fight victory / the finale *restart* the overworld; without it the arrays held destroyed objects and the restarted scene came up broken (this is what actually failed `overworld:118` and `finale`). **(2)** the Playwright per-test **timeout raised 60s→120s**: the real-time fight specs (beat-truth, boss-phases) wait on game-time progression, and the fight sim runs at only a few FPS on the slowest CI runners — 60s was too tight there, independent of this feature. Restart-under-throttle verified (victory→restart→working overworld in 11s at 6×); the ambient hide-during-fights + trimmed counts from v14.3 are kept as harmless hygiene. |
@@ -92,8 +93,9 @@ world**: walking into a foe locks the camera to a room of the actual overworld a
 a real-time action fight there — 8-directional momentum movement, dashes with i-frames,
 frame-data attacks, hitstun and damage-scaled knockback, on-beat parries — with the
 rhythm woven in as **on-beat power**: actions timed to the beat of the *actually
-playing* music are empowered. At the end of the road waits the Conductor — and behind
-his baton, **Lunal**, the masked huntress who holds his strings (§8.7). The soundtrack
+playing* music are empowered. At the end of the road waits **Lunal** — Mir's own partner, who took
+their son to keep him somewhere the rule can never reach, and who is not wrong
+(§8.7). The soundtrack
 is six real recorded tracks by the band Inhalants; the
 art direction is the *Hyper Light Drifter* register (colossal silhouette-first enemies,
 vivid limited palette, additive glow on near-black depths), produced through an
@@ -204,11 +206,11 @@ Every KPI below is measurable from events that fire on the **shipped** game path
 | Category | Metric | Source events | Target |
 |---|---|---|---|
 | Core loop health | % of players clearing the first fight (Shallows) | `battle_started`, `encounter_cleared` | ≥ 80% |
-| Retention | % of players reaching the Conductor after clearing region 1 | `encounter_cleared` per node | ≥ 50% |
+| Retention | % of players reaching the Keep after clearing region 1 | `encounter_cleared` per node | ≥ 50% |
 | Rhythm engagement | On-beat rate (on-beat actions / judged actions) in region 1 | `judgment_onbeat`, `judgment_offbeat` (§14) | ≥ 40% average, trending up across a session |
 | Exploration loop | % of completing players who found ≥ 3 echoes | `echo_found` | ≥ 50% (validates the second loop is discovered) |
 | Accessibility adoption | % of sessions using ≥ 1 assist setting | `assist_mode_enabled` | Tracked, no target — informs discoverability |
-| Boss difficulty | % of Conductor attempts reaching phase 3 | `boss_phase_reached` (§8.7, pending build) | Tracked to tune the curve |
+| Boss difficulty | % of final-boss attempts reaching phase 3 | `boss_phase_reached` (§8.7, pending build) | Tracked to tune the curve |
 | Technical stability | Judged-beat vs. audible-beat drift in QA soak | QA instrumentation (§16.1) | ≤ 30 ms sustained; 0 desync incidents at release |
 | Browser compatibility | Tier-1 matrix pass rate (§9.2) | Release-gate test matrix | 100% Tier 1; Tier 2 tracked, non-blocking |
 
@@ -374,8 +376,12 @@ HUD tier popups + per-tier analytics live.)*
 
 ### 8.4 The cast — Mir and Nari (v12.0)
 
-The playable character is **Mir** — a guitarist who wakes on the ocean floor. His
-toddler son **Nari** is with him.
+The playable character is **Mir** — a **clock-keeper** in the Fold, and a father.
+His trade is the town's sickness in miniature: he maintains clocks that do not work
+and never have, in a town where nothing grows and no time passes. He is deliberately
+**sedentary, soft-handed, and unfit** — the climb has to cost him rather than equip
+him, and his only real competence is that he does not stop. His toddler son **Nari**
+is with him.
 
 - **v1 (this spec):** the player controls Mir with one complete kit —
   light / heavy / special / ultimate / dash / parry per §8.2.
@@ -388,7 +394,7 @@ toddler son **Nari** is with him.
   he is found in the finale (§8.7). He is never an escort objective, an inventory
   item, or a fail state.
 - **v2 (target, out of v1 scope):** kit expansion for Mir (unlockable specials), and
-  a possible **Lunal** confrontation as a post-Conductor fight (§18).
+  the **Harrow** encounter's final form (§8.7.1).
 
 *(v10.0 note: the v7.9 four-piece band cast — "Inhalants": Amir/Bassist/Vocalist/
 Drummer — is retired as fiction; the real-world band Inhalants remains the recorded
@@ -426,46 +432,80 @@ model; see §8.7 for how the boss escalates).
 | The Fold's edge (`opening_1`) | rot slime | combat rotation | Movement, light/heavy, first on-beat rewards; generous telegraphs |
 | The Kelp Shelf (`mid_1`) | drowned drifter | combat rotation | Dash timing, whiff punishment, first special |
 | The Breach (`mid_2`) | wraith + drifter pack | combat rotation | Multi-enemy spacing, target priority, crowd DI |
-| The Scar (`mid_3`) | elite wraith | combat rotation | Parry as offense; cancel-window pressure; tighter telegraphs |
-| The Stage (`boss_1`) | **the Conductor** | *Quotience* | Full system: phases, section changes, ultimate economy (§8.7) |
+| The Scar (`mid_3`) | elite wraith, then **the Harrow** | combat rotation | Parry as offense; cancel-window pressure; tighter telegraphs. The Harrow closes the region and delivers the reveal (§8.7) |
+| The Keep (`boss_1`) | **Lunal** | *Quotience* | Full system: phases, section changes, ultimate economy (§8.7) |
 
-Foe roster is **lyric-canon only** (v7.6): slime, drifter, elite wraith, the Conductor.
+Foe roster (v16.0): slime, drifter, elite wraith, **the Harrow**, **Lunal**. The
+lyric-canon constraint (v7.6) is retired with the setlist-derived cosmology.
 *(Content-hygiene item: encounter/track file IDs still carry legacy names —
 `mid_biome_2_luchadores_*`, `*_clave_*` — around correct contents; rename tracked in
 §20.2.)*
 
-### 8.7 Final boss — "The Conductor" (v8.0 re-spec; v10.0: Lunal's instrument)
+### 8.7 The final act — the Harrow, then Lunal (v16.0 re-spec)
 
-**Narrative frame (v10.0).** The Conductor does not act alone: he is **conducted**.
-**Lunal**, a masked huntress, holds his strings — the misery song he rehearses is
-hers, and Nari's trail ends at her hall. In v1 Lunal is **revealed, not fought**:
-her presence is staged environmentally (her masks among the hall's dressing; a
-huntress silhouette in the finale staging) and named in echo lines (§8.8.2). The
-finale (v8.5 FinaleScene) is re-staged at v10.0: felling the Conductor breaks her
-hold on the hall, and **Mir finds Nari** — the closing lines land the reunion, with
-Lunal's escape left open as the v2 hook (§18). A playable Lunal fight is v2.
+**Canon: [world bible](../design/world-bible.md) §5–§8.** The v10.0 framing — the
+Conductor as final boss with Lunal behind him holding his strings — is **retired**.
+Two structural faults drove it out: the last fight was against someone with no
+personal stake in Nari, standing in front of the person who had one; and the reveal
+happened to the *player* and never to Mir, so the finale had nothing to land on.
 
-The Conductor is fought in his hall **in the world** (§8.2), rendered at native
-colossal resolution. The fight has **three authored phases keyed to HP thresholds**,
-and phase escalation is expressed through the *actual song*:
+**The Harrow** (replaces the Conductor) is the parent who climbed this route
+generations before Mir and lost the child anyway. He has spent every day since
+searching the same ground — **the Scar is his excavation**. The region the player
+has read for eleven nodes as monster country is one man's search: the gouges are
+tool marks, the scorched rings are ground burned off to see it better, the pits are
+pits, the den is where he sleeps. He is nobody's instrument, has no orchestra, and
+does not conduct anything.
 
-- Each phase binds to an **authored section of *Quotience*** via the track's beat map
-  (§8.3): on phase transition, playback jumps to that section's bar-aligned start, and
-  the judged beat follows — tempo/feel changes come from the recording itself, not
-  from synthetic meter arithmetic.
-- Per phase: escalating AI (attack frequency, new telegraphed patterns), tighter
-  frame data, and one arena change in the hall (story light, hazard ring).
-- All phase data is authored content (§10.5 `BossPhaseConfig` + beat-map sections) —
-  never improvised or inferred from audio at runtime.
+His function is to **deliver the reveal rather than gate it**: he tells Mir that
+nothing on the surface took his son — *I would know, I have turned over every inch
+of this* — and shows him the sorted pits of every small thing he has dug out of that
+ground. Mir leaves the Scar with his monster-theory dead and one possibility left.
+He is also **Lunal's best argument**, and Mir has just spent eleven nodes walking
+through it.
 
-**Release gate #3 (§16.2, re-scoped):** phase transitions execute on bar boundaries of
-the audible track without desync between heard music and judged beat.
+**Lunal is the finale**, and it is **an argument before it is a fight**. She left the
+trail; she wanted Mir to come; what she wants is his agreement. Her offer is not
+"leave" but **"stay"** — both of them, here, in the one room in the world nothing can
+get into. Mir's refusal — that he wants a son who is *allowed to be lost* — is the
+game's thesis, and it is said out loud, once, by both of them.
 
-*(Status: **shipped v8.2** — the in-world Conductor fight advances phases on the
-authored HP thresholds, jumps playback to the bound *Quotience* sections
-(`movement_2` @ 28.19s, `movement_3` @ 74.30s — segmentation-derived, grid-snapped,
-pending the human listening pass), escalates enemy aggression per phase, and marks
-thresholds on the boss bar; `boss-phases-world.spec.ts` covers it on the product path.)*
+#### 8.7.1 What the final act must deliver (constraints, not a spec)
+
+Encounter structure is deliberately **unsettled** pending design approval. Any
+implementation has to satisfy all of these:
+
+1. **Lunal fights to stop, not to kill.** Holds, blocks, disarms, her body between
+   Mir and the room. A phase that reads as "trying to win" is a bug, not flavour.
+2. **Three phases are three arguments**, each entered after she has already lost the
+   previous one. Escalation is desperation, not power.
+3. **Nari is visible throughout** — in the room, watching his parents,
+   non-interactive. This is the strongest staging decision available and the fight
+   should be built around it.
+4. **The player must be able to hesitate.** Refusing to swing at her for a while
+   should be possible, and should be noticed.
+5. **The Harrow is an anticlimax on purpose** if he is fought at all — no triumph,
+   and the reward for finishing is silence. Whether he is a fight, a fight that ends
+   in a conversation, or a scripted encounter is open.
+6. **Scale is a real problem to solve.** Both figures are human-sized. The HLD
+   "colossal silhouette-first boss" register (§11.1) was built around the colossal
+   Conductor and does not apply here; the art direction has to carry menace another
+   way. Called out as a consequence of the re-spec, not an oversight (§18.3b).
+
+**What ships today, against the retired canon.** The in-world boss at `boss_1` runs
+`the_conductor` through three authored HP-threshold phases bound to *Quotience*
+sections (`movement_2` @ 28.19s, `movement_3` @ 74.30s — segmentation-derived,
+grid-snapped, pending the human listening pass), escalating aggression per phase and
+marking thresholds on the boss bar; `boss-phases-world.spec.ts` covers it on the
+product path. **The phase machinery is canon-neutral and stays.** What changes is who
+stands in it and what the fight is trying to say. Content IDs
+(`boss_conductor_01`, `enemies/the_conductor`, `conductor_colossal`, the
+`boss_conductor_p*` beat maps) still carry the retired name — tracked in §20.2.
+
+**Release gate #3 (§16.2) is unaffected:** whoever the boss is, phase transitions
+must execute on bar boundaries of the audible track without desync between heard
+music and judged beat.
+
 
 ### 8.8 Exploration — the second game
 
@@ -478,8 +518,9 @@ obelisk town Mir wakes in — silt streets, prayer rings, hut foundations), **th
 Shelf** (the drowned climb — kelp beds and the ribs of dead ships), **the Breach**
 (the shoreline: the painted **waterline** crosses this region — below it the world
 renders underwater, above it the air begins), **the Scar** (the surface: harsh light,
-clawed and scorched ground, monster dens — where Nari is lost), and **the Stage**
-(the stone ground where the Conductor rehearses and Lunal keeps Nari). Regions are
+clawed and scorched ground, dug pits — where Nari is taken, and which is revealed to
+be one man's search, §8.7), and **the Keep**
+(the drowned hall Lunal took, and the room she built inside it). Regions are
 visually and structurally distinct (own terrain bases, obstacle logic, accent hue —
 "one palette, five moods," §11.1.1) but seamlessly connected. The map is deliberately
 larger than its critical path so it can hold secrets.
@@ -700,7 +741,7 @@ regenerated ship the v10 pixel art until their HD art lands (§20.5).
 | Design space | 320×180 logical layout; canvas renders at 4× (1280×720); art authored at ≥2× its on-screen size so it downsamples, never upsamples |
 | Ground | painted plate (paint_ground.py), unquantized, 2× density |
 | Player sprite | small, silhouette-readable Mir (red guitar signature), ~100px source frames |
-| Standard enemy | elites/bosses colossal (the Conductor ~2.9× player height); ≥2× density sources |
+| Standard enemy | elites colossal and silhouette-first; ≥2× density sources. **v16.0 caveat:** the ~2.9× colossal register was built around the retired Conductor — both finale figures are now human-sized (§8.7.1 #6, §18.3b) |
 | Glow/bloom | additive emissive layer on eyes, edges, telegraphs, hazards; beat-pulsing accents |
 | Environments | designed venues (§11.1.1) — no noise fills, no void centres |
 | Animation | low frame count, high pose contrast (anticipation → impact → recovery), 8–12 fps; strips derived from one base pose per character for identity stability |
@@ -731,7 +772,7 @@ without text:
 | `mid_1` | **The Kelp Shelf** — the drowned climb | kelp green | Ship ribs stitched up the slope like the rungs of a ladder — every wreck points UP. Whoever climbed before Mir used the dead as footholds. |
 | `mid_2` | **The Breach** — the waterline | sand/foam | Tidal ripples combed flat in one wide swathe, as if something enormous hauled itself ashore here. The foam line is broken exactly once. |
 | `mid_3` | **The Scar** — the surface | blood/rust | Claw-gouged turf and scorched rings around a den mouth; among the big prints, one set of very small ones, walking IN. This is where the trail ends. |
-| `boss_1` | **The Stage** — Lunal's ground | storm violet | A stone island whose floor is the hall's drowned marble, veins running toward its centre. The Conductor rehearses; the huntress watches; something small is kept behind the music. |
+| `boss_1` | **The Keep** — Lunal's ground | storm violet | A stone island whose floor is the hall's drowned marble, veins running toward its centre. One path across it is swept clean and walked hollow; everything else is silted and untouched. She has only ever needed to go one place. |
 
 Design rules: a specific place, not a theme (postcard test); story staged physically
 in 2–4 set pieces; fight-readable (story in dressing, play-space high-contrast; story
@@ -825,7 +866,7 @@ information never relies on color alone. Once §8.3 tiers land, judgment feedbac
 |---|---|---|
 | Playable character Mir (idle/run/attack strips, derived from one base pose) | `assets/sprites/band/mir/` | **Placeholder** (v11.2 purge: minimal glow-shape via `placeholder_cast.py`; real art slot open) |
 | Nari (finale staging) + Lunal (masks, reveal silhouette) | — | **Open (v10.0):** specced §8.4/§8.7, no art shipped — tracked §20.2 |
-| Foes (slime, drifter, elite wraith) + the colossal Conductor | `assets/sprites/enemies/` | **Placeholder** (v11.2 purge: minimal glow-shapes, accents = runtime auras; real art slots open) |
+| Foes (slime, drifter, elite wraith) + the colossal boss sheets (retired Conductor art; §8.7 re-spec pending) | `assets/sprites/enemies/` | **Placeholder** (v11.2 purge: minimal glow-shapes, accents = runtime auras; real art slots open) |
 | Six-track soundtrack + beat-grid maps | `assets/audio/*.mp3` (~45 MB, lazy-loaded) + `src/data/content/songs/*.json` | Shipped (v7.7 audio; v8.1 measured beat grids via `tools/audio/measure_beats.py`). Listening-pass verification owed (§20.2) |
 | Open overworld (112×64 Tiled JSON, organic region territories, BFS-validated reachability) + 20-tile sheet | `assets/tilemaps/`, `tools/overworld/generate_overworld_map.py` | Shipped (v7.0; ground/water/clustering/value pass v7.12; de-pixelation v7.14) |
 | Environment kits + venue composition | `ArenaComposer.ts`, `dressing.json` (code paths live, textures purged) | **Purged v11.2** — world dressing is the painted plate only; kit slots open |
@@ -852,7 +893,7 @@ transitions, stagger, death).
 | Playable character | Mir × ~22 states + portrait | ~23 |
 | Story figures (v10.0) | Nari (finale staging set) + Lunal (masks, silhouette, reveal staging) | ~8 |
 | Enemies | ~18 types across 5 biomes × 6 states | ~114 |
-| Boss(es) | The Conductor (3 phases) + 1–2 mid-bosses; Lunal fight is v2 | ~36 |
+| Boss(es) | **Lunal** (3 phases, human-scale) + **the Harrow**; both are v1 (§8.7) | ~36 |
 | Tilesets | 5 biomes × ~9 sheets (autotile, cliffs, transitions, decals, occluders, animated) | ~45 |
 | Props & destructibles | ~12/biome + ~10 shared interactables | ~70 |
 | Landmarks | 5 primary + ~2 secondary per biome | ~15 |
@@ -961,8 +1002,8 @@ storefront distribution.
    **1a (v8.0):** the judged beat is derived from the audible track via its authored
    beat map, on every track and every speed setting (§8.3).
 2. The game boots into a user-gesture audio gate; no prohibited autoplay.
-3. The Conductor's phase transitions execute on bar boundaries of the audible track
-   without desync (§8.7).
+3. The final boss's phase transitions execute on bar boundaries of the audible track
+   without desync (§8.7). Canon-neutral: the gate is about the machinery, not the foe.
 4. Art renders at full fidelity at supported resolutions — no upscale blur from
    under-resolved sources, no pixelated scaling artifacts (v11.0).
 5. Every §9.3 accessibility feature is present, discoverable, and functional **on the
@@ -995,9 +1036,15 @@ the matrix defines the intended hand-off shape as the team grows.
    whether accounts/monetization stay permanently out of scope.
 2. Mobile as a Tier-1 target in v2 (touch controls exist; performance/layout polish
    and touch-latency window tuning would be the work).
-3. The Lunal fight (v2, §8.7/§8.4): post-Conductor confrontation vs. a parallel
-   final act — and how much of Nari's finale staging ships in v1 vs. v1.5
-   (minimum bar: the reunion is staged, not implied).
+3. ~~The Lunal fight (v2)~~ — **answered v16.0: Lunal is the v1 finale (§8.7).**
+   What remains open is its encounter structure (§8.7.1) and whether the Harrow is
+   fought at all or is a scripted encounter.
+3a. **The title.** *The Drowned Chorus* is a music title on a story that no longer
+   has music in it — the last piece of setlist DNA in the project. Keeping it means
+   accepting the mismatch; changing it means re-lettering the wordmark (§11.5).
+3b. **Boss scale.** The HLD "colossal silhouette-first enemy" register (§11.1) was
+   built around the colossal Conductor. Both v16.0 finale figures are human-sized,
+   so the art direction has to carry menace another way.
 4. Wordmark production path (v7.12: AI text rendering unreliable; needs hand-lettering).
 5. ~~Whether the retired turn-based systems are deleted outright or archived~~ —
    **answered v8.3: deleted outright; git history is the archive** (consistent with
@@ -1054,7 +1101,7 @@ remaining test covers shipped code, which is the honest number.)*
 |---|---|
 | Five-region explorable world (§8.8) | 112×64 open map (v13.0), five regions as organic weighted-Voronoi territories, zone-seeded dressing/obstacles/tints, elevation relief + river + one-off landmarks (v13.1/v13.2), BFS-validated reachability at generation time; secret spurs per region |
 | Echoes (§8.8.2) | 10 hand-placed, E-to-interact, one-line world-bible fragments; persisted per save; HUD counter; `echo_found` fires |
-| Foes stand in the world (§8.1) | Node foes idle at their places (locked = dark silhouettes, cleared = ember); the Conductor colossal in-world |
+| Foes stand in the world (§8.1) | Node foes idle at their places (locked = dark silhouettes, cleared = ember); the colossal boss in-world (retired Conductor art pending the §8.7 re-spec) |
 | Save-obelisks (§8.8.5) | Beside every fight node; rest persists through the real IndexedDB save (e2e-proven, no fight trigger) |
 | **In-world fights (§8.2)** | `WorldFight`: camera-locked room of the actual overworld; sim obstacles from impassable tiles (`resolveObstacles`, unit-tested); venues (biome floor + set pieces) composed into the map with a guaranteed fightable circle; rewards → results → in-place return; e2e asserts no battle scene loads |
 | Action sim (§8.2) | 8-dir momentum, dash i-frames + on-beat extension, light/heavy frame data with active hitboxes, hitstun, damage-%-scaled knockback, player DI, on-beat parry (off-beat = punishable), rhythm-gated cancel combos, Focus special, enemy telegraph AI — 13+ dedicated unit tests |
@@ -1102,7 +1149,22 @@ remaining test covers shipped code, which is the honest number.)*
    his trail/scuffle/clues, and every echo line is voiced to the search. Still open:
    Nari appearing physically in the finale staging and Lunal's visual presence
    (masks/silhouette) — both need character art, which awaits the post-purge
-   direction.
+   direction. **Re-scoped v16.0:** Lunal is the finale, not a v2 candidate, so her
+   staging is now critical-path art (§8.7).
+
+7. **v16.0 story re-cut vs. shipped content (§8.7).** The canon moved; the build did
+   not. Concretely open: (a) the boss content IDs still name the retired Conductor
+   (`boss_conductor_01`, `enemies/the_conductor`, `conductor_colossal`,
+   `boss_conductor_p1..p3`) — a contained rename touching 3 beat maps, 2 content
+   JSONs, BootScene and `WorldFight`; (b) the seven scripted beats (world bible §9)
+   exist as three in `cutscenes.ts` — **The Den** and **The Sitting-Down** are
+   unwritten and are the two the finale depends on; (c) the ~40 procedurally-scattered
+   echo strings in `generate_overworld_map.py` still carry cosmology lines that no
+   longer describe the world, and want replacing with the hand-placed vignettes in
+   [`side-stories.md`](../design/side-stories.md); (d) `FinaleScene`'s three closing
+   lines are the retired ending. None of this blocks play — the game runs the old
+   finale end-to-end — but every item is doc-drift of exactly the kind v16.0 was
+   written to kill.
 
 *(Closed by v8.2–v8.3: four-tier judgment, ultimate, phased boss, §9.3 parity,
 Sightread v1, analytics parity, battle SFX first fill, the relics regression,
