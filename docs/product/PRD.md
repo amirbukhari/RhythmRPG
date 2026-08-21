@@ -493,13 +493,21 @@ Node IDs are `opening_1`, `mid_1`, `node_03`…`node_19`, `boss_1` (source:
 |---|---|---|---|
 | `opening_1` | The Fold's edge | rot slime | Movement, light/heavy, first on-beat rewards; generous telegraphs |
 | `mid_1` | The Kelp Shelf | drowned drifter | Dash timing, whiff punishment, first special |
-| `node_03`…`node_19` (17 nodes: battle + 4 elite) | The Breach → the Scar | drifter, wraith, elite-wraith packs (waves/rewards vary per node) | Multi-enemy spacing, target priority, crowd DI; parry as offense; cancel-window pressure; tightening telegraphs. The **Scar** stretch is where Nari is taken (§8.4) and is revealed as **the Harrow's** search; the Harrow **delivers the reveal** that closes the region (§8.7). |
+| `node_03`, `node_05` (+ `node_04` elite) | The Kelp Shelf (with `opening_1`/`mid_1`) | drifter | Dash timing, whiff punishment, first special; the first elite |
+| `node_06`, `node_07` (+ `node_08` elite) | The Breach | drifter | Multi-enemy spacing, target priority, crowd DI |
+| `node_09`…`node_19` (11 nodes, incl. `node_12` + `node_16` elites) | The Scar | elite wraith | Parry as offense; cancel-window pressure; tightening telegraphs. This is where Nari is taken (§8.4) and is revealed as **the Harrow's** search; the Harrow **delivers the reveal** that closes the region (§8.7). |
 | `boss_1` | The Keep | **the finale** (spec: Lunal, §8.7; build: `the_conductor`, §20.2) | *Quotience* — full system: phases, section changes, ultimate economy |
 
-*[ASSUMPTION: the region-to-node mapping of `node_03`…`node_19` (which nodes are Breach
-vs Scar, and where exactly the four `elite` nodes fall) is authored in the campaign
-graph / map data, not enumerated here; confirm against `generate_overworld_map.py` if a
-per-node breakdown is needed.]*
+Region-to-node mapping (verified against `generate_overworld_map.py`, `_TOUR` +
+`region_of`): each node's region is read from where its authored tour waypoint lands.
+**The Kelp Shelf** holds `opening_1`, `mid_1`, `node_03`, `node_04`, `node_05`; **the
+Breach** holds `node_06`–`node_08`; **the Scar** holds `node_09`–`node_19`; **the Keep**
+holds `boss_1`. **No fight lands in the Fold** — the generator fails loudly if one does
+(the sanctuary, §8.8.5). The four **elite** nodes are every 4th node — `node_04`,
+`node_08`, `node_12`, `node_16` — and `boss_1` (node 20) is the boss. *(Content-hygiene:
+the generator's internal region keys are still the retired biome names —
+`shallows`/`saltmines`/`pit`/`attic`/`hall` for Fold/Kelp&nbsp;Shelf/Breach/Scar/Keep —
+the same legacy-ID class as `boss_conductor_*`; rename tracked in §20.2.)*
 
 Foe roster (v16.0 spec): slime, drifter, elite wraith, **the Harrow** (a reveal beat,
 not necessarily a fight — §8.7.1 #5), **Lunal** (finale). The lyric-canon constraint
@@ -644,20 +652,25 @@ replace — autosave on progression.
 The happy path (contact → fight → rewards → world) is specified in §8.2; this section
 fixes what happens when a fight or session does *not* complete cleanly.
 
-- **Defeat.** Losing an in-world fight runs the results/defeat flow and returns the
-  player to the world with the node **not cleared**; the foe still stands at its place
-  and the fight is re-enterable. Player HP and accumulated damage % reset on the next
-  fight start (they are per-fight, §8.5). *[ASSUMPTION: defeat returns control at/near
-  the node's save-obelisk rather than ending the run — there is no permadeath or run
-  reset in scope; confirm against `WorldFight`/`ResultsScene` defeat handling.]*
+- **Defeat.** Losing an in-world fight fires `encounter_failed`, grants no rewards, and
+  advances no progression — the node is **not** added to `clearedNodeIds` and
+  `currentNodeId` does not move (verified: `WorldFight.finish`, `ResultsScene`). Control
+  returns through the Results screen to the overworld **at the node's own marker tile**
+  (`GameContext.returnToNodeId`, the same placement as victory — *not* the fixed spawn
+  and *not* the obelisk), so the foe still stands and the fight is immediately
+  re-enterable. There is **no run reset and no permadeath**; player HP and accumulated
+  damage % are per-fight and start fresh on the next fight (§8.5).
 - **Practice mode** (§9.3) floors player HP at 1, so there is no defeat state while it
   is on.
-- **Mid-fight interruption (pause / settings / tab-blur).** Because timing is
-  audio-clock-authoritative (§10.2), pausing or losing window focus must **pause the
-  audio transport and the sim together** so heard and judged beat cannot desync on
-  resume; on `AudioContext` suspend/resume the fight resumes from the track position,
-  never from a free-running timer. *[ASSUMPTION: opening the settings overlay mid-fight
-  pauses the sim; confirm against `SettingsOverlay`/`OverworldScene`.]*
+- **Mid-fight interruption (settings overlay).** ESC launches `SettingsOverlay`, which
+  calls `scene.pause("OverworldScene")` (verified). Because the fight sim is driven from
+  `OverworldScene.update`, the **sim freezes** while settings are open and resumes on
+  `scene.resume`. The **audio transport is not paused** — the track plays on under the
+  overlay. This does **not** break the heard-vs-judged invariant (§8.3/§10.2): judgment
+  always reads the *live playing element's* position, never a free-running timer, so
+  heard and judged beat cannot diverge regardless of pause state. *(Known minor item:
+  the music continuing under the settings overlay is a UX nicety an owner may later
+  choose to change by also pausing the transport; it is not a timing-correctness bug.)*
 - **Follower edge case.** Nari pauses outside fight rooms and never enters combat
   (§8.4); entering any fight before the surface **loss beat** leaves the follower intact
   and waiting; after the loss beat he is absent from all fights.
@@ -1206,21 +1219,28 @@ music sourcing — the six recorded tracks.)*
 
 ### 18.1 Assumptions introduced by the v16.1 re-sync
 
-These are judgment calls made while reconciling the prose to the code, marked inline as
-`[ASSUMPTION: …]`. Each needs an owner decision to become fact; none is asserted as
-verified.
+These were judgment calls made while reconciling the prose to the code. Three have since
+been **verified against the code and folded into the body as fact** (no longer
+`[ASSUMPTION]`); two remain genuine **owner decisions** and are still marked inline.
+
+**Open — need an owner decision:**
 
 1. **First-completion time is 3–5 h** (§4.2, §7.1), scaled from the 20-node campaign —
    a target, not a measured playthrough (resolve via §16.3 AC-1).
-2. **The region-to-node mapping of `node_03`…`node_19`** (which are Breach vs Scar, and
-   where the four `elite` nodes fall) lives in the campaign/map generator, not in this
-   document (§8.6).
-3. **Defeat returns control at/near the node's save-obelisk** with no run reset /
-   permadeath (§8.9).
-4. **Opening the settings overlay mid-fight pauses the sim** alongside the audio
-   transport (§8.9).
-5. **The Harrow is a reveal beat, not necessarily a fight node** — its encounter form
+2. **The Harrow is a reveal beat, not necessarily a fight node** — its encounter form
    is still open (§8.6, §8.7.1 #5).
+
+**Resolved by code verification (v16.1) — now stated as fact in the body:**
+
+- *Region-to-node mapping* (§8.6): enumerated from `generate_overworld_map.py` — Kelp
+  Shelf `opening_1`–`node_05`, Breach `node_06`–`node_08`, Scar `node_09`–`node_19`,
+  Keep `boss_1`; elites are `node_04`/`08`/`12`/`16`.
+- *Defeat behaviour* (§8.9): returns to the node's marker tile (not the obelisk), node
+  uncleared and re-enterable, no run reset/permadeath — verified in
+  `WorldFight.finish`/`ResultsScene`/`OverworldScene`.
+- *Mid-fight settings* (§8.9): `SettingsOverlay` pauses the sim via
+  `scene.pause`; the audio transport keeps playing, and beat-truth is preserved because
+  judgment reads the live element — verified in `SettingsOverlay`/`OverworldScene`.
 
 ---
 
