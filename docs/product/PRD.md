@@ -6,16 +6,22 @@
 |---|---|
 | Document title | *The Drowned Chorus* — Browser Rhythm-Action RPG PRD |
 | Working codename | Project Meterfall (historical; the game is titled *The Drowned Chorus*) |
-| Status | **Active v16.0** (2026-08-21). Current shape: a single-player painterly-2D (not pixel-art, §11.1) rhythm-action RPG — **the Ascent**: Mir wakes on the ocean floor in the obelisk-cult Fold, climbs an open world (drowned west → the Breach waterline → the sprawling Scar surface → the Keep), his toddler **Nari** following until taken on the surface; he climbs to find him and discovers his own partner took him (§1, §8.4, §8.7, §8.8). **Story canon was re-cut at v16.0** — see the [world bible](../design/world-bible.md); §8.7 is re-spec'd and the shipped boss content still carries retired names (§20.2). The world is an open 112×64 map of organic region territories with elevation relief, a river, and one-off landmarks, told almost entirely in the painted ground plate; all figure art is minimal placeholder glow-shapes since the v11.2 purge (real character art is the open direction). **Full change history: the revision table below.** |
+| Status | **Active v16.1** (2026-08-21). Current shape: a single-player painterly-2D (not pixel-art, §11.1) rhythm-action RPG — **the Ascent**: Mir wakes on the ocean floor in the obelisk-cult Fold, climbs an open world (drowned west → the Breach waterline → the sprawling Scar surface → the Keep), his toddler **Nari** following until taken on the surface; he climbs to find him and discovers his own partner took him (§1, §8.4, §8.7, §8.8). **Story canon was re-cut at v16.0** — see the [world bible](../design/world-bible.md); §8.7 is re-spec'd and the shipped boss content still carries retired names (§20.2). The world is an open **356×200-tile** map (24 painted ground-plate chunks) of organic region territories with elevation relief, a river, and one-off landmarks, told almost entirely in the painted ground plate; all figure art is minimal placeholder glow-shapes since the v11.2 purge (real character art is the open direction). **Canonical current-state numbers live in §7.0** — that table, not this row and not the revision history, is what an implementer builds against. **Full change history: the revision table below.** |
 | Owner | Amir Bukhari |
 | Author | Amir Bukhari (compiled from concept notes, deep research, and live-play feedback) |
 | Created | 2026-07-08 |
 | Last updated | 2026-08-21 |
 | Source material | Concept screenshots + [Deep Research Report](../research/deep-research-report.md) + Skatopia setlist lyrics + six recorded Inhalants tracks + [world bible](../design/world-bible.md) |
 | Distribution | Product, Engineering, Art, Audio, QA, Accessibility |
-| Approval required from | Product sponsor, Engineering lead, Art lead, Audio lead, QA lead *(names TBD)* |
+| Approval required from | Amir Bukhari, who holds every discipline role (§17). Re-assign per discipline if the team grows. |
 
 ### Revision history
+
+**How to read this table.** Every row is a dated snapshot of *what changed on that
+date* — it is a changelog, never a statement of current state. Numbers inside a row
+(map sizes, node counts, echo counts, test counts) were true when written and are
+frequently superseded by a later row. **§7.0 is the only authoritative statement of
+current state**; where any revision row disagrees with §7.0, §7.0 wins by construction.
 
 Entries are one-line summaries in chronological order. Full narratives for every
 revision — including the direct owner feedback that drove each pivot — are preserved
@@ -25,6 +31,7 @@ and [`docs/design/aaa-audit.md`](../design/aaa-audit.md).
 
 | Version | Date | Change |
 |---|---|---|
+| **16.1** | **2026-08-21** | **The structural re-sync — the requirement body catches up to the shipped build.** The v16.0 pass re-cut the *story* (Harrow/Lunal, cosmology out) but left §1–§19 still describing the pre-expansion world: a 112×64 map, five fight nodes, ten echoes, an "environmental-only / no dialogue" narrative, and integer-scaled rendering — while the shipped build (verified against the repository this cut) carries a **356×200 chunked world**, a **20-node campaign**, **55 placed echoes**, a **told layer** (`cutscenes.ts` + reactive `dialogue.ts` NPCs), and v11.0 smooth scaling. A scrutiny pass scored the document at 59%, gated by the resulting contradictions. Resolved by the standing rule — **the code is the source of truth and the stale spec is the bug**: adds the canonical **§7.0 current-state table** (every number carries a named repository artifact); rewrites §1/§4.2/§7.1/§8.1/§8.6/§8.8.1/§8.8.2/§11.4/§20.1 to the shipped numbers (dead `mid_2`/`mid_3` node IDs removed); reconciles the "no dialogue" clauses (§4.3/§7.2/§7.1/§8.8.4) with the new **§8.10 told layer**; adds **§8.9 failure & interruption behaviour** and **§16.3 per-requirement acceptance criteria**; pins stack versions (§10.1); drops the retired "integer-scaled" clause (§9.1, §20.2a). Judgment calls introduced here are marked inline `[ASSUMPTION: …]` and listed in §18.1. No code changed. |
 | **16.0** | **2026-08-21** | **The story re-cut — cosmology out, the finale to Lunal, and the grief put in the ground.** Owner: "honestly this story feels so weird. the chorus and conductor parts dont feel right" → "I don't like that he's a rigger. he needs a sedentary job so it shows how much he has to change." Root cause: the canon was reverse-engineered from the setlist, leaving everything **music-coded** — a guitarist hero, a conductor antagonist, and a cosmology made of music — which stacked five antagonists in a chain of custody (chorus → obelisk → litho → Conductor → Lunal) so Mir never faced a will that wanted anything *from him*. Three cuts: **(1) the cosmology is deleted** (no unresolved note, no grief-as-time); the Fold now rests on four flatly-stated, never-explained facts, of which the load-bearing one is new — **nothing in the Fold grows**, and Nari has been three years old for longer than his father can account for. **(2) The rule now cuts**: children are entered in the obelisk's ledger, Mir and Lunal quietly never entered Nari, so *"the unnamed voice is owed to the deep"* condemns exactly the child his parents tried to protect. **(3) The Conductor is replaced by the Harrow** — the parent who climbed before Mir, whose grief is a physical object the player walks through for eleven nodes: **the Scar is his search**, the gouges are tool marks, the burned rings are ground cleared to see it better. He *delivers* the reveal instead of gating it. **Lunal is the finale** (§8.7), an argument before a fight, and her offer is "stay," not "leave." Mir is re-cast from guitarist to **clock-keeper** — sedentary, unfit, and maintaining clocks that do not work in a town where time does not pass, so the climb costs him instead of equipping him; the trade pays off once, at the end, when he picks the cage's lock instead of breaking it. The **rhythm mechanic loses all in-fiction justification** (the world moves on a beat the way it has gravity; no character remarks on it). Narrative doctrine splits: the **spine is told** (seven scripted beats, reactive NPCs, a climax in words) and *found-not-told* is reserved for the world — see the new [side-stories.md](../design/side-stories.md), 39 staged vignettes, 80% silent, including a five-region notch thread that is the Harrow's backstory and is never labelled as such. Docs-only; no engine, content, or asset changes — the shipped boss still runs the retired Conductor and is tracked in §20.2. |
 | **15.1** | **2026-07-23** | **District theming — breaking up the monotonous mega-regions.** Owner: "I think the map neeeds more variation in areas/biomes/ just theming." v15.0's ~10x world left each biome a single flat colour — worst in the **61% brown Scar**, which read as one endless plain. The painter (`paint_ground.py`) now splits every region into painted **sub-districts** keyed off two coarse value-noise fields (`d1` @320, `d2` @190): the Scar alone gets six moods — **ash wastes, sulfur crust, bone fields, thorn barrens, scorch flats, and a cold-basalt overlay** — plus signature textures (scorch cracks, bone flecks, sulfur crust granules) painted only where they belong. The Shelf (deep kelp / tan terrace), Breach (wet flats / dry sand), Stage (deep violet / pale marble), and Fold (deep silt / pale shoal) each split too. Blending is soft-edged (a `min(field-lo, hi-field)` ramp) so districts fade into each other rather than hard-banding, and the whole pass uses **boolean-indexed assignment** (`canvas[band] = canvas[band]*(1-soft) + c*soft`) to stay memory-bounded on the 18M-px canvas (a full-canvas `np.where` first draft ran 7.7GB / 15min+; the indexed version cut RAM to 5.6GB). No engine, content, or asset-key changes — pure ground-paint variation. 128 unit + full Chromium e2e green. |
 | **15.0** | **2026-07-22** | **The Great Expansion — a ~10x world with way more content.** Owner: "this map isn't enough. there needs to be like 10x as big with way more content." The map goes **112x64 -> 356x200 (9.9x area)**, and the single painted plate (which would blow past WebGL's max texture size) becomes a **grid of 24 chunk PNGs** (`paint_ground.py` at S=16, ~23MB total) that BootScene loads and OverworldScene **camera-culls** (`placeGroundChunks`/`cullGroundChunks`). The five biomes stay (no risky tileset/arena/art rework) but are re-shaped: the Fold is a **contained SW sanctuary** (7%), the Scar a **huge 61% surface**, with painted sub-variation + rescaled landmarks (whale, crater, river, canyon, spire, salt flats, ...) filling the space. Content scales with it, **co-generated** so nothing drifts: a **20-fight campaign** touring the whole world (`generate_overworld_map.py` emits the campaign graph + 13 biome encounters reusing the 4 foes + 4 beatmaps, varied by wave/rewards), **40 echoes** (from 10), and every node's venue re-keyed by biome (`composeWorldVenue`). Perf: ambient per-tile density scaled ~10x down so a 10x world stays bounded; the painter's rock-mesa pass got a bincount size-gate (a 22-min bake -> 9 min). BFS-validated; 128 unit + full Chromium e2e green. |
@@ -84,11 +91,12 @@ and [`docs/design/aaa-audit.md`](../design/aaa-audit.md).
 
 *The Drowned Chorus* is a **single-player, browser-based, top-down rhythm-action RPG**.
 **Mir wakes lying on the ocean floor**, in a town whose people pray to an obelisk. He
-leaves the Fold for the surface, climbing one continuous, hand-authored world of five
-joined regions — and his toddler son **Nari follows him**. The surface is hostile and
-full of monsters, and Nari is **lost up there**: the rest of the game is the fight to
-find him. Exploration is a first-class game loop: hidden paths, secret pockets,
-and discoverable "echo" lore fragments reward leaving the road. Combat happens **in the
+leaves the Fold for the surface, climbing one continuous, hand-authored **356×200-tile
+world** of five joined regions — and his toddler son **Nari follows him**. The surface is
+hostile and full of monsters, and Nari is **taken up there**: the rest of the game is the
+fight to find him, fought across a **20-node campaign** (§8.6) that tours the whole map.
+Exploration is a first-class game loop: hidden paths, secret pockets, and **55
+discoverable "echo" lore fragments** reward leaving the road. Combat happens **in the
 world**: walking into a foe locks the camera to a room of the actual overworld and runs
 a real-time action fight there — 8-directional momentum movement, dashes with i-frames,
 frame-data attacks, hitstun and damage-scaled knockback, on-beat parries — with the
@@ -153,6 +161,15 @@ gaps (several v1-mandatory features existed only in the retired combat path). v8
 restores the contract: **§1–§19 are authoritative for what is required; §20 is
 authoritative for what exists.**
 
+**It happened again, and v16.1 is the second repair.** Between v14.0 and v16.0 the build
+grew a 10× world (356×200), a 20-node campaign, 55 echoes, and an entire told layer
+(talkable NPCs + scripted cutscenes) while §1–§19 went on describing a 112×64 map with
+five fights and no dialogue — and a scrutiny pass scored the result at 59%, gated by the
+contradictions. The v16.1 re-sync adopts one rule to stop the cycle: **the code is the
+source of truth for what exists, and §7.0 states it in one place with a named repository
+artifact behind every number.** Where a section and the repository disagree, the
+repository wins and the section is the bug.
+
 ---
 
 ## 3. Research Findings That Shape the Design
@@ -182,8 +199,12 @@ which this PRD supersedes as product spec.
 
 ### 4.2 Product goals
 
-1. Deliver a 2–3 hour campaign across five regions, each with one boss encountered
-   in-place, with exploration content (echoes, secrets) beyond the critical path.
+1. Deliver a **20-node campaign** (§8.6) touring five regions, ending in the finale
+   fought in-place at the Keep, with exploration content (55 echoes, secrets) beyond
+   the critical path. Target first completion **3–5 hours**. *[ASSUMPTION: the 3–5 h
+   figure replaces the pre-expansion "2–3 hour" target, scaled from the 4× node count
+   on a ~10× map; it is a product target, not a measured playthrough — measure once and
+   correct (§16.3 AC-1).]*
 2. Make on-beat play *feel* powerful and *be* powerful: the audible music, the judged
    beat, enemy telegraphs, and player empowerment are one coherent system (§8.3).
 3. Keep the content pipeline data-driven (§10.5): fights, beat maps, and rewards
@@ -192,9 +213,12 @@ which this PRD supersedes as product spec.
 ### 4.3 Non-goals (v1)
 
 Multiplayer, monetization, user-generated content, imported-song gameplay, live beat
-detection, voice acting, dialogue trees/quest-givers (§8.8.4), loot-driven progression,
-controller haptics as a required channel, additional playable characters or a playable
-Lunal fight (v2 candidates, §8.4/§18), native/store distribution.
+detection, voice acting, **branching dialogue trees, quest logs, or quest-givers who
+dispense objectives** (§8.10 ships a *linear, flag-gated* told layer — reactive NPC
+dialogue + scripted cutscenes — which is a different thing), loot-driven progression,
+controller haptics as a required channel, additional playable characters or Mir kit
+expansion (v2 candidates, §8.4/§18), native/store distribution. *(Lunal is the v1
+finale, §8.7 — no longer a v2 candidate.)*
 
 ---
 
@@ -230,6 +254,31 @@ Every KPI below is measurable from events that fire on the **shipped** game path
 
 ## 7. Scope
 
+### 7.0 Canonical current state (the source of truth)
+
+**This table is the single authoritative statement of what the build is right now.**
+Every number is verified against the named repository artifact, not against prose
+elsewhere in this document. Where any other section, revision-history row, or §20 line
+disagrees with this table, **this table wins and the other text is a bug to fix.**
+Update this table first when the build changes, then reconcile the prose to it.
+
+| Property | Current value | Verified against (repository artifact) |
+|---|---|---|
+| World size | **356 × 200 tiles** | `assets/tilemaps/overworld.json` (`width:356, height:200`; layers `ground`/`markers`/`echoes`) |
+| Ground rendering | **24 painted chunk PNGs** (4 rows × 6 cols, 1024 px chunks, full plate 5696 × 3200 px, 16 px/tile), camera-culled | `assets/tilemaps/ground_plate_*.png` (24 files) + `ground_plate_manifest.json` |
+| Regions | 5 (Fold, Kelp Shelf, Breach, Scar, Keep), organic weighted-Voronoi territories | `tools/overworld/generate_overworld_map.py` |
+| Campaign | **20 nodes** — 15 `battle`, 4 `elite`, 1 `boss`; linear `next` chain from `opening_1` to `boss_1` | `src/data/content/campaign/opening_biome.json` (`startNodeId: opening_1`; node IDs `opening_1`, `mid_1`, `node_03`…`node_19`, `boss_1`; **no `mid_2`/`mid_3`**) |
+| Boss encounter | `boss_1` → encounter `boss_conductor_01`, enemy `the_conductor`, phases `boss_conductor_p1..p3` — **content still carries the retired Conductor name**; story spec is Lunal (§8.7), art/IDs not yet re-cut (§20.2 item 7) | `src/data/content/encounters/boss_conductor_01.json`, `enemies/the_conductor.json`, `bossPhases/boss_conductor_01.json` |
+| Echoes | **55 placed** environmental-story markers | `overworld.json` `echoes` object layer (55 objects) |
+| Told layer | **Present** — 3 scripted cutscenes (`rite_opening`, `leaving_fold`, `nari_taken`) + reactive flag-gated talkable NPCs; 2 of the 7 story beats (The Den, The Sitting-Down) still unwritten (§20.2 item 7b) | `src/data/content/cutscenes.ts`, `src/data/content/dialogue.ts` |
+| Playable cast | Solo **Mir** (placeholder glow-shape since v11.2); **Nari** decorative follower + loss beat | `assets/sprites/band/mir/`, `OverworldScene` |
+| Rendering | 320×180 design space at **4× smooth-scaled** canvas (v11.0: `pixelArt`/`roundPixels` off, antialias on) — **not** integer-scaled | `src/main.ts`, §10.6 |
+| Stack | TypeScript `^5.5.4`, Phaser `^3.80.1`, Tone.js `^15.0.4`, ajv `^8.20.0`; Vite `^5.4.0`, Vitest `^1.6.1`, Playwright `^1.44.1` | `package.json` |
+| Tests | **128 unit tests** (14 files, incl. balance harness); **10 Playwright e2e spec files** (Chromium gate) | `npm test` (128 passed), `tests/e2e/*.spec.*` |
+
+*Figure sources may drift; re-verify with the artifact, not with memory, before quoting
+a number downstream.*
+
 ### 7.1 Fixed product decisions (v1)
 
 | Area | Decision |
@@ -239,20 +288,22 @@ Every KPI below is measurable from events that fire on the **shipped** game path
 | Mode | Single-player only. |
 | Business model | None. No ads, IAP, login, or accounts. |
 | Save model | Local saves only, in IndexedDB (§10.7). |
-| Scope shape | One continuous, hand-authored five-region world (§8.8) with the critical path (five fights, one per region, each region's boss met in-place) and a substantially larger exploration layer around it. |
+| Scope shape | One continuous, hand-authored five-region **356×200** world (§8.8) with a **20-node critical path** (§8.6) touring the map to the finale met in-place at the Keep, and a substantially larger exploration layer around it. |
 | Combat | Real-time rhythm-action, fought **in the world** (§8.2): the camera locks to a room of the actual overworld around the foe. No separate battle scenes on the shipped path. |
 | Camera / layout | Top-down, HLD-style, everywhere — one camera model for exploration and combat. |
 | Aesthetic | **High-fidelity painterly 2D** (v11.0 — supersedes "pixel-art"): the *Hyper Light Drifter* staging register (colossal silhouettes, vivid limited accents, emissive light on near-black depths) rendered as smooth painted illustration, 320×180 design space at 4× canvas resolution; art sourced via the AI-generation + HD import pipeline (§11.1). |
 | Music | Six recorded Inhalants tracks are the soundtrack (§11.2). Each shipped track carries an authored beat map; combat judgment derives from the audible track (§8.3). |
-| Narrative | Environmental only. World-bible canon (§5a/§5b) surfaces through staged scenes and echoes (§8.8.2) — never dialogue trees or lore dumps. |
-| Session target | 10–20 minute sessions; 2–3 hour first completion. |
+| Narrative | Two layers (v16.0 doctrine): the **spine is told** through a linear told layer — reactive NPCs + scripted cutscenes (§8.10) — and the **world is found**, surfacing world-bible canon through staged scenes and echoes (§8.8.2). Never *branching* dialogue trees, quest-givers, or lore dumps. |
+| Session target | 10–20 minute sessions; **3–5 hour** first completion *[ASSUMPTION: scaled from the 20-node campaign; §4.2, §16.3 AC-1]*. |
 
 ### 7.2 Out of scope (v1)
 
 Online multiplayer, user-generated beat maps, live beat detection from arbitrary
-audio, voice acting, NPCs with dialogue trees or quest-givers, controller rumble as a
-required channel, monetization plumbing, additional playable characters / the Lunal
-fight (v2, §8.4/§18), loot/gear-grind progression (§8.5).
+audio, voice acting, **branching** NPC dialogue trees or objective-dispensing
+quest-givers (the linear told layer of §8.10 is in scope), controller rumble as a
+required channel, monetization plumbing, additional playable characters / Mir kit
+expansion (v2, §8.4/§18), loot/gear-grind progression (§8.5). *(Lunal is the v1 finale,
+§8.7.)*
 
 ### 7.3 Product pillars
 
@@ -265,8 +316,11 @@ fight (v2, §8.4/§18), loot/gear-grind progression (§8.5).
 3. **The chorus drives the fight — audibly.** The beat the game judges **is the beat
    of the playing track** (§8.3). On-beat actions are empowered; enemy attacks
    telegraph and land on the beat. Reading the music is reading the fight.
-4. **The untold stories are found, not told.** Every backstory is discoverable by
-   walking somewhere and looking (§8.8, §11.1.1). No dialogue, no lore dumps.
+4. **The untold stories are found, not told.** Every *backstory* is discoverable by
+   walking somewhere and looking (§8.8, §11.1.1) — no lore dumps, no exposition NPC for
+   the world's history. (The story **spine** is a separate, deliberate channel: the
+   linear told layer of §8.10. Found-not-told governs the world; told governs the
+   spine.)
 5. **Rhythm clarity before difficulty.** Every mechanic must make the beat more
    legible, never less. Off-beat actions always still execute (weaker) — precise
    timing is never the only path (§9.3).
@@ -285,11 +339,12 @@ fight (v2, §8.4/§18), loot/gear-grind progression (§8.5).
 
 Boot → audio-gesture gate → save slot → optional AV calibration → the drowned world.
 
-1. **The critical path:** five fight nodes (battle/elite/boss), one per region, in
-   campaign order. Each node's foe **stands in the world** at its place (v7.8) — the
-   player walks up to the actual enemy, not an abstract marker. A save-obelisk stands
-   near each fight (§8.8.5). Contact starts the in-world fight (§8.2); victory grants
-   rewards (§8.5) and the world continues from that spot. This alone finishes the game.
+1. **The critical path:** a **20-node campaign** (15 battle / 4 elite / 1 boss, §8.6),
+   a linear chain from `opening_1` to `boss_1` touring all five regions in campaign
+   order. Each node's foe **stands in the world** at its place (v7.8) — the player walks
+   up to the actual enemy, not an abstract marker. A save-obelisk stands near each fight
+   (§8.8.5). Contact starts the in-world fight (§8.2); victory grants rewards (§8.5) and
+   the world continues from that spot. This alone finishes the game.
 2. **The world:** around the path is the five-region explorable map (§8.8) — hidden
    paths, secret pockets, and echoes. None of it is required; all of it is findable.
 
@@ -330,7 +385,8 @@ regression coverage only and are **retired from the product path**.
 
 **Cancels & tech.** Attack→dash cancel on the beat; light-gatling chains inside cancel
 windows; on-beat recovery-cancel into the next attack. Everything cancellable is
-cancellable only inside a few-frame window.
+cancellable only inside a short window defined by each move's frame data
+(`ActionCombat.ts`, §8.2).
 
 **Encounter flow.** Contact → real-time fight (defeat the wave / survive the boss's
 phases, §8.7) → rewards (§8.5) → the world, in place. No turns, no mid-fight menus.
@@ -422,24 +478,35 @@ markers against a now-line — from the same beat grid judgment uses.)*
 
 ### 8.6 Encounter design progression (v8.0 — post-luchador curriculum)
 
-One fight per region, ascending in rhythmic and mechanical intensity. Difficulty is
-expressed through **track feel (BPM/energy), enemy count, telegraph density, and
-frame-data strictness** — not meter-signature changes (retired with the turn-based
-model; see §8.7 for how the boss escalates).
+A **20-node campaign** (§7.0) — a linear `next` chain of **15 `battle` + 4 `elite` + 1
+`boss`** nodes — ascending in rhythmic and mechanical intensity as it tours the five
+regions. Difficulty is expressed through **track feel (BPM/energy), enemy count,
+telegraph density, and frame-data strictness** — not meter-signature changes (retired
+with the turn-based model; see §8.7 for how the boss escalates). The 13 co-generated
+biome encounters reuse the 4 foes and 4 combat beatmaps, varied by wave and rewards
+(`generate_overworld_map.py`).
 
-| Region (node) | Foe(s) | Track (combat rotation/boss) | Curriculum |
+Node IDs are `opening_1`, `mid_1`, `node_03`…`node_19`, `boss_1` (source:
+`campaign/opening_biome.json`). The curriculum arc across them, by region band:
+
+| Nodes (campaign order) | Region band | Foe(s) | Curriculum |
 |---|---|---|---|
-| The Fold's edge (`opening_1`) | rot slime | combat rotation | Movement, light/heavy, first on-beat rewards; generous telegraphs |
-| The Kelp Shelf (`mid_1`) | drowned drifter | combat rotation | Dash timing, whiff punishment, first special |
-| The Breach (`mid_2`) | wraith + drifter pack | combat rotation | Multi-enemy spacing, target priority, crowd DI |
-| The Scar (`mid_3`) | elite wraith, then **the Harrow** | combat rotation | Parry as offense; cancel-window pressure; tighter telegraphs. The Harrow closes the region and delivers the reveal (§8.7) |
-| The Keep (`boss_1`) | **Lunal** | *Quotience* | Full system: phases, section changes, ultimate economy (§8.7) |
+| `opening_1` | The Fold's edge | rot slime | Movement, light/heavy, first on-beat rewards; generous telegraphs |
+| `mid_1` | The Kelp Shelf | drowned drifter | Dash timing, whiff punishment, first special |
+| `node_03`…`node_19` (17 nodes: battle + 4 elite) | The Breach → the Scar | drifter, wraith, elite-wraith packs (waves/rewards vary per node) | Multi-enemy spacing, target priority, crowd DI; parry as offense; cancel-window pressure; tightening telegraphs. The **Scar** stretch is where Nari is taken (§8.4) and is revealed as **the Harrow's** search; the Harrow **delivers the reveal** that closes the region (§8.7). |
+| `boss_1` | The Keep | **the finale** (spec: Lunal, §8.7; build: `the_conductor`, §20.2) | *Quotience* — full system: phases, section changes, ultimate economy |
 
-Foe roster (v16.0): slime, drifter, elite wraith, **the Harrow**, **Lunal**. The
-lyric-canon constraint (v7.6) is retired with the setlist-derived cosmology.
-*(Content-hygiene item: encounter/track file IDs still carry legacy names —
-`mid_biome_2_luchadores_*`, `*_clave_*` — around correct contents; rename tracked in
-§20.2.)*
+*[ASSUMPTION: the region-to-node mapping of `node_03`…`node_19` (which nodes are Breach
+vs Scar, and where exactly the four `elite` nodes fall) is authored in the campaign
+graph / map data, not enumerated here; confirm against `generate_overworld_map.py` if a
+per-node breakdown is needed.]*
+
+Foe roster (v16.0 spec): slime, drifter, elite wraith, **the Harrow** (a reveal beat,
+not necessarily a fight — §8.7.1 #5), **Lunal** (finale). The lyric-canon constraint
+(v7.6) is retired with the setlist-derived cosmology. *(Content-hygiene item:
+encounter/track file IDs still carry legacy names — `mid_biome_2_luchadores_*`,
+`*_clave_*`, and the whole `boss_conductor_*` set — around correct contents; rename
+tracked in §20.2.)*
 
 ### 8.7 The final act — the Harrow, then Lunal (v16.0 re-spec)
 
@@ -509,9 +576,11 @@ music and judged beat.
 
 ### 8.8 Exploration — the second game
 
-**8.8.1 World structure — the Ascent as an open world (v13.0).** One continuous
-hand-authored map (currently 112×64 tiles) of **five organic region territories**
-(weighted Voronoi, not column strips), read as one climb from the sea bed into open
+**8.8.1 World structure — the Ascent as an open world (v13.0; expanded v15.0/v15.1).**
+One continuous hand-authored map (**356×200 tiles**, painted as **24 camera-culled
+ground-plate chunks** and split into painted sub-districts, §7.0) of **five organic
+region territories** (weighted Voronoi, not column strips), read as one climb from the
+sea bed into open
 air that sprawls **up, down, and right** once you surface — the campaign road tours
 the map to one specific far point: **the Fold** (the ocean-floor
 obelisk town Mir wakes in — silt streets, prayer rings, hut foundations), **the Kelp
@@ -531,17 +600,22 @@ context-prompt interaction revealing **one evocative line** of world-bible §5a/
 canon — found, never told. *(v10.0: the echo voice now also carries the search — a
 subset of lines trace Nari's passage and name Lunal, so the objective is discoverable
 the same way everything else is.)* Echoes are collectible (persisted per save, §10.7),
-optional, and surfaced only as a found/total HUD counter — no map markers. Ten ship in
-the current world.
+optional, and surfaced only as a found/total HUD counter — no map markers. **55 are
+placed** in the current world (`overworld.json` `echoes` layer, §7.0). *(v16.0 re-cut:
+the procedurally-scattered echo strings still carry retired-cosmology lines and are
+being replaced with the hand-authored vignettes in [side-stories.md](../design/side-stories.md)
+— §20.2 item 7c.)*
 
 **8.8.3 Secrets and hidden paths.** At least one non-obvious traversal element per
 region (a gap readable only up close, a route behind a wreck/structure). Secrets gate
 optional rewards (relic, echo, or both) — never critical-path content. Hand-authored,
 never procedural.
 
-**8.8.4 What this explicitly is not.** Not loot/inventory management; not NPCs or
-dialogue; not a second combat layer (no overworld enemies beyond the standing node
-foes); not procedural generation.
+**8.8.4 What this explicitly is not.** Not loot/inventory management; not *branching*
+dialogue trees or objective-dispensing quest-givers (the **linear, flag-gated told
+layer** — reactive NPCs + scripted cutscenes — is in scope and specified in §8.10); not
+a second combat layer (no overworld enemies beyond the standing node foes); not
+procedural generation.
 
 **8.8.6 Tracks — reading the ground (v12.2).** The search is a tracking puzzle told
 entirely in ground paint. Many things walk this world: cult pilgrims (paired adult
@@ -565,15 +639,67 @@ the ground. Standing beside it prompts prayer; praying persists the save in-worl
 ("THE OBELISK HEARS") without touching the fight trigger. Obelisks complement — not
 replace — autosave on progression.
 
+### 8.9 Failure and interruption behaviour
+
+The happy path (contact → fight → rewards → world) is specified in §8.2; this section
+fixes what happens when a fight or session does *not* complete cleanly.
+
+- **Defeat.** Losing an in-world fight runs the results/defeat flow and returns the
+  player to the world with the node **not cleared**; the foe still stands at its place
+  and the fight is re-enterable. Player HP and accumulated damage % reset on the next
+  fight start (they are per-fight, §8.5). *[ASSUMPTION: defeat returns control at/near
+  the node's save-obelisk rather than ending the run — there is no permadeath or run
+  reset in scope; confirm against `WorldFight`/`ResultsScene` defeat handling.]*
+- **Practice mode** (§9.3) floors player HP at 1, so there is no defeat state while it
+  is on.
+- **Mid-fight interruption (pause / settings / tab-blur).** Because timing is
+  audio-clock-authoritative (§10.2), pausing or losing window focus must **pause the
+  audio transport and the sim together** so heard and judged beat cannot desync on
+  resume; on `AudioContext` suspend/resume the fight resumes from the track position,
+  never from a free-running timer. *[ASSUMPTION: opening the settings overlay mid-fight
+  pauses the sim; confirm against `SettingsOverlay`/`OverworldScene`.]*
+- **Follower edge case.** Nari pauses outside fight rooms and never enters combat
+  (§8.4); entering any fight before the surface **loss beat** leaves the follower intact
+  and waiting; after the loss beat he is absent from all fights.
+- **Uncaught runtime error.** Production builds paint any uncaught error into a visible
+  fatal-error overlay (v8.2) rather than a black screen (§9.2).
+
+### 8.10 The told layer — reactive NPCs and scripted cutscenes (v16.0 doctrine)
+
+v16.0 split the narrative doctrine: the **spine is told** (a small set of scripted
+beats and reactive NPC dialogue), while *found-not-told* is reserved for the world
+(§8.8.2). This layer is **linear and flag-gated — never a branching dialogue tree, a
+quest log, or an objective-dispensing quest-giver** (those remain non-goals, §7.2).
+
+- **Scripted cutscenes** (`src/data/content/cutscenes.ts`): staged, non-interactive
+  story beats fired at fixed story moments. **Three ship today** — `rite_opening`,
+  `leaving_fold`, `nari_taken`. Of the seven story beats in the world bible, **The Den**
+  and **The Sitting-Down** (the two the finale depends on) are **unwritten** (§20.2
+  item 7b).
+- **Talkable NPCs** (`src/data/content/dialogue.ts`): combat-free figures, most in the
+  Fold, a few met on the climb. Each NPC has **ordered `beats`**, and the first beat
+  whose `requires` flag is satisfied is the one that plays — so the same person says
+  something different before Mir leaves the Fold, after he leaves, and after Nari is
+  taken. Flags available to `requires`: `leftFold`, `nariLost`, `cleared:<nodeId>`, and
+  any flag a beat itself `sets` (persisted in `SaveProfile.storyFlags`). A beat with no
+  `requires` is the default and must come last. Lines are revealed one at a time and
+  advanced/closed with **E** (the same interact verb as echoes and obelisks).
+- **Acceptance:** dialogue must be reactive to at least the `leftFold` / `nariLost`
+  flags on the Fold NPCs; no NPC dispenses an objective marker; the two unwritten
+  cutscenes are tracked as open in §20.2 and gated by §16.3 AC-6.
+
 ---
 
 ## 9. Non-Functional Requirements
 
 ### 9.1 Performance
 
-- 60 FPS target on Tier-1 browsers at integer-scaled 320×180.
+- 60 FPS target on Tier-1 browsers, rendering the 320×180 design space at a **4×
+  smooth-scaled** canvas (v11.0, §10.6 — not integer-scaled; the "integer-scaled" wording
+  was retired with the pixel-art register).
 - Audio scheduling stays stable under render stutter: **audio is authoritative, not
-  video** — the fight stays rhythm-correct through frame drops.
+  video** — the fight stays rhythm-correct through frame drops (target: heard-vs-judged
+  drift ≤ 30 ms sustained, §5/§16.1).
 - Boot stays light: audio is lazy-loaded per scene (`preload="none"`; only the live
   track is fetched — ~45 MB on disk never loads up front).
 
@@ -598,7 +724,7 @@ mount. Real-device iOS Safari verification remains the Tier-2 manual bar.
 
 | Setting | Requirement |
 |---|---|
-| Remappable controls | Required — including the in-world fight's combat bindings *(shipped v8.2: all six combat actions remappable via Settings → Audio & Controls; fight reads the bindings with sane defaults)* |
+| Remappable controls | Required — including the in-world fight's combat bindings *(shipped v8.2: all six combat actions remappable via Settings → Audio & Controls; default bindings J light / K heavy / L special / I parry / Shift dash / U ultimate)* |
 | Keyboard-only play, no required simultaneous presses | Required |
 | Separate volume sliders (music / SFX / UI) | Required |
 | Captions for musically meaningful events ("attack incoming left," "the music shifts," "groove full") | Required — in the in-world fight *(shipped v8.2: telegraph direction, boss phase shifts, groove/ultimate events)* |
@@ -626,6 +752,11 @@ Haptics remain additive-only for any future controller pass.
 
 **TypeScript + Phaser + Tone.js + Web Audio API**, built with Vite; unit tests in
 Vitest; e2e in Playwright; deployed as a static site via GitHub Actions → GitHub Pages.
+
+Pinned versions (source: `package.json`, §7.0): TypeScript `^5.5.4`, Phaser `^3.80.1`,
+Tone.js `^15.0.4`, ajv `^8.20.0` (content validation); Vite `^5.4.0`, Vitest `^1.6.1`,
+`@playwright/test` `^1.44.1`. JS build target `es2019` / `safari13` for older WebKit
+(§9.2). Browser floors are the Tier-1/Tier-2 matrix in §9.2.
 
 ### 10.2 Authoritative timing rule (hard constraint)
 
@@ -764,14 +895,17 @@ the world itself** (v7.14): the biome's authored floor is painted as an edge-fad
 patch blended into the surrounding map, its kitbash set pieces stand around the spot
 in world space, and the fight locks its room onto that exact dressed ground. Each venue
 stages an untold story (canon in [world-bible](../design/world-bible.md) §5a) readable
-without text:
+without text. The five rows below are the **region-representative venues**; the 20
+campaign nodes (§8.6) reuse their biome's venue, re-keyed per node by
+`composeWorldVenue`. `opening_1`, `mid_1`, and `boss_1` are single real nodes; "Breach
+nodes" and "Scar nodes" each cover several of `node_03`…`node_19`:
 
 | Node | The place | Hue | The untold story its ground stages (v12.0 — ground-first per the purge) |
 |---|---|---|---|
 | `opening_1` | **The Fold's edge** — where the town's silt streets end | deep teal | The last prayer ring before open water; the ring is scuffed where something was dragged across it, outward. The town prays facing the obelisk. The thing they pray about comes from the other way. |
 | `mid_1` | **The Kelp Shelf** — the drowned climb | kelp green | Ship ribs stitched up the slope like the rungs of a ladder — every wreck points UP. Whoever climbed before Mir used the dead as footholds. |
-| `mid_2` | **The Breach** — the waterline | sand/foam | Tidal ripples combed flat in one wide swathe, as if something enormous hauled itself ashore here. The foam line is broken exactly once. |
-| `mid_3` | **The Scar** — the surface | blood/rust | Claw-gouged turf and scorched rings around a den mouth; among the big prints, one set of very small ones, walking IN. This is where the trail ends. |
+| Breach nodes | **The Breach** — the waterline | sand/foam | Tidal ripples combed flat in one wide swathe, as if something enormous hauled itself ashore here. The foam line is broken exactly once. |
+| Scar nodes | **The Scar** — the surface | blood/rust | Claw-gouged turf and scorched rings around a den mouth; among the big prints, one set of very small ones, walking IN. This is where the trail ends. |
 | `boss_1` | **The Keep** — Lunal's ground | storm violet | A stone island whose floor is the hall's drowned marble, veins running toward its centre. One path across it is swept clean and walked hollow; everything else is silted and untouched. She has only ever needed to go one place. |
 
 Design rules: a specific place, not a theme (postcard test); story staged physically
@@ -868,7 +1002,7 @@ information never relies on color alone. Once §8.3 tiers land, judgment feedbac
 | Nari (finale staging) + Lunal (masks, reveal silhouette) | — | **Open (v10.0):** specced §8.4/§8.7, no art shipped — tracked §20.2 |
 | Foes (slime, drifter, elite wraith) + the colossal boss sheets (retired Conductor art; §8.7 re-spec pending) | `assets/sprites/enemies/` | **Placeholder** (v11.2 purge: minimal glow-shapes, accents = runtime auras; real art slots open) |
 | Six-track soundtrack + beat-grid maps | `assets/audio/*.mp3` (~45 MB, lazy-loaded) + `src/data/content/songs/*.json` | Shipped (v7.7 audio; v8.1 measured beat grids via `tools/audio/measure_beats.py`). Listening-pass verification owed (§20.2) |
-| Open overworld (112×64 Tiled JSON, organic region territories, BFS-validated reachability) + 20-tile sheet | `assets/tilemaps/`, `tools/overworld/generate_overworld_map.py` | Shipped (v7.0; ground/water/clustering/value pass v7.12; de-pixelation v7.14) |
+| Open overworld (**356×200** Tiled JSON, organic region territories, BFS-validated reachability) + 20-tile sheet + **24 painted ground-plate chunks** (v15.0) | `assets/tilemaps/` (`overworld.json`, `ground_plate_*.png`), `tools/overworld/generate_overworld_map.py` | Shipped (v7.0; ground/water/clustering/value pass v7.12; de-pixelation v7.14; 10× expansion + chunking v15.0; district theming v15.1) |
 | Environment kits + venue composition | `ArenaComposer.ts`, `dressing.json` (code paths live, textures purged) | **Purged v11.2** — world dressing is the painted plate only; kit slots open |
 | Region landmarks (5 colossal set-pieces) | `assets/sprites/overworld/landmarks.png` | Shipped (v7.1/v7.3) |
 | Overworld NPCs (ambient figures), props, obelisks, echo runes | `assets/sprites/` | Shipped |
@@ -900,7 +1034,7 @@ transitions, stagger, death).
 | Parallax/venue backgrounds | 5 biomes × ~4 layers + weather | ~30 |
 | VFX library | hit sparks, arcs, parry burst, dash trail, dust, splash, blooms, projectiles, dissolves, status auras, chorus light | ~30 |
 | UI kit | wordmark, menu illustration, HUD, icons, cursor, panels, results, settings, bitmap font | ~90 |
-| **Ambient figures** (v8.0: re-scoped from "questgivers" — §8.8.4 forbids dialogue NPCs; these are silent world-dressing characters) | 4 old-hero figures + ~6 townsfolk × (idle + portrait-less) | ~20 |
+| **Ambient figures** (silent world-dressing characters — distinct from the §8.10 told-layer talkable NPCs, which carry the spine; these never speak) | 4 old-hero figures + ~6 townsfolk × (idle + portrait-less) | ~20 |
 | Items & pickups | health orb, currency, ~15 relics, keys | ~25 |
 | **Total** | | **~506 named slots** (thousands of frames; v10.0 re-count after the solo pivot) |
 
@@ -975,7 +1109,7 @@ Phases are sequential from v8.0 adoption; each exit condition is verifiable agai
 | **P4 — Content & art depth** (~3 weeks) | §11.5 manifest burn-down (states, VFX, wordmark, SFX pack); §11.1.1 landforms (v7.15 direction); encounter/track ID hygiene (§8.6); retired-scene deletion | §11.1 criteria (1)–(7) pass screenshot review across all screens; no retired scenes in the build |
 | **P5 — Hardening & release** (~2 weeks) | §16.1 QA matrix on real Tier-1/Tier-2 browsers + devices; Firefox root-cause; balance; soak | All §16.2 gates green; Tier-1 matrix 100% |
 
-Explicitly deferred past v1: the Lunal fight and Mir kit expansion (§8.4 v2), moveset
+Explicitly deferred past v1: Mir kit expansion (§8.4 v2), moveset
 schema extraction (§10.5), additional biome content beyond the five regions,
 storefront distribution.
 
@@ -1010,6 +1144,23 @@ storefront distribution.
    shipped combat path**.
 6. Save data persists in IndexedDB across refresh and browser restart.
 7. No retired scene is reachable by a player.
+
+### 16.3 Per-requirement acceptance criteria
+
+One objectively testable (pass/fail) criterion per major requirement. Gates in §16.2
+are the release-blocking subset; these are the finer-grained checks used per feature.
+
+| ID | Requirement | Pass/fail criterion |
+|---|---|---|
+| AC-1 | Campaign length (§4.2) | A full critical-path playthrough of all 20 nodes is completable; first-completion wall-clock is measured once and the 3–5 h target is confirmed or corrected in §4.2. |
+| AC-2 | 20-node campaign (§8.6) | `campaign/opening_biome.json` loads and validates with exactly 20 nodes (15 battle / 4 elite / 1 boss) in a single reachable `next` chain from `opening_1` to `boss_1`; BFS reachability check green. |
+| AC-3 | World scale (§7.0/§8.8.1) | `overworld.json` is 356×200; all 24 ground-plate chunks load and camera-cull without exceeding the WebGL max texture size; no chunk seam visible in an in-game sweep. |
+| AC-4 | Echoes (§8.8.2) | 55 echo markers are placed and individually discoverable; each persists to the save and increments the found/total HUD counter; no map marker is shown. |
+| AC-5 | Beat truth (§8.3) | `beat-truth.spec.ts` green: the judged grid equals the playing song's grid, judgment flips with the audio, and rate coupling holds at 70% speed. |
+| AC-6 | Told layer (§8.10) | All shipped cutscenes fire at their story moments; Fold NPC dialogue changes across the `leftFold` and `nariLost` flags; the two unwritten beats (The Den, The Sitting-Down) are either authored or explicitly listed open in §20.2. |
+| AC-7 | Finale (§8.7/§8.7.1) | Once designed: all three phases are entered/exited on bar boundaries of the audible track (gate #3); Nari is present and non-interactive throughout; a hesitation window (Mir declining to strike) is detectable and acknowledged; the encounter reads as "fights to stop, not to kill." **Until the finale is designed, the shipped `the_conductor` phased fight satisfies gate #3 only, and this AC is OPEN (§8.7.1, §20.2).** |
+| AC-8 | Accessibility (§9.3) | Every §9.3 row is exercised in the in-world fight per release (gate #5). |
+| AC-9 | Persistence (§10.7) | Save data (settings, calibration, progress, unlocks, relics, consent, found echoes, story flags) survives reload and browser restart (gate #6). |
 
 ---
 
@@ -1053,6 +1204,24 @@ the matrix defines the intended hand-off shape as the team grows.
 *(Resolved since v7.x: title — **The Drowned Chorus**; narrative — the world bible;
 music sourcing — the six recorded tracks.)*
 
+### 18.1 Assumptions introduced by the v16.1 re-sync
+
+These are judgment calls made while reconciling the prose to the code, marked inline as
+`[ASSUMPTION: …]`. Each needs an owner decision to become fact; none is asserted as
+verified.
+
+1. **First-completion time is 3–5 h** (§4.2, §7.1), scaled from the 20-node campaign —
+   a target, not a measured playthrough (resolve via §16.3 AC-1).
+2. **The region-to-node mapping of `node_03`…`node_19`** (which are Breach vs Scar, and
+   where the four `elite` nodes fall) lives in the campaign/map generator, not in this
+   document (§8.6).
+3. **Defeat returns control at/near the node's save-obelisk** with no run reset /
+   permadeath (§8.9).
+4. **Opening the settings overlay mid-fight pauses the sim** alongside the audio
+   transport (§8.9).
+5. **The Harrow is a reveal beat, not necessarily a fight node** — its encounter form
+   is still open (§8.6, §8.7.1 #5).
+
 ---
 
 ## 19. Appendix
@@ -1081,26 +1250,27 @@ music sourcing — the six recorded tracks.)*
 
 ---
 
-## 20. Implementation Status (as of 2026-07-14, v8.0 re-cut)
+## 20. Implementation Status (as of 2026-08-21, v16.1 re-sync)
 
 Factual snapshot of the repository against this PRD. **Status is tracked against the
 shipped product path only** — a feature that exists solely in a retired scene is a gap
 here, not a checkmark (the v8.0 rule; see the audit for why). Where this section and
-§1–§19 disagree about reality, this section wins; §1–§19 win about requirements.
+§1–§19 disagree about reality, this section wins; §1–§19 win about requirements. The
+canonical current-state numbers are consolidated in **§7.0**.
 
-Verified this cut (v8.7): `npm test` — **115/115 unit tests** (15 files, incl. the balance harness); **17 e2e
-test cases in 10 Playwright spec files** (Chromium gate, incl. `beat-truth.spec.ts`
-(gate 1a), `boss-phases-world.spec.ts` (gate 3, product path), and
-`mobile-boot.spec.ts`); typecheck and production build green. *(Counts dropped from
-v8.2's 168/22 because the retired turn-based path and its tests were deleted — every
-remaining test covers shipped code, which is the honest number.)*
+Verified this cut (v16.1): `npm test` — **128 unit tests, all passing** (14 test files,
+incl. the balance harness); **10 Playwright e2e spec files** (Chromium gate, incl.
+`beat-truth.spec.ts` (gate 1a), `boss-phases-world.spec.ts` (gate 3, product path), and
+`mobile-boot.spec.ts`); typecheck and production build green. *(Unit count rose from
+v8.7's 115 to 128 across the v13–v15 world/content work; the retired turn-based path and
+its tests were deleted at v8.3, so every remaining test covers shipped code.)*
 
 ### 20.1 Built, tested, and verified on the shipped path
 
 | Area | Status |
 |---|---|
-| Five-region explorable world (§8.8) | 112×64 open map (v13.0), five regions as organic weighted-Voronoi territories, zone-seeded dressing/obstacles/tints, elevation relief + river + one-off landmarks (v13.1/v13.2), BFS-validated reachability at generation time; secret spurs per region |
-| Echoes (§8.8.2) | 10 hand-placed, E-to-interact, one-line world-bible fragments; persisted per save; HUD counter; `echo_found` fires |
+| Five-region explorable world (§8.8) | **356×200** open map (v13.0 organic regions; v15.0 10× expansion into 24 camera-culled ground-plate chunks; v15.1 sub-district theming), zone-seeded dressing/obstacles/tints, elevation relief + river + one-off landmarks (v13.1/v13.2), BFS-validated reachability at generation time; secret spurs per region |
+| Echoes (§8.8.2) | **55 placed** (v15.0), E-to-interact, one-line fragments; persisted per save; HUD counter; `echo_found` fires. *(Strings still carry retired-cosmology lines pending the side-stories.md replacement — §20.2 item 7c.)* |
 | Foes stand in the world (§8.1) | Node foes idle at their places (locked = dark silhouettes, cleared = ember); the colossal boss in-world (retired Conductor art pending the §8.7 re-spec) |
 | Save-obelisks (§8.8.5) | Beside every fight node; rest persists through the real IndexedDB save (e2e-proven, no fight trigger) |
 | **In-world fights (§8.2)** | `WorldFight`: camera-locked room of the actual overworld; sim obstacles from impassable tiles (`resolveObstacles`, unit-tested); venues (biome floor + set pieces) composed into the map with a guaranteed fightable circle; rewards → results → in-place return; e2e asserts no battle scene loads |
@@ -1178,7 +1348,7 @@ content-ID hygiene, and retired-code deletion.)*
 | 1a. Beat truth — judged beat = audible track | ✅ Shipped v8.1; held by `beat-truth.spec.ts` on every push |
 | 2. Gesture-driven audio gate, no autoplay | ✅ Hardened v8.2 (DOM fallbacks, timeout-guarded resume) |
 | 3. Boss phase transitions on the audible track | ✅ Shipped v8.2; held by `boss-phases-world.spec.ts` |
-| 4. Crisp pixel scaling | ✅ Integer-scaled 320×180 |
+| 4. Full-fidelity rendering (no upscale blur / no pixelated scaling, v11.0) | ✅ 320×180 design space at 4× smooth-scaled canvas (`pixelArt`/`roundPixels` off) |
 | 5. Every §9.3 feature on the shipped path | ✅ All rows shipped as of v8.2 (see §9.3 table) |
 | 6. IndexedDB persistence across restarts | ✅ Held by boot-flow + obelisk specs |
 | 7. No retired scene reachable | ✅ Satisfied structurally (deleted, v8.3) |
