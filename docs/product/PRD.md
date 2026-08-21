@@ -6,7 +6,7 @@
 |---|---|
 | Document title | *The Drowned Chorus* — Browser Rhythm-Action RPG PRD |
 | Working codename | Project Meterfall (historical; the game is titled *The Drowned Chorus*) |
-| Status | **Active v16.1** (2026-08-21). Current shape: a single-player painterly-2D (not pixel-art, §11.1) rhythm-action RPG — **the Ascent**: Mir wakes on the ocean floor in the obelisk-cult Fold, climbs an open world (drowned west → the Breach waterline → the sprawling Scar surface → the Keep), his toddler **Nari** following until taken on the surface; he climbs to find him and discovers his own partner took him (§1, §8.4, §8.7, §8.8). **Story canon was re-cut at v16.0** — see the [world bible](../design/world-bible.md); §8.7 is re-spec'd and the shipped boss content still carries retired names (§20.2). The world is an open **356×200-tile** map (24 painted ground-plate chunks) of organic region territories with elevation relief, a river, and one-off landmarks, told almost entirely in the painted ground plate; all figure art is minimal placeholder glow-shapes since the v11.2 purge (real character art is the open direction). **Canonical current-state numbers live in §7.0** — that table, not this row and not the revision history, is what an implementer builds against. **Full change history: the revision table below.** |
+| Status | **Active v16.2** (2026-08-21). Current shape: a single-player painterly-2D (not pixel-art, §11.1) rhythm-action RPG — **the Ascent**: Mir wakes on the ocean floor in the obelisk-cult Fold, climbs an open world (drowned west → the Breach waterline → the sprawling Scar surface → the Keep), his toddler **Nari** following until taken on the surface; he climbs to find him and discovers his own partner took him (§1, §8.4, §8.7, §8.8). **Story canon was re-cut at v16.0** — see the [world bible](../design/world-bible.md); §8.7 is re-spec'd, the finale now carries a **proposed buildable spec (§8.7.2, pending owner sign-off)**, and the shipped boss content still carries retired names (§20.2). The world is an open **356×200-tile** map (24 painted ground-plate chunks) of organic region territories with elevation relief, a river, and one-off landmarks, told almost entirely in the painted ground plate; all figure art is minimal placeholder glow-shapes since the v11.2 purge (real character art is the open direction). **Canonical current-state numbers live in §7.0** — that table, not this row and not the revision history, is what an implementer builds against. **Full change history: the revision table below.** |
 | Owner | Amir Bukhari |
 | Author | Amir Bukhari (compiled from concept notes, deep research, and live-play feedback) |
 | Created | 2026-07-08 |
@@ -31,6 +31,7 @@ and [`docs/design/aaa-audit.md`](../design/aaa-audit.md).
 
 | Version | Date | Change |
 |---|---|---|
+| **16.2** | **2026-08-21** | **The proposed finale spec — the §8.7.1 constraints get a buildable answer (new §8.7.2, pending owner sign-off).** §8.7.1 had deliberately left the final act as *constraints, not a spec*, which kept AC-7 OPEN and the document's honest ceiling in the low 80s. This pass drafts a concrete proposal satisfying all six: the boss gauge is **re-fictioned from HP to "Ground"** (identical shipped threshold machinery, "passed"-not-"dead" terminal state), the three phases are **three arguments on *Quotience*'s three movements** (bar-aligned per gate #3), Lunal's move set is **holds/walls/disarms with Mir unable to die** (stop-not-kill), a **hesitation detector** (beats-since-last-swing → aggression damp + caption + `hesitation_entered/broken` events) makes §8.7.1 #4 measurable, **Nari is a non-interactive staged cage entity** the fight is framed around, Groove/ultimate stay in spec (**parry-to-build**, ultimate re-read as an armored **surge past**), and the close is the **one lock-pick on-beat sequence** (the clock-keeper payoff, reward = silence). Resolves two open items *as proposals*: the **Harrow is scripted, no fight** (engineered anticlimax subverting the Scar elite ramp), and **scale** is carried by staging (mask reveal, control-of-space, the hands) with the colossal register moved figure→space. Cross-refs updated: §8.7.1 intro, AC-7, §18 Q3, §18.1 decision #2. Build delta scoped to four new engine items; the phase engine, *Quotience* bindings, and gate #3 are reused as-is. Proposal only — no code changed, AC-7 stays OPEN until sign-off. |
 | **16.1** | **2026-08-21** | **The structural re-sync — the requirement body catches up to the shipped build.** The v16.0 pass re-cut the *story* (Harrow/Lunal, cosmology out) but left §1–§19 still describing the pre-expansion world: a 112×64 map, five fight nodes, ten echoes, an "environmental-only / no dialogue" narrative, and integer-scaled rendering — while the shipped build (verified against the repository this cut) carries a **356×200 chunked world**, a **20-node campaign**, **55 placed echoes**, a **told layer** (`cutscenes.ts` + reactive `dialogue.ts` NPCs), and v11.0 smooth scaling. A scrutiny pass scored the document at 59%, gated by the resulting contradictions. Resolved by the standing rule — **the code is the source of truth and the stale spec is the bug**: adds the canonical **§7.0 current-state table** (every number carries a named repository artifact); rewrites §1/§4.2/§7.1/§8.1/§8.6/§8.8.1/§8.8.2/§11.4/§20.1 to the shipped numbers (dead `mid_2`/`mid_3` node IDs removed); reconciles the "no dialogue" clauses (§4.3/§7.2/§7.1/§8.8.4) with the new **§8.10 told layer**; adds **§8.9 failure & interruption behaviour** and **§16.3 per-requirement acceptance criteria**; pins stack versions (§10.1); drops the retired "integer-scaled" clause (§9.1, §20.2a). Judgment calls introduced here are marked inline `[ASSUMPTION: …]` and listed in §18.1. No code changed. |
 | **16.0** | **2026-08-21** | **The story re-cut — cosmology out, the finale to Lunal, and the grief put in the ground.** Owner: "honestly this story feels so weird. the chorus and conductor parts dont feel right" → "I don't like that he's a rigger. he needs a sedentary job so it shows how much he has to change." Root cause: the canon was reverse-engineered from the setlist, leaving everything **music-coded** — a guitarist hero, a conductor antagonist, and a cosmology made of music — which stacked five antagonists in a chain of custody (chorus → obelisk → litho → Conductor → Lunal) so Mir never faced a will that wanted anything *from him*. Three cuts: **(1) the cosmology is deleted** (no unresolved note, no grief-as-time); the Fold now rests on four flatly-stated, never-explained facts, of which the load-bearing one is new — **nothing in the Fold grows**, and Nari has been three years old for longer than his father can account for. **(2) The rule now cuts**: children are entered in the obelisk's ledger, Mir and Lunal quietly never entered Nari, so *"the unnamed voice is owed to the deep"* condemns exactly the child his parents tried to protect. **(3) The Conductor is replaced by the Harrow** — the parent who climbed before Mir, whose grief is a physical object the player walks through for eleven nodes: **the Scar is his search**, the gouges are tool marks, the burned rings are ground cleared to see it better. He *delivers* the reveal instead of gating it. **Lunal is the finale** (§8.7), an argument before a fight, and her offer is "stay," not "leave." Mir is re-cast from guitarist to **clock-keeper** — sedentary, unfit, and maintaining clocks that do not work in a town where time does not pass, so the climb costs him instead of equipping him; the trade pays off once, at the end, when he picks the cage's lock instead of breaking it. The **rhythm mechanic loses all in-fiction justification** (the world moves on a beat the way it has gravity; no character remarks on it). Narrative doctrine splits: the **spine is told** (seven scripted beats, reactive NPCs, a climax in words) and *found-not-told* is reserved for the world — see the new [side-stories.md](../design/side-stories.md), 39 staged vignettes, 80% silent, including a five-region notch thread that is the Harrow's backstory and is never labelled as such. Docs-only; no engine, content, or asset changes — the shipped boss still runs the retired Conductor and is tracked in §20.2. |
 | **15.1** | **2026-07-23** | **District theming — breaking up the monotonous mega-regions.** Owner: "I think the map neeeds more variation in areas/biomes/ just theming." v15.0's ~10x world left each biome a single flat colour — worst in the **61% brown Scar**, which read as one endless plain. The painter (`paint_ground.py`) now splits every region into painted **sub-districts** keyed off two coarse value-noise fields (`d1` @320, `d2` @190): the Scar alone gets six moods — **ash wastes, sulfur crust, bone fields, thorn barrens, scorch flats, and a cold-basalt overlay** — plus signature textures (scorch cracks, bone flecks, sulfur crust granules) painted only where they belong. The Shelf (deep kelp / tan terrace), Breach (wet flats / dry sand), Stage (deep violet / pale marble), and Fold (deep silt / pale shoal) each split too. Blending is soft-edged (a `min(field-lo, hi-field)` ramp) so districts fade into each other rather than hard-banding, and the whole pass uses **boolean-indexed assignment** (`canvas[band] = canvas[band]*(1-soft) + c*soft`) to stay memory-bounded on the 18M-px canvas (a full-canvas `np.where` first draft ran 7.7GB / 15min+; the indexed version cut RAM to 5.6GB). No engine, content, or asset-key changes — pure ground-paint variation. 128 unit + full Chromium e2e green. |
@@ -547,7 +548,8 @@ game's thesis, and it is said out loud, once, by both of them.
 
 #### 8.7.1 What the final act must deliver (constraints, not a spec)
 
-Encounter structure is deliberately **unsettled** pending design approval. Any
+Encounter structure is deliberately **unsettled** pending design approval; **a proposed
+spec that satisfies all six is drafted in §8.7.2** (pending owner sign-off). Any
 implementation has to satisfy all of these:
 
 1. **Lunal fights to stop, not to kill.** Holds, blocks, disarms, her body between
@@ -580,6 +582,128 @@ stands in it and what the fight is trying to say. Content IDs
 **Release gate #3 (§16.2) is unaffected:** whoever the boss is, phase transitions
 must execute on bar boundaries of the audible track without desync between heard
 music and judged beat.
+
+#### 8.7.2 Proposed finale spec (v16.1 — satisfies §8.7.1; pending owner sign-off)
+
+Authored against the six §8.7.1 constraints. **This is a design proposal, not adopted
+canon** — AC-7 (§16.3) stays OPEN until it is signed off and built. It is written to
+**reuse the shipped, canon-neutral phase machinery** (`bossPhases/boss_conductor_01.json`,
+the *Quotience* section bindings, `boss_phase_reached`, gate #3) with the minimum new
+engine work, so most of the cost is re-skin and staging, not new systems.
+
+**The core inversion — the bar is not health.** The boss gauge is re-fictioned from HP
+to **Ground** — the distance Lunal is still holding between Mir and the cage. Mir does
+not wound her; he *presses past* her. Mechanically it is the identical HP-threshold
+gauge the shipped boss already uses (same thresholds, same phase advances on the same
+*Quotience* section boundaries), but its zero-state is **"passed," not "dead"**: at 0
+Ground Lunal is spent, on the floor, unhurt, and the scripted ending takes over. There
+is no kill, no death animation, no victory sting. *(New engine work: a boss-bar label/skin
+variant and a "passed" terminal state in place of the death path — the threshold logic
+underneath is unchanged.)*
+
+**Three phases are three arguments** (§8.7.1 #2), each entered only after she has lost
+the previous one — desperation, not power. Phase transitions land on *Quotience* section
+boundaries exactly as shipped (gate #3):
+
+| Phase | *Quotience* section | Her argument (told, §9 beat 7 continues into the fight) | How the fight reads |
+|---|---|---|---|
+| **P1 — "You'll drop him."** | `movement_1` (open) | She watched him nearly drop Nari twice on the Shelf. He is not safe to move. | Range and **positioning** — walls, shoves, her body sliding to stay between Mir and the cage. Attacks knock Mir *away from the room*, never spike his HP. |
+| **P2 — "You met him. That's what you are."** | `movement_2` @ 28.19s | The Harrow. Pursuit is what he becomes; she will not let Nari be what that man is still digging for. | **Holds and disarms** — she grapples, breaks Mir's cancel chains, strips his tempo. More desperate, faster recovery, still never lethal. |
+| **P3 — "You're choosing a boy who can die."** | `movement_3` @ 74.30s | The true one. Say it plainly — that is what you climbed all this way to give him. | The mask comes off (see Scale, below). Fastest, most frantic — she throws her whole body across the door. Escalation is panic, not strength. |
+
+**Lunal's move set fights to stop, not to kill** (§8.7.1 #1). Every action is a hold,
+block, shove, wall, or disarm; knockback vectors point Mir *back from the cage*, never
+into a corner to be finished. No move has a lethal spike, no combo can chain Mir to
+death, and — the hard rule — **Mir cannot die in this fight.** If his HP reaches the
+floor she *holds* him and the current phase resets to its start ("she has stopped him
+once; he gets up"), the way §9.3 practice mode floors HP at 1. A game-over screen here
+is a bug. This also makes hesitation safe (below).
+
+**The hesitation window** (§8.7.1 #4). The sim tracks **beats since Mir's last offensive
+input**. Cross a threshold (proposed: **4 bars** of no swing) and the game *notices*: (a)
+Lunal's aggression **damps** — she is not trying to win, so if he is not pressing she is
+not pressing either; (b) the fight mix thins to near-silence; (c) a caption fires in the
+told voice (*"He could stop here."*); (d) **Nari goes still and watches**; (e) a
+`hesitation_entered` / `hesitation_broken` analytics pair fires so the beat is
+detectable per AC-7. Hesitating never fails the player and is never punished — it is the
+emotional release valve, and the fact that the option exists and is acknowledged is the
+whole point.
+
+**Nari is the frame** (§8.7.1 #3). Nari stands in the cage (padded bars, world-bible §11),
+**visible throughout, non-interactive** — staged like the decorative follower (§8.4): no
+tiles blocked, nothing triggered, no fail state attached. The camera keeps him in frame;
+Lunal's "between Mir and the room" positioning is *also* "between Mir and Nari" (same
+geometry). He reacts — flinches on the ultimate, stills during hesitation — and, per
+canon (§8), **he does not know Mir**, so he watches his father's fight like a stranger's.
+The fight is built around him, not decorated with him.
+
+**Groove and the ultimate stay in spec** (§8.5 — a Groove meter that cannot be spent is
+out of spec). Groove builds the shipped way, and **parrying Lunal's holds on the beat is
+the primary source** — you meet her cleanly and earn momentum. The ultimate is
+re-fictioned from a damage burst to a **surge past**: armored startup (as shipped), it
+drives the Ground gauge hard in one committed push she cannot stop. It reads as Mir
+going through with everything he has — *getting past*, never *trying to win* (§8.7.1 #1).
+
+**The close — the reward for finishing is silence** (echoing §8.7.1 #5). At 0 Ground the
+fight scene yields to the scripted ending (world-bible §8): the cage, and Mir sitting
+down to **pick the lock** rather than break it. This is specced as the game's **one and
+only lock-pick sequence** — a slow, quiet, on-beat tumbler input (the tumblers fall on
+the beat) that is the sole moment the clock-keeper trade (§8.4) is mechanically
+expressed. It is not a fight; it has no fail state (he opens it eventually, with wrecked
+hands, and it takes a while); the music stays gone. Then: **Nari does not know him at
+first** (allowed to be ugly for a few seconds); Lunal is left alive on the floor and her
+last line is the same argument once more; they go up; it rains; Nari asks where they are
+going. The payoff is a question about the future, not a defeated villain.
+
+**The Harrow is a scripted encounter, no fight** (resolves §8.7.1 #5 / §18.1 open
+decision #2 — proposed). Canon wants an anticlimax whose reward is silence; a fight would
+undercut both the reveal and the body-grief. The proposal **engineers** the anticlimax by
+subverting the combat grammar the player has been taught for eleven Scar nodes: the
+approach to the den runs the exact pre-fight ramp of every Scar elite — foe silhouette at
+the dig, telegraph aura, fight music swelling — and then **combat never initiates.** The
+Harrow does not rise. The music cuts to silence (the reward), and it becomes the scripted
+reveal (told beat 5, *The Den*): *nothing up here took your boy*, and the sorted pits.
+The player's trained expectation of a boss *is* the mechanism; its refusal is the beat.
+
+**Scale — menace without mass** (§8.7.1 #6). Both figures are human-sized, so the
+colossal silhouette-first register (§11.1) is retired for the finale and menace is
+carried by **staging, not size**:
+- *Lunal* — menace from **control of space and certainty**, not bulk. The Keep room is
+  small and she owns its geometry; the camera frames her against the thing Mir wants. Her
+  **mask stays on through P1–P2 and comes off in P3** — the reveal of an ordinary human
+  face at the moment the argument turns true is the opposite of a colossal silhouette and
+  lands harder (world-bible §5: "masks, reveal silhouette").
+- *The Harrow* — menace from **the hands** (the world-bible "hands" arc: his are ruined
+  past use) and from the **scale of his work** — the Scar, an entire region, is the
+  evidence. The bigness is environmental, not the figure: he is small; what he has done
+  is continent-sized.
+- *Principle* — the colossal register **moves from the figure to the space** (the room,
+  the Scar). Dread and inevitability, framed tight on human faces.
+
+**Constraint coverage.**
+
+| §8.7.1 | Met by |
+|---|---|
+| #1 stop, not kill | Hold/wall/disarm move set; knockback away from the room; Mir cannot die (phase-reset floor); no kill state |
+| #2 three phases = three arguments | P1/P2/P3 table, each entered after she loses the last; escalation is desperation (damped aggression, panic in P3) |
+| #3 Nari visible, non-interactive | Staged like the follower, in-cage, camera-anchored; the fight is built around his sightline |
+| #4 hesitation possible and noticed | Beats-since-last-swing detector → aggression damp + caption + Nari stills + analytics pair |
+| #5 Harrow anticlimax / reward is silence | Harrow scripted, no fight (engineered by subverting the elite ramp); finale reward is the silent lock-pick |
+| #6 scale | Mask reveal, control-of-space framing, the hands, colossal register moved figure→space |
+
+**AC-7 mapping** (§16.3). Three phases entered/exited on bar boundaries → the shipped
+*Quotience* section transitions (gate #3, unchanged). Nari present and non-interactive →
+the staged cage entity. Hesitation detectable and acknowledged → the
+`hesitation_entered/broken` events + caption. Reads as "fights to stop, not to kill" →
+the move set, the Ground gauge, and the non-lethal floor.
+
+**Build delta from what ships today.** Reused as-is: the phase-threshold engine, the
+*Quotience* bindings, `boss_phase_reached`, gate #3. New engine work is scoped to four
+items — (1) the boss-bar **Ground** skin + "passed" terminal state, (2) the **hesitation
+detector** + its events/caption, (3) **Nari** as a non-interactive staged entity, (4) the
+closing **lock-pick** on-beat sequence. Content re-cut (still on the §20.2 rename debt):
+Lunal replaces `the_conductor`, human-scale art replaces `conductor_colossal`, and the
+`boss_conductor_p*` maps re-bind to *Quotience*'s three movements under Lunal's IDs.
 
 
 ### 8.8 Exploration — the second game
@@ -1171,7 +1295,7 @@ are the release-blocking subset; these are the finer-grained checks used per fea
 | AC-4 | Echoes (§8.8.2) | 55 echo markers are placed and individually discoverable; each persists to the save and increments the found/total HUD counter; no map marker is shown. |
 | AC-5 | Beat truth (§8.3) | `beat-truth.spec.ts` green: the judged grid equals the playing song's grid, judgment flips with the audio, and rate coupling holds at 70% speed. |
 | AC-6 | Told layer (§8.10) | All shipped cutscenes fire at their story moments; Fold NPC dialogue changes across the `leftFold` and `nariLost` flags; the two unwritten beats (The Den, The Sitting-Down) are either authored or explicitly listed open in §20.2. |
-| AC-7 | Finale (§8.7/§8.7.1) | Once designed: all three phases are entered/exited on bar boundaries of the audible track (gate #3); Nari is present and non-interactive throughout; a hesitation window (Mir declining to strike) is detectable and acknowledged; the encounter reads as "fights to stop, not to kill." **Until the finale is designed, the shipped `the_conductor` phased fight satisfies gate #3 only, and this AC is OPEN (§8.7.1, §20.2).** |
+| AC-7 | Finale (§8.7/§8.7.1; proposed spec §8.7.2) | Once designed: all three phases are entered/exited on bar boundaries of the audible track (gate #3); Nari is present and non-interactive throughout; a hesitation window (Mir declining to strike) is detectable and acknowledged; the encounter reads as "fights to stop, not to kill." **A proposed spec satisfying all four now exists (§8.7.2); until it is signed off and built, the shipped `the_conductor` phased fight satisfies gate #3 only, and this AC stays OPEN (§8.7.1, §8.7.2, §20.2).** |
 | AC-8 | Accessibility (§9.3) | Every §9.3 row is exercised in the in-world fight per release (gate #5). |
 | AC-9 | Persistence (§10.7) | Save data (settings, calibration, progress, unlocks, relics, consent, found echoes, story flags) survives reload and browser restart (gate #6). |
 
@@ -1201,8 +1325,10 @@ the matrix defines the intended hand-off shape as the team grows.
 2. Mobile as a Tier-1 target in v2 (touch controls exist; performance/layout polish
    and touch-latency window tuning would be the work).
 3. ~~The Lunal fight (v2)~~ — **answered v16.0: Lunal is the v1 finale (§8.7).**
-   What remains open is its encounter structure (§8.7.1) and whether the Harrow is
-   fought at all or is a scripted encounter.
+   Its encounter structure and the Harrow question now have a **proposed spec (§8.7.2)**
+   satisfying the six §8.7.1 constraints (Lunal: 3-phase Ground-gauge stop-not-kill fight
+   on *Quotience*; Harrow: scripted, no fight) — **pending owner sign-off** before it
+   becomes canon and AC-7 can close.
 3a. **The title.** *The Drowned Chorus* is a music title on a story that no longer
    has music in it — the last piece of setlist DNA in the project. Keeping it means
    accepting the mismatch; changing it means re-lettering the wordmark (§11.5).
@@ -1228,7 +1354,9 @@ been **verified against the code and folded into the body as fact** (no longer
 1. **First-completion time is 3–5 h** (§4.2, §7.1), scaled from the 20-node campaign —
    a target, not a measured playthrough (resolve via §16.3 AC-1).
 2. **The Harrow is a reveal beat, not necessarily a fight node** — its encounter form
-   is still open (§8.6, §8.7.1 #5).
+   was open (§8.6, §8.7.1 #5); the finale proposal (§8.7.2) now **proposes it as a
+   scripted encounter with no fight** (an engineered anticlimax that subverts the Scar
+   elite ramp). Still an owner call: this closes only when §8.7.2 is signed off.
 
 **Resolved by code verification (v16.1) — now stated as fact in the body:**
 
