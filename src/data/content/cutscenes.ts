@@ -141,7 +141,79 @@ const TAKEN: Cutscene = {
   ],
 };
 
-export const CUTSCENES: Cutscene[] = [RITE, LEAVING, TAKEN];
+// The Den (world-bible §9 beat 5): the end of the Scar. Every track led here,
+// and Mir came ready for the beast that made them. He finds a man instead -- the
+// Harrow, who has dug this whole waste for longer than tools last, sorting the
+// small things the ground gives up, still cutting a child's height into his
+// doorpost every morning for a child who is not there. He is what Mir becomes if
+// he keeps searching for a monster. The line the finale depends on: "Nothing up
+// here took your boy." Fires once, when the den's mouth (node_19) is cleared.
+const THE_DEN: Cutscene = {
+  id: "the_den",
+  flag: "seen_den",
+  frames: [
+    {
+      stage: "scar",
+      lines: [
+        "Every track in the Scar leads to this one doorway, and not one of them leads back out of it. I came ready for the thing that dug them.",
+        "There is no thing. There is a lamp, and a man, and he does not look up when I come in.",
+      ],
+    },
+    {
+      stage: "scar",
+      lines: [
+        "He has worked this waste longer than his tools last, and they do not last -- worn to the socket, a hundred of them, sorted by how much is left.",
+        "Beside him, laid out on cloth, is everything small the ground gave up. A shoe. A comb. Bones too little to be anyone grown. None of it thrown away. All of it kept.",
+      ],
+    },
+    {
+      stage: "scar",
+      tint: 0xc25424,
+      lines: [
+        "Two marks are cut in his doorpost -- one tall, one small -- fresh over old, so many times the wood is worn hollow. He measures a child who is not here.",
+        '"Nothing up here took your boy," he says, the way you would tell a man the time.',
+        "I look at his hands. They are mine. I make myself not believe him. I still have somewhere to be.",
+      ],
+    },
+  ],
+};
+
+// The Sitting-Down (world-bible §9 beat 6): leaving the Scar, alone, finally
+// reading his own evidence -- "no fight music for a while". This is the beat the
+// retired story never had: the reveal happening to MIR, not just the player. No
+// blood anywhere; prints set down gently; and beside the small ones, always, a
+// woman's stride, leading not chasing. He lets the name he has been outrunning
+// arrive. Fires on stepping into the Keep's region, once he has met the Harrow.
+const THE_SITTING_DOWN: Cutscene = {
+  id: "the_sitting_down",
+  flag: "seen_sitting",
+  frames: [
+    {
+      stage: "scar",
+      lines: [
+        "A mile out of the den my legs stop, and I sit down in the dirt where there is no one to see it, and I let myself read the ground the way it has been the whole time.",
+      ],
+    },
+    {
+      stage: "scar",
+      lines: [
+        "No blood. Not once, not anywhere, the entire way up. Small prints set down soft, one at a time -- the tread of something carried and set down to rest, not something that ran.",
+        "And beside them at every stretch, the same second stride. Grown. Stopping each time the small one strayed. Waiting for it. Not chasing it. Walking it somewhere.",
+      ],
+    },
+    {
+      stage: "black",
+      tint: 0x2a4650,
+      lines: [
+        "A woman's stride. Gone out the night the rule was read; back by morning with mud on her boots from somewhere there is no mud.",
+        "I have hunted a monster the length of a world to keep from having to say her name.",
+        "Lunal.",
+      ],
+    },
+  ],
+};
+
+export const CUTSCENES: Cutscene[] = [RITE, LEAVING, TAKEN, THE_DEN, THE_SITTING_DOWN];
 
 export function cutsceneById(id: string): Cutscene | undefined {
   return CUTSCENES.find((c) => c.id === id);

@@ -199,6 +199,9 @@ export class OverworldScene extends Phaser.Scene {
   private ambientHidden = false;
   /** Live in-world fight (areas-not-arenas); null while exploring. */
   private fight: WorldFight | null = null;
+  /** The node the scene was re-created onto after a fight victory (read-once in
+   * create), so a story beat can fire off clearing a specific node. */
+  private justClearedNodeId: string | null = null;
   /** Canopy landforms drawn ABOVE the player (PRD v7.15); they alpha-fade
    * when the player walks beneath so the map keeps its sense of height. */
   private canopies: Phaser.GameObjects.Image[] = [];
@@ -392,6 +395,9 @@ export class OverworldScene extends Phaser.Scene {
     // battle would force pointless backtracking. Read-once, like the other
     // GameContext handoff fields.
     const returnMarker = this.markers.find((m) => m.nodeId === GameContext.returnToNodeId);
+    // Remember which node we just returned from a fight on, so the create-tail
+    // can fire the story beat that hangs off clearing it (The Den, node_19).
+    this.justClearedNodeId = GameContext.returnToNodeId;
     GameContext.returnToNodeId = null;
     this.playerPos = returnMarker
       ? { col: returnMarker.col, row: returnMarker.row }
@@ -511,7 +517,14 @@ export class OverworldScene extends Phaser.Scene {
     // rule that condemns Nari). Self-gates on the "seen_rite" flag so it plays
     // once, at the start of a new game. Deferred a tick so create() settles
     // before the scene pauses under the overlay.
-    this.time.delayedCall(20, () => CutsceneScene.play(this, "rite_opening"));
+    this.time.delayedCall(20, () => {
+      if (CutsceneScene.play(this, "rite_opening")) return;
+      // The Den (world-bible §9 beat 5): fires the moment the den's mouth --
+      // the last Scar node -- is cleared, i.e. the scene re-created onto node_19
+      // after that victory. Self-gates on "seen_den"; the scene is only ever
+      // re-created onto node_19 once, so this can never re-fire.
+      if (this.justClearedNodeId === "node_19") CutsceneScene.play(this, "the_den");
+    });
   }
 
   private updateEchoCountText(): void {
@@ -1161,6 +1174,7 @@ export class OverworldScene extends Phaser.Scene {
         this.moving = false;
         this.checkLeaveFold();
         this.checkNariLoss();
+        this.checkEnterKeep();
         this.checkEncounterTrigger();
       },
     });
@@ -1222,6 +1236,22 @@ export class OverworldScene extends Phaser.Scene {
     }
     // The taking cutscene (Nari lost at the Breach); falls back to a toast.
     if (!CutsceneScene.play(this, "nari_taken")) this.showToast("NARI?", "He was right behind you.");
+  }
+
+  /** The Sitting-Down beat (world-bible §9 beat 6): Mir's first step into the
+   * Keep's region (region index 4) -- i.e. leaving the Scar behind. Alone now,
+   * he finally reads his own evidence and lets the name arrive. Gated on having
+   * lost Nari AND met the Harrow (seen_den), so it can never fire out of order
+   * even on the open map. Once, persisted on the save. */
+  private checkEnterKeep(): void {
+    const profile = GameContext.activeProfile;
+    if (!profile || profile.enteredKeepAt) return;
+    if ((this.regions[this.playerPos.row]?.[this.playerPos.col] ?? 0) < 4) return; // not in the Keep yet
+    if (!profile.nariLostAt) return; // the beat is about the loss; not before it
+    if (!(profile.storyFlags ?? []).includes("seen_den")) return; // the den comes first
+    profile.enteredKeepAt = Date.now();
+    void GameContext.persistActiveProfile();
+    if (!CutsceneScene.play(this, "the_sitting_down")) this.showToast("HER NAME", "You have known it for a while.");
   }
 
   /** Flips Mir to face the walk direction. Only horizontal moves change the

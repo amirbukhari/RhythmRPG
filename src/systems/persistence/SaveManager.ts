@@ -29,6 +29,8 @@ export interface SaveProfile {
   nariLostAt?: number;
   /** Epoch ms of the moment Mir first climbed out of the Fold, where the campaign begins (v14.0). Absent while still in the underwater town. */
   leftFoldAt?: number;
+  /** Epoch ms of Mir's first step into the Keep's region (region 4), which fires the Sitting-Down beat (world-bible §9 beat 6). Absent until then. */
+  enteredKeepAt?: number;
   /** Narrative flags: cutscenes already played ("seen_rite") and NPC side-story progress ("met_sella"). See content/cutscenes.ts + content/dialogue.ts. */
   storyFlags?: string[];
 }

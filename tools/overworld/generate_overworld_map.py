@@ -184,12 +184,12 @@ _ECHO_POOL: dict[str, list[tuple[str, str]]] = {
         ("This Year's Rule", "The unnamed voice is owed to the deep. We all knew at once whose small voice it meant."),
         ("Why Nobody Leaves", "It isn't a law. Leaving means admitting there's an up -- and an up means we fell."),
         ("The Father Who Would Not Kneel", "He didn't dispute the rule when it was read. He started packing a bag for the climb."),
-        ("The Mother's Question", "She didn't dispute it either. She only asked where a thing could be hidden from the song."),
+        ("The Mother's Question", "She didn't dispute it either. She only asked, very quietly, where a thing could be hidden from the deep, and kept from ever being named."),
         ("The Child Between Them", "One of us wanted to run. One of us wanted to hide him. He slept between us, owing nothing yet."),
         # cosmology: the drowning and the years before the rules are forgotten
         ("What We Don't Remember", "No one recalls a year before the rules, or who we were. That became a rule as well."),
         ("Salt for the Doorways", "We marked the lintels so the sea would pass us over. It read the marks as an invitation."),
-        ("The Floor That Hums", "Press your ear to the silt. That is the sound we were all born owing."),
+        ("The Way of Lamps", "Every lamp in the Fold hangs turned the same way -- even the ones that face a wall. No one alive remembers it being a rule. We think it is how lamps go."),
     ],
     # THE KELP SHELF -- the flight (world-bible §6.2). The mining lore stays:
     # the region IS "the salt-wracked remains of a mining town that dug into
@@ -231,7 +231,7 @@ _ECHO_POOL: dict[str, list[tuple[str, str]]] = {
         ("She Crossed First", "One set of prints reaches the surface ahead of ours. Small heels. Someone who knew the way out."),
         ("Two Ticket Stubs", "Front row, both of us. He said don't blink."),
         ("The Wheel Stopped Turning", "It stopped with someone still at the top. The car is up there. It has always been up there."),
-        ("The Surface Air", "Up here the song is quieter. Not a comfort. It means it already took what it wanted."),
+        ("The Surface Air", "Up here nothing is owed and nothing is listening. I thought that would feel like freedom. It felt like being no one, in the place that had already taken what I came up with."),
         ("The Barker's Line", "Step up, step up, everyone's a winner. The water came in and he never once stopped saying it."),
     ],
     # THE SCAR -- the search (§6.4). The tracking entries are the spine of the
@@ -276,7 +276,7 @@ _ECHO_POOL: dict[str, list[tuple[str, str]]] = {
     "keep": [
         ("Still Seated", "Sixty chairs, sixty players, every bow still up. They are not a story. They are the furniture now."),
         ("Stopped Clocks", "Every one of them stopped at the same minute. Nobody wound them. Nobody was ever going to."),
-        ("The Part Left Open", "One line in the score has no notes under it. Just a rest, held, for as long as anyone is listening."),
+        ("The Swept Path", "The whole drowned hall is silted and still, but for one path -- swept to a shine, a side door to the stage and back, walked until the stone is dished. She has only ever needed to go one place."),
         ("The Huntress's Mark", "She doesn't hunt to kill. She hunts to keep."),
         ("She Arrived First", "She did not take this place. She walked in and found it empty, and that is exactly why she chose it."),
         ("The Cage of Small Bones", "It is exactly the size of a boy who stopped growing when the water came."),
@@ -285,7 +285,7 @@ _ECHO_POOL: dict[str, list[tuple[str, str]]] = {
         ("What She Fled With", "She didn't outrun the Fold's rule. She outran it all the way here, the child under her coat."),
         ("What The Room Has In It", "Blankets. Food that will not spoil. A lamp left on. Everything a person needs, and one door."),
         ("No Door On The Inside", "I have checked twice. There is no handle on this side, and the hinges are on hers."),
-        ("Her Mercy", "Caged, the song can never rewrite him. Kept whole. Kept hers. Call it love if you can."),
+        ("Her Mercy", "Caged, the rule can never reach him. Kept whole. Kept small. Kept hers. Call it love if you can -- she does, and she is not entirely wrong."),
     ],
 }
 
