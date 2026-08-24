@@ -15,6 +15,9 @@ import {
   player as getPlayer,
   enemies as getEnemies,
   ULTIMATE_GROOVE_COST,
+  HEAVY,
+  SPECIAL,
+  ULTIMATE,
   type Arena,
   type BeatTier,
   type FrameInput,
@@ -56,10 +59,34 @@ const TIER_LABEL: Record<Exclude<BeatTier, "off">, { text: string; color: string
  * before runs (restarting the scene cleans everything up).
  */
 
-// world-proportioned foe scales (72px frames; conductor uses his colossal sheet)
-// sheets are baked to fight size (bake_cast.py) -- everyone renders at 1.0
-// HD sheets are 4x the world size (hd_cast.py): world size unchanged at 0.25
+// Authored foe sheets are 4x their world size (tools/art/contract.py SCALE),
+// so every foe renders at 0.25. The Conductor uses his legacy colossal sheet.
 const FIGHT_SCALE: Record<string, number> = { the_conductor: 0.25, elite_wraith: 0.25, drifter: 0.25, slime: 0.25 };
+/** Mir's authored states (tools/art/mir.py) and the frame rate each reads
+ * best at. `attack`/`heavy` are driven frame-by-frame off the sim's attack
+ * phase instead of played, so anticipation-impact-recovery lands exactly on
+ * the frames the sim is actually in. */
+const MIR_CLIP: Record<string, { key: string; fps: number; loop: boolean }> = {
+  idle: { key: "band_mir", fps: 5, loop: true },
+  run: { key: "band_mir_run", fps: 12, loop: true },
+  dash: { key: "band_mir_dash", fps: 14, loop: false },
+  parry: { key: "band_mir_parry", fps: 16, loop: false },
+  hurt: { key: "band_mir_hurt", fps: 12, loop: false },
+  down: { key: "band_mir_down", fps: 6, loop: false },
+};
+
+/** Foe states (tools/art/foes.py). `telegraph` is the load-bearing one: the
+ * silhouette class flips for the whole windup, so an incoming attack is
+ * readable in peripheral vision, on the beat, without reading a HUD. */
+const FOE_CLIP: Record<string, { fps: number; loop: boolean }> = {
+  idle: { fps: 3, loop: true },
+  move: { fps: 9, loop: true },
+  telegraph: { fps: 10, loop: false },
+  attack: { fps: 16, loop: false },
+  hurt: { fps: 14, loop: false },
+  dead: { fps: 7, loop: false },
+};
+
 const FIGHT_ACCENT: Record<string, number> = {
   the_conductor: 0xf0a648,
   elite_wraith: 0x49c6bd,
@@ -72,6 +99,11 @@ export interface WorldFightHost {
   playerSprite: Phaser.GameObjects.Sprite;
   /** Tile walkability in WORLD pixels -- impassable tiles become sim obstacles. */
   isWorldWalkable(px: number, py: number): boolean;
+  /** Hide the exploration HUD for the duration of a fight. The hint strip
+   * still read "WASD: move  E: interact" mid-combat, which is worse than no
+   * HUD: it tells the player the wrong verbs at the exact moment the verbs
+   * changed. Optional so tests can host a fight without one. */
+  setExploreHudVisible?(visible: boolean): void;
 }
 
 export class WorldFight {
@@ -117,6 +149,11 @@ export class WorldFight {
   private accents = new Map<string, number>();
   private enemyIds = new Map<string, string>();
   private lastEnemyHp = new Map<string, number>();
+  /** Last animation state driven per sprite, so a clip is only restarted when
+   * the state actually changes (otherwise a one-shot never plays past frame 0). */
+  private foeState = new Map<string, string>();
+  private namePlates = new Map<string, Phaser.GameObjects.Text>();
+  private playerState = "";
   private fx: Phaser.GameObjects.Graphics;
   private bars: Phaser.GameObjects.Graphics;
   private plate: Phaser.GameObjects.Graphics;
@@ -128,6 +165,9 @@ export class WorldFight {
    * read), rather than resetting to pristine after every impact spark. */
   private groundDecals: Phaser.GameObjects.RenderTexture | null = null;
   private decalStamp: Phaser.GameObjects.Image | null = null;
+  /** The arena frame: the visual statement that the world just became a room. */
+  private frameBars: Phaser.GameObjects.Rectangle[] = [];
+  private frameVignette: Phaser.GameObjects.Graphics | null = null;
 
   constructor(host: WorldFightHost, nodeId: string, encounterId: string, nodeWorldX: number, nodeWorldY: number) {
     this.scene = host.scene;
@@ -188,6 +228,44 @@ export class WorldFight {
     // corner maps them into the visible rect
     this.plate = this.scene.add.graphics().setDepth(21).setPosition(ox, oy);
     this.hud.push(plateBg, plateName, this.beatPulse, this.plate);
+
+    // ---- the arena frame -------------------------------------------------
+    // The camera locking to a room of the real world is the moment the game
+    // changes mode, and nothing used to SAY so -- a fight started and the
+    // screen looked exactly like walking. Two devices, both cheap and both
+    // reversible: the edges of the room darken hard (so the eye is pushed to
+    // the two figures in the middle), and the frame closes to a shallow
+    // letterbox. Together they read as a stage, and the moment they retract
+    // is the moment the world opens back up.
+    this.frameVignette = this.scene.add.graphics().setDepth(18.5).setPosition(ox, oy).setAlpha(0);
+    for (let i = 0; i < 7; i++) {
+      const inset = i * 5;
+      this.frameVignette.fillStyle(0x05060a, 0.09);
+      this.frameVignette.fillRect(inset, inset, BASE_WIDTH - inset * 2, BASE_HEIGHT - inset * 2);
+    }
+    // Bars slide in from off-frame. Tweening `y` rather than `height`: a
+    // Phaser Shape computes its display origin when its size is set, so a
+    // height tween under a bottom origin drew the bar off the bottom edge.
+    const BAR = 7;
+    this.frameBars = [
+      this.scene.add.rectangle(ox, oy - BAR, BASE_WIDTH, BAR, 0x05060a, 1).setOrigin(0, 0).setDepth(19.4),
+      this.scene.add.rectangle(ox, oy + BASE_HEIGHT, BASE_WIDTH, BAR, 0x05060a, 1).setOrigin(0, 0).setDepth(19.4),
+    ];
+    this.hud.push(this.frameVignette, ...this.frameBars);
+    const reducedMotion = Boolean(GameContext.activeProfile?.settings.reducedMotion);
+    const barRest = [oy, oy + BASE_HEIGHT - BAR];
+    if (reducedMotion) {
+      this.frameVignette.setAlpha(1);
+      this.frameBars.forEach((bar, i) => bar.setY(barRest[i]));
+    } else {
+      this.scene.tweens.add({ targets: this.frameVignette, alpha: 1, duration: 340, ease: "Quad.easeOut" });
+      this.frameBars.forEach((bar, i) => {
+        this.scene.tweens.add({ targets: bar, y: barRest[i], duration: 300, ease: "Quad.easeOut" });
+      });
+    }
+
+    // The exploration verbs are wrong now; swap in the combat ones.
+    this.host.setExploreHudVisible?.(false);
     if (this.isBoss) {
       const name = getEnemy(encounter.enemyWave[0]).name.toUpperCase();
       this.hud.push(
@@ -268,9 +346,21 @@ export class WorldFight {
     // bindings; practice mode announces its no-fail state (§9.3).
     const b = GameContext.activeProfile?.settings.keyBindings ?? {};
     const keyOf = (a: CombatAction): string => keyNameFor(b[a], DEFAULT_ACTION_KEYS[a]);
-    this.showCaption(
-      `${keyOf("light")} light  ${keyOf("heavy")} heavy  ${keyOf("special")} special  ${keyOf("parry")} parry  ${keyOf("dash")} dash  ${keyOf("ultimate")} ultimate`,
-      5
+    // A persistent combat strip that replaces the exploration one, in the
+    // same slot, so the verbs on screen are always the verbs that work. It
+    // rides ON the top letterbox bar rather than adding a third band.
+    const ox = this.rect.x;
+    const oy = this.rect.y;
+    this.hud.push(
+      this.scene.add
+        .text(
+          ox + BASE_WIDTH / 2,
+          oy + 1,
+          `${keyOf("light")} light   ${keyOf("heavy")} heavy   ${keyOf("parry")} parry   ${keyOf("dash")} dash   ${keyOf("special")} special   ${keyOf("ultimate")} ult`,
+          { fontFamily: "monospace", fontSize: "6px", color: "#9fb0c0" }
+        )
+        .setOrigin(0.5, 0)
+        .setDepth(19.6)
     );
 
     // Boss phases (§8.7): HP thresholds -> aggression + song-section jumps.
@@ -307,9 +397,35 @@ export class WorldFight {
     const p = getPlayer(arena);
     p.pos.x = Phaser.Math.Clamp(this.playerSprite.x - this.rect.x, 12, this.rect.width - 12);
     p.pos.y = Phaser.Math.Clamp(this.playerSprite.y - this.rect.y, 12, this.rect.height - 12);
+    // A STANDOFF, not a coincidence. The foe stands on the node marker and the
+    // player walks onto that same marker to start the fight, so both fighters
+    // used to spawn inside each other -- the single worst readability bug in
+    // the build: the opening frame of every fight was one unreadable blob.
+    // The wave now backs off along the axis it was approached from, far enough
+    // that the first thing the player sees is two separate silhouettes.
+    const STANDOFF = 52;
+    let ax = foeX - this.rect.x - p.pos.x;
+    let ay = foeY - this.rect.y - p.pos.y;
+    let len = Math.hypot(ax, ay);
+    if (len < 1) {
+      // Dead-on, which is in fact the NORMAL case: the room is centred on the
+      // node the player just stepped onto, so foe and player and room centre
+      // are all the same point. Back the foe off along the direction Mir is
+      // facing instead -- he walked into this thing, so it should be in front
+      // of him -- with a little downscreen bias so the two silhouettes are
+      // never perfectly stacked on one horizontal line.
+      ax = this.playerSprite.flipX ? 1 : -1;
+      ay = 0.32;
+      len = Math.hypot(ax, ay);
+    }
+    ax /= len;
+    ay /= len;
+    // fan the wave out PERPENDICULAR to the standoff axis, so a three-foe
+    // wave is a line facing the player rather than a column behind itself
     getEnemies(arena).forEach((e, i) => {
-      e.pos.x = Phaser.Math.Clamp(foeX - this.rect.x + (i - (enemyWave.length - 1) / 2) * 34, 16, this.rect.width - 16);
-      e.pos.y = Phaser.Math.Clamp(foeY - this.rect.y + (i % 2) * 12, 16, this.rect.height - 16);
+      const fan = (i - (enemyWave.length - 1) / 2) * 30;
+      e.pos.x = Phaser.Math.Clamp(p.pos.x + ax * STANDOFF - ay * fan, 16, this.rect.width - 16);
+      e.pos.y = Phaser.Math.Clamp(p.pos.y + ay * STANDOFF + ax * fan, 16, this.rect.height - 16);
 
       const enemyId = enemyWave[i];
       // §8.6 curriculum: per-foe tempo/damage from authored content
@@ -330,18 +446,41 @@ export class WorldFight {
         e.id,
         this.scene.add.image(wx, wy - 8, "glow").setBlendMode(Phaser.BlendModes.ADD).setTint(accent).setDepth(4.32).setScale(1).setAlpha(0.35)
       );
-      const animKey = `wf_idle_${tex}`;
-      if (!this.scene.anims.exists(animKey)) {
-        this.scene.anims.create({
-          key: animKey,
-          frames: this.scene.anims.generateFrameNumbers(tex, { start: 0, end: 1 }),
-          frameRate: colossal ? 1.2 : 1.6,
-          repeat: -1,
-        });
+      if (colossal) {
+        const animKey = `wf_idle_${tex}`;
+        if (!this.scene.anims.exists(animKey)) {
+          this.scene.anims.create({
+            key: animKey,
+            frames: this.scene.anims.generateFrameNumbers(tex, { start: 0, end: 1 }),
+            frameRate: 1.2,
+            repeat: -1,
+          });
+        }
+        const s = this.scene.add.sprite(wx, wy, tex, 0).setOrigin(0.5, 0.95).setScale(scale).setDepth(4.6);
+        s.play(animKey);
+        this.sprites.set(e.id, s);
+      } else {
+        this.registerFoeClips(enemyId);
+        const s = this.scene.add.sprite(wx, wy, tex, 0).setOrigin(0.5, 0.9).setScale(scale).setDepth(4.6);
+        s.play(`foe_${enemyId}_idle`);
+        this.foeState.set(e.id, "idle");
+        this.sprites.set(e.id, s);
+        if (!this.isBoss) {
+          const plate = this.scene.add
+            .text(wx, wy, def.name.toUpperCase(), {
+              fontFamily: "monospace",
+              fontSize: "6px",
+              color: "#9fb0c0",
+              stroke: "#05060a",
+              strokeThickness: 3,
+            })
+            .setOrigin(0.5, 1)
+            .setDepth(8.6)
+            .setAlpha(0.85);
+          this.namePlates.set(e.id, plate);
+          this.hud.push(plate);
+        }
       }
-      const s = this.scene.add.sprite(wx, wy, tex, 0).setOrigin(0.5, colossal ? 0.95 : 0.9).setScale(scale).setDepth(4.6);
-      s.play(animKey);
-      this.sprites.set(e.id, s);
     });
     this.arena = arena;
   }
@@ -538,6 +677,47 @@ export class WorldFight {
     return true;
   }
 
+  /** Register one Phaser animation per authored foe state, once per foe type.
+   * Frame counts are read off the loaded texture so re-authoring a strip in
+   * `tools/art/` can never desync the engine's ranges. */
+  private registerFoeClips(foeId: string): void {
+    for (const [state, spec] of Object.entries(FOE_CLIP)) {
+      const key = `foe_${foeId}_${state}`;
+      if (this.scene.anims.exists(key)) continue;
+      const tex = state === "idle" ? `enemy_${foeId}` : `enemy_${foeId}_${state}`;
+      if (!this.scene.textures.exists(tex)) continue;
+      const last = this.scene.textures.get(tex).frameTotal - 2; // -1 for __BASE
+      this.scene.anims.create({
+        key,
+        frames: this.scene.anims.generateFrameNumbers(tex, { start: 0, end: Math.max(0, last) }),
+        frameRate: spec.fps,
+        repeat: spec.loop ? -1 : 0,
+      });
+    }
+  }
+
+  /** Which authored state a foe is in RIGHT NOW. The order is a priority
+   * ladder, not a switch: death outranks pain, pain outranks intent. */
+  private foeStateFor(e: ReturnType<typeof getEnemies>[number]): string {
+    if (e.state === "dead") return "dead";
+    if (e.state === "hitstun") return "hurt";
+    if (e.attack) return "attack";
+    if (e.ai?.mode === "windup") return "telegraph";
+    if (Math.hypot(e.vel.x, e.vel.y) > 8) return "move";
+    return "idle";
+  }
+
+  /** Same ladder for Mir. `attack`/`heavy` are handled by the caller (they are
+   * scrubbed by attack phase rather than played), so they are absent here. */
+  private playerStateFor(p: ReturnType<typeof getPlayer>): string {
+    if (p.hp <= 0 || p.state === "dead") return "down";
+    if (p.state === "hitstun") return "hurt";
+    if (p.parryTimer > 0) return "parry";
+    if (p.state === "dash") return "dash";
+    if (Math.hypot(p.vel.x, p.vel.y) > 12) return "run";
+    return "idle";
+  }
+
   /** §8.7: advance the boss phase when its HP crosses the next authored
    * threshold -- playback jumps to the phase's bound song section (the
    * judged grid follows automatically: it IS the same grid), the enemy
@@ -577,14 +757,46 @@ export class WorldFight {
     if (p.facing === "left") this.playerSprite.setFlipX(false);
     else if (p.facing === "right") this.playerSprite.setFlipX(true);
     if (p.attack) {
-      const frame = p.attack.phase === "startup" ? 0 : p.attack.phase === "active" ? 1 : 2;
+      // Scrub the swing off the SIM's own phase rather than playing a clip, so
+      // anticipation / impact / recovery land on exactly the frames the sim is
+      // in -- the difference between a swing that connects and one that looks
+      // like it happened next to the enemy. Heavy has its own longer arc.
+      const heavy = p.attack.def === HEAVY || p.attack.def === SPECIAL || p.attack.def === ULTIMATE;
+      const tex = heavy && this.scene.textures.exists("band_mir_heavy") ? "band_mir_heavy" : "band_mir_attack";
+      const total = this.scene.textures.get(tex).frameTotal - 1; // -1 for __BASE
+      const ph = p.attack.phase === "startup" ? 0 : p.attack.phase === "active" ? 1 : 2;
+      // startup occupies the first half of the strip (the wind-up is the part
+      // worth frames), impact one frame, recovery the tail
+      const frame =
+        ph === 0
+          ? Math.min(total - 1, Math.floor(total * 0.4))
+          : ph === 1
+            ? Math.min(total - 1, Math.floor(total * 0.6))
+            : total - 1;
       if (this.playerSprite.anims.isPlaying) this.playerSprite.anims.stop();
-      this.playerSprite.setTexture("band_mir_attack", frame);
+      this.playerSprite.setTexture(tex, frame);
+      this.playerState = "";
     } else {
-      // run while the sim is moving him, breathe when standing
-      const moving = Math.hypot(p.vel.x, p.vel.y) > 12;
-      const want = moving ? "leader_walk" : "leader_idle";
-      if (this.playerSprite.anims.getName() !== want || !this.playerSprite.anims.isPlaying) this.playerSprite.play(want);
+      const want = this.playerStateFor(p);
+      if (want !== this.playerState) {
+        this.playerState = want;
+        const clip = MIR_CLIP[want];
+        // The overworld already owns `leader_idle`/`leader_walk`; reuse them so
+        // one figure never has two competing idle definitions.
+        const key = want === "idle" ? "leader_idle" : want === "run" ? "leader_walk" : `mir_${want}`;
+        if (clip && !this.scene.anims.exists(key) && this.scene.textures.exists(clip.key)) {
+          const last = this.scene.textures.get(clip.key).frameTotal - 2;
+          this.scene.anims.create({
+            key,
+            frames: this.scene.anims.generateFrameNumbers(clip.key, { start: 0, end: Math.max(0, last) }),
+            frameRate: clip.fps,
+            repeat: clip.loop ? -1 : 0,
+          });
+        }
+        if (this.scene.anims.exists(key)) this.playerSprite.play(key, true);
+      } else if (!this.playerSprite.anims.isPlaying && (want === "idle" || want === "run")) {
+        this.playerSprite.play(want === "idle" ? "leader_idle" : "leader_walk");
+      }
     }
     if (p.state === "hitstun" && !reduced) this.playerSprite.setTintFill(0xffffff);
     else this.playerSprite.clearTint();
@@ -614,6 +826,14 @@ export class WorldFight {
           this.deadHandled.add(e.id);
           this.auras.get(e.id)?.setAlpha(0);
           this.shadows.get(e.id)?.setAlpha(0);
+          this.namePlates.get(e.id)?.setVisible(false);
+          // the authored death: it stops holding itself together. Played once,
+          // and the fade below rides on top of it rather than replacing it.
+          const deathKey = `foe_${this.enemyIds.get(e.id) ?? ""}_dead`;
+          if (this.scene.anims.exists(deathKey)) {
+            this.foeState.set(e.id, "dead");
+            s.play(deathKey, true);
+          }
           if (!reduced) {
             for (let i = 0; i < 3; i++) {
               const spark = this.scene.add
@@ -631,27 +851,22 @@ export class WorldFight {
         }
         continue;
       }
-      // Animation-state motion where per-frame art is absent (§11.5 /
-      // v7.4 spec): windup crouches (anticipation), the strike's active
-      // frames lunge and stretch toward the player (impact), recovery
-      // settles back. Squash-and-stretch on the base scale, never baked in.
-      const base = FIGHT_SCALE[this.enemyIds.get(e.id) ?? ""] ?? 0.25;
-      let sx = base;
-      let sy = base;
-      let lunge = 0;
-      if (e.ai?.mode === "windup") {
-        sx = base * 1.08;
-        sy = base * 0.9;
-      } else if (e.attack?.phase === "active") {
-        sx = base * 0.92;
-        sy = base * 1.1;
-        lunge = 4;
-      } else if (e.attack?.phase === "startup") {
-        sx = base * 1.05;
-        sy = base * 0.94;
+      // The six authored states carry the anticipation / impact / recovery
+      // read now (tools/art/foes.py), so the only thing left for code is the
+      // LUNGE -- travel toward the target on the active frames, which is what
+      // sells contact. The old scale tweens faked the whole performance and
+      // are gone; a state is only a state if the shape changes.
+      const foeId = this.enemyIds.get(e.id) ?? "";
+      const base = FIGHT_SCALE[foeId] ?? 0.25;
+      const want = this.foeStateFor(e);
+      if (want !== this.foeState.get(e.id)) {
+        this.foeState.set(e.id, want);
+        const key = `foe_${foeId}_${want}`;
+        if (this.scene.anims.exists(key)) s.play(key, true);
       }
+      const lunge = e.attack?.phase === "active" ? 5 : 0;
       const d = FACING_LUNGE[e.facing] ?? { x: 0, y: 0 };
-      s.setScale(sx, sy);
+      s.setScale(base);
       s.setPosition(Math.round(wx + d.x * lunge), Math.round(wy + d.y * lunge)).setDepth(4.6 + e.pos.y / 1000);
       this.shadows.get(e.id)?.setPosition(Math.round(wx), Math.round(wy));
       const windup = e.ai?.mode === "windup";
@@ -692,6 +907,16 @@ export class WorldFight {
     // bars + plate
     this.bars.clear();
     const foes = getEnemies(arena);
+    let nearestId = "";
+    let nearestD = Infinity;
+    for (const f of foes) {
+      if (f.state === "dead") continue;
+      const d = Math.hypot(f.pos.x - p.pos.x, f.pos.y - p.pos.y);
+      if (d < nearestD) {
+        nearestD = d;
+        nearestId = f.id;
+      }
+    }
     for (let i = 0; i < foes.length; i++) {
       const f = foes[i];
       if (f.state === "dead") continue;
@@ -701,7 +926,23 @@ export class WorldFight {
       const x = Math.round(this.rect.x + f.pos.x - w / 2);
       const y = Math.round(this.rect.y + f.pos.y - (s ? s.displayHeight * 0.95 : 24));
       this.bars.fillStyle(0x05060a, 0.8).fillRect(x - 1, y - 1, w + 2, 3);
-      this.bars.fillStyle(0xc22f34, 1).fillRect(x, y, Math.max(0, Math.round((f.hp / f.maxHp) * w)), 1);
+      // the bar goes RED only while it is winding up; the rest of the time it
+      // is the foe's own accent, so "about to hit you" is a colour change the
+      // eye catches without reading anything
+      const winding = f.ai?.mode === "windup" || Boolean(f.attack);
+      this.bars.fillStyle(winding ? 0xc22f34 : (this.accents.get(f.id) ?? 0xc22f34), 1);
+      this.bars.fillRect(x, y, Math.max(0, Math.round((f.hp / f.maxHp) * w)), 1);
+      // A named foe is a foe you can lose to. Nameplates were boss-only, so
+      // every ordinary fight was a fight against an unlabelled shape. Only ONE
+      // plate is shown -- the nearest live foe -- because a wave of three
+      // stacks three labels into an illegible pile, and the label the player
+      // needs is the one on the thing about to hit them.
+      const plate = this.namePlates.get(f.id);
+      if (plate) {
+        const near = f.id === nearestId;
+        plate.setVisible(near);
+        if (near) plate.setPosition(Math.round(this.rect.x + f.pos.x), y - 3);
+      }
     }
 
     this.beatPulse.setScale(this.isOnBeat() ? 1.7 : 1).setFillStyle(this.isOnBeat() ? 0xf4d27a : 0x49c6bd);
@@ -777,6 +1018,7 @@ export class WorldFight {
   /** Rewards + campaign progression (ported from the retired arena scene's
    * finishBattle) -> ResultsScene; restarting scenes cleans everything up. */
   private finish(outcome: "victory" | "defeat"): void {
+    this.host.setExploreHudVisible?.(true);
     this.clock.stop();
     this.tick?.dispose();
     this.sfx?.dispose();
@@ -834,6 +1076,7 @@ export class WorldFight {
 
   /** Immediate teardown (scene shutdown while a fight is live). */
   destroy(): void {
+    this.host.setExploreHudVisible?.(true);
     this.finished = true;
     this.clock.stop();
     this.tick?.dispose();

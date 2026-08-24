@@ -6,7 +6,7 @@ import { waitForScene } from "./helpers";
 test.setTimeout(240_000);
 
 test("audit: capture every screen", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/?nocutscenes=1");
   await waitForScene(page, "AudioGateScene");
   await page.screenshot({ path: "test-results/audit-1-gate.png" });
   await page.mouse.click(160, 90);

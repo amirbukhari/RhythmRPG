@@ -10,3 +10,6 @@ blob-report/
 
 # Large local-only reference audio, not pushed to keep repo history lean.
 assets/reference/audio-demo/
+
+# Generated-art disk cache (tools/art/gen.py) -- regenerable, and large.
+tools/art/.cache/

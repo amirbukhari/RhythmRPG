@@ -31,11 +31,19 @@ export class CutsceneScene extends Phaser.Scene {
   /** Pause `from` and overlay the named cutscene; resume `from` when it ends.
    *  Returns false (and does nothing) if the cutscene is unknown or already seen. */
   static play(from: Phaser.Scene, cutsceneId: string): boolean {
-    // Cutscenes pause the world under a full-screen overlay. The e2e suite
-    // drives the game through the DEV-only debug seam and boots straight into a
-    // controllable overworld, so an auto-playing cutscene would block it. Gate
-    // auto-play to the shipped build; the deployed game the player runs is prod.
-    if (import.meta.env.DEV) return false;
+    // Cutscenes pause the world under a full-screen overlay, which would block
+    // an e2e spec that boots straight into a controllable overworld -- so they
+    // used to be killed outright in DEV. That was too blunt: it meant the
+    // story beats, which are the point of this game, were the ONLY part of it
+    // that could never be seen or iterated on outside a production build.
+    // They now play in dev like anywhere else, and a test opts out explicitly
+    // with `?nocutscenes=1` (or window.__skipCutscenes), so skipping is a
+    // deliberate act by the harness rather than a silent default.
+    if (typeof window !== "undefined") {
+      const w = window as unknown as { __skipCutscenes?: boolean };
+      if (w.__skipCutscenes) return false;
+      if (window.location?.search?.includes("nocutscenes=1")) return false;
+    }
     const cut = cutsceneById(cutsceneId);
     if (!cut) return false;
     const flags = GameContext.activeProfile?.storyFlags ?? [];
@@ -103,7 +111,7 @@ export class CutsceneScene extends Phaser.Scene {
   private showLine(frame: CutsceneFrame): void {
     const text = frame.lines[this.lineIdx];
     const t = this.add
-      .text(BASE_WIDTH / 2, BASE_HEIGHT - 42 + this.visibleLineCount() * 11, text, {
+      .text(BASE_WIDTH / 2, 0, text, {
         fontFamily: "monospace",
         fontSize: "8px",
         color: "#e4dcc8",
@@ -115,11 +123,27 @@ export class CutsceneScene extends Phaser.Scene {
       .setOrigin(0.5, 0)
       .setAlpha(this.reduced() ? 1 : 0);
     this.textLayer.add(t);
+    this.reflowLines();
     if (!this.reduced()) this.tweens.add({ targets: t, alpha: 1, duration: 650 });
   }
 
-  private visibleLineCount(): number {
-    return this.textLayer.length;
+  /** Stack the revealed lines UPWARD from a fixed bottom baseline, using each
+   * line's measured height. The old layout advanced a flat 11px per line, so
+   * the moment a line wrapped to two rows -- which most of the good ones do --
+   * the next line was drawn straight on top of it. The block also now grows
+   * upward from the same place every time, so the reader's eye has a fixed
+   * anchor across a whole cutscene instead of a floating one. */
+  private reflowLines(): void {
+    const BOTTOM = BASE_HEIGHT - 13;
+    const GAP = 3;
+    const lines = this.textLayer.list as Phaser.GameObjects.Text[];
+    let total = -GAP;
+    for (const t of lines) total += t.height + GAP;
+    let y = BOTTOM - total;
+    for (const t of lines) {
+      t.setY(Math.round(y));
+      y += t.height + GAP;
+    }
   }
 
   /** E / click: reveal the next line, or advance to the next frame, or finish. */

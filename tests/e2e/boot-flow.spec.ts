@@ -43,7 +43,7 @@ test.describe("boot flow", () => {
   });
 
   test("completes calibration with pointer taps, not just keyboard (real bug: calibration had no pointer input path at all)", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/?nocutscenes=1");
     await passAudioGate(page);
     await page.keyboard.press("Enter"); // Start/Continue -> SaveScene
     await waitForScene(page, "SaveScene");

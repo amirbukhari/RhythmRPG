@@ -16,7 +16,7 @@ test("boots on a phone: tap passes the audio gate and touch controls mount", asy
   const pageErrors: string[] = [];
   page.on("pageerror", (e) => pageErrors.push(String(e)));
 
-  await page.goto("/");
+  await page.goto("/?nocutscenes=1");
   await page.waitForFunction(() => window.__meterfallDebug?.game?.scene?.isActive("AudioGateScene"));
 
   // The on-screen controls exist (coarse-pointer device) incl. the ultimate button.

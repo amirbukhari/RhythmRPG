@@ -1,11 +1,21 @@
 import Phaser from "phaser";
 import { retinaCamera } from "../config/GameConfig";
 
-// The playable character -- Mir (v10.0 solo pivot; tools/pixelart/newband.py).
-// He ships three strips: idle, run, attack. Loaded once here as
-// `band_mir` (idle) / `band_mir_run` / `band_mir_attack` (the `band_` key
+// The cast -- authored on the 2D rig in `tools/art/` (v16.3). Mir ships nine
+// strips (idle/run/attack/heavy/dash/parry/hurt/down/pick) and Nari five
+// (idle/run/reach/sit/hide); every foe ships the six states §11.5 asks for.
+// Loaded once here as `band_mir` (idle) / `band_mir_<state>` (the `band_` key
 // prefix is kept so nothing downstream churns).
 const BAND_URLS = import.meta.glob("../../assets/sprites/band/*/*.png", {
+  eager: true,
+  query: "?url",
+  import: "default",
+}) as Record<string, string>;
+
+// Foes ship one directory per foe: `enemies/slime/telegraph.png`. The old flat
+// `enemies/slime.png` was a single frame that the engine faked five states out
+// of with scale tweens, which is why a fight read as two blobs pulsing.
+const ENEMY_STATE_URLS = import.meta.glob("../../assets/sprites/enemies/*/*.png", {
   eager: true,
   query: "?url",
   import: "default",
@@ -33,19 +43,20 @@ import glowUrl from "../../assets/fx/glow.png";
 import sparkUrl from "../../assets/fx/spark.png";
 import hazeUrl from "../../assets/fx/haze.png";
 import godrayUrl from "../../assets/fx/godray.png";
-import slimeUrl from "../../assets/sprites/enemies/slime.png";
-import drifterUrl from "../../assets/sprites/enemies/drifter.png";
-import eliteWraithUrl from "../../assets/sprites/enemies/elite_wraith.png";
 import conductorUrl from "../../assets/sprites/enemies/the_conductor.png";
 import conductorColossalUrl from "../../assets/sprites/enemies/conductor_colossal.png";
 
-// HD painterly foes (hd_cast.py, v11.0) ship 4x frames, rendered at 0.25; the
-// Conductor's small sheet is legacy 48x48 (his fights use the colossal sheet).
-const ENEMY_URLS: Record<string, { url: string; frame: number }> = {
-  // HD frames at 4x the world size (hd_cast.py): render scale 0.25
-  slime: { url: slimeUrl, frame: 128 },
-  drifter: { url: drifterUrl, frame: 140 },
-  elite_wraith: { url: eliteWraithUrl, frame: 180 },
+// Authored frame size per foe -- must match `tools/art/contract.py` SCALE.
+// Everything renders at 0.25, so these are 4x their world size.
+const ENEMY_FRAME: Record<string, number> = {
+  slime: 128,
+  drifter: 140,
+  elite_wraith: 180,
+};
+// The Conductor is retired canon (world-bible v16.0 replaced him with the
+// Harrow) and still has only a legacy flat sheet; his slots go with the §8.7
+// finale rework.
+const LEGACY_ENEMY_URLS: Record<string, { url: string; frame: number }> = {
   the_conductor: { url: conductorUrl, frame: 192 },
 };
 
@@ -78,7 +89,7 @@ export class BootScene extends Phaser.Scene {
       if (!m) continue;
       const [, member, anim] = m;
       const key = anim === "idle" ? `band_${member}` : `band_${member}_${anim}`;
-      // HD painterly strips: 200px frames (hd_cast.py), rendered at 0.125
+      // Authored rig strips: 200px frames (tools/art/contract.py), at 0.125
       this.load.spritesheet(key, url, { frameWidth: 200, frameHeight: 200 });
     }
     // Environment kitbash pieces: `.../env/shallows/rock_a.png` -> env_shallows_rock_a
@@ -86,8 +97,19 @@ export class BootScene extends Phaser.Scene {
       const m = /env\/([^/]+)\/([^/]+)\.png$/.exec(path);
       if (m) this.load.image(`env_${m[1]}_${m[2]}`, url);
     }
-    for (const [name, spec] of Object.entries(ENEMY_URLS)) {
+    for (const [name, spec] of Object.entries(LEGACY_ENEMY_URLS)) {
       this.load.spritesheet(`enemy_${name}`, spec.url, { frameWidth: spec.frame, frameHeight: spec.frame });
+    }
+    // Foe states: `.../enemies/slime/telegraph.png` -> `enemy_slime_telegraph`;
+    // `idle` keeps the bare `enemy_slime` key so existing call sites hold.
+    for (const [path, url] of Object.entries(ENEMY_STATE_URLS)) {
+      const m = /enemies\/([^/]+)\/([^/]+)\.png$/.exec(path);
+      if (!m) continue;
+      const [, foe, state] = m;
+      const frame = ENEMY_FRAME[foe];
+      if (!frame) continue;
+      const key = state === "idle" ? `enemy_${foe}` : `enemy_${foe}_${state}`;
+      this.load.spritesheet(key, url, { frameWidth: frame, frameHeight: frame });
     }
   }
 

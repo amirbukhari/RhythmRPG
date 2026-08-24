@@ -120,6 +120,8 @@ export class OverworldScene extends Phaser.Scene {
    * surface. Decorative -- never blocks tiles or triggers anything. */
   private nari: Phaser.GameObjects.Sprite | null = null;
   private nariShadow: Phaser.GameObjects.Ellipse | null = null;
+  /** The exploration HUD, hidden for the duration of a fight. */
+  private exploreHud: Phaser.GameObjects.GameObject[] = [];
   private moving = false;
   private walkable: boolean[][] = [];
   /** Region territory per tile, decoded from the ground layer's gids
@@ -393,7 +395,15 @@ export class OverworldScene extends Phaser.Scene {
       this.nariShadow = this.add.ellipse(0, 0, 8, 3, 0x05060a, 0.35).setDepth(4.3);
       this.nari = this.add.sprite(0, 0, "band_nari", 0).setOrigin(0.5, 0.9).setScale(0.125).setDepth(4.55);
       this.nari.play("nari_idle");
-      this.nari.setPosition(this.playerPos.col * TILE_SIZE + TILE_SIZE / 2, this.playerPos.row * TILE_SIZE + TILE_SIZE / 2 + 2);
+      // Beside and half a step behind -- NOT on his father's own tile, which
+      // is where he used to spawn, invisible inside Mir's sprite for the whole
+      // first walk. He is the emotional load of act one; he has to be on
+      // screen from the first frame.
+      this.nari.setPosition(
+        this.playerPos.col * TILE_SIZE + TILE_SIZE / 2 - 7,
+        this.playerPos.row * TILE_SIZE + TILE_SIZE / 2 + 3
+      );
+      this.nariShadow.setPosition(this.nari.x, this.nari.y + 1);
     }
 
     // Retina render (design-audit-3): the canvas is 2x; zooming the camera
@@ -416,17 +426,22 @@ export class OverworldScene extends Phaser.Scene {
     this.addAtmosphere();
 
     // HUD hint on a dark strip so it stays legible over the busy ground.
-    this.pinToScreen(this.add.rectangle(0, 0, BASE_WIDTH, 12, 0x05060a, 0.72).setOrigin(0, 0).setDepth(19), 0, 0);
-    this.pinToScreen(
-      this.add.text(4, 3, "Arrows/WASD: move   E: interact   ESC: settings", { fontFamily: "monospace", fontSize: "7px", color: "#d8ceb6" }).setDepth(20),
-      4,
-      3
-    );
+    // Tracked as a group so a fight can hide it: these verbs are wrong the
+    // instant combat starts (see WorldFightHost.setExploreHudVisible).
+    this.exploreHud = [
+      this.pinToScreen(this.add.rectangle(0, 0, BASE_WIDTH, 12, 0x05060a, 0.72).setOrigin(0, 0).setDepth(19), 0, 0),
+      this.pinToScreen(
+        this.add.text(4, 3, "Arrows/WASD: move   E: interact   ESC: settings", { fontFamily: "monospace", fontSize: "7px", color: "#d8ceb6" }).setDepth(20),
+        4,
+        3
+      ),
+    ];
     this.echoCountText = this.pinToScreen(
       this.add.text(BASE_WIDTH - 4, 3, "", { fontFamily: "monospace", fontSize: "7px", color: "#49c6bd" }).setOrigin(1, 0).setDepth(20),
       BASE_WIDTH - 4,
       3
     );
+    if (this.echoCountText) this.exploreHud.push(this.echoCountText);
     this.updateEchoCountText();
 
     // A quiet prompt near the player, shown only when an undiscovered echo is close.
@@ -649,7 +664,8 @@ export class OverworldScene extends Phaser.Scene {
       profile.echoesFound.push(echo.id);
       void GameContext.persistActiveProfile();
       GameContext.analytics.track("echo_found", { echoId: echo.id });
-      this.updateEchoCountText();
+      if (this.echoCountText) this.exploreHud.push(this.echoCountText);
+    this.updateEchoCountText();
       const glow = this.echoGlows.get(echo.id);
       if (glow) {
         this.tweens.killTweensOf(glow);
@@ -1167,6 +1183,9 @@ export class OverworldScene extends Phaser.Scene {
         // at every node (paint_ground.py), so this circle is always fightable
         // even where the map tiles underneath are water/rock -- every fight
         // gets a real room that IS the world, not an overlay
+        setExploreHudVisible: (visible) => {
+          for (const o of this.exploreHud) (o as Phaser.GameObjects.Image).setVisible(visible);
+        },
         isWorldWalkable: (px, py) => {
           const dx = px - nodeX;
           const dy = py - nodeY;

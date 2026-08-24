@@ -57,7 +57,10 @@ export async function createSaveAndCalibrate(page: Page): Promise<void> {
 
 /** Full boot sequence through to a fresh, calibrated save on the overworld. */
 export async function bootToOverworld(page: Page): Promise<void> {
-  await page.goto("/");
+  // Cutscenes pause the world under a modal overlay; specs drive the overworld
+  // directly, so opt out of them explicitly (CutsceneScene.play). Cutscenes
+  // themselves are covered by their own specs, which do NOT pass this.
+  await page.goto("/?nocutscenes=1");
   await passAudioGate(page);
   await createSaveAndCalibrate(page);
 }
