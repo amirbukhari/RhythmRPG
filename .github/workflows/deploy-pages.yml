@@ -38,9 +38,9 @@ jobs:
       # -- see tests/e2e/README.md) that isn't safe to gate deploys on yet.
       # Available locally via `npx playwright test --project=firefox`.
       - run: npx playwright test --project=chromium
+      # base path comes from vite.config.ts (command === "build" -> /RhythmRPG/),
+      # so no env flag is needed -- every production build is Pages-correct.
       - run: npm run build
-        env:
-          GITHUB_PAGES: "true"
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

@@ -1,13 +1,14 @@
 import { defineConfig } from "vite";
 
-// Served from https://amirbukhari.github.io/RhythmRPG/ (a GitHub Pages
-// project site, not a custom domain), so asset URLs need the repo-name base
-// path in production. Local dev keeps root-relative paths.
-const isGithubPagesBuild = process.env.GITHUB_PAGES === "true";
-
-export default defineConfig({
+// Served from https://amirbukhari.github.io/RhythmRPG/ (a GitHub Pages project
+// site, not a custom domain), so built asset URLs need the repo-name base path
+// or they resolve to the domain root and 404. Key this off the build command,
+// NOT an env var: every production build gets the Pages base, so a deploy can
+// never silently ship root-relative URLs if someone forgets to set a flag.
+// Local dev (command === "serve") keeps root-relative paths.
+export default defineConfig(({ command }) => ({
   root: ".",
-  base: isGithubPagesBuild ? "/RhythmRPG/" : "/",
+  base: command === "build" ? "/RhythmRPG/" : "/",
   server: {
     port: 5173,
   },
@@ -29,4 +30,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));
