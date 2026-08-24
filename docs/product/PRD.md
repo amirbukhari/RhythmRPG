@@ -1398,7 +1398,22 @@ been **verified against the code and folded into the body as fact** (no longer
 
 ---
 
-## 20. Implementation Status (as of 2026-08-21, v16.1 re-sync)
+## 20. Implementation Status (as of 2026-08-24, v16.2 re-sync)
+
+**v16.2 (story critical path landed).** The v16.0 story re-cut (§20.2 item 7) is
+**closed end to end**: (a) the boss is renamed and re-authored as **Lunal** — the
+retired Conductor's colossal art is deleted, the content IDs are `lunal` /
+`boss_lunal_*`, and she is authored human-scaled (Mir's height class) with menace
+from stillness, not scale (PRD Open Question 3b), a bowed head turned away and a
+lamplit cage at her feet; (b) **The Den** and **The Sitting-Down** ship in
+`cutscenes.ts` with real triggers; (c) the scattered echoes are re-cut off the
+retired cosmology; (d) `FinaleScene` plays the §8 ending. Nari appearing
+physically in the finale staging (§20.2 item 6) is a **deliberate hold** — the §8
+finale is pure found-not-told text and its restraint is the point. Gates re-greened:
+tsc clean, palette PASS (137 PNGs, no purple), boss + story e2e pass on Chromium
+**and** Firefox, in-engine screenshot confirms the LUNAL nameplate and her
+human scale. New coverage: `tests/unit/cutscenes.test.ts`, `tests/e2e/told-spine.spec.ts`.
+
 
 Factual snapshot of the repository against this PRD. **Status is tracked against the
 shipped product path only** — a feature that exists solely in a retired scene is a gap
@@ -1419,7 +1434,7 @@ its tests were deleted at v8.3, so every remaining test covers shipped code.)*
 |---|---|
 | Five-region explorable world (§8.8) | **356×200** open map (v13.0 organic regions; v15.0 10× expansion into 24 camera-culled ground-plate chunks; v15.1 sub-district theming), zone-seeded dressing/obstacles/tints, elevation relief + river + one-off landmarks (v13.1/v13.2), BFS-validated reachability at generation time; secret spurs per region |
 | Echoes (§8.8.2) | **55 placed** (v15.0), E-to-interact, one-line fragments; persisted per save; HUD counter; `echo_found` fires. *(Strings still carry retired-cosmology lines pending the side-stories.md replacement — §20.2 item 7c.)* |
-| Foes stand in the world (§8.1) | Node foes idle at their places (locked = dark silhouettes, cleared = ember); the colossal boss in-world (retired Conductor art pending the §8.7 re-spec) |
+| Foes stand in the world (§8.1) | Node foes idle at their places (locked = dark silhouettes, cleared = ember); the finale boss stands in-world as **Lunal** — human-scaled (Mir's height class, not the retired Conductor's colossus), authored deterministically with her lamplit cage (§8.7, v16.2) |
 | Save-obelisks (§8.8.5) | Beside every fight node; rest persists through the real IndexedDB save (e2e-proven, no fight trigger) |
 | **In-world fights (§8.2)** | `WorldFight`: camera-locked room of the actual overworld; sim obstacles from impassable tiles (`resolveObstacles`, unit-tested); venues (biome floor + set pieces) composed into the map with a guaranteed fightable circle; rewards → results → in-place return; e2e asserts no battle scene loads |
 | Action sim (§8.2) | 8-dir momentum, dash i-frames + on-beat extension, light/heavy frame data with active hitboxes, hitstun, damage-%-scaled knockback, player DI, on-beat parry (off-beat = punishable), rhythm-gated cancel combos, Focus special, enemy telegraph AI — 13+ dedicated unit tests |
@@ -1464,29 +1479,32 @@ its tests were deleted at v8.3, so every remaining test covers shipped code.)*
    moveset schema (§10.5), not deleted.
 6. **Nari + Lunal staging (§8.4/§8.7):** v12.0 shipped the mechanical heart — Nari
    follows as a real presence, the loss beat fires and persists, the ground carries
-   his trail/scuffle/clues, and every echo line is voiced to the search. Still open:
-   Nari appearing physically in the finale staging and Lunal's visual presence
-   (masks/silhouette) — both need character art, which awaits the post-purge
-   direction. **Re-scoped v16.0:** Lunal is the finale, not a v2 candidate, so her
-   staging is now critical-path art (§8.7).
+   his trail/scuffle/clues, and every echo line is voiced to the search. **Lunal's
+   visual presence is done (v16.2):** she is authored human-scaled with her cage
+   and fought at the Keep under her own nameplate (§8.7). Remaining is a
+   **deliberate hold**, not a gap: Nari does not appear physically in the finale
+   staging — the §8 ending is pure found-not-told text (its restraint is the
+   point, and its 180px frame is already full), so his presence there stays in the
+   words, not a sprite.
 
-7. **v16.0 story re-cut vs. shipped content (§8.7).** The canon moved; the build did
-   not. Concretely open: (a) the boss content IDs still name the retired Conductor
-   (`boss_conductor_01`, `enemies/the_conductor`, `conductor_colossal`,
-   `boss_conductor_p1..p3`) — a contained rename touching 3 beat maps, 2 content
-   JSONs, BootScene and `WorldFight`; (b) the seven scripted beats (world bible §9)
-   exist as three in `cutscenes.ts` — **The Den** and **The Sitting-Down** are
-   unwritten and are the two the finale depends on; (c) the ~40 procedurally-scattered
-   echo strings in `generate_overworld_map.py` still carry cosmology lines that no
-   longer describe the world, and want replacing with the hand-placed vignettes in
-   [`side-stories.md`](../design/side-stories.md); (d) `FinaleScene`'s three closing
-   lines are the retired ending. None of this blocks play — the game runs the old
-   finale end-to-end — but every item is doc-drift of exactly the kind v16.0 was
-   written to kill.
+7. ~~**v16.0 story re-cut vs. shipped content (§8.7).**~~ **CLOSED (v16.1–v16.2).**
+   The canon moved and the build has now caught up on all four fronts: (a) the boss
+   content IDs are renamed and the boss re-authored as **Lunal** — the retired
+   Conductor's `the_conductor`/`conductor_colossal`/`boss_conductor_*` art and IDs
+   are deleted, replaced by `lunal`/`boss_lunal_*` and a human-scaled authored
+   sprite (`tools/pixelart/lunal_boss.py`); (b) **The Den** and **The Sitting-Down**
+   ship in `cutscenes.ts` with real overworld triggers (node_19 clear; Keep entry
+   gated on `seen_den` + Nari lost), guarded by `cutscenes.test.ts` and
+   `told-spine.spec.ts`; (c) the scattered echoes are re-cut off the retired
+   cosmology onto the current world; (d) `FinaleScene` plays the §8 ending (he picks
+   the lock, the boy does not know him at first, it rains and Nari asks the one
+   question). The doc-drift v16.0 was written to kill is gone.
 
 *(Closed by v8.2–v8.3: four-tier judgment, ultimate, phased boss, §9.3 parity,
 Sightread v1, analytics parity, battle SFX first fill, the relics regression,
-content-ID hygiene, and retired-code deletion.)*
+content-ID hygiene, and retired-code deletion. Closed by v16.1–v16.2: the entire
+v16.0 story re-cut — the Den & the Sitting-Down, the echo re-cut, the §8 finale,
+and Lunal replacing the Conductor as a human-scaled authored boss.)*
 
 ### 20.2a Release-gate status (§16.2, verified this cut)
 
