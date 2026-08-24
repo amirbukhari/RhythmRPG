@@ -16,7 +16,7 @@ import truckersUrl from "../../../assets/audio/truckers_for_christ.mp3";
  *   menu    -> Sunshine Sally      (the title theme)
  *   explore -> Deereater           (the drowned overworld)
  *   combat  -> Glassriff / John's Anus / Truckers for Christ (rotates per fight)
- *   boss    -> Quotience           (the Conductor's hall)
+ *   boss    -> Quotience           (Lunal's hall at the Keep)
  *
  * Mobile autoplay: browsers block play() until a user gesture. The gesture is
  * the AudioGateScene tap, which calls setMode("menu") from inside the handler,

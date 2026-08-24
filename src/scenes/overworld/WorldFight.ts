@@ -62,8 +62,9 @@ const TIER_LABEL: Record<Exclude<BeatTier, "off">, { text: string; color: string
  */
 
 // Authored foe sheets are 4x their world size (tools/art/contract.py SCALE),
-// so every foe renders at 0.25. The Conductor uses his legacy colossal sheet.
-const FIGHT_SCALE: Record<string, number> = { the_conductor: 0.25, elite_wraith: 0.25, drifter: 0.25, slime: 0.25 };
+// so every foe renders at 0.25. Lunal (world-bible §8) renders SMALLER on
+// purpose -- she is human-scaled, Mir's height class, not a colossus.
+const FIGHT_SCALE: Record<string, number> = { lunal: 0.16, elite_wraith: 0.25, drifter: 0.25, slime: 0.25 };
 /** Mir's authored states (tools/art/mir.py) and the frame rate each reads
  * best at. `attack`/`heavy` are driven frame-by-frame off the sim's attack
  * phase instead of played, so anticipation-impact-recovery lands exactly on
@@ -90,7 +91,7 @@ const FOE_CLIP: Record<string, { fps: number; loop: boolean }> = {
 };
 
 const FIGHT_ACCENT: Record<string, number> = {
-  the_conductor: 0xf0a648,
+  lunal: 0x9fb8c0,
   elite_wraith: 0x49c6bd,
   drifter: 0x9fe8e0,
   slime: 0x9aca43,
@@ -462,8 +463,8 @@ export class WorldFight {
       const def = getEnemy(enemyId);
       e.aggr = def.action?.aggression;
       e.strikeDamage = def.action?.damage;
-      const colossal = enemyId === "the_conductor";
-      const tex = colossal ? "conductor_colossal" : `enemy_${enemyId}`;
+      const authoredBoss = enemyId === "lunal";
+      const tex = authoredBoss ? "lunal" : `enemy_${enemyId}`;
       const scale = FIGHT_SCALE[enemyId] ?? 0.25;
       const accent = FIGHT_ACCENT[enemyId] ?? 0xffffff;
       this.accents.set(e.id, accent);
@@ -476,7 +477,7 @@ export class WorldFight {
         e.id,
         this.scene.add.image(wx, wy - 8, "glow").setBlendMode(Phaser.BlendModes.ADD).setTint(accent).setDepth(4.32).setScale(1).setAlpha(0.35)
       );
-      if (colossal) {
+      if (authoredBoss) {
         const animKey = `wf_idle_${tex}`;
         if (!this.scene.anims.exists(animKey)) {
           this.scene.anims.create({

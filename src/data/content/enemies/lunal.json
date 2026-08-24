@@ -1,10 +1,10 @@
 {
-  "enemyId": "the_conductor",
-  "name": "The Conductor",
+  "enemyId": "lunal",
+  "name": "Lunal",
   "maxHp": 620,
   "intents": [
     {
-      "telegraph": "baton_sweep",
+      "telegraph": "hush_the_room",
       "effect": {
         "type": "damage",
         "value": 12,
@@ -12,7 +12,7 @@
       }
     },
     {
-      "telegraph": "tempo_surge",
+      "telegraph": "straighten_his_collar",
       "effect": {
         "type": "damage",
         "value": 16,
@@ -20,7 +20,7 @@
       }
     },
     {
-      "telegraph": "discord_wave",
+      "telegraph": "will_not_let_go",
       "effect": {
         "type": "debuff",
         "value": -0.2

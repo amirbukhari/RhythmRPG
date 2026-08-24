@@ -52,8 +52,7 @@ import glowUrl from "../../assets/fx/glow.png";
 import sparkUrl from "../../assets/fx/spark.png";
 import hazeUrl from "../../assets/fx/haze.png";
 import godrayUrl from "../../assets/fx/godray.png";
-import conductorUrl from "../../assets/sprites/enemies/the_conductor.png";
-import conductorColossalUrl from "../../assets/sprites/enemies/conductor_colossal.png";
+import lunalUrl from "../../assets/sprites/enemies/lunal.png";
 
 // Authored frame size per foe -- must match `tools/art/contract.py` SCALE.
 // Everything renders at 0.25, so these are 4x their world size.
@@ -61,12 +60,6 @@ const ENEMY_FRAME: Record<string, number> = {
   slime: 128,
   drifter: 140,
   elite_wraith: 180,
-};
-// The Conductor is retired canon (world-bible v16.0 replaced him with the
-// Harrow) and still has only a legacy flat sheet; his slots go with the §8.7
-// finale rework.
-const LEGACY_ENEMY_URLS: Record<string, { url: string; frame: number }> = {
-  the_conductor: { url: conductorUrl, frame: 192 },
 };
 
 /** Loads the asset manifest and verifies browser support. See PRD §10.6. */
@@ -76,8 +69,10 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload(): void {
-    // Colossal boss art at 4x density (hd_cast.py), rendered at 0.25.
-    this.load.spritesheet("conductor_colossal", conductorColossalUrl, { frameWidth: 208, frameHeight: 288 });
+    // Lunal, the ending's boss (world-bible §8): human-scaled and authored at
+    // 4x density (tools/pixelart/lunal_boss.py), rendered down small -- she is
+    // Mir's height class, not the retired Conductor's colossus.
+    this.load.spritesheet("lunal", lunalUrl, { frameWidth: 216, frameHeight: 232 });
     this.load.image("ui_panel", uiPanelUrl);
     this.load.image("ui_panel_boss", uiPanelBossUrl);
     this.load.image("wordmark", wordmarkUrl);
@@ -110,9 +105,6 @@ export class BootScene extends Phaser.Scene {
     for (const [path, url] of Object.entries(ENV_URLS)) {
       const m = /env\/([^/]+)\/([^/]+)\.png$/.exec(path);
       if (m) this.load.image(`env_${m[1]}_${m[2]}`, url);
-    }
-    for (const [name, spec] of Object.entries(LEGACY_ENEMY_URLS)) {
-      this.load.spritesheet(`enemy_${name}`, spec.url, { frameWidth: spec.frame, frameHeight: spec.frame });
     }
     // Foe states: `.../enemies/slime/telegraph.png` -> `enemy_slime_telegraph`;
     // `idle` keeps the bare `enemy_slime` key so existing call sites hold.

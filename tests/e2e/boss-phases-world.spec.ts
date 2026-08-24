@@ -2,7 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { bootToOverworld, isSceneActive } from "./helpers";
 
 /**
- * §8.7 boss phases ON THE SHIPPED PATH: the Conductor is fought in the
+ * §8.7 boss phases ON THE SHIPPED PATH: Lunal is fought in the
  * world (WorldFight), phases advance on authored HP thresholds, playback
  * jumps to the bound section of Quotience, and the enemy tempo escalates.
  * (The legacy boss-phases.spec.ts covers the retired BattleScene until its
@@ -50,7 +50,7 @@ async function setBossHpFraction(page: Page, fraction: number): Promise<void> {
   }, fraction);
 }
 
-test("the in-world Conductor fight advances phases on authored HP thresholds", async ({ page }) => {
+test("the in-world Lunal fight advances phases on authored HP thresholds", async ({ page }) => {
   await startBossFight(page);
   expect(await isSceneActive(page, "OverworldScene")).toBe(true);
   expect(await isSceneActive(page, "ActionBattleScene")).toBe(false);

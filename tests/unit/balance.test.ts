@@ -90,7 +90,7 @@ describe("balance: every authored encounter is winnable (P5)", () => {
 
   it("the §8.6 curriculum ascends: the boss takes meaningfully longer than the opener", () => {
     const opener = playBot(waveOf("biome_fold_slime_a"));
-    const boss = playBot(waveOf("boss_conductor_01"), 180);
+    const boss = playBot(waveOf("boss_lunal_01"), 180);
     expect(opener.outcome).toBe("victory");
     expect(boss.outcome).toBe("victory");
     expect(boss.seconds).toBeGreaterThan(opener.seconds * 1.5);

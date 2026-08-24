@@ -85,23 +85,10 @@ PIECES: dict[str, tuple[str, int, str, tuple[int, int], int]] = {
         "pearl teeth, hot pink inner glow, ONE single connected figure",
         154, "assets/sprites/enemies/elite_wraith.png", (180, 180), 158,
     ),
-    "the_conductor": (
-        STYLE + "THE CONDUCTOR: a gaunt spectral Victorian orchestra conductor in "
-        "a deep indigo-plum tailcoat with BLAZING EMBER-GOLD trim and tall "
-        "top hat, an exposed RADIANT glowing amber clock face embedded in "
-        "his chest casting warm light up his figure, one skeletal hand "
-        "raising a conductor's baton",
-        4, "assets/sprites/enemies/the_conductor.png", (192, 192), 170,
-    ),
-    "conductor_colossal": (
-        STYLE + "THE CONDUCTOR as a COLOSSUS: a towering gaunt spectral Victorian "
-        "orchestra conductor in a vast tattered deep indigo-plum tailcoat "
-        "with BLAZING EMBER-GOLD trim flaring like smoke, tall top hat, a "
-        "RADIANT glowing amber clock face embedded in the chest casting "
-        "warm light across the figure, skeletal hand raising a baton, "
-        "monumental and terrifying",
-        4, "assets/sprites/enemies/conductor_colossal.png", (208, 288), 272,
-    ),
+    # The Conductor (both his human and colossal sheets) is retired canon:
+    # world-bible v16.0 replaced the Keep's boss with Lunal, the mother, who is
+    # human-scaled and authored deterministically in tools/pixelart/lunal_boss.py
+    # (stillness, not scale -- PRD Open Question 3b), not generated here.
 }
 
 

@@ -1,7 +1,7 @@
 {
-  "encounterId": "boss_conductor_01",
-  "trackId": "boss_conductor_p1",
-  "enemyWave": ["the_conductor"],
+  "encounterId": "boss_lunal_01",
+  "trackId": "boss_lunal_p1",
+  "enemyWave": ["lunal"],
   "accentProfile": null,
   "victoryRewards": {
     "xp": 500,

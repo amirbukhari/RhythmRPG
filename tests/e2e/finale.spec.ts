@@ -7,7 +7,7 @@ import { bootToOverworld, waitForScene, isSceneActive } from "./helpers";
  * the world stays open afterwards.
  */
 
-test("beating the Conductor plays the finale and returns to an open world", async ({ page }) => {
+test("felling Lunal plays the finale and returns to an open world", async ({ page }) => {
   await bootToOverworld(page);
 
   // Stand the frontier at the boss and start his in-world fight.
@@ -28,7 +28,7 @@ test("beating the Conductor plays the finale and returns to an open world", asyn
     return Boolean(scene.fight && scene.fight.simArena);
   });
 
-  // Fell the Conductor through the sim seam; the real finish() path runs.
+  // Fell Lunal through the sim seam; the real finish() path runs.
   await page.evaluate(() => {
     const scene = window.__meterfallDebug.game.scene.getScene("OverworldScene") as unknown as {
       fight: { simArena: { fighters: { team: string; hp: number; state: string }[] } };

@@ -72,7 +72,7 @@ const MARKER_COLORS: Record<NodeStatus, number> = { cleared: 0x44cc66, unlocked:
 const NODE_TYPE_LABEL: Record<string, string> = { battle: "B", elite: "E", boss: "!", camp: "C" };
 // Emissive accent per foe for its overworld aura (mirrors ActionBattleScene).
 const FOE_ACCENT: Record<string, number> = {
-  the_conductor: 0xf0a648,
+  lunal: 0x9fb8c0,
   elite_wraith: 0x49c6bd,
   drifter: 0x9fe8e0,
   slime: 0x9aca43,
@@ -2145,24 +2145,26 @@ export class OverworldScene extends Phaser.Scene {
       return;
     }
 
-    const colossal = foeId === "the_conductor";
-    const tex = colossal ? "conductor_colossal" : `enemy_${foeId}`;
+    // Lunal (world-bible §8) is authored human-scaled -- Mir's height class, not
+    // the retired Conductor's colossus -- so she renders smaller than the foes.
+    const authoredBoss = foeId === "lunal";
+    const tex = authoredBoss ? "lunal" : `enemy_${foeId}`;
     const accent = FOE_ACCENT[foeId] ?? 0xffffff;
     const footY = y + TILE_SIZE / 2 - 1;
 
     // contact shadow + emissive aura ground the foe in the world
-    const foeShadow = this.add.ellipse(x, footY, colossal ? 30 : 20, colossal ? 9 : 6, 0x05060a, 0.4).setDepth(3);
+    const foeShadow = this.add.ellipse(x, footY, 20, 6, 0x05060a, 0.4).setDepth(3);
     const aura = this.add
       .image(x, footY - 10, "glow")
       .setBlendMode(Phaser.BlendModes.ADD)
       .setTint(accent)
-      .setScale(colossal ? 0.9 : 0.55)
+      .setScale(0.55)
       .setAlpha(status === "locked" ? 0.08 : 0.3)
       .setDepth(3);
 
     // ONE SCALE CONSTANT, because the rim below is derived from it and the two
     // of them silently disagreeing put a GHOST on every locked node in the game.
-    const FOE_SCALE = 0.25;
+    const FOE_SCALE = authoredBoss ? 0.16 : 0.25;
     const foe = this.add.sprite(x, footY, tex, 0).setOrigin(0.5, 1).setScale(FOE_SCALE).setDepth(4.5);
     // the live fight hides these when the player walks into the foe
     this.nodeFoeVisuals.set(marker.nodeId, [foe, aura, foeShadow]);
