@@ -33,16 +33,24 @@ if (MAJOR >= 22) {
 // 1.x -- recent tooling versions assume newer Node's native TS support).
 export default defineConfig({
   testDir: "./tests/e2e",
-  // 120s (was 60s, was 30s): the game renders real pixel-art scenes (painted
-  // battle backdrops, per-scene backdrops, sprite sheets) under this sandbox's
-  // *software* WebGL, so scene loads/transitions are genuinely slower here
-  // than on a GPU. The waits are for real state, not arbitrary sleeps; the
-  // extra ceiling just stops a slow software-rendered frame from tripping a
-  // wait. The in-world fight sim in particular runs at only a few FPS on the
-  // slowest CI runners (measured: ~3 FPS under a 6x CPU throttle), where the
-  // real-time fight specs (beat-truth, boss-phases, finale) wait on game-time
-  // progression; 60s was too tight for those there. Real hardware is far under.
-  timeout: 120_000,
+  // The game renders real pixel-art scenes (painted battle backdrops, per-scene
+  // backdrops, sprite sheets) under this sandbox's *software* WebGL, so scene
+  // loads/transitions are genuinely slower here than on a GPU. The waits are for
+  // real state, not arbitrary sleeps; the ceiling just stops a slow
+  // software-rendered frame from tripping a wait. The in-world fight sim in
+  // particular runs at only a few FPS on the slowest CI runners (measured: ~3
+  // FPS under a 6x CPU throttle), where the real-time fight specs (beat-truth,
+  // boss-phases, finale) wait on game-time progression.
+  //
+  // CI gets a much higher ceiling than local: the GitHub-hosted runner is ~4x
+  // slower than a dev box (the heaviest audio+fight specs -- beat-truth, rite,
+  // told-spine -- run ~30s locally but push past 120s there, once the audio
+  // path also has to cold-fetch multi-MB MP3s). 120s tripped them and burned
+  // all three retries; 300s clears the slowest with margin. These are
+  // correct-but-slow, not hangs (their in-page sample loops are bounded), so
+  // the extra ceiling only ever costs wall-clock on a genuine hang. Local keeps
+  // 120s for fast-fail; real hardware finishes far under either.
+  timeout: process.env.CI ? 300_000 : 120_000,
   fullyParallel: false, // each test drives one shared game instance's page lifecycle; keep runs predictable
   workers: 1, // headless WebGL under software rendering in this environment is resource-heavy; concurrency caused real flakiness
   retries: 2, // timing-sensitive input/rhythm specs under software WebGL occasionally drop a synthetic input or run a slow frame; retries absorb it (see tests/e2e/README.md)
