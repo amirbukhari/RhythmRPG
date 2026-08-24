@@ -1,14 +1,17 @@
 {
-  "encounterId": "biome_pit_pack_b",
+  "encounterId": "biome_breach_pack_c",
   "trackId": "mid_biome_1_01",
   "enemyWave": [
     "drifter",
-    "drifter",
+    "slime",
     "slime"
   ],
   "accentProfile": null,
   "victoryRewards": {
-    "xp": 135,
-    "currency": 60
+    "xp": 125,
+    "currency": 55,
+    "relicChoices": [
+      "focus_loop"
+    ]
   }
 }

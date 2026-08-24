@@ -12,7 +12,7 @@ import { worldScaleFor } from "./WorldScale";
  */
 
 export interface Placement {
-  /** texture key, e.g. "env_shallows_rock_a" */
+  /** texture key, e.g. "env_shelf_hull" */
   key: string;
   x: number;
   y: number; // the piece's base (feet), origin is bottom-centre
@@ -37,7 +37,7 @@ export interface ArenaLayout {
 //
 // The per-node `NODE_VENUE` table was deleted with it: nothing had read it since
 // venues became biome-keyed in v15.0, and it still mapped `opening_1` to a
-// region-0 venue when that node stands in the Saltmines.
+// region-0 venue when that node stands in the Kelp Shelf.
 
 /**
  * Dresses a fight node's spot IN the overworld with its authored venue
@@ -56,6 +56,8 @@ export function composeWorldVenue(
 ): void {
   // v15.0: venues are keyed by BIOME ("arena_<biome>"), so all ~20 fight nodes
   // reuse the five authored kits (was a per-node-id table for the old 5 nodes).
+  // The biome names are the world-bible's (fold/shelf/breach/scar/keep); the
+  // retired ones (saltmines/pit/attic/hall) named a cosmology that is gone.
   // focal stage-light: every fight reads as a lit stage from across the map,
   // even where the kit's set pieces have no shipped art yet.
   scene.add
@@ -100,24 +102,43 @@ export function composeWorldVenue(
  * around x 90-230, y 30-150). See the note above for why the Fold has none.
  */
 export const ARENA_LAYOUTS: Record<string, ArenaLayout> = {
-  arena_saltmines: {
+  // THE KELP SHELF. Every key here resolves -- which is worth saying, because
+  // the table this replaced did not have a single one that did. It named
+  // `env_saltmines_ore_rock`, `env_saltmines_salt_crystal`,
+  // `env_saltmines_calcified_miner` and nine more from a kit that was never
+  // built, and `composeWorldVenue` skips a piece whose texture is missing
+  // (line ~77), so every fight in this region has been happening on a bare
+  // floor since v15.0. The same was true of the three venues below.
+  //
+  // THE CENTRE IS EMPTY ON PURPOSE. Fighters spawn across x 90-230, y 30-150,
+  // so nothing has a base inside that box: the wrecks are BACKDROP, ringing the
+  // spot and towering over it (a hull is 226px tall in a 180px-high arena, and
+  // that is the intended feeling -- you fight in the shadow of one).
+  arena_shelf: {
     pieces: [
-      { key: "env_saltmines_ore_cart", x: 60, y: 62 },
-      { key: "env_saltmines_timber", x: 40, y: 120 },
-      { key: "env_saltmines_timber", x: 288, y: 72, flip: true },
-      { key: "env_saltmines_salt_crystal", x: 106, y: 36 },
-      { key: "env_saltmines_salt_crystal", x: 300, y: 150 },
-      { key: "env_saltmines_ore_rock", x: 26, y: 158 },
-      { key: "env_saltmines_ore_rock", x: 210, y: 34, flip: true },
-      { key: "env_saltmines_calcified_miner", x: 272, y: 120 },
+      { key: "env_shelf_hull", x: 28, y: 44 },
+      { key: "env_shelf_hull", x: 298, y: 60, flip: true },
+      { key: "env_shelf_mast", x: 252, y: 26 },
+      { key: "env_shelf_hull_broken", x: 20, y: 88 },
+      { key: "env_shelf_headframe", x: 68, y: 174 },
+      { key: "env_shelf_shack", x: 274, y: 178, flip: true },
+      { key: "env_shelf_ore_cart", x: 44, y: 120 },
+      { key: "env_shelf_winch", x: 302, y: 134 },
+      { key: "env_shelf_rail_bend", x: 152, y: 179 },
+      { key: "env_shelf_plank_bridge", x: 58, y: 98 },
+      { key: "env_shelf_kelp_stand", x: 16, y: 152 },
+      { key: "env_shelf_kelp_stand", x: 32, y: 164 },
+      { key: "env_shelf_kelp_stand", x: 314, y: 98 },
+      { key: "env_shelf_ribs", x: 106, y: 26 },
+      { key: "env_shelf_ribs", x: 216, y: 24, flip: true },
+      // the two lamps are the only warm light in the venue, and they are the
+      // reason the fight reads as happening at a WORKED place
+      { key: "env_shelf_lantern", x: 96, y: 22 },
+      { key: "env_shelf_lantern", x: 230, y: 20, flip: true },
       { key: "env_shared_save_obelisk", x: 30, y: 172 },
-      { key: "env_saltmines_scatter_brazier", x: 150, y: 30 },
-      { key: "env_saltmines_scatter_geode", x: 306, y: 108 },
-      { key: "env_saltmines_scatter_sacks", x: 66, y: 172 },
-      { key: "env_saltmines_scatter_rail", x: 184, y: 176 },
     ],
   },
-  arena_pit: {
+  arena_breach: {
     pieces: [
       { key: "env_pit_ticket_booth", x: 58, y: 60 },
       { key: "env_pit_carousel_horse", x: 282, y: 72, flip: true },
@@ -135,7 +156,7 @@ export const ARENA_LAYOUTS: Record<string, ArenaLayout> = {
       { key: "env_pit_scatter_bench", x: 150, y: 178 },
     ],
   },
-  arena_attic: {
+  arena_scar: {
     pieces: [
       { key: "env_attic_drawers", x: 58, y: 60 },
       { key: "env_attic_crate_stack", x: 286, y: 74, flip: true },
@@ -151,7 +172,7 @@ export const ARENA_LAYOUTS: Record<string, ArenaLayout> = {
       { key: "env_attic_scatter_radio", x: 12, y: 128 },
     ],
   },
-  arena_hall: {
+  arena_keep: {
     pieces: [
       { key: "env_hall_plinth", x: 58, y: 60 },
       { key: "env_hall_plinth", x: 286, y: 68, flip: true },

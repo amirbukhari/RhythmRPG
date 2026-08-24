@@ -5,8 +5,8 @@
       "nodeId": "opening_1",
       "type": "battle",
       "encounterPool": [
-        "biome_shallows_slime_a",
-        "biome_shallows_slime_b"
+        "biome_fold_slime_a",
+        "biome_fold_slime_b"
       ],
       "next": [
         "mid_1"
@@ -16,9 +16,9 @@
       "nodeId": "mid_1",
       "type": "battle",
       "encounterPool": [
-        "biome_saltmines_drifter_a",
-        "biome_saltmines_drifter_b",
-        "biome_saltmines_drifter_c"
+        "biome_shelf_drifter_a",
+        "biome_shelf_drifter_b",
+        "biome_shelf_drifter_c"
       ],
       "next": [
         "node_03"
@@ -28,9 +28,9 @@
       "nodeId": "node_03",
       "type": "battle",
       "encounterPool": [
-        "biome_saltmines_drifter_a",
-        "biome_saltmines_drifter_b",
-        "biome_saltmines_drifter_c"
+        "biome_shelf_drifter_a",
+        "biome_shelf_drifter_b",
+        "biome_shelf_drifter_c"
       ],
       "next": [
         "node_04"
@@ -40,9 +40,9 @@
       "nodeId": "node_04",
       "type": "elite",
       "encounterPool": [
-        "biome_saltmines_drifter_a",
-        "biome_saltmines_drifter_b",
-        "biome_saltmines_drifter_c"
+        "biome_shelf_drifter_a",
+        "biome_shelf_drifter_b",
+        "biome_shelf_drifter_c"
       ],
       "next": [
         "node_05"
@@ -52,9 +52,9 @@
       "nodeId": "node_05",
       "type": "battle",
       "encounterPool": [
-        "biome_saltmines_drifter_a",
-        "biome_saltmines_drifter_b",
-        "biome_saltmines_drifter_c"
+        "biome_shelf_drifter_a",
+        "biome_shelf_drifter_b",
+        "biome_shelf_drifter_c"
       ],
       "next": [
         "node_06"
@@ -64,9 +64,9 @@
       "nodeId": "node_06",
       "type": "battle",
       "encounterPool": [
-        "biome_pit_pack_a",
-        "biome_pit_pack_b",
-        "biome_pit_pack_c"
+        "biome_breach_pack_a",
+        "biome_breach_pack_b",
+        "biome_breach_pack_c"
       ],
       "next": [
         "node_07"
@@ -76,9 +76,9 @@
       "nodeId": "node_07",
       "type": "battle",
       "encounterPool": [
-        "biome_pit_pack_a",
-        "biome_pit_pack_b",
-        "biome_pit_pack_c"
+        "biome_breach_pack_a",
+        "biome_breach_pack_b",
+        "biome_breach_pack_c"
       ],
       "next": [
         "node_08"
@@ -88,9 +88,9 @@
       "nodeId": "node_08",
       "type": "elite",
       "encounterPool": [
-        "biome_pit_pack_a",
-        "biome_pit_pack_b",
-        "biome_pit_pack_c"
+        "biome_breach_pack_a",
+        "biome_breach_pack_b",
+        "biome_breach_pack_c"
       ],
       "next": [
         "node_09"
@@ -100,10 +100,10 @@
       "nodeId": "node_09",
       "type": "battle",
       "encounterPool": [
-        "biome_attic_wraith_a",
-        "biome_attic_wraith_b",
-        "biome_attic_wraith_c",
-        "biome_attic_wraith_d"
+        "biome_scar_wraith_a",
+        "biome_scar_wraith_b",
+        "biome_scar_wraith_c",
+        "biome_scar_wraith_d"
       ],
       "next": [
         "node_10"
@@ -113,10 +113,10 @@
       "nodeId": "node_10",
       "type": "battle",
       "encounterPool": [
-        "biome_attic_wraith_a",
-        "biome_attic_wraith_b",
-        "biome_attic_wraith_c",
-        "biome_attic_wraith_d"
+        "biome_scar_wraith_a",
+        "biome_scar_wraith_b",
+        "biome_scar_wraith_c",
+        "biome_scar_wraith_d"
       ],
       "next": [
         "node_11"
@@ -126,10 +126,10 @@
       "nodeId": "node_11",
       "type": "battle",
       "encounterPool": [
-        "biome_attic_wraith_a",
-        "biome_attic_wraith_b",
-        "biome_attic_wraith_c",
-        "biome_attic_wraith_d"
+        "biome_scar_wraith_a",
+        "biome_scar_wraith_b",
+        "biome_scar_wraith_c",
+        "biome_scar_wraith_d"
       ],
       "next": [
         "node_12"
@@ -139,10 +139,10 @@
       "nodeId": "node_12",
       "type": "elite",
       "encounterPool": [
-        "biome_attic_wraith_a",
-        "biome_attic_wraith_b",
-        "biome_attic_wraith_c",
-        "biome_attic_wraith_d"
+        "biome_scar_wraith_a",
+        "biome_scar_wraith_b",
+        "biome_scar_wraith_c",
+        "biome_scar_wraith_d"
       ],
       "next": [
         "node_13"
@@ -152,10 +152,10 @@
       "nodeId": "node_13",
       "type": "battle",
       "encounterPool": [
-        "biome_attic_wraith_a",
-        "biome_attic_wraith_b",
-        "biome_attic_wraith_c",
-        "biome_attic_wraith_d"
+        "biome_scar_wraith_a",
+        "biome_scar_wraith_b",
+        "biome_scar_wraith_c",
+        "biome_scar_wraith_d"
       ],
       "next": [
         "node_14"
@@ -165,10 +165,10 @@
       "nodeId": "node_14",
       "type": "battle",
       "encounterPool": [
-        "biome_attic_wraith_a",
-        "biome_attic_wraith_b",
-        "biome_attic_wraith_c",
-        "biome_attic_wraith_d"
+        "biome_scar_wraith_a",
+        "biome_scar_wraith_b",
+        "biome_scar_wraith_c",
+        "biome_scar_wraith_d"
       ],
       "next": [
         "node_15"
@@ -178,10 +178,10 @@
       "nodeId": "node_15",
       "type": "battle",
       "encounterPool": [
-        "biome_attic_wraith_a",
-        "biome_attic_wraith_b",
-        "biome_attic_wraith_c",
-        "biome_attic_wraith_d"
+        "biome_scar_wraith_a",
+        "biome_scar_wraith_b",
+        "biome_scar_wraith_c",
+        "biome_scar_wraith_d"
       ],
       "next": [
         "node_16"
@@ -191,10 +191,10 @@
       "nodeId": "node_16",
       "type": "elite",
       "encounterPool": [
-        "biome_attic_wraith_a",
-        "biome_attic_wraith_b",
-        "biome_attic_wraith_c",
-        "biome_attic_wraith_d"
+        "biome_scar_wraith_a",
+        "biome_scar_wraith_b",
+        "biome_scar_wraith_c",
+        "biome_scar_wraith_d"
       ],
       "next": [
         "node_17"
@@ -204,10 +204,10 @@
       "nodeId": "node_17",
       "type": "battle",
       "encounterPool": [
-        "biome_attic_wraith_a",
-        "biome_attic_wraith_b",
-        "biome_attic_wraith_c",
-        "biome_attic_wraith_d"
+        "biome_scar_wraith_a",
+        "biome_scar_wraith_b",
+        "biome_scar_wraith_c",
+        "biome_scar_wraith_d"
       ],
       "next": [
         "node_18"
@@ -217,10 +217,10 @@
       "nodeId": "node_18",
       "type": "battle",
       "encounterPool": [
-        "biome_attic_wraith_a",
-        "biome_attic_wraith_b",
-        "biome_attic_wraith_c",
-        "biome_attic_wraith_d"
+        "biome_scar_wraith_a",
+        "biome_scar_wraith_b",
+        "biome_scar_wraith_c",
+        "biome_scar_wraith_d"
       ],
       "next": [
         "node_19"
@@ -230,10 +230,10 @@
       "nodeId": "node_19",
       "type": "battle",
       "encounterPool": [
-        "biome_attic_wraith_a",
-        "biome_attic_wraith_b",
-        "biome_attic_wraith_c",
-        "biome_attic_wraith_d"
+        "biome_scar_wraith_a",
+        "biome_scar_wraith_b",
+        "biome_scar_wraith_c",
+        "biome_scar_wraith_d"
       ],
       "next": [
         "boss_1"

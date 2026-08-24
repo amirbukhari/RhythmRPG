@@ -87,7 +87,7 @@ test.describe("overworld", () => {
     }));
     expect(pending.nodeId).toBe("opening_1");
     // opening_1 resolves randomly from its encounterPool each visit (v15.0 pool).
-    expect(["biome_shallows_slime_a", "biome_shallows_slime_b"]).toContain(pending.encounterId);
+    expect(["biome_fold_slime_a", "biome_fold_slime_b"]).toContain(pending.encounterId);
   });
 
   test("locked and cleared markers do not trigger battles", async ({ page }) => {

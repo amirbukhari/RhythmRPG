@@ -106,7 +106,7 @@ export class BootScene extends Phaser.Scene {
       const m = /cutscene\/([a-z_]+)\.png$/.exec(path);
       if (m && !m[1].startsWith("_")) this.load.image(`plate_${m[1]}`, url);
     }
-    // Environment kitbash pieces: `.../env/shallows/rock_a.png` -> env_shallows_rock_a
+    // Environment kitbash pieces: `.../env/shelf/hull.png` -> env_shelf_hull
     for (const [path, url] of Object.entries(ENV_URLS)) {
       const m = /env\/([^/]+)\/([^/]+)\.png$/.exec(path);
       if (m) this.load.image(`env_${m[1]}_${m[2]}`, url);

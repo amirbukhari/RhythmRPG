@@ -283,7 +283,8 @@ Biome flavor for the prompts (combine with the sheet type):
 
 - **fold** — grey silt underfoot, trodden prayer-path, black still water, salt-crusted gothic stone; accent `#49c6bd` (abyssal teal).
 - **shelf** — kelp-matted slope, tracks pressed through weed, green-lit water, mussel-crusted rock; accent `#58c07a` (kelp green).
-- **breach** — pale sand and foam, shell-grit crossing, surface-lit shallows, barnacled hulls; accent `#e8d9a8` (sand / foam).
+- **breach** — **a drowned carnival that kept performing after the water came** (world-bible §6.3): a stopped wheel, collapsed booths, salt-stiffened bunting, striped canvas gone grey; pale sand and foam underfoot, shell-grit crossing, surface-lit shallows; accent `#e8d9a8` (sand / foam).
+  > The carnival is **not** the retired `pit`. That region is gone; this staging   > survives and moved to the waterline — so its palette is **bleached**, not plum:   > sun-struck canvas, salt, rust and bare wood. A carnival is the correct image   > here for one reason: it is the loudest, most *populated* thing imaginable, and   > it is empty. Mir takes his first breath of surface air in a fairground with   > nobody in it, and then loses the boy.
 - **scar** — dry rust-red spoil, heaped trench earth, standing brown pools, shattered shale; accent `#c25424` (blood / rust).
 - **keep** — drowned hall floor under warm lamplight, bone-tile processional path, still black flood water, neutral marble warmed by the lamps; accent `#c6984e` (brass lamplight).
 

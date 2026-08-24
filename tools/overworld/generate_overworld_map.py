@@ -41,7 +41,7 @@ TILE_SIZE = 16
 # it); crossing the Breach surfaces into a Scar that sprawls north, south,
 # and east; the Stage waits at one specific far point. Regions are organic
 # TERRITORIES (weighted Voronoi with jitter), not columns.
-REGIONS = ["shallows", "saltmines", "pit", "attic", "hall"]  # ids: fold, shelf, breach, scar, stage
+REGIONS = ["fold", "shelf", "breach", "scar", "keep"]  # world-bible §6
 
 # v15.0 THE GREAT EXPANSION: the world is ~10x bigger. 112x64 -> 356x200
 # (10.0x area). The five biomes stay, but each is now a huge territory with
@@ -143,7 +143,10 @@ def _build_nodes() -> tuple[dict[str, tuple[int, int]], list[dict]]:
         markers[ids[i]] = (c, r)
         # opening_1 is the gentle intro: a slime, whatever biome it lands in.
         foe = "the_conductor" if last else ("slime" if i == 0 else _BIOME_FOE[ri])
-        pool_biome = "shallows" if i == 0 else REGIONS[ri]
+        # opening_1 always draws from the FOLD pool (a slime) whatever region it
+        # lands in -- that is the gentle intro. This said "shallows", which was
+        # region 0's retired name; the pool key is now the world-bible's.
+        pool_biome = "fold" if i == 0 else REGIONS[ri]
         meta.append({
             "id": ids[i], "type": ntype, "region": ri, "biome": REGIONS[ri],
             "foe": foe, "pool_biome": pool_biome,
@@ -162,7 +165,7 @@ NODE_MARKERS, NODE_META = _build_nodes()
 # --- echoes: ~40 lore fragments strewn through the world (8 per biome) -------
 # A curated pool per biome; each is hand-placed off the road within its region.
 _ECHO_POOL: dict[str, list[tuple[str, str]]] = {
-    "shallows": [
+    "fold": [
         ("The First Prayer", "We didn't raise the obelisk. We woke on the floor, and it was already listening."),
         ("The Way of Living", "Once a year the obelisk opens and the stone child speaks a new rule. Once a year we obey."),
         ("The Stone Child", "A baby's face, and no breath behind it. When its mouth opens, the whole Fold goes still."),
@@ -176,21 +179,36 @@ _ECHO_POOL: dict[str, list[tuple[str, str]]] = {
         ("Salt for the Doorways", "We marked the lintels so the sea would pass us over. It read the marks as an invitation."),
         ("The Floor That Hums", "Press your ear to the silt. That is the sound we were all born owing."),
     ],
-    "saltmines": [
+    # THE KELP SHELF -- the flight (world-bible §6.2). The mining lore stays:
+    # the region IS "the salt-wracked remains of a mining town that dug into
+    # something and stayed", so a foreman's ledger and a gallery that sang back
+    # are the subject, not residue. What was cut: "Pillar of Salt", whose
+    # sentence was broken ("it's when you're staring ahead too long"), and
+    # "Listening Stones", which was a fortune cookie. What was added: the two
+    # near-drops and the talking, because §6.2 names both and neither was here.
+    "shelf": [
         ("The Climber's Knot", "Rope enough to reach the light -- if you don't weigh anything anymore."),
         ("The First Wreck", "Every ship that ever sank points the same way. Up."),
         # the flight: climbing away from the rule, child in tow
         ("Fleeing Up", "We aren't climbing toward anything. We're climbing away from a rule. That is enough to move a man."),
         ("A Small Handhold", "Little prints on the mast beside mine. He was still with me here. Still with me here."),
         ("The Weight We Keep", "The ones who climb highest loved least. I am not going to climb well."),
-        ("Pillar of Salt", "When you're turning to salt, it's when you're staring ahead too long."),
-        ("Three Steps From the Lift", "The foreman covered his ears and ran. He calcified mid-stride, facing away."),
+        # the two near-drops (§6.2). Unremarked, because that is the instruction:
+        # "neither of them remarked on". The player's own hands did this.
+        ("Two Near Things", "Twice my hand closed on his wrist instead of his hand. Neither of us said anything about it."),
+        ("Talking the Whole Way", "I have not stopped talking since the ring stones. If I stop I will hear how quiet he is."),
         ("The Mast Forest", "Dead ships stand like trees down here. We climb them to feel tall."),
-        ("Listening Stones", "If you stack them right, they listen back."),
+        ("Salt Standing Up", "He stopped to listen and the salt kept coming. It finished him facing the way out."),
         ("The Foreman's Ledger", "Everyone's shift but mine ends at the sound. I keep counting anyway."),
         ("The Gallery That Sang", "We dug until the rock sang back. We should have dug the other way."),
     ],
-    "pit": [
+    # THE BREACH -- the taking (§6.3): the waterline, "staged as a carnival that
+    # kept performing after the water came". Two entries went: "The Champion's
+    # Last Bout" and "The Ferryman's Coin". The first was fighting-ring lore
+    # from the retired cosmology's PIT -- there is no ring here, there is a
+    # midway -- and the second was myth-kitsch that could have been pasted in
+    # from any game. Both are now carnival, which is what this place is.
+    "breach": [
         ("The Waterline", "Cross here and the sky remembers you have a face. It does not approve."),
         ("The Broken Foam", "The line between worlds is thinner than a footstep. His fit inside mine."),
         ("Salt in the Lungs", "The first breath of surface air burns. The second one is his name."),
@@ -200,15 +218,22 @@ _ECHO_POOL: dict[str, list[tuple[str, str]]] = {
         ("The Familiar Hands", "Whatever lifted him did not frighten him. He did not cry out. That is the part I cannot forgive."),
         ("She Crossed First", "One set of prints reaches the surface ahead of ours. Small heels. Someone who knew the way out."),
         ("Two Ticket Stubs", "Front row, both of us. He said don't blink."),
-        ("The Champion's Last Bout", "Something came up through the ring floor. The ropes snapped outward when it left with him."),
+        ("The Wheel Stopped Turning", "It stopped with someone still at the top. The car is up there. It has always been up there."),
         ("The Surface Air", "Up here the song is quieter. Not a comfort. It means it already took what it wanted."),
-        ("The Ferryman's Coin", "He'll take you across for what you love most. Everyone finds they can pay."),
+        ("The Barker's Line", "Step up, step up, everyone's a winner. The water came in and he never once stopped saying it."),
     ],
-    "attic": [
+    # THE SCAR -- the search (§6.4). The tracking entries are the spine of the
+    # region and they stay verbatim; they are the clue chain the Den reversal
+    # depends on. "Pens for a Bed" went: transcribing the song was the retired
+    # finale's business, and this region's business is the search. Its slot went
+    # to the OASIS, which §6.4 calls the best optional thing in the game -- "the
+    # only place in the game where anything is in motion" -- and which had no
+    # echo at all.
+    "scar": [
         ("The Small Prints", "They walk IN. Toward the den. Why would he walk toward it?"),
         ("What the Claws Keep", "It doesn't eat what it takes. It collects."),
         ("The Boarded Window", "Nailed from the inside. Whatever they feared, they feared it more than the dark."),
-        ("Pens for a Bed", "Someone locked themselves in to transcribe the sound before it finished transcribing them."),
+        ("Something In Bud", "Green. Moving. I sat down in it and forgot, for a whole minute, what I was doing out here."),
         ("The Den's Mouth", "The tracks all lead one way and none lead back. That is the only welcome it offers."),
         ("Scorch and Claw", "The surface does not want you. It has left instructions, in gouges."),
         ("The Collector's Shelf", "Little things, arranged by size. A shoe. A comb. A tooth too small to be yours."),
@@ -218,20 +243,37 @@ _ECHO_POOL: dict[str, list[tuple[str, str]]] = {
         ("No Blood at the Mouth", "There is nothing spilled at the den's mouth. I don't know if that is worse."),
         ("A Second Set of Prints", "Beside the small ones, always: a woman's stride. Not chasing. Leading."),
     ],
-    "hall": [
-        ("The Rehearsal", "The music stops every time the small one cries. Then it starts again, angrier."),
+    # THE KEEP -- the offer (§6.5). SIX OF THESE ELEVEN WERE WRONG, and two of
+    # them were wrong about the story rather than about the decor:
+    #
+    #   * "How She Took the Hall" had Lunal winning the place off the Conductor.
+    #     §6.5 says the opposite in as many words: "Lunal did not fight anyone
+    #     for it; she arrived first and found it empty, which is why she chose
+    #     it." An echo cannot contradict the bible -- these are the only voice
+    #     the world has, and this one was arguing with it.
+    #   * "Melting Clocks" and "The Ending He Rehearses" gave the drowned
+    #     orchestra and its conductor a plot. §6.5: "The hall's own dead are
+    #     dressing, not characters... Beautiful, and nobody's story." Giving
+    #     them a story is not a bonus; it is the one thing the section forbids,
+    #     because the room on the stage is what this region is about and every
+    #     sentence spent elsewhere is a sentence spent away from it.
+    #
+    # The clocks stay, because "stopped clocks" is canon in that same line -- and
+    # because Mir keeps clocks for a living, so a room full of stopped ones is
+    # the last thing he should have to walk through. They are just not a plot.
+    "keep": [
+        ("Still Seated", "Sixty chairs, sixty players, every bow still up. They are not a story. They are the furniture now."),
+        ("Stopped Clocks", "Every one of them stopped at the same minute. Nobody wound them. Nobody was ever going to."),
+        ("The Part Left Open", "One line in the score has no notes under it. Just a rest, held, for as long as anyone is listening."),
         ("The Huntress's Mark", "She doesn't hunt to kill. She hunts to keep."),
+        ("She Arrived First", "She did not take this place. She walked in and found it empty, and that is exactly why she chose it."),
         ("The Cage of Small Bones", "It is exactly the size of a boy who stopped growing when the water came."),
         # the reveal: the keeper is his mother
         ("Whose Cage It Is", "A mother built it. That is why the bars are padded, and there is no door on the inside."),
         ("What She Fled With", "She didn't outrun the Fold's rule. She outran it all the way here, the child under her coat."),
-        ("How She Took the Hall", "She didn't fight the Conductor. She gave him a reason to keep playing, and took the baton."),
+        ("What The Room Has In It", "Blankets. Food that will not spoil. A lamp left on. Everything a person needs, and one door."),
+        ("No Door On The Inside", "I have checked twice. There is no handle on this side, and the hinges are on hers."),
         ("Her Mercy", "Caged, the song can never rewrite him. Kept whole. Kept hers. Call it love if you can."),
-        ("The Blank Pages", "He erases every attempt except the last row's -- the only players who ever got it right."),
-        ("Melting Clocks", "Each stopped at the moment a player gave up. He keeps re-conducting those moments."),
-        ("The Ending He Rehearses", "He's been trying to describe a sound again. When he finds it, it ends -- all of it."),
-        # the thesis of the ending
-        ("The Last Chord", "Land the note and it all resolves -- the rule, the song, the cage. Everything gets to rest."),
     ],
 }
 
@@ -633,31 +675,31 @@ CONTENT_DIR = REPO_ROOT / "src" / "data" / "content"
 
 # (suffix, enemyWave, trackId, xp, currency, relicChoices)
 _BIOME_ENCOUNTERS: dict[str, list[tuple]] = {
-    "shallows": [
+    "fold": [
         ("slime_a", ["slime"], "opening_biome_01", 40, 20, []),
         ("slime_b", ["slime", "slime"], "opening_biome_01", 55, 25, ["focus_loop"]),
     ],
-    "saltmines": [
+    "shelf": [
         ("drifter_a", ["drifter"], "mid_biome_1_01", 80, 35, []),
         ("drifter_b", ["drifter", "drifter"], "mid_biome_1_01", 100, 45, ["counter_charm"]),
         ("drifter_c", ["drifter", "slime"], "mid_biome_1_01", 90, 40, []),
     ],
-    # pit uses the DRIFTER beatmap (mid_biome_1_01), heavier packs than saltmines.
-    "pit": [
+    # the Breach uses the DRIFTER beatmap (mid_biome_1_01), heavier packs than the Shelf.
+    "breach": [
         ("pack_a", ["drifter", "drifter"], "mid_biome_1_01", 120, 55, ["counter_charm"]),
         ("pack_b", ["drifter", "drifter", "slime"], "mid_biome_1_01", 135, 60, []),
         ("pack_c", ["drifter", "slime", "slime"], "mid_biome_1_01", 125, 55, ["focus_loop"]),
     ],
-    # attic uses BOTH wraith beatmaps (mid_biome_3_syncopated_01 + pit_below_01)
+    # the Scar uses BOTH wraith beatmaps (mid_biome_3_syncopated_01 + pit_below_01)
     # for track variety; every wave includes a wraith so its telegraphs are met.
-    "attic": [
+    "scar": [
         ("wraith_a", ["elite_wraith"], "mid_biome_3_syncopated_01", 160, 80, ["groove_amp"]),
         ("wraith_b", ["elite_wraith", "drifter"], "mid_biome_3_syncopated_01", 190, 95, ["focus_loop"]),
         ("wraith_c", ["elite_wraith", "elite_wraith"], "pit_below_01", 220, 110, ["groove_amp"]),
         ("wraith_d", ["elite_wraith", "drifter", "drifter"], "pit_below_01", 205, 100, ["counter_charm"]),
     ],
-    "hall": [
-        ("wraith_hall_a", ["elite_wraith", "elite_wraith"], "mid_biome_3_syncopated_01", 240, 120, ["groove_amp"]),
+    "keep": [
+        ("wraith_a", ["elite_wraith", "elite_wraith"], "mid_biome_3_syncopated_01", 240, 120, ["groove_amp"]),
     ],
 }
 

@@ -38,6 +38,38 @@ const METERS: [RegExp, number][] = [
   [/^env_fold_crate_stack$/, 1.1],
   [/^env_fold_bench$/, 0.9],
   [/^env_fold_ring_stone$/, 0.45],
+  // -- the Kelp Shelf's kit (tools/art/env_shelf.py). EXACT keys, and they have
+  // to come before the loose patterns further down or the region collapses:
+  // `/kelp|stone$|nodule/` would claim `kelp_stand` at 0.5m, `/rail/` would
+  // claim `rail_bend` at 0.3m, and `/ladder/`, `/winch/` and `/ore_cart/` all
+  // have looser entries below. A 14-metre shipwreck matched by a 0.5m pattern
+  // ships at the size of a teacup, which is exactly the class of bug this whole
+  // table was written to end.
+  //
+  // Every piece here is authored at ~30 px per metre so `worldScaleFor` lands
+  // on 0.5 and the art downsamples once, through the renderer's own 4x
+  // supersampling, instead of being resized twice. The declared metres only
+  // have to put `target/texHeight` inside [0.25, 0.75) for that to hold, which
+  // is a wide band -- so these are honest heights, not tuned ones.
+  // These four were 14.0 / 11.5 / 10.0 / 8.0 and the numbers were honest -- a
+  // ship's hull really is fourteen metres. They shipped a region the player
+  // could not see: the scale floor is 0.5, so 14m at 30 px/m arrived as 226
+  // world px, FOURTEEN TILES, in a viewport eleven tiles high. The prow was
+  // permanently off-frame. The art is now authored at 2x and halved on the way
+  // out (tools/art/env_shelf.py SHRINK), and the metres come down to match, so
+  // a wreck towers over a one-tile man with its whole silhouette in the frame.
+  [/^env_shelf_hull$/, 7.5], // ~7 tiles: still the tallest thing after the obelisk
+  [/^env_shelf_mast$/, 6.0],
+  [/^env_shelf_headframe$/, 6.0],
+  [/^env_shelf_hull_broken$/, 4.5],
+  [/^env_shelf_kelp_stand$/, 4.0],
+  [/^env_shelf_shack$/, 3.4],
+  [/^env_shelf_ribs$/, 2.4],
+  [/^env_shelf_lantern$/, 2.2], // a miner's safety lamp: the Shelf's gate light
+  [/^env_shelf_winch$/, 1.4],
+  [/^env_shelf_ore_cart$/, 1.4],
+  [/^env_shelf_plank_bridge$/, 1.2],
+  [/^env_shelf_rail_bend$/, 0.9],
   // -- buildings & monuments (these were reading SMALLER than furniture) --
   [/ticket_booth/, 3.2],
   [/tent_pole/, 3.4],
@@ -47,7 +79,7 @@ const METERS: [RegExp, number][] = [
   [/calcified_miner/, 1.9],
   [/figurehead/, 1.9],
   [/dockpost/, 2.4],
-  [/_lantern$/, 2.2], // shallows standing lantern post
+  [/_lantern$/, 2.2], // the Shelf's miner's lamp, and any lamp on a stake after it
   [/scatter_lantern/, 0.5], // the miner's HAND lantern
   [/_pillar$/, 2.4],
   [/scatter_pillar/, 1.6],

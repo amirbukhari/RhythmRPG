@@ -536,1702 +536,822 @@
    ]
   },
   {
-   "region": "attic",
+   "region": "shelf",
    "placements": [
     {
-     "vignette": "packed-but-never-left",
-     "key": "env_attic_scatter_trunk",
-     "col": 116,
-     "row": 3,
-     "dx": 0,
-     "dy": 0,
-     "scale": 0.65,
-     "flip": false
-    },
-    {
-     "vignette": "packed-but-never-left",
-     "key": "env_attic_scatter_hatbox",
-     "col": 115,
-     "row": 3,
-     "dx": -4,
-     "dy": 2,
-     "scale": 0.6,
-     "flip": false
-    },
-    {
-     "vignette": "packed-but-never-left",
-     "key": "env_attic_scatter_umbrellas",
-     "col": 117,
-     "row": 3,
-     "dx": 5,
-     "dy": -3,
-     "scale": 0.6,
-     "flip": true
-    },
-    {
-     "vignette": "packed-but-never-left",
-     "key": "env_attic_scatter_frame",
-     "col": 116,
-     "row": 4,
-     "dx": -6,
-     "dy": 0,
-     "scale": 0.6,
-     "flip": true
-    },
-    {
-     "vignette": "stargazers-last-night",
-     "key": "env_attic_scatter_telescope",
-     "col": 119,
-     "row": 3,
-     "dx": 0,
-     "dy": 0,
-     "scale": 0.65,
-     "flip": false
-    },
-    {
-     "vignette": "stargazers-last-night",
-     "key": "env_attic_scatter_books",
-     "col": 118,
-     "row": 4,
-     "dx": -3,
-     "dy": 0,
-     "scale": 0.6,
-     "flip": false
-    },
-    {
-     "vignette": "stargazers-last-night",
-     "key": "env_attic_scatter_globe",
-     "col": 120,
-     "row": 4,
-     "dx": 4,
-     "dy": -2,
-     "scale": 0.6,
-     "flip": false
-    },
-    {
-     "vignette": "stargazers-last-night",
-     "key": "env_attic_scatter_candle",
-     "col": 119,
-     "row": 4,
-     "dx": -2,
-     "dy": 4,
-     "scale": 0.55,
-     "flip": false
-    },
-    {
-     "vignette": "tinkerers-stalled-repair",
-     "key": "env_attic_scatter_gear",
-     "col": 100,
-     "row": 13,
-     "dx": 0,
-     "dy": 0,
-     "scale": 0.6,
-     "flip": false
-    },
-    {
-     "vignette": "tinkerers-stalled-repair",
-     "key": "env_attic_scatter_clock",
-     "col": 100,
-     "row": 12,
-     "dx": 4,
-     "dy": -2,
-     "scale": 0.6,
-     "flip": false
-    },
-    {
-     "vignette": "tinkerers-stalled-repair",
-     "key": "env_attic_scatter_typewriter",
-     "col": 101,
-     "row": 13,
-     "dx": 6,
-     "dy": 2,
-     "scale": 0.6,
-     "flip": true
-    },
-    {
-     "vignette": "tinkerers-stalled-repair",
-     "key": "env_attic_oil_lamp",
-     "col": 99,
-     "row": 12,
-     "dx": 6,
-     "dy": 4,
-     "scale": 0.6,
-     "flip": false
-    },
-    {
-     "vignette": "wireless-vigil",
-     "key": "env_attic_scatter_radio",
-     "col": 106,
-     "row": 15,
-     "dx": 0,
-     "dy": 0,
-     "scale": 0.6,
-     "flip": false
-    },
-    {
-     "vignette": "wireless-vigil",
-     "key": "env_attic_crate_stack",
-     "col": 105,
-     "row": 16,
-     "dx": -2,
-     "dy": 0,
-     "scale": 0.6,
-     "flip": false
-    },
-    {
-     "vignette": "wireless-vigil",
-     "key": "env_attic_scatter_books",
-     "col": 107,
-     "row": 15,
-     "dx": 4,
-     "dy": 3,
-     "scale": 0.6,
-     "flip": true
-    },
-    {
-     "vignette": "wireless-vigil",
-     "key": "env_attic_scatter_lamp",
-     "col": 107,
-     "row": 16,
-     "dx": -5,
-     "dy": -2,
-     "scale": 0.6,
-     "flip": false
-    },
-    {
-     "vignette": "seamstress-unfinished-gown",
-     "key": "env_attic_scatter_sewing",
-     "col": 109,
-     "row": 21,
-     "dx": 0,
-     "dy": 0,
-     "scale": 0.62,
-     "flip": false
-    },
-    {
-     "vignette": "seamstress-unfinished-gown",
-     "key": "env_attic_drawers",
-     "col": 110,
-     "row": 21,
-     "dx": 6,
-     "dy": -2,
-     "scale": 0.6,
-     "flip": false
-    },
-    {
-     "vignette": "seamstress-unfinished-gown",
-     "key": "env_attic_scatter_mirror",
-     "col": 109,
-     "row": 20,
-     "dx": -6,
-     "dy": 0,
-     "scale": 0.6,
-     "flip": true
-    },
-    {
-     "vignette": "seamstress-unfinished-gown",
-     "key": "env_attic_scatter_lamp",
-     "col": 110,
-     "row": 20,
-     "dx": 2,
-     "dy": 0,
-     "scale": 0.58,
-     "flip": false
-    },
-    {
-     "vignette": "grandmothers-listening-corner",
-     "key": "env_attic_rocking_chair",
-     "col": 120,
-     "row": 19,
-     "dx": -3,
-     "dy": 0,
-     "scale": 0.65,
-     "flip": true
-    },
-    {
-     "vignette": "grandmothers-listening-corner",
-     "key": "env_attic_scatter_phonograph",
-     "col": 120,
-     "row": 20,
-     "dx": 3,
-     "dy": 2,
-     "scale": 0.6,
-     "flip": true
-    },
-    {
-     "vignette": "grandmothers-listening-corner",
-     "key": "env_attic_scatter_musicbox",
-     "col": 120,
-     "row": 18,
-     "dx": 2,
-     "dy": -2,
-     "scale": 0.58,
-     "flip": false
-    },
-    {
-     "vignette": "grandmothers-listening-corner",
-     "key": "env_attic_scatter_teacup",
-     "col": 120,
-     "row": 21,
-     "dx": -4,
-     "dy": 0,
-     "scale": 0.55,
-     "flip": false
-    },
-    {
-     "vignette": "childs-hidden-playroom",
-     "key": "env_attic_scatter_rockinghorse",
-     "col": 106,
-     "row": 25,
-     "dx": 0,
-     "dy": 0,
-     "scale": 0.6,
-     "flip": true
-    },
-    {
-     "vignette": "childs-hidden-playroom",
-     "key": "env_attic_scatter_doll",
-     "col": 107,
-     "row": 25,
-     "dx": -2,
-     "dy": 3,
-     "scale": 0.55,
-     "flip": false
-    },
-    {
-     "vignette": "childs-hidden-playroom",
-     "key": "env_attic_scatter_musicbox",
-     "col": 106,
-     "row": 26,
-     "dx": 4,
-     "dy": 0,
-     "scale": 0.58,
-     "flip": false
-    },
-    {
-     "vignette": "childs-hidden-playroom",
-     "key": "env_attic_scatter_teacup",
-     "col": 107,
-     "row": 26,
-     "dx": 6,
-     "dy": -3,
-     "scale": 0.55,
-     "flip": false
-    },
-    {
-     "vignette": "aviary-gone-silent",
-     "key": "env_attic_birdcage",
-     "col": 100,
-     "row": 28,
-     "dx": 0,
-     "dy": 0,
-     "scale": 0.65,
-     "flip": false
-    },
-    {
-     "vignette": "aviary-gone-silent",
-     "key": "env_attic_scatter_birdcage",
-     "col": 99,
-     "row": 28,
-     "dx": -2,
-     "dy": -2,
-     "scale": 0.6,
-     "flip": false
-    },
-    {
-     "vignette": "aviary-gone-silent",
-     "key": "env_attic_scatter_birdcage",
-     "col": 100,
-     "row": 27,
-     "dx": 8,
-     "dy": 2,
-     "scale": 0.55,
-     "flip": true
-    },
-    {
-     "vignette": "smugglers-cache-under-eaves",
-     "key": "env_attic_scatter_chest",
-     "col": 109,
-     "row": 30,
-     "dx": 0,
-     "dy": 0,
-     "scale": 0.62,
-     "flip": false
-    },
-    {
-     "vignette": "smugglers-cache-under-eaves",
-     "key": "env_attic_crate_stack",
-     "col": 108,
-     "row": 31,
-     "dx": -3,
-     "dy": 0,
-     "scale": 0.6,
-     "flip": false
-    },
-    {
-     "vignette": "smugglers-cache-under-eaves",
-     "key": "env_attic_scatter_jar",
-     "col": 110,
-     "row": 30,
-     "dx": 4,
-     "dy": 3,
-     "scale": 0.55,
-     "flip": false
-    },
-    {
-     "vignette": "smugglers-cache-under-eaves",
-     "key": "env_attic_oil_lamp",
-     "col": 109,
-     "row": 31,
-     "dx": 6,
-     "dy": -2,
-     "scale": 0.58,
-     "flip": false
-    },
-    {
-     "vignette": "portrait-shrine-of-the-drowned",
-     "key": "env_attic_scatter_portraits",
-     "col": 119,
-     "row": 29,
-     "dx": 0,
-     "dy": 0,
-     "scale": 0.6,
-     "flip": false
-    },
-    {
-     "vignette": "portrait-shrine-of-the-drowned",
-     "key": "env_attic_scatter_frame",
-     "col": 118,
-     "row": 29,
-     "dx": -4,
-     "dy": 2,
-     "scale": 0.6,
-     "flip": true
-    },
-    {
-     "vignette": "portrait-shrine-of-the-drowned",
-     "key": "env_attic_scatter_candle",
-     "col": 119,
-     "row": 30,
-     "dx": 3,
-     "dy": 0,
-     "scale": 0.55,
-     "flip": false
-    },
-    {
-     "vignette": "portrait-shrine-of-the-drowned",
-     "key": "env_attic_scatter_jar",
-     "col": 118,
-     "row": 30,
-     "dx": -6,
-     "dy": 0,
-     "scale": 0.55,
-     "flip": false
-    },
-    {
-     "vignette": "wayfarers-obelisk",
-     "key": "env_shared_save_obelisk",
-     "col": 108,
-     "row": 10,
-     "dx": 0,
-     "dy": 0,
-     "scale": 0.7,
-     "flip": false
-    },
-    {
-     "vignette": "doll-left-watching",
-     "key": "env_attic_scatter_doll",
-     "col": 99,
-     "row": 10,
-     "dx": 0,
-     "dy": 2,
-     "scale": 0.6,
-     "flip": true
-    },
-    {
-     "vignette": "mirror-facing-the-flood",
-     "key": "env_attic_scatter_mirror",
-     "col": 119,
-     "row": 16,
-     "dx": 0,
-     "dy": 0,
-     "scale": 0.65,
-     "flip": true
-    },
-    {
-     "vignette": "phonograph-playing-to-the-dark",
-     "key": "env_attic_scatter_phonograph",
-     "col": 102,
-     "row": 31,
-     "dx": 0,
-     "dy": 0,
-     "scale": 0.62,
-     "flip": false
-    },
-    {
-     "vignette": "landmark-west-canopy",
-     "key": "env_attic_landform_canopy",
-     "col": 101,
-     "row": 17,
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull",
+     "col": 28,
+     "row": 96,
      "dx": 0,
      "dy": 0,
      "scale": 1.0,
      "flip": false
     },
     {
-     "vignette": "landmark-aisle-canopy",
-     "key": "env_attic_landform_canopy2",
-     "col": 110,
-     "row": 17,
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_mast",
+     "col": 34,
+     "row": 95,
      "dx": 0,
      "dy": 0,
      "scale": 1.0,
      "flip": true
     },
     {
-     "vignette": "landmark-south-outcrop",
-     "key": "env_attic_landform_outcrop",
-     "col": 103,
-     "row": 29,
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull",
+     "col": 40,
+     "row": 94,
      "dx": 0,
      "dy": 0,
      "scale": 1.0,
      "flip": false
     },
     {
-     "vignette": "landmark-east-outcrop",
-     "key": "env_attic_landform_outcrop3",
-     "col": 120,
-     "row": 14,
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull_broken",
+     "col": 31,
+     "row": 92,
      "dx": 0,
      "dy": 0,
      "scale": 1.0,
      "flip": false
     },
     {
-     "vignette": "cartographers-attic-desk",
-     "key": "env_attic_drawers",
-     "col": 100,
-     "row": 2,
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull",
+     "col": 37,
+     "row": 91,
      "dx": 0,
      "dy": 0,
-     "scale": 0.65,
-     "flip": false
-    },
-    {
-     "vignette": "cartographers-attic-desk",
-     "key": "env_attic_scatter_globe",
-     "col": 101,
-     "row": 2,
-     "dx": 4,
-     "dy": 2,
-     "scale": 0.62,
-     "flip": false
-    },
-    {
-     "vignette": "cartographers-attic-desk",
-     "key": "env_attic_scatter_telescope",
-     "col": 99,
-     "row": 2,
-     "dx": -2,
-     "dy": 4,
-     "scale": 0.62,
-     "flip": false
-    },
-    {
-     "vignette": "seamstress-corner",
-     "key": "env_attic_scatter_sewing",
-     "col": 105,
-     "row": 2,
-     "dx": 0,
-     "dy": 0,
-     "scale": 0.62,
-     "flip": false
-    },
-    {
-     "vignette": "seamstress-corner",
-     "key": "env_attic_scatter_hatbox",
-     "col": 106,
-     "row": 2,
-     "dx": 4,
-     "dy": 4,
-     "scale": 0.6,
-     "flip": false
-    },
-    {
-     "vignette": "seamstress-corner",
-     "key": "env_attic_scatter_umbrellas",
-     "col": 104,
-     "row": 2,
-     "dx": -4,
-     "dy": 2,
-     "scale": 0.62,
-     "flip": false
-    },
-    {
-     "vignette": "clockmakers-bench",
-     "key": "env_attic_scatter_clock",
-     "col": 110,
-     "row": 2,
-     "dx": 0,
-     "dy": 0,
-     "scale": 0.62,
-     "flip": false
-    },
-    {
-     "vignette": "clockmakers-bench",
-     "key": "env_attic_scatter_gear",
-     "col": 111,
-     "row": 2,
-     "dx": 4,
-     "dy": 4,
-     "scale": 0.6,
-     "flip": false
-    },
-    {
-     "vignette": "clockmakers-bench",
-     "key": "env_attic_scatter_typewriter",
-     "col": 109,
-     "row": 2,
-     "dx": -4,
-     "dy": 4,
-     "scale": 0.6,
-     "flip": false
-    },
-    {
-     "vignette": "nursery-no-one-visits",
-     "key": "env_attic_scatter_rockinghorse",
-     "col": 99,
-     "row": 22,
-     "dx": 0,
-     "dy": 0,
-     "scale": 0.62,
-     "flip": false
-    },
-    {
-     "vignette": "nursery-no-one-visits",
-     "key": "env_attic_birdcage",
-     "col": 100,
-     "row": 22,
-     "dx": 6,
-     "dy": -2,
-     "scale": 0.6,
-     "flip": false
-    },
-    {
-     "vignette": "grand-landing-portraits",
-     "key": "env_attic_scatter_trunk",
-     "col": 110,
-     "row": 24,
-     "dx": 4,
-     "dy": 4,
-     "scale": 0.62,
-     "flip": false
-    },
-    {
-     "vignette": "the-empty-rocking-chair",
-     "key": "env_attic_rocking_chair",
-     "col": 120,
-     "row": 8,
-     "dx": 0,
-     "dy": 0,
-     "scale": 0.65,
-     "flip": false
-    }
-   ]
-  },
-  {
-   "region": "hall",
-   "placements": [
-    {
-     "vignette": "conductors-last-downbeat",
-     "key": "env_hall_music_stand",
-     "col": 304,
-     "row": 19,
-     "dx": 0,
-     "dy": 0,
-     "scale": 0.66,
-     "flip": false
-    },
-    {
-     "vignette": "conductors-last-downbeat",
-     "key": "env_hall_scatter_baton",
-     "col": 303,
-     "row": 19,
-     "dx": -2,
-     "dy": 4,
-     "scale": 0.6,
-     "flip": false
-    },
-    {
-     "vignette": "conductors-last-downbeat",
-     "key": "env_hall_scatter_sheets",
-     "col": 305,
-     "row": 19,
-     "dx": -4,
-     "dy": 6,
-     "scale": 0.62,
-     "flip": false
-    },
-    {
-     "vignette": "shrine-of-the-toppled-bust",
-     "key": "env_hall_plinth",
-     "col": 297,
-     "row": 19,
-     "dx": 0,
-     "dy": 0,
-     "scale": 0.68,
-     "flip": false
-    },
-    {
-     "vignette": "shrine-of-the-toppled-bust",
-     "key": "env_hall_scatter_bust",
-     "col": 298,
-     "row": 19,
-     "dx": -4,
-     "dy": 6,
-     "scale": 0.62,
+     "scale": 1.0,
      "flip": true
     },
     {
-     "vignette": "shrine-of-the-toppled-bust",
-     "key": "env_hall_scatter_votives",
-     "col": 296,
-     "row": 19,
-     "dx": 4,
-     "dy": 6,
-     "scale": 0.6,
-     "flip": false
-    },
-    {
-     "vignette": "shrine-of-the-toppled-bust",
-     "key": "env_hall_scatter_rose",
-     "col": 296,
-     "row": 19,
-     "dx": -8,
-     "dy": 2,
-     "scale": 0.58,
-     "flip": false
-    },
-    {
-     "vignette": "what-the-lake-gave-back",
-     "key": "env_hall_scatter_cello",
-     "col": 311,
-     "row": 19,
-     "dx": 0,
-     "dy": 2,
-     "scale": 0.66,
-     "flip": true
-    },
-    {
-     "vignette": "what-the-lake-gave-back",
-     "key": "env_hall_scatter_drape",
-     "col": 312,
-     "row": 19,
-     "dx": -2,
-     "dy": 4,
-     "scale": 0.62,
-     "flip": false
-    },
-    {
-     "vignette": "what-the-lake-gave-back",
-     "key": "env_hall_scatter_sheets",
-     "col": 310,
-     "row": 19,
-     "dx": 2,
-     "dy": 8,
-     "scale": 0.6,
-     "flip": false
-    },
-    {
-     "vignette": "vigil-pew-on-the-east-bluff",
-     "key": "env_hall_scatter_pew",
-     "col": 317,
-     "row": 23,
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull",
+     "col": 26,
+     "row": 90,
      "dx": 0,
      "dy": 0,
-     "scale": 0.66,
-     "flip": true
-    },
-    {
-     "vignette": "vigil-pew-on-the-east-bluff",
-     "key": "env_hall_scatter_goblet",
-     "col": 317,
-     "row": 24,
-     "dx": -4,
-     "dy": -2,
-     "scale": 0.58,
+     "scale": 1.0,
      "flip": false
     },
     {
-     "vignette": "vigil-pew-on-the-east-bluff",
-     "key": "env_hall_scatter_hourglass",
-     "col": 317,
-     "row": 22,
-     "dx": 2,
-     "dy": 2,
-     "scale": 0.6,
-     "flip": false
-    },
-    {
-     "vignette": "tide-scholars-reckoning",
-     "key": "env_hall_scatter_belljar",
-     "col": 294,
-     "row": 31,
-     "dx": -2,
-     "dy": 0,
-     "scale": 0.64,
-     "flip": false
-    },
-    {
-     "vignette": "tide-scholars-reckoning",
-     "key": "env_hall_scatter_metronome",
-     "col": 294,
-     "row": 32,
-     "dx": 4,
-     "dy": 2,
-     "scale": 0.62,
-     "flip": false
-    },
-    {
-     "vignette": "tide-scholars-reckoning",
-     "key": "env_hall_scatter_quill",
-     "col": 294,
-     "row": 33,
-     "dx": -4,
-     "dy": 0,
-     "scale": 0.58,
-     "flip": false
-    },
-    {
-     "vignette": "organ-pipes-hauled-ashore",
-     "key": "env_hall_scatter_marble",
-     "col": 317,
-     "row": 30,
-     "dx": 0,
-     "dy": 2,
-     "scale": 0.64,
-     "flip": false
-    },
-    {
-     "vignette": "organ-pipes-hauled-ashore",
-     "key": "env_hall_scatter_pipe",
-     "col": 317,
-     "row": 31,
-     "dx": -2,
-     "dy": 0,
-     "scale": 0.66,
-     "flip": false
-    },
-    {
-     "vignette": "organ-pipes-hauled-ashore",
-     "key": "env_hall_scatter_pipe",
-     "col": 317,
-     "row": 32,
-     "dx": 4,
-     "dy": 4,
-     "scale": 0.62,
-     "flip": true
-    },
-    {
-     "vignette": "flight-from-the-rising-water",
-     "key": "env_hall_scatter_stand",
-     "col": 297,
-     "row": 50,
-     "dx": -4,
-     "dy": 4,
-     "scale": 0.62,
-     "flip": true
-    },
-    {
-     "vignette": "flight-from-the-rising-water",
-     "key": "env_hall_scatter_harp",
-     "col": 298,
-     "row": 50,
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_mast",
+     "col": 33,
+     "row": 89,
      "dx": 0,
      "dy": 0,
-     "scale": 0.66,
+     "scale": 1.0,
      "flip": false
     },
     {
-     "vignette": "flight-from-the-rising-water",
-     "key": "env_hall_page_stack",
-     "col": 299,
-     "row": 50,
-     "dx": 2,
-     "dy": 4,
-     "scale": 0.64,
-     "flip": false
-    },
-    {
-     "vignette": "nightly-requiem-for-the-drowned",
-     "key": "env_hall_scatter_pew",
-     "col": 317,
-     "row": 42,
-     "dx": 2,
-     "dy": 2,
-     "scale": 0.64,
-     "flip": true
-    },
-    {
-     "vignette": "nightly-requiem-for-the-drowned",
-     "key": "env_hall_scatter_gramophone",
-     "col": 317,
-     "row": 43,
-     "dx": -2,
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull",
+     "col": 39,
+     "row": 88,
+     "dx": 0,
      "dy": 0,
-     "scale": 0.66,
+     "scale": 1.0,
      "flip": true
     },
     {
-     "vignette": "nightly-requiem-for-the-drowned",
-     "key": "env_hall_scatter_rose",
-     "col": 317,
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull_broken",
+     "col": 29,
+     "row": 87,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull",
+     "col": 36,
+     "row": 86,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull",
+     "col": 42,
+     "row": 85,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": true
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_mast",
+     "col": 31,
+     "row": 84,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": true
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull",
+     "col": 38,
+     "row": 83,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull",
+     "col": 27,
+     "row": 82,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": true
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull_broken",
+     "col": 34,
+     "row": 81,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull",
+     "col": 40,
+     "row": 80,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull",
+     "col": 30,
+     "row": 79,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": true
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_mast",
+     "col": 37,
+     "row": 78,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull",
+     "col": 42,
+     "row": 77,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": true
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull_broken",
+     "col": 28,
+     "row": 76,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull",
+     "col": 35,
+     "row": 75,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull",
+     "col": 41,
+     "row": 74,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": true
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_mast",
+     "col": 32,
+     "row": 73,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull",
+     "col": 39,
+     "row": 72,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": true
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull",
+     "col": 26,
+     "row": 71,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_ribs",
+     "col": 30,
+     "row": 70,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_ribs",
+     "col": 37,
+     "row": 69,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": true
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_ribs",
+     "col": 25,
+     "row": 68,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull",
+     "col": 49,
+     "row": 91,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_mast",
+     "col": 55,
+     "row": 90,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": true
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull",
+     "col": 61,
+     "row": 89,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull_broken",
+     "col": 52,
+     "row": 88,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull",
+     "col": 58,
+     "row": 87,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": true
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull",
+     "col": 48,
+     "row": 86,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_mast",
+     "col": 54,
+     "row": 85,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull",
+     "col": 60,
+     "row": 84,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": true
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull_broken",
+     "col": 50,
+     "row": 83,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull",
+     "col": 56,
+     "row": 82,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull",
+     "col": 62,
+     "row": 81,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": true
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_mast",
+     "col": 51,
+     "row": 80,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": true
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull",
+     "col": 57,
+     "row": 79,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull",
+     "col": 63,
+     "row": 78,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": true
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull_broken",
+     "col": 49,
+     "row": 77,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull",
+     "col": 55,
+     "row": 76,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull",
+     "col": 61,
+     "row": 75,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": true
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_mast",
+     "col": 52,
+     "row": 74,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_ribs",
+     "col": 53,
+     "row": 72,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_ribs",
+     "col": 59,
+     "row": 71,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": true
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_ribs",
+     "col": 49,
+     "row": 70,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull",
+     "col": 36,
+     "row": 62,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull_broken",
+     "col": 40,
+     "row": 60,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": true
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull",
+     "col": 33,
+     "row": 58,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_mast",
+     "col": 38,
+     "row": 55,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": true
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull",
+     "col": 34,
+     "row": 52,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_hull_broken",
+     "col": 40,
+     "row": 48,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": true
+    },
+    {
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_mast",
+     "col": 33,
      "row": 44,
-     "dx": -6,
-     "dy": 2,
-     "scale": 0.58,
-     "flip": false
-    },
-    {
-     "vignette": "composers-shoreline-memorial",
-     "key": "env_hall_scatter_quill",
-     "col": 309,
-     "row": 50,
-     "dx": 2,
-     "dy": 4,
-     "scale": 0.58,
-     "flip": false
-    },
-    {
-     "vignette": "composers-shoreline-memorial",
-     "key": "env_hall_scatter_plaque",
-     "col": 310,
-     "row": 50,
-     "dx": 0,
-     "dy": 0,
-     "scale": 0.64,
-     "flip": false
-    },
-    {
-     "vignette": "composers-shoreline-memorial",
-     "key": "env_hall_scatter_votives",
-     "col": 311,
-     "row": 50,
-     "dx": -4,
-     "dy": 6,
-     "scale": 0.6,
-     "flip": false
-    },
-    {
-     "vignette": "candle-walk-to-the-waterline",
-     "key": "env_hall_scatter_candelabra",
-     "col": 294,
-     "row": 46,
-     "dx": -2,
-     "dy": 0,
-     "scale": 0.64,
-     "flip": false
-    },
-    {
-     "vignette": "candle-walk-to-the-waterline",
-     "key": "env_hall_scatter_candelabra",
-     "col": 294,
-     "row": 47,
-     "dx": 4,
-     "dy": 2,
-     "scale": 0.6,
-     "flip": true
-    },
-    {
-     "vignette": "candle-walk-to-the-waterline",
-     "key": "env_hall_scatter_drape",
-     "col": 294,
-     "row": 48,
-     "dx": -4,
-     "dy": 0,
-     "scale": 0.62,
-     "flip": false
-    },
-    {
-     "vignette": "the-clock-that-drowned-time",
-     "key": "env_hall_melting_clock",
-     "col": 305,
-     "row": 50,
-     "dx": 0,
-     "dy": 0,
-     "scale": 0.7,
-     "flip": false
-    },
-    {
-     "vignette": "chandelier-risen-from-the-deep",
-     "key": "env_hall_chandelier",
-     "col": 294,
-     "row": 23,
-     "dx": 0,
-     "dy": 0,
-     "scale": 0.7,
-     "flip": false
-    },
-    {
-     "vignette": "mask-watching-the-sky",
-     "key": "env_hall_scatter_operamask",
-     "col": 317,
-     "row": 48,
-     "dx": 0,
-     "dy": 0,
-     "scale": 0.6,
-     "flip": false
-    },
-    {
-     "vignette": "wayfarers-obelisk",
-     "key": "env_shared_save_obelisk",
-     "col": 314,
-     "row": 50,
-     "dx": 0,
-     "dy": 0,
-     "scale": 0.7,
-     "flip": false
-    },
-    {
-     "vignette": "landmark-north-crag",
-     "key": "env_hall_landform_outcrop",
-     "col": 314,
-     "row": 19,
      "dx": 0,
      "dy": 0,
      "scale": 1.0,
      "flip": false
     },
     {
-     "vignette": "landmark-west-leaning-canopy",
-     "key": "env_hall_landform_canopy2",
-     "col": 294,
-     "row": 37,
+     "vignette": "the-dead-forest",
+     "key": "env_shelf_ribs",
+     "col": 39,
+     "row": 41,
      "dx": 0,
      "dy": 0,
      "scale": 1.0,
      "flip": false
     },
     {
-     "vignette": "landmark-east-sentinel-outcrop",
-     "key": "env_hall_landform_outcrop3",
-     "col": 317,
-     "row": 39,
+     "vignette": "the-mine-that-stayed",
+     "key": "env_shelf_headframe",
+     "col": 52,
+     "row": 62,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-mine-that-stayed",
+     "key": "env_shelf_shack",
+     "col": 59,
+     "row": 61,
      "dx": 0,
      "dy": 0,
      "scale": 1.0,
      "flip": true
     },
     {
-     "vignette": "landmark-south-shore-canopy",
-     "key": "env_hall_landform_canopy",
-     "col": 302,
-     "row": 50,
+     "vignette": "the-mine-that-stayed",
+     "key": "env_shelf_shack",
+     "col": 48,
+     "row": 58,
      "dx": 0,
      "dy": 0,
      "scale": 1.0,
      "flip": false
     },
     {
-     "vignette": "the-drowned-organ-loft",
-     "key": "env_hall_landform_outcrop2",
-     "col": 317,
-     "row": 27,
+     "vignette": "the-mine-that-stayed",
+     "key": "env_shelf_rail_bend",
+     "col": 51,
+     "row": 63,
      "dx": 0,
      "dy": 0,
      "scale": 1.0,
      "flip": false
     },
     {
-     "vignette": "conductors-rehearsal-clock",
-     "key": "env_hall_melting_clock",
-     "col": 317,
-     "row": 19,
+     "vignette": "the-mine-that-stayed",
+     "key": "env_shelf_ore_cart",
+     "col": 56,
+     "row": 63,
      "dx": 0,
      "dy": 0,
-     "scale": 0.65,
+     "scale": 1.0,
      "flip": false
     },
     {
-     "vignette": "the-bust-that-watches-the-east-door",
-     "key": "env_hall_plinth",
-     "col": 317,
-     "row": 35,
+     "vignette": "the-mine-that-stayed",
+     "key": "env_shelf_winch",
+     "col": 61,
+     "row": 63,
      "dx": 0,
      "dy": 0,
-     "scale": 0.65,
+     "scale": 1.0,
      "flip": false
     },
     {
-     "vignette": "the-bust-that-watches-the-east-door",
-     "key": "env_hall_scatter_bust",
-     "col": 317,
-     "row": 35,
+     "vignette": "the-mine-that-stayed",
+     "key": "env_shelf_lantern",
+     "col": 46,
+     "row": 63,
      "dx": 0,
-     "dy": -14,
-     "scale": 0.6,
+     "dy": 0,
+     "scale": 1.0,
      "flip": false
     },
     {
-     "vignette": "the-bust-that-watches-the-east-door",
-     "key": "env_hall_scatter_belljar",
-     "col": 317,
-     "row": 36,
-     "dx": 2,
-     "dy": 4,
-     "scale": 0.6,
+     "vignette": "the-mine-that-stayed",
+     "key": "env_shelf_rail_bend",
+     "col": 58,
+     "row": 55,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
      "flip": false
+    },
+    {
+     "vignette": "the-mine-that-stayed",
+     "key": "env_shelf_ore_cart",
+     "col": 54,
+     "row": 55,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": true
+    },
+    {
+     "vignette": "the-mine-that-stayed",
+     "key": "env_shelf_lantern",
+     "col": 62,
+     "row": 57,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-bad-gaps",
+     "key": "env_shelf_plank_bridge",
+     "col": 44,
+     "row": 84,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-bad-gaps",
+     "key": "env_shelf_plank_bridge",
+     "col": 44,
+     "row": 71,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-last-kelp",
+     "key": "env_shelf_kelp_stand",
+     "col": 20,
+     "row": 88,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-last-kelp",
+     "key": "env_shelf_kelp_stand",
+     "col": 18,
+     "row": 86,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": true
+    },
+    {
+     "vignette": "the-last-kelp",
+     "key": "env_shelf_kelp_stand",
+     "col": 22,
+     "row": 90,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-last-kelp",
+     "key": "env_shelf_kelp_stand",
+     "col": 70,
+     "row": 84,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-last-kelp",
+     "key": "env_shelf_kelp_stand",
+     "col": 69,
+     "row": 82,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": true
+    },
+    {
+     "vignette": "the-last-kelp",
+     "key": "env_shelf_kelp_stand",
+     "col": 72,
+     "row": 85,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-last-kelp",
+     "key": "env_shelf_kelp_stand",
+     "col": 20,
+     "row": 58,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-last-kelp",
+     "key": "env_shelf_kelp_stand",
+     "col": 22,
+     "row": 56,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": true
+    },
+    {
+     "vignette": "the-last-kelp",
+     "key": "env_shelf_kelp_stand",
+     "col": 74,
+     "row": 62,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-last-kelp",
+     "key": "env_shelf_kelp_stand",
+     "col": 76,
+     "row": 60,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": true
+    },
+    {
+     "vignette": "the-last-kelp",
+     "key": "env_shelf_kelp_stand",
+     "col": 52,
+     "row": 34,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-last-kelp",
+     "key": "env_shelf_kelp_stand",
+     "col": 54,
+     "row": 32,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": true
     }
    ]
   },
   {
-   "region": "saltmines",
-   "placements": [
-    {
-     "vignette": "foremans-abandoned-shift",
-     "key": "env_saltmines_scatter_sign",
-     "col": 11,
-     "row": 2,
-     "dx": -4,
-     "dy": 0,
-     "scale": 0.65,
-     "flip": false
-    },
-    {
-     "vignette": "foremans-abandoned-shift",
-     "key": "env_saltmines_scatter_brazier",
-     "col": 12,
-     "row": 2,
-     "dx": 8,
-     "dy": 6,
-     "scale": 0.62,
-     "flip": false
-    },
-    {
-     "vignette": "foremans-abandoned-shift",
-     "key": "env_saltmines_scatter_sacks",
-     "col": 11,
-     "row": 3,
-     "dx": -8,
-     "dy": 4,
-     "scale": 0.6,
-     "flip": true
-    },
-    {
-     "vignette": "foremans-abandoned-shift",
-     "key": "env_saltmines_scatter_lantern",
-     "col": 12,
-     "row": 3,
-     "dx": 10,
-     "dy": 10,
-     "scale": 0.58,
-     "flip": false
-    },
-    {
-     "vignette": "echo-listeners-vigil",
-     "key": "env_saltmines_scatter_candles",
-     "col": 21,
-     "row": 2,
-     "dx": 0,
-     "dy": 4,
-     "scale": 0.6,
-     "flip": false
-    },
-    {
-     "vignette": "echo-listeners-vigil",
-     "key": "env_saltmines_scatter_tub",
-     "col": 22,
-     "row": 2,
-     "dx": 8,
-     "dy": 0,
-     "scale": 0.62,
-     "flip": true
-    },
-    {
-     "vignette": "echo-listeners-vigil",
-     "key": "env_saltmines_scatter_rope",
-     "col": 22,
-     "row": 3,
-     "dx": -6,
-     "dy": 8,
-     "scale": 0.58,
-     "flip": false
-    },
-    {
-     "vignette": "runaway-cart-wreck",
-     "key": "env_saltmines_scatter_cart",
-     "col": 14,
-     "row": 10,
-     "dx": -2,
-     "dy": 8,
-     "scale": 0.68,
-     "flip": true
-    },
-    {
-     "vignette": "runaway-cart-wreck",
-     "key": "env_saltmines_scatter_rail",
-     "col": 15,
-     "row": 10,
-     "dx": 8,
-     "dy": -4,
-     "scale": 0.6,
-     "flip": false
-    },
-    {
-     "vignette": "runaway-cart-wreck",
-     "key": "env_saltmines_scatter_wheel",
-     "col": 13,
-     "row": 11,
-     "dx": -8,
-     "dy": -2,
-     "scale": 0.6,
-     "flip": false
-    },
-    {
-     "vignette": "runaway-cart-wreck",
-     "key": "env_saltmines_scatter_ore",
-     "col": 14,
-     "row": 11,
-     "dx": 4,
-     "dy": 8,
-     "scale": 0.58,
-     "flip": false
-    },
-    {
-     "vignette": "shrine-of-the-calcified",
-     "key": "env_saltmines_calcified_miner",
-     "col": 3,
-     "row": 28,
-     "dx": 0,
-     "dy": -2,
-     "scale": 0.68,
-     "flip": false
-    },
-    {
-     "vignette": "shrine-of-the-calcified",
-     "key": "env_saltmines_scatter_candles",
-     "col": 2,
-     "row": 29,
-     "dx": 2,
-     "dy": 0,
-     "scale": 0.6,
-     "flip": false
-    },
-    {
-     "vignette": "shrine-of-the-calcified",
-     "key": "env_saltmines_scatter_crystal",
-     "col": 4,
-     "row": 29,
-     "dx": 6,
-     "dy": 2,
-     "scale": 0.62,
-     "flip": true
-    },
-    {
-     "vignette": "shrine-of-the-calcified",
-     "key": "env_saltmines_scatter_geode",
-     "col": 3,
-     "row": 30,
-     "dx": -2,
-     "dy": 6,
-     "scale": 0.58,
-     "flip": false
-    },
-    {
-     "vignette": "brine-hoist-line",
-     "key": "env_saltmines_scatter_winch",
-     "col": 2,
-     "row": 14,
-     "dx": 4,
-     "dy": -2,
-     "scale": 0.65,
-     "flip": false
-    },
-    {
-     "vignette": "brine-hoist-line",
-     "key": "env_saltmines_scatter_bucket",
-     "col": 2,
-     "row": 15,
-     "dx": -8,
-     "dy": 0,
-     "scale": 0.58,
-     "flip": false
-    },
-    {
-     "vignette": "brine-hoist-line",
-     "key": "env_saltmines_scatter_rope",
-     "col": 2,
-     "row": 16,
-     "dx": 8,
-     "dy": -2,
-     "scale": 0.58,
-     "flip": true
-    },
-    {
-     "vignette": "brine-hoist-line",
-     "key": "env_saltmines_scatter_chain",
-     "col": 2,
-     "row": 17,
-     "dx": -4,
-     "dy": 4,
-     "scale": 0.6,
-     "flip": false
-    },
-    {
-     "vignette": "shored-gallery-collapse",
-     "key": "env_saltmines_scatter_timber",
-     "col": 13,
-     "row": 15,
-     "dx": 4,
-     "dy": -2,
-     "scale": 0.68,
-     "flip": false
-    },
-    {
-     "vignette": "shored-gallery-collapse",
-     "key": "env_saltmines_scatter_beam",
-     "col": 12,
-     "row": 16,
-     "dx": -8,
-     "dy": 2,
-     "scale": 0.65,
-     "flip": true
-    },
-    {
-     "vignette": "shored-gallery-collapse",
-     "key": "env_saltmines_scatter_ladder",
-     "col": 14,
-     "row": 16,
-     "dx": 8,
-     "dy": 6,
-     "scale": 0.65,
-     "flip": true
-    },
-    {
-     "vignette": "shored-gallery-collapse",
-     "key": "env_saltmines_scatter_bones",
-     "col": 13,
-     "row": 17,
-     "dx": 0,
-     "dy": 4,
-     "scale": 0.55,
-     "flip": false
-    },
-    {
-     "vignette": "south-face-cart-queue",
-     "key": "env_saltmines_ore_cart",
-     "col": 4,
-     "row": 21,
-     "dx": -6,
-     "dy": 2,
-     "scale": 0.68,
-     "flip": false
-    },
-    {
-     "vignette": "south-face-cart-queue",
-     "key": "env_saltmines_scatter_rail",
-     "col": 5,
-     "row": 21,
-     "dx": 6,
-     "dy": 8,
-     "scale": 0.6,
-     "flip": true
-    },
-    {
-     "vignette": "south-face-cart-queue",
-     "key": "env_saltmines_scatter_sacks",
-     "col": 6,
-     "row": 21,
-     "dx": 10,
-     "dy": -2,
-     "scale": 0.6,
-     "flip": false
-    },
-    {
-     "vignette": "prospectors-lucky-strike",
-     "key": "env_saltmines_scatter_pick",
-     "col": 22,
-     "row": 7,
-     "dx": -6,
-     "dy": 4,
-     "scale": 0.6,
-     "flip": true
-    },
-    {
-     "vignette": "prospectors-lucky-strike",
-     "key": "env_saltmines_scatter_geode",
-     "col": 23,
-     "row": 7,
-     "dx": 6,
-     "dy": 0,
-     "scale": 0.6,
-     "flip": false
-    },
-    {
-     "vignette": "prospectors-lucky-strike",
-     "key": "env_saltmines_scatter_lantern",
-     "col": 22,
-     "row": 8,
-     "dx": 0,
-     "dy": 8,
-     "scale": 0.58,
-     "flip": false
-    },
-    {
-     "vignette": "brine-boilers-yard",
-     "key": "env_saltmines_scatter_brazier",
-     "col": 12,
-     "row": 25,
-     "dx": 0,
-     "dy": 0,
-     "scale": 0.65,
-     "flip": false
-    },
-    {
-     "vignette": "brine-boilers-yard",
-     "key": "env_saltmines_scatter_tub",
-     "col": 13,
-     "row": 25,
-     "dx": 8,
-     "dy": 6,
-     "scale": 0.62,
-     "flip": false
-    },
-    {
-     "vignette": "brine-boilers-yard",
-     "key": "env_saltmines_scatter_bucket",
-     "col": 12,
-     "row": 26,
-     "dx": -6,
-     "dy": 4,
-     "scale": 0.58,
-     "flip": true
-    },
-    {
-     "vignette": "brine-boilers-yard",
-     "key": "env_saltmines_salt_crystal",
-     "col": 14,
-     "row": 26,
-     "dx": 8,
-     "dy": 0,
-     "scale": 0.7,
-     "flip": false
-    },
-    {
-     "vignette": "descent-waystation",
-     "key": "env_saltmines_scatter_ladder",
-     "col": 22,
-     "row": 21,
-     "dx": -6,
-     "dy": 0,
-     "scale": 0.65,
-     "flip": false
-    },
-    {
-     "vignette": "descent-waystation",
-     "key": "env_saltmines_scatter_pillar",
-     "col": 23,
-     "row": 21,
-     "dx": 8,
-     "dy": -4,
-     "scale": 0.62,
-     "flip": false
-    },
-    {
-     "vignette": "descent-waystation",
-     "key": "env_saltmines_scatter_chain",
-     "col": 22,
-     "row": 22,
-     "dx": 0,
-     "dy": 6,
-     "scale": 0.6,
-     "flip": true
-    },
-    {
-     "vignette": "descent-waystation",
-     "key": "env_saltmines_scatter_sign",
-     "col": 23,
-     "row": 22,
-     "dx": 6,
-     "dy": 4,
-     "scale": 0.65,
-     "flip": true
-    },
-    {
-     "vignette": "lone-salt-witness",
-     "key": "env_saltmines_calcified_miner",
-     "col": 9,
-     "row": 12,
-     "dx": 0,
-     "dy": 0,
-     "scale": 0.7,
-     "flip": true
-    },
-    {
-     "vignette": "mother-lode-unmoved",
-     "key": "env_saltmines_ore_rock",
-     "col": 10,
-     "row": 21,
-     "dx": 0,
-     "dy": 2,
-     "scale": 0.7,
-     "flip": false
-    },
-    {
-     "vignette": "headframe-at-the-bend",
-     "key": "env_saltmines_timber",
-     "col": 22,
-     "row": 30,
-     "dx": 0,
-     "dy": 0,
-     "scale": 0.7,
-     "flip": false
-    },
-    {
-     "vignette": "first-bloom-corner",
-     "key": "env_saltmines_scatter_crystal",
-     "col": 2,
-     "row": 2,
-     "dx": 2,
-     "dy": 2,
-     "scale": 0.66,
-     "flip": false
-    },
-    {
-     "vignette": "landmark-crown-outcrop",
-     "key": "env_saltmines_landform_outcrop",
-     "col": 6,
-     "row": 4,
-     "dx": 0,
-     "dy": 0,
-     "scale": 1.0,
-     "flip": false
-    },
-    {
-     "vignette": "landmark-pale-canopy",
-     "key": "env_saltmines_landform_canopy2",
-     "col": 4,
-     "row": 10,
-     "dx": 0,
-     "dy": 0,
-     "scale": 1.0,
-     "flip": false
-    },
-    {
-     "vignette": "landmark-boilers-shadow",
-     "key": "env_saltmines_landform_outcrop2",
-     "col": 8,
-     "row": 25,
-     "dx": 0,
-     "dy": 0,
-     "scale": 1.0,
-     "flip": false
-    },
-    {
-     "vignette": "landmark-east-sentinel",
-     "key": "env_saltmines_landform_canopy",
-     "col": 22,
-     "row": 14,
-     "dx": 0,
-     "dy": 0,
-     "scale": 1.0,
-     "flip": true
-    },
-    {
-     "vignette": "north-adit-shoring-collapse",
-     "key": "env_saltmines_scatter_beam",
-     "col": 15,
-     "row": 1,
-     "dx": 2,
-     "dy": -6,
-     "scale": 0.65,
-     "flip": false
-    },
-    {
-     "vignette": "north-adit-shoring-collapse",
-     "key": "env_saltmines_scatter_timber",
-     "col": 16,
-     "row": 2,
-     "dx": -4,
-     "dy": 2,
-     "scale": 0.62,
-     "flip": true
-    },
-    {
-     "vignette": "tipped-cart-at-the-fork",
-     "key": "env_saltmines_ore_cart",
-     "col": 9,
-     "row": 8,
-     "dx": -3,
-     "dy": 4,
-     "scale": 0.7,
-     "flip": true
-    },
-    {
-     "vignette": "tipped-cart-at-the-fork",
-     "key": "env_saltmines_scatter_ore",
-     "col": 10,
-     "row": 9,
-     "dx": 6,
-     "dy": -2,
-     "scale": 0.66,
-     "flip": false
-    },
-    {
-     "vignette": "hoist-over-the-flooded-drift",
-     "key": "env_saltmines_scatter_winch",
-     "col": 23,
-     "row": 11,
-     "dx": -6,
-     "dy": 0,
-     "scale": 0.68,
-     "flip": false
-    },
-    {
-     "vignette": "hoist-over-the-flooded-drift",
-     "key": "env_saltmines_scatter_wheel",
-     "col": 24,
-     "row": 11,
-     "dx": 8,
-     "dy": 6,
-     "scale": 0.6,
-     "flip": true
-    },
-    {
-     "vignette": "flagman-calcified-at-his-post",
-     "key": "env_saltmines_scatter_pick",
-     "col": 18,
-     "row": 12,
-     "dx": -7,
-     "dy": 6,
-     "scale": 0.6,
-     "flip": true
-    },
-    {
-     "vignette": "salt-lick-den-by-the-fight-pit",
-     "key": "env_saltmines_scatter_nodule",
-     "col": 18,
-     "row": 23,
-     "dx": 5,
-     "dy": -3,
-     "scale": 0.66,
-     "flip": false
-    },
-    {
-     "vignette": "salt-lick-den-by-the-fight-pit",
-     "key": "env_saltmines_scatter_bones",
-     "col": 19,
-     "row": 22,
-     "dx": 6,
-     "dy": 8,
-     "scale": 0.6,
-     "flip": true
-    },
-    {
-     "vignette": "brine-boilhouse-ruin",
-     "key": "env_saltmines_timber",
-     "col": 7,
-     "row": 18,
-     "dx": 0,
-     "dy": -2,
-     "scale": 0.7,
-     "flip": false
-    },
-    {
-     "vignette": "brine-boilhouse-ruin",
-     "key": "env_saltmines_scatter_pillar",
-     "col": 9,
-     "row": 18,
-     "dx": 4,
-     "dy": 4,
-     "scale": 0.68,
-     "flip": false
-    },
-    {
-     "vignette": "the-vein-they-never-cut",
-     "key": "env_saltmines_salt_crystal",
-     "col": 16,
-     "row": 20,
-     "dx": 4,
-     "dy": -2,
-     "scale": 0.7,
-     "flip": false
-    },
-    {
-     "vignette": "the-vein-they-never-cut",
-     "key": "env_saltmines_scatter_stalagmite",
-     "col": 15,
-     "row": 22,
-     "dx": -5,
-     "dy": 3,
-     "scale": 0.62,
-     "flip": true
-    },
-    {
-     "vignette": "poor-prospect-west-wall",
-     "key": "env_saltmines_scatter_stalagmite",
-     "col": 1,
-     "row": 9,
-     "dx": 3,
-     "dy": -5,
-     "scale": 0.58,
-     "flip": false
-    },
-    {
-     "vignette": "poor-prospect-west-wall",
-     "key": "env_saltmines_ore_rock",
-     "col": 1,
-     "row": 10,
-     "dx": -2,
-     "dy": 6,
-     "scale": 0.7,
-     "flip": true
-    },
-    {
-     "vignette": "last-load-never-delivered",
-     "key": "env_saltmines_scatter_cart",
-     "col": 1,
-     "row": 22,
-     "dx": 4,
-     "dy": 0,
-     "scale": 0.68,
-     "flip": true
-    },
-    {
-     "vignette": "singing-stones-of-the-echo-gallery",
-     "key": "env_saltmines_scatter_nodule",
-     "col": 11,
-     "row": 31,
-     "dx": -4,
-     "dy": 2,
-     "scale": 0.68,
-     "flip": false
-    },
-    {
-     "vignette": "save-stone-before-the-descent",
-     "key": "env_shared_save_obelisk",
-     "col": 18,
-     "row": 20,
-     "dx": -3,
-     "dy": 0,
-     "scale": 0.7,
-     "flip": false
-    },
-    {
-     "vignette": "south-wall-spur",
-     "key": "env_saltmines_landform_outcrop3",
-     "col": 18,
-     "row": 31,
-     "dx": 10,
-     "dy": 0,
-     "scale": 1.0,
-     "flip": false
-    }
-   ]
-  },
-  {
-   "region": "pit",
+   "region": "breach",
    "placements": [
     {
      "vignette": "flooded-midway-gate",
@@ -2891,6 +2011,1056 @@
      "dx": 0,
      "dy": -2,
      "scale": 0.7,
+     "flip": false
+    }
+   ]
+  },
+  {
+   "region": "scar",
+   "placements": [
+    {
+     "vignette": "packed-but-never-left",
+     "key": "env_attic_scatter_trunk",
+     "col": 116,
+     "row": 3,
+     "dx": 0,
+     "dy": 0,
+     "scale": 0.65,
+     "flip": false
+    },
+    {
+     "vignette": "packed-but-never-left",
+     "key": "env_attic_scatter_hatbox",
+     "col": 115,
+     "row": 3,
+     "dx": -4,
+     "dy": 2,
+     "scale": 0.6,
+     "flip": false
+    },
+    {
+     "vignette": "packed-but-never-left",
+     "key": "env_attic_scatter_umbrellas",
+     "col": 117,
+     "row": 3,
+     "dx": 5,
+     "dy": -3,
+     "scale": 0.6,
+     "flip": true
+    },
+    {
+     "vignette": "packed-but-never-left",
+     "key": "env_attic_scatter_frame",
+     "col": 116,
+     "row": 4,
+     "dx": -6,
+     "dy": 0,
+     "scale": 0.6,
+     "flip": true
+    },
+    {
+     "vignette": "stargazers-last-night",
+     "key": "env_attic_scatter_telescope",
+     "col": 119,
+     "row": 3,
+     "dx": 0,
+     "dy": 0,
+     "scale": 0.65,
+     "flip": false
+    },
+    {
+     "vignette": "stargazers-last-night",
+     "key": "env_attic_scatter_books",
+     "col": 118,
+     "row": 4,
+     "dx": -3,
+     "dy": 0,
+     "scale": 0.6,
+     "flip": false
+    },
+    {
+     "vignette": "stargazers-last-night",
+     "key": "env_attic_scatter_globe",
+     "col": 120,
+     "row": 4,
+     "dx": 4,
+     "dy": -2,
+     "scale": 0.6,
+     "flip": false
+    },
+    {
+     "vignette": "stargazers-last-night",
+     "key": "env_attic_scatter_candle",
+     "col": 119,
+     "row": 4,
+     "dx": -2,
+     "dy": 4,
+     "scale": 0.55,
+     "flip": false
+    },
+    {
+     "vignette": "tinkerers-stalled-repair",
+     "key": "env_attic_scatter_gear",
+     "col": 100,
+     "row": 13,
+     "dx": 0,
+     "dy": 0,
+     "scale": 0.6,
+     "flip": false
+    },
+    {
+     "vignette": "tinkerers-stalled-repair",
+     "key": "env_attic_scatter_clock",
+     "col": 100,
+     "row": 12,
+     "dx": 4,
+     "dy": -2,
+     "scale": 0.6,
+     "flip": false
+    },
+    {
+     "vignette": "tinkerers-stalled-repair",
+     "key": "env_attic_scatter_typewriter",
+     "col": 101,
+     "row": 13,
+     "dx": 6,
+     "dy": 2,
+     "scale": 0.6,
+     "flip": true
+    },
+    {
+     "vignette": "tinkerers-stalled-repair",
+     "key": "env_attic_oil_lamp",
+     "col": 99,
+     "row": 12,
+     "dx": 6,
+     "dy": 4,
+     "scale": 0.6,
+     "flip": false
+    },
+    {
+     "vignette": "wireless-vigil",
+     "key": "env_attic_scatter_radio",
+     "col": 106,
+     "row": 15,
+     "dx": 0,
+     "dy": 0,
+     "scale": 0.6,
+     "flip": false
+    },
+    {
+     "vignette": "wireless-vigil",
+     "key": "env_attic_crate_stack",
+     "col": 105,
+     "row": 16,
+     "dx": -2,
+     "dy": 0,
+     "scale": 0.6,
+     "flip": false
+    },
+    {
+     "vignette": "wireless-vigil",
+     "key": "env_attic_scatter_books",
+     "col": 107,
+     "row": 15,
+     "dx": 4,
+     "dy": 3,
+     "scale": 0.6,
+     "flip": true
+    },
+    {
+     "vignette": "wireless-vigil",
+     "key": "env_attic_scatter_lamp",
+     "col": 107,
+     "row": 16,
+     "dx": -5,
+     "dy": -2,
+     "scale": 0.6,
+     "flip": false
+    },
+    {
+     "vignette": "seamstress-unfinished-gown",
+     "key": "env_attic_scatter_sewing",
+     "col": 109,
+     "row": 21,
+     "dx": 0,
+     "dy": 0,
+     "scale": 0.62,
+     "flip": false
+    },
+    {
+     "vignette": "seamstress-unfinished-gown",
+     "key": "env_attic_drawers",
+     "col": 110,
+     "row": 21,
+     "dx": 6,
+     "dy": -2,
+     "scale": 0.6,
+     "flip": false
+    },
+    {
+     "vignette": "seamstress-unfinished-gown",
+     "key": "env_attic_scatter_mirror",
+     "col": 109,
+     "row": 20,
+     "dx": -6,
+     "dy": 0,
+     "scale": 0.6,
+     "flip": true
+    },
+    {
+     "vignette": "seamstress-unfinished-gown",
+     "key": "env_attic_scatter_lamp",
+     "col": 110,
+     "row": 20,
+     "dx": 2,
+     "dy": 0,
+     "scale": 0.58,
+     "flip": false
+    },
+    {
+     "vignette": "grandmothers-listening-corner",
+     "key": "env_attic_rocking_chair",
+     "col": 120,
+     "row": 19,
+     "dx": -3,
+     "dy": 0,
+     "scale": 0.65,
+     "flip": true
+    },
+    {
+     "vignette": "grandmothers-listening-corner",
+     "key": "env_attic_scatter_phonograph",
+     "col": 120,
+     "row": 20,
+     "dx": 3,
+     "dy": 2,
+     "scale": 0.6,
+     "flip": true
+    },
+    {
+     "vignette": "grandmothers-listening-corner",
+     "key": "env_attic_scatter_musicbox",
+     "col": 120,
+     "row": 18,
+     "dx": 2,
+     "dy": -2,
+     "scale": 0.58,
+     "flip": false
+    },
+    {
+     "vignette": "grandmothers-listening-corner",
+     "key": "env_attic_scatter_teacup",
+     "col": 120,
+     "row": 21,
+     "dx": -4,
+     "dy": 0,
+     "scale": 0.55,
+     "flip": false
+    },
+    {
+     "vignette": "childs-hidden-playroom",
+     "key": "env_attic_scatter_rockinghorse",
+     "col": 106,
+     "row": 25,
+     "dx": 0,
+     "dy": 0,
+     "scale": 0.6,
+     "flip": true
+    },
+    {
+     "vignette": "childs-hidden-playroom",
+     "key": "env_attic_scatter_doll",
+     "col": 107,
+     "row": 25,
+     "dx": -2,
+     "dy": 3,
+     "scale": 0.55,
+     "flip": false
+    },
+    {
+     "vignette": "childs-hidden-playroom",
+     "key": "env_attic_scatter_musicbox",
+     "col": 106,
+     "row": 26,
+     "dx": 4,
+     "dy": 0,
+     "scale": 0.58,
+     "flip": false
+    },
+    {
+     "vignette": "childs-hidden-playroom",
+     "key": "env_attic_scatter_teacup",
+     "col": 107,
+     "row": 26,
+     "dx": 6,
+     "dy": -3,
+     "scale": 0.55,
+     "flip": false
+    },
+    {
+     "vignette": "aviary-gone-silent",
+     "key": "env_attic_birdcage",
+     "col": 100,
+     "row": 28,
+     "dx": 0,
+     "dy": 0,
+     "scale": 0.65,
+     "flip": false
+    },
+    {
+     "vignette": "aviary-gone-silent",
+     "key": "env_attic_scatter_birdcage",
+     "col": 99,
+     "row": 28,
+     "dx": -2,
+     "dy": -2,
+     "scale": 0.6,
+     "flip": false
+    },
+    {
+     "vignette": "aviary-gone-silent",
+     "key": "env_attic_scatter_birdcage",
+     "col": 100,
+     "row": 27,
+     "dx": 8,
+     "dy": 2,
+     "scale": 0.55,
+     "flip": true
+    },
+    {
+     "vignette": "smugglers-cache-under-eaves",
+     "key": "env_attic_scatter_chest",
+     "col": 109,
+     "row": 30,
+     "dx": 0,
+     "dy": 0,
+     "scale": 0.62,
+     "flip": false
+    },
+    {
+     "vignette": "smugglers-cache-under-eaves",
+     "key": "env_attic_crate_stack",
+     "col": 108,
+     "row": 31,
+     "dx": -3,
+     "dy": 0,
+     "scale": 0.6,
+     "flip": false
+    },
+    {
+     "vignette": "smugglers-cache-under-eaves",
+     "key": "env_attic_scatter_jar",
+     "col": 110,
+     "row": 30,
+     "dx": 4,
+     "dy": 3,
+     "scale": 0.55,
+     "flip": false
+    },
+    {
+     "vignette": "smugglers-cache-under-eaves",
+     "key": "env_attic_oil_lamp",
+     "col": 109,
+     "row": 31,
+     "dx": 6,
+     "dy": -2,
+     "scale": 0.58,
+     "flip": false
+    },
+    {
+     "vignette": "portrait-shrine-of-the-drowned",
+     "key": "env_attic_scatter_portraits",
+     "col": 119,
+     "row": 29,
+     "dx": 0,
+     "dy": 0,
+     "scale": 0.6,
+     "flip": false
+    },
+    {
+     "vignette": "portrait-shrine-of-the-drowned",
+     "key": "env_attic_scatter_frame",
+     "col": 118,
+     "row": 29,
+     "dx": -4,
+     "dy": 2,
+     "scale": 0.6,
+     "flip": true
+    },
+    {
+     "vignette": "portrait-shrine-of-the-drowned",
+     "key": "env_attic_scatter_candle",
+     "col": 119,
+     "row": 30,
+     "dx": 3,
+     "dy": 0,
+     "scale": 0.55,
+     "flip": false
+    },
+    {
+     "vignette": "portrait-shrine-of-the-drowned",
+     "key": "env_attic_scatter_jar",
+     "col": 118,
+     "row": 30,
+     "dx": -6,
+     "dy": 0,
+     "scale": 0.55,
+     "flip": false
+    },
+    {
+     "vignette": "wayfarers-obelisk",
+     "key": "env_shared_save_obelisk",
+     "col": 108,
+     "row": 10,
+     "dx": 0,
+     "dy": 0,
+     "scale": 0.7,
+     "flip": false
+    },
+    {
+     "vignette": "doll-left-watching",
+     "key": "env_attic_scatter_doll",
+     "col": 99,
+     "row": 10,
+     "dx": 0,
+     "dy": 2,
+     "scale": 0.6,
+     "flip": true
+    },
+    {
+     "vignette": "mirror-facing-the-flood",
+     "key": "env_attic_scatter_mirror",
+     "col": 119,
+     "row": 16,
+     "dx": 0,
+     "dy": 0,
+     "scale": 0.65,
+     "flip": true
+    },
+    {
+     "vignette": "phonograph-playing-to-the-dark",
+     "key": "env_attic_scatter_phonograph",
+     "col": 102,
+     "row": 31,
+     "dx": 0,
+     "dy": 0,
+     "scale": 0.62,
+     "flip": false
+    },
+    {
+     "vignette": "landmark-west-canopy",
+     "key": "env_attic_landform_canopy",
+     "col": 101,
+     "row": 17,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "landmark-aisle-canopy",
+     "key": "env_attic_landform_canopy2",
+     "col": 110,
+     "row": 17,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": true
+    },
+    {
+     "vignette": "landmark-south-outcrop",
+     "key": "env_attic_landform_outcrop",
+     "col": 103,
+     "row": 29,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "landmark-east-outcrop",
+     "key": "env_attic_landform_outcrop3",
+     "col": 120,
+     "row": 14,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "cartographers-attic-desk",
+     "key": "env_attic_drawers",
+     "col": 100,
+     "row": 2,
+     "dx": 0,
+     "dy": 0,
+     "scale": 0.65,
+     "flip": false
+    },
+    {
+     "vignette": "cartographers-attic-desk",
+     "key": "env_attic_scatter_globe",
+     "col": 101,
+     "row": 2,
+     "dx": 4,
+     "dy": 2,
+     "scale": 0.62,
+     "flip": false
+    },
+    {
+     "vignette": "cartographers-attic-desk",
+     "key": "env_attic_scatter_telescope",
+     "col": 99,
+     "row": 2,
+     "dx": -2,
+     "dy": 4,
+     "scale": 0.62,
+     "flip": false
+    },
+    {
+     "vignette": "seamstress-corner",
+     "key": "env_attic_scatter_sewing",
+     "col": 105,
+     "row": 2,
+     "dx": 0,
+     "dy": 0,
+     "scale": 0.62,
+     "flip": false
+    },
+    {
+     "vignette": "seamstress-corner",
+     "key": "env_attic_scatter_hatbox",
+     "col": 106,
+     "row": 2,
+     "dx": 4,
+     "dy": 4,
+     "scale": 0.6,
+     "flip": false
+    },
+    {
+     "vignette": "seamstress-corner",
+     "key": "env_attic_scatter_umbrellas",
+     "col": 104,
+     "row": 2,
+     "dx": -4,
+     "dy": 2,
+     "scale": 0.62,
+     "flip": false
+    },
+    {
+     "vignette": "clockmakers-bench",
+     "key": "env_attic_scatter_clock",
+     "col": 110,
+     "row": 2,
+     "dx": 0,
+     "dy": 0,
+     "scale": 0.62,
+     "flip": false
+    },
+    {
+     "vignette": "clockmakers-bench",
+     "key": "env_attic_scatter_gear",
+     "col": 111,
+     "row": 2,
+     "dx": 4,
+     "dy": 4,
+     "scale": 0.6,
+     "flip": false
+    },
+    {
+     "vignette": "clockmakers-bench",
+     "key": "env_attic_scatter_typewriter",
+     "col": 109,
+     "row": 2,
+     "dx": -4,
+     "dy": 4,
+     "scale": 0.6,
+     "flip": false
+    },
+    {
+     "vignette": "nursery-no-one-visits",
+     "key": "env_attic_scatter_rockinghorse",
+     "col": 99,
+     "row": 22,
+     "dx": 0,
+     "dy": 0,
+     "scale": 0.62,
+     "flip": false
+    },
+    {
+     "vignette": "nursery-no-one-visits",
+     "key": "env_attic_birdcage",
+     "col": 100,
+     "row": 22,
+     "dx": 6,
+     "dy": -2,
+     "scale": 0.6,
+     "flip": false
+    },
+    {
+     "vignette": "grand-landing-portraits",
+     "key": "env_attic_scatter_trunk",
+     "col": 110,
+     "row": 24,
+     "dx": 4,
+     "dy": 4,
+     "scale": 0.62,
+     "flip": false
+    },
+    {
+     "vignette": "the-empty-rocking-chair",
+     "key": "env_attic_rocking_chair",
+     "col": 120,
+     "row": 8,
+     "dx": 0,
+     "dy": 0,
+     "scale": 0.65,
+     "flip": false
+    }
+   ]
+  },
+  {
+   "region": "keep",
+   "placements": [
+    {
+     "vignette": "conductors-last-downbeat",
+     "key": "env_hall_music_stand",
+     "col": 304,
+     "row": 19,
+     "dx": 0,
+     "dy": 0,
+     "scale": 0.66,
+     "flip": false
+    },
+    {
+     "vignette": "conductors-last-downbeat",
+     "key": "env_hall_scatter_baton",
+     "col": 303,
+     "row": 19,
+     "dx": -2,
+     "dy": 4,
+     "scale": 0.6,
+     "flip": false
+    },
+    {
+     "vignette": "conductors-last-downbeat",
+     "key": "env_hall_scatter_sheets",
+     "col": 305,
+     "row": 19,
+     "dx": -4,
+     "dy": 6,
+     "scale": 0.62,
+     "flip": false
+    },
+    {
+     "vignette": "shrine-of-the-toppled-bust",
+     "key": "env_hall_plinth",
+     "col": 297,
+     "row": 19,
+     "dx": 0,
+     "dy": 0,
+     "scale": 0.68,
+     "flip": false
+    },
+    {
+     "vignette": "shrine-of-the-toppled-bust",
+     "key": "env_hall_scatter_bust",
+     "col": 298,
+     "row": 19,
+     "dx": -4,
+     "dy": 6,
+     "scale": 0.62,
+     "flip": true
+    },
+    {
+     "vignette": "shrine-of-the-toppled-bust",
+     "key": "env_hall_scatter_votives",
+     "col": 296,
+     "row": 19,
+     "dx": 4,
+     "dy": 6,
+     "scale": 0.6,
+     "flip": false
+    },
+    {
+     "vignette": "shrine-of-the-toppled-bust",
+     "key": "env_hall_scatter_rose",
+     "col": 296,
+     "row": 19,
+     "dx": -8,
+     "dy": 2,
+     "scale": 0.58,
+     "flip": false
+    },
+    {
+     "vignette": "what-the-lake-gave-back",
+     "key": "env_hall_scatter_cello",
+     "col": 311,
+     "row": 19,
+     "dx": 0,
+     "dy": 2,
+     "scale": 0.66,
+     "flip": true
+    },
+    {
+     "vignette": "what-the-lake-gave-back",
+     "key": "env_hall_scatter_drape",
+     "col": 312,
+     "row": 19,
+     "dx": -2,
+     "dy": 4,
+     "scale": 0.62,
+     "flip": false
+    },
+    {
+     "vignette": "what-the-lake-gave-back",
+     "key": "env_hall_scatter_sheets",
+     "col": 310,
+     "row": 19,
+     "dx": 2,
+     "dy": 8,
+     "scale": 0.6,
+     "flip": false
+    },
+    {
+     "vignette": "vigil-pew-on-the-east-bluff",
+     "key": "env_hall_scatter_pew",
+     "col": 317,
+     "row": 23,
+     "dx": 0,
+     "dy": 0,
+     "scale": 0.66,
+     "flip": true
+    },
+    {
+     "vignette": "vigil-pew-on-the-east-bluff",
+     "key": "env_hall_scatter_goblet",
+     "col": 317,
+     "row": 24,
+     "dx": -4,
+     "dy": -2,
+     "scale": 0.58,
+     "flip": false
+    },
+    {
+     "vignette": "vigil-pew-on-the-east-bluff",
+     "key": "env_hall_scatter_hourglass",
+     "col": 317,
+     "row": 22,
+     "dx": 2,
+     "dy": 2,
+     "scale": 0.6,
+     "flip": false
+    },
+    {
+     "vignette": "tide-scholars-reckoning",
+     "key": "env_hall_scatter_belljar",
+     "col": 294,
+     "row": 31,
+     "dx": -2,
+     "dy": 0,
+     "scale": 0.64,
+     "flip": false
+    },
+    {
+     "vignette": "tide-scholars-reckoning",
+     "key": "env_hall_scatter_metronome",
+     "col": 294,
+     "row": 32,
+     "dx": 4,
+     "dy": 2,
+     "scale": 0.62,
+     "flip": false
+    },
+    {
+     "vignette": "tide-scholars-reckoning",
+     "key": "env_hall_scatter_quill",
+     "col": 294,
+     "row": 33,
+     "dx": -4,
+     "dy": 0,
+     "scale": 0.58,
+     "flip": false
+    },
+    {
+     "vignette": "organ-pipes-hauled-ashore",
+     "key": "env_hall_scatter_marble",
+     "col": 317,
+     "row": 30,
+     "dx": 0,
+     "dy": 2,
+     "scale": 0.64,
+     "flip": false
+    },
+    {
+     "vignette": "organ-pipes-hauled-ashore",
+     "key": "env_hall_scatter_pipe",
+     "col": 317,
+     "row": 31,
+     "dx": -2,
+     "dy": 0,
+     "scale": 0.66,
+     "flip": false
+    },
+    {
+     "vignette": "organ-pipes-hauled-ashore",
+     "key": "env_hall_scatter_pipe",
+     "col": 317,
+     "row": 32,
+     "dx": 4,
+     "dy": 4,
+     "scale": 0.62,
+     "flip": true
+    },
+    {
+     "vignette": "flight-from-the-rising-water",
+     "key": "env_hall_scatter_stand",
+     "col": 297,
+     "row": 50,
+     "dx": -4,
+     "dy": 4,
+     "scale": 0.62,
+     "flip": true
+    },
+    {
+     "vignette": "flight-from-the-rising-water",
+     "key": "env_hall_scatter_harp",
+     "col": 298,
+     "row": 50,
+     "dx": 0,
+     "dy": 0,
+     "scale": 0.66,
+     "flip": false
+    },
+    {
+     "vignette": "flight-from-the-rising-water",
+     "key": "env_hall_page_stack",
+     "col": 299,
+     "row": 50,
+     "dx": 2,
+     "dy": 4,
+     "scale": 0.64,
+     "flip": false
+    },
+    {
+     "vignette": "nightly-requiem-for-the-drowned",
+     "key": "env_hall_scatter_pew",
+     "col": 317,
+     "row": 42,
+     "dx": 2,
+     "dy": 2,
+     "scale": 0.64,
+     "flip": true
+    },
+    {
+     "vignette": "nightly-requiem-for-the-drowned",
+     "key": "env_hall_scatter_gramophone",
+     "col": 317,
+     "row": 43,
+     "dx": -2,
+     "dy": 0,
+     "scale": 0.66,
+     "flip": true
+    },
+    {
+     "vignette": "nightly-requiem-for-the-drowned",
+     "key": "env_hall_scatter_rose",
+     "col": 317,
+     "row": 44,
+     "dx": -6,
+     "dy": 2,
+     "scale": 0.58,
+     "flip": false
+    },
+    {
+     "vignette": "composers-shoreline-memorial",
+     "key": "env_hall_scatter_quill",
+     "col": 309,
+     "row": 50,
+     "dx": 2,
+     "dy": 4,
+     "scale": 0.58,
+     "flip": false
+    },
+    {
+     "vignette": "composers-shoreline-memorial",
+     "key": "env_hall_scatter_plaque",
+     "col": 310,
+     "row": 50,
+     "dx": 0,
+     "dy": 0,
+     "scale": 0.64,
+     "flip": false
+    },
+    {
+     "vignette": "composers-shoreline-memorial",
+     "key": "env_hall_scatter_votives",
+     "col": 311,
+     "row": 50,
+     "dx": -4,
+     "dy": 6,
+     "scale": 0.6,
+     "flip": false
+    },
+    {
+     "vignette": "candle-walk-to-the-waterline",
+     "key": "env_hall_scatter_candelabra",
+     "col": 294,
+     "row": 46,
+     "dx": -2,
+     "dy": 0,
+     "scale": 0.64,
+     "flip": false
+    },
+    {
+     "vignette": "candle-walk-to-the-waterline",
+     "key": "env_hall_scatter_candelabra",
+     "col": 294,
+     "row": 47,
+     "dx": 4,
+     "dy": 2,
+     "scale": 0.6,
+     "flip": true
+    },
+    {
+     "vignette": "candle-walk-to-the-waterline",
+     "key": "env_hall_scatter_drape",
+     "col": 294,
+     "row": 48,
+     "dx": -4,
+     "dy": 0,
+     "scale": 0.62,
+     "flip": false
+    },
+    {
+     "vignette": "the-clock-that-drowned-time",
+     "key": "env_hall_melting_clock",
+     "col": 305,
+     "row": 50,
+     "dx": 0,
+     "dy": 0,
+     "scale": 0.7,
+     "flip": false
+    },
+    {
+     "vignette": "chandelier-risen-from-the-deep",
+     "key": "env_hall_chandelier",
+     "col": 294,
+     "row": 23,
+     "dx": 0,
+     "dy": 0,
+     "scale": 0.7,
+     "flip": false
+    },
+    {
+     "vignette": "mask-watching-the-sky",
+     "key": "env_hall_scatter_operamask",
+     "col": 317,
+     "row": 48,
+     "dx": 0,
+     "dy": 0,
+     "scale": 0.6,
+     "flip": false
+    },
+    {
+     "vignette": "wayfarers-obelisk",
+     "key": "env_shared_save_obelisk",
+     "col": 314,
+     "row": 50,
+     "dx": 0,
+     "dy": 0,
+     "scale": 0.7,
+     "flip": false
+    },
+    {
+     "vignette": "landmark-north-crag",
+     "key": "env_hall_landform_outcrop",
+     "col": 314,
+     "row": 19,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "landmark-west-leaning-canopy",
+     "key": "env_hall_landform_canopy2",
+     "col": 294,
+     "row": 37,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "landmark-east-sentinel-outcrop",
+     "key": "env_hall_landform_outcrop3",
+     "col": 317,
+     "row": 39,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": true
+    },
+    {
+     "vignette": "landmark-south-shore-canopy",
+     "key": "env_hall_landform_canopy",
+     "col": 302,
+     "row": 50,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "the-drowned-organ-loft",
+     "key": "env_hall_landform_outcrop2",
+     "col": 317,
+     "row": 27,
+     "dx": 0,
+     "dy": 0,
+     "scale": 1.0,
+     "flip": false
+    },
+    {
+     "vignette": "conductors-rehearsal-clock",
+     "key": "env_hall_melting_clock",
+     "col": 317,
+     "row": 19,
+     "dx": 0,
+     "dy": 0,
+     "scale": 0.65,
+     "flip": false
+    },
+    {
+     "vignette": "the-bust-that-watches-the-east-door",
+     "key": "env_hall_plinth",
+     "col": 317,
+     "row": 35,
+     "dx": 0,
+     "dy": 0,
+     "scale": 0.65,
+     "flip": false
+    },
+    {
+     "vignette": "the-bust-that-watches-the-east-door",
+     "key": "env_hall_scatter_bust",
+     "col": 317,
+     "row": 35,
+     "dx": 0,
+     "dy": -14,
+     "scale": 0.6,
+     "flip": false
+    },
+    {
+     "vignette": "the-bust-that-watches-the-east-door",
+     "key": "env_hall_scatter_belljar",
+     "col": 317,
+     "row": 36,
+     "dx": 2,
+     "dy": 4,
+     "scale": 0.6,
      "flip": false
     }
    ]

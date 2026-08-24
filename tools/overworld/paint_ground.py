@@ -268,9 +268,24 @@ def main() -> None:
         # THE BREACH (region 2)
         ("tidepool",   85, 138, 18, 16, 2, (0x62, 0x82, 0x82), 0.42),  # bluer tidal shallows
         ("drysand",   126,  92, 18, 16, 2, (0xC6, 0xB6, 0x8A), 0.42),  # warm dry crossing sand
-        # THE STAGE (region 4)
-        ("inkreach",  336,  24, 16, 14, 4, (0x20, 0x1A, 0x30), 0.52),  # deep violet-black
-        ("marble",    308,  46, 14, 12, 4, (0xB0, 0xAA, 0xC2), 0.44),  # pale marble plaza (boss approach)
+        # THE KEEP (region 4) -- a drowned concert hall, "taken and repurposed"
+        # (world-bible §6.5). It had TWO districts, both violet: `inkreach`
+        # (0x201A30, "deep violet-black") and a `marble` at 0xB0AAC2. Both were
+        # the retired cosmology's Stage, and both slipped the palette gate by a
+        # hair -- hue 256 and 255 against a 258 floor. Two districts is also
+        # thin for the last region in the game: the Fold has three and the Scar
+        # has twelve, and the Keep is where the story ENDS.
+        #
+        # So it is a hall now, read west-to-east the way you walk into one:
+        # the way in, the seats, the pit where the players drowned, and the
+        # marble the room is built on. §6.5: "an orchestra that drowned
+        # mid-performance, stands and chairs and stopped clocks. Beautiful, and
+        # nobody's story." Nothing here is cold or strange -- that is the whole
+        # trap (see KEEP in tools/art/palette.py).
+        ("foyer",     292,  62, 14, 12, 4, (0x4A, 0x3C, 0x30), 0.50),  # sodden carpet gone to brown silt -- the way in
+        ("stalls",    322,  60, 20, 16, 4, (0x38, 0x33, 0x2E), 0.46),  # rows of seats under a century of silt
+        ("orchpit",   336,  26, 15, 13, 4, (0x1C, 0x18, 0x14), 0.54),  # the orchestra pit: the deepest, darkest place in the hall
+        ("marble",    308,  46, 14, 12, 4, (0xB6, 0xAE, 0x9E), 0.44),  # pale NEUTRAL marble, warmed by the lamps (boss approach)
     ]
     dmask = {}
     for name, cx, cy, rx, ry, reg, rgb, amt in AUTHORED:
@@ -325,6 +340,36 @@ def main() -> None:
     m = dtex("kelpforest")        # dark frond mottle
     if m is not None:
         canvas[(value_noise(PH, PW, 18) > 0.66) & m] *= 0.78
+    m = dtex("foyer")             # a sodden carpet's nap: soft directional mottle
+    if m is not None:
+        nap = value_noise(PH, PW, 26)
+        canvas[m] = canvas[m] * (0.90 + nap[m][:, None] * 0.20)
+    m = dtex("stalls")            # THE SEATS. Rows, because a theatre IS built --
+    if m is not None:             # this is the one place a hard repeat is the
+        # subject rather than a mistake (§4.5). It is still broken on two axes:
+        # the row pitch wobbles with a low-frequency noise term, and a CENTRE
+        # AISLE runs through, because a hall with no way to your seat is a grid.
+        rowp = 7.0
+        wob = (value_noise(PH, PW, 40) - 0.5) * 2.4
+        phase = np.mod(yy_g + wob, rowp)
+        seats = (phase < 2.6) & m
+        aisle = np.abs(np.mod(xx_g + (value_noise(PH, PW, 60) - 0.5) * 9.0, 46.0) - 23.0) < 3.4
+        canvas[seats & ~aisle] *= 0.74
+        # a thin pale top-edge on each row: the light catches the seat backs
+        lip = (phase >= 2.6) & (phase < 3.3) & m & ~aisle
+        canvas[lip] = canvas[lip] * 0.82 + np.array((0x8E, 0x82, 0x6C), dtype=np.float32)[None, :] * 0.18
+    m = dtex("orchpit")           # BRASS, glinting where the players drowned.
+    if m is not None:             # Darkening a near-black district is invisible,
+        # so the signature has to be light -- and the light that belongs here is
+        # the one warm accent in the game, on instruments nobody came back for.
+        glint = (value_noise(PH, PW, 2) > 0.938) & m
+        canvas[glint] = canvas[glint] * 0.35 + np.array((0xC6, 0x98, 0x4E), dtype=np.float32)[None, :] * 0.65
+        stand = (value_noise(PH, PW, 9) > 0.86) & m   # music stands, still up
+        canvas[stand] = canvas[stand] * 0.72 + np.array((0x4C, 0x46, 0x3C), dtype=np.float32)[None, :] * 0.28
+    m = dtex("marble")            # veining, warm-white, sparse and long
+    if m is not None:
+        vein = (np.abs(value_noise(PH, PW, 52) - 0.5) < 0.010) & m
+        canvas[vein] = canvas[vein] * 0.62 + np.array((0xD0, 0xC9, 0xBC), dtype=np.float32)[None, :] * 0.38
     m = dtex("oasis")             # THE OASIS: living moss + a bright spring pool
     if m is not None:
         # bright living-green tufts (warm, unlike the cold drowned kelp)
@@ -1196,6 +1241,22 @@ def main() -> None:
             canvas[py + 2, px] *= 0.7  # heel
             if drag:
                 canvas[py + 1, px + 2 : px + 4] *= 0.8  # the drag tail
+
+    # The gaits Nari's signature has to be READ AGAINST. Defined here rather
+    # than beside the pilgrim/decoy placement below, because the three-stretch
+    # pass in the taking block needs them and Python does not hoist a nested def.
+    def adult_print(py: int, px: int) -> None:
+        if 1 <= py < PH - 4 and 1 <= px < PW - 2 and not water_mask[py, px]:
+            canvas[py : py + 3, px : px + 2] *= 0.6  # long sole
+            canvas[py + 3, px] *= 0.66  # heavy heel
+    def small_decoy_print(py: int, px: int) -> None:
+        if 1 <= py < PH - 2 and 1 <= px < PW - 2 and not water_mask[py, px]:
+            canvas[py : py + 2, px : px + 2] *= 0.62  # sole only: no heel, no drag
+    def critter_print(py: int, px: int) -> None:
+        for dy, dx in ((0, 0), (2, -2), (2, 2)):  # three toes
+            y, x = py + dy, px + dx
+            if 1 <= y < PH and 1 <= x < PW and not water_mask[y, x]:
+                canvas[y, x] *= 0.5
     loss_idx = next((i for i, (ty, tx) in enumerate(route) if region[ty, tx] >= 3), len(route))
     for i in range(3, min(loss_idx, len(route) - 1), 10):
         ty, tx = route[i]
@@ -1209,24 +1270,137 @@ def main() -> None:
             px_ = cx + dx * along + (dy * side)  # lateral offset perpendicular
             py_ = cy + dy * along + (dx * side)
             stamp_print(py_ + (h >> step) % 2, px_ + (h >> (step + 3)) % 2, drag=step % 2 == 0)
+    # --- HER STRIDE, and why the ground has to contradict Mir ----------------
+    # world-bible §6.3, the taking: "No blood. No struggle worth the name. Nari
+    # did not cry out." Mir reads AMBUSH; "the ground reads otherwise, and the
+    # player gets every piece." §6.4: "beside the small ones always a woman's
+    # stride -- NOT CHASING. LEADING." And: "The player should be ahead of him
+    # and should hate it."
+    #
+    # WHAT WAS HERE BEFORE, AND WHY IT BROKE THE STORY. The taking was staged as
+    # twelve prints circling in panic plus a 26px DRAG MARK hauling off the road.
+    # A drag mark says the boy was taken by force. Circling says he struggled.
+    # So the most important piece of evidence in the game was corroborating the
+    # WRONG THEORY -- the ground was agreeing with Mir, and the entire reversal
+    # at the Den depends on it having quietly disagreed with him the whole time.
+    # No woman's stride existed anywhere on the map at all.
+    #
+    # HER PRINTS ARE THE OPPOSITE OF VIOLENCE, and that is what makes them
+    # unbearable: narrow, evenly spaced, LIGHT (0.78 against Nari's 0.62 -- she
+    # barely presses), no heel gouge, no scuff, no skid. Nobody who is dragging
+    # a child walks like this. She is not in a hurry, because she does not think
+    # she is doing anything wrong.
+    def woman_print(py: int, px: int, lead: bool = False) -> None:
+        """A narrow adult sole, set down gently. `lead` marks the prints that
+        sit AHEAD of the small ones in the direction of travel -- the tell. A
+        pursuer's prints fall behind the child's. Hers are in front, the whole
+        way, because he was following her."""
+        if 1 <= py < PH - 4 and 1 <= px < PW - 2 and not water_mask[py, px]:
+            canvas[py : py + 3, px] *= 0.78          # narrow sole, light pressure
+            canvas[py : py + 2, px + 1] *= 0.86      # the ball of the foot only
+            if lead:
+                canvas[py + 3, px] *= 0.90           # a whisper of a heel
+
     if loss_idx < len(route):
         ty, tx = route[loss_idx]
+        nyi = min(loss_idx + 1, len(route) - 1)
+        dy, dx = route[nyi][0] - ty, route[nyi][1] - tx
         cx, cy = tx * S + S // 2, ty * S + S // 2
-        h = 0x5EED
-        # the scuffle: prints circling in panic
-        for k in range(12):
-            ang = k * 0.55 + (h >> k) % 3 * 0.2
-            stamp_print(int(cy + 10 * np.sin(ang)), int(cx + 12 * np.cos(ang)))
-        # the drag mark, leading away from the road
-        for d in range(26):
-            y, x = cy + d // 3, cx + d
-            if 0 <= y < PH and 0 <= x < PW and not water_mask[y, x]:
-                canvas[y : y + 2, x] *= 0.6
-        # beyond: sparse single prints -- the clues Mir hunts
-        for i in range(loss_idx + 6, len(route) - 1, 24):
-            ty, tx = route[i]
-            h2 = (tx * 40503 ^ ty * 2654435761) & 0xFFFFFFFF
-            stamp_print(ty * S + (h2 >> 5) % S, tx * S + (h2 >> 11) % S, drag=h2 % 2 == 0)
+
+        # SHE WAS ALREADY UP HERE. §6.3: "a second adult set of prints reaches
+        # the surface AHEAD of theirs." Her trail runs BACKWARD from the taking
+        # for a stretch, so a player who turns around finds she arrived first --
+        # the clue is available before the loss, not only after it.
+        for k in range(14):
+            back = -k * 13 - 8
+            lat = 4 if k % 2 else -4
+            woman_print(cy + dy * back + dx * lat, cx + dx * back + dy * lat, lead=True)
+
+        # THE TAKING: "two feet, then one, then none."
+        # Rendered literally, because the line is already the picture. Nari's
+        # paired gait arrives, closes to both feet together where he stopped and
+        # waited, then one last single print, then bare ground. Nothing is
+        # dragged and nothing circles.
+        stamp_print(cy - dy * 8 - dx * 3, cx - dx * 8 + dy * 3, drag=True)   # ...still walking
+        stamp_print(cy - dy * 8 + dx * 3, cx - dx * 8 - dy * 3)              # two feet: he stops
+        stamp_print(cy - dy * 2 + dx * 2, cx - dx * 2 - dy * 2)              # then one
+        # then none. The absence is the event.
+
+        # and hers, turning here and leaving with him. Evenly spaced: she walked.
+        for k in range(9):
+            ahead = k * 12 + 6
+            lat = 4 if k % 2 else -4
+            woman_print(cy + dy * ahead + dx * lat, cx + dx * ahead + dy * lat, lead=True)
+
+        # --- the three stretches (§6.4) --------------------------------------
+        # "the fresh trail (clear prints, hope with teeth), the false trails
+        # (pilgrim strides, den-thing gaits, decoys that double back), and the
+        # den's mouth (all tracks lead one way, none lead back)."
+        #
+        # The trail used to be one uniform sparse dribble of single prints every
+        # 24 route steps, all the way to the boss. A search that reads the same
+        # at the start, the middle and the end is not a progression -- and the
+        # walk back out of the Scar is supposed to feel different from the walk
+        # in. So the density, the pairing and the decoy load all change with
+        # distance, and HER stride is beside the small ones in every stretch.
+        tail = len(route) - 1
+        span = max(1, tail - loss_idx)
+        for i in range(loss_idx + 4, tail, 4):
+            t = (i - loss_idx) / float(span)          # 0 at the taking, 1 at the den
+            ty2, tx2 = route[i]
+            n2 = route[min(i + 1, tail)]
+            dy2, dx2 = n2[0] - ty2, n2[1] - tx2
+            h2 = (tx2 * 40503 ^ ty2 * 2654435761) & 0xFFFFFFFF
+            cy2, cx2 = ty2 * S + S // 2, tx2 * S + S // 2
+
+            if t < 0.34:
+                # STRETCH 1 -- the fresh trail. Clear, close-spaced, paired, and
+                # her stride right alongside. This is the stretch that gives the
+                # player the gait to learn, so it has to be unambiguous.
+                for k in range(4):
+                    lat = 3 if k % 2 else -3
+                    stamp_print(cy2 + dy2 * k * 7 + dx2 * lat, cx2 + dx2 * k * 7 + dy2 * lat,
+                                drag=k % 2 == 0)
+                if h2 % 3:
+                    woman_print(cy2 + dx2 * 7, cx2 + dy2 * 7, lead=True)
+            elif t < 0.72:
+                # STRETCH 2 -- the false trails. His prints thin out and the
+                # ground fills with OTHER gaits. The decoys DOUBLE BACK, which
+                # is the cruel part: a doubling-back trail is what a lost child
+                # would leave, so it is the one Mir most wants to believe.
+                if h2 % 4 == 0:
+                    for k in range(3):
+                        lat = 3 if k % 2 else -3
+                        stamp_print(cy2 + dy2 * k * 8 + dx2 * lat, cx2 + dx2 * k * 8 + dy2 * lat,
+                                    drag=k == 0)
+                    woman_print(cy2 + dx2 * 8, cx2 + dy2 * 8, lead=True)
+                else:
+                    out = 1 if h2 % 2 else -1
+                    for k in range(5):                     # away...
+                        small_decoy_print(cy2 + dy2 * k * 9 * out + 5, cx2 + dx2 * k * 9 * out)
+                    for k in range(4):                     # ...and back, offset
+                        small_decoy_print(cy2 + dy2 * k * 9 * out - 4, cx2 + dx2 * k * 9 * out + 6)
+                    if h2 % 5 == 0:
+                        for k in range(4):
+                            critter_print(cy2 + dx2 * k * 8 + 6, cx2 + dy2 * k * 8)
+            else:
+                # STRETCH 3 -- the den's mouth. "All tracks lead one way, none
+                # lead back." EVERY gait here points inward and nothing returns:
+                # his, hers, the pilgrims', the den-things'. That is the whole
+                # dread of the approach, and it is also the last lie the ground
+                # tells -- because what is in the den is a man, and the reason
+                # nothing leads back is that nobody who came here wanted to.
+                for k in range(3):
+                    lat = 3 if k % 2 else -3
+                    stamp_print(cy2 + dy2 * k * 9 + dx2 * lat, cx2 + dx2 * k * 9 + dy2 * lat,
+                                drag=k % 2 == 0)
+                woman_print(cy2 + dx2 * 6, cx2 + dy2 * 6, lead=True)
+                if h2 % 3 == 0:
+                    for k in range(3):
+                        adult_print(cy2 + dy2 * k * 11 - 7, cx2 + dx2 * k * 11 - 5)
+                if h2 % 4 == 1:
+                    for k in range(3):
+                        critter_print(cy2 + dy2 * k * 9 + 8, cx2 + dx2 * k * 9 + 4)
 
     # --- other tracks (v12.2): WHICH prints are his? -------------------------
     # Owner: "along with naris footsteps there's tracks of other people, we
@@ -1237,18 +1411,9 @@ def main() -> None:
     # learnable while he walks behind you in the Fold: paired gait, heel
     # dot, faint right-foot drag. Decoys are single-file, heel-less,
     # drag-less. Reading the difference IS the tracking game.
-    def adult_print(py: int, px: int) -> None:
-        if 1 <= py < PH - 4 and 1 <= px < PW - 2 and not water_mask[py, px]:
-            canvas[py : py + 3, px : px + 2] *= 0.6  # long sole
-            canvas[py + 3, px] *= 0.66  # heavy heel
-    def small_decoy_print(py: int, px: int) -> None:
-        if 1 <= py < PH - 2 and 1 <= px < PW - 2 and not water_mask[py, px]:
-            canvas[py : py + 2, px : px + 2] *= 0.62  # sole only: no heel, no drag
-    def critter_print(py: int, px: int) -> None:
-        for dy, dx in ((0, 0), (2, -2), (2, 2)):  # three toes
-            y, x = py + dy, px + dx
-            if 1 <= y < PH and 1 <= x < PW and not water_mask[y, x]:
-                canvas[y, x] *= 0.5
+    # (adult_print / small_decoy_print / critter_print are defined ABOVE, with
+    # stamp_print -- the three-stretch pass in the taking block calls them, and
+    # a nested def is not hoisted: they have to exist before that code runs.)
     # pilgrims: paired adult strides along the road margins, map-wide
     if route:
         for ti in range(26):

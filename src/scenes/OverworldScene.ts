@@ -103,7 +103,13 @@ const ECHO_RUNE_FRAME = DECORATIVE_PROP_COUNT;
 // town built in the silt around a massive obelisk" at the bottom of a lightless
 // sea. The name and the kit are now canon (tools/art/env_fold.py). The other
 // four still carry retired names and are M4's problem.
-const REGION_BIOMES = ["fold", "saltmines", "pit", "attic", "hall"];
+// THE WORLD-BIBLE'S NAMES, AT LAST (§6): the Fold, the Kelp Shelf, the Breach,
+// the Scar, the Keep. This said `["fold", "saltmines", "pit", "attic", "hall"]`
+// -- four nouns from a cosmology that no longer exists, and the list is not
+// cosmetic: it keys the dressing file, the fight venues (`arena_<biome>`) and
+// the gate props, so the stale names were propagating into three other tables
+// and into every asset path anyone derived from them.
+const REGION_BIOMES = ["fold", "shelf", "breach", "scar", "keep"];
 // Per-region accent -- mirrors paint_ground's ACCENTS. Used by the region grade
 // wash and the v14.2 per-region ambient particles.
 //   Fold teal, Shelf green, Breach pale sand, Scar rust, Keep lamplight.
@@ -1866,11 +1872,18 @@ export class OverworldScene extends Phaser.Scene {
    * of a tint change.
    */
   private placeRegionGates(map: Phaser.Tilemaps.Tilemap, ground: Phaser.Tilemaps.TilemapLayer, shore: Phaser.GameObjects.Graphics): void {
+    // The gate prop is the small warm light beside the road where one region
+    // hands off to the next, and they are the only warm lights between the Fold
+    // and the Keep -- the shape of the climb is that Mir walks away from the
+    // last warm room he will ever stand in, so these matter more than a prop
+    // usually would. Only the Shelf's resolves today; the other three name the
+    // piece each kit will ship (breach = a festoon lamp off the midway wire,
+    // scar = a dig lamp on a stake, keep = a candelabra off the hall's brass).
     const GATE_PROPS: Record<string, string> = {
-      saltmines: "env_saltmines_scatter_lantern",
-      pit: "env_pit_scatter_torch",
-      attic: "env_attic_scatter_lamp",
-      hall: "env_hall_scatter_candelabra",
+      shelf: "env_shelf_lantern",
+      breach: "env_breach_festoon_lamp",
+      scar: "env_scar_dig_lamp",
+      keep: "env_keep_candelabra",
     };
     for (let k = 1; k < REGION_BIOMES.length; k++) {
       const bcol = k * 26;
