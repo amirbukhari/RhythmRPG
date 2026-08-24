@@ -60,6 +60,13 @@ export async function bootToOverworld(page: Page): Promise<void> {
   // Cutscenes pause the world under a modal overlay; specs drive the overworld
   // directly, so opt out of them explicitly (CutsceneScene.play). Cutscenes
   // themselves are covered by their own specs, which do NOT pass this.
+  //
+  // This opt-out is load-bearing, not tidiness: Phaser's `scene.isActive()` is
+  // FALSE for a PAUSED scene, and the opening Rite pauses the overworld ~20ms
+  // after it starts. With cutscenes live, `createSaveAndCalibrate` below can
+  // therefore never see an active OverworldScene and times out. A spec that
+  // wants to watch a cutscene has to drive calibration itself and wait on
+  // CutsceneScene instead -- see tests/e2e/rite.spec.ts.
   await page.goto("/?nocutscenes=1");
   await passAudioGate(page);
   await createSaveAndCalibrate(page);
