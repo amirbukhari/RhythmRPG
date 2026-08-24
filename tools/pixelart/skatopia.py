@@ -16,12 +16,21 @@ black clocks, bone/pearl, blood, rot green. A single curated master palette
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Tuple
+
 from PIL import Image
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ASSETS = REPO_ROOT / "assets"
 
-Rgba = tuple[int, int, int, int]
+# `typing.Tuple`, not `tuple[...]`. `from __future__ import annotations` only
+# defers ANNOTATIONS; this is a bare assignment, so it is evaluated at import
+# time and takes down the whole pipeline on the Python that is actually
+# installed here (3.8: "'type' object is not subscriptable"). Every other
+# subscripted builtin in tools/pixelart/ is an annotated assignment and is
+# already covered by the future import -- this was the only real one, and it
+# meant NOTHING in the UI/tile toolchain could be regenerated.
+Rgba = Tuple[int, int, int, int]
 
 # --- The Skatopia master palette ------------------------------------------
 # One curated palette for the whole game so nothing clashes. Each hue carries
@@ -40,8 +49,23 @@ _HEX: dict[str, str] = {
     "C": "49c6bd", "c": "1f6f77", "e": "153a52", "E": "0b2233", "a": "2f5f86",
     # rot / moss / sick ("rot spots", "calcify", anthrax)
     "G": "79b855", "g": "426e33", "s": "9aa843", "S": "566a20",
-    # plum / amethyst ("sapphire purses", twilight, esoteric)
-    "P": "8a52a0", "p": "4b2a57", "u": "b98fca",
+    # --- THE PURPLE FAMILY IS GONE, ON PURPOSE ---------------------------
+    # This slot held `"P": "8a52a0", "p": "4b2a57", "u": "b98fca"` -- orchid,
+    # plum, amethyst -- captioned "sapphire purses, twilight, esoteric". That
+    # caption is from a game that no longer exists. *The Drowned Chorus* is
+    # teal, stone, bone, rust and lamp-amber, and it has NO purple in it.
+    #
+    # Leaving them here unreferenced was not harmless, which is the lesson. An
+    # unused hue family in a shared table is a loaded gun: over three separate
+    # passes these three keys were picked up again by whoever needed "another
+    # colour" and shipped into the game's most-looked-at surfaces -- the panel
+    # frame behind the player's own HP in every fight (`ui.py`), the groove bar,
+    # and 20 of the 20 region ground tiles (`tiles.py`, two whole regions).
+    # Each was found by looking at a frame, months apart.
+    #
+    # So the keys are DELETED rather than merely unused. `render()` raises
+    # KeyError on an undefined key, so anything that reaches for purple now
+    # fails at build time instead of shipping quietly.
     # flesh (the doomed party -- pallid, corpse-touched, varied)
     "F": "dcae86", "f": "ad7552", "H": "c4bbb0", "h": "877d70",
     # metal (nooses, meat hooks, steel, clocks)

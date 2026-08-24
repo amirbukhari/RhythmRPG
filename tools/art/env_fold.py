@@ -713,6 +713,135 @@ def obelisk():
     return s, (108, 452)
 
 
+def save_obelisk():
+    """The waystone -- the save point, in every region of the game.
+
+    WHY IT IS IN THE FOLD'S FILE AND NOT THE FOLD'S FOLDER
+    It is `env_shared_*`: one piece placed beside every fight node in all five
+    regions (`OverworldScene.placeObelisk`, PRD §8.8 -- rest and save before the
+    fight). It is built here because it is cut from the same stone as the town
+    obelisk and shares its materials and its renderer, and a save point authored
+    against a second material table would read as a prop from another game. See
+    SHARED below for how it is routed.
+
+    WHAT IT REPLACES
+    `assets/sprites/env/shared/save_obelisk.png` came from
+    `tools/pixelart/placeholder_cast.py` -- the file says "placeholder" in its
+    name -- and it was a 29x38 flat dark rounded rectangle with a cyan lozenge
+    down the middle. That is the object the player walks up to and touches to
+    save, in every region, all game: after Mir it is the most-used interactive
+    thing in the build, and §0 has one rule, which is that an abstraction is not
+    an image. It was also being drawn at `setScale(1)`, bypassing
+    `worldScaleFor` -- the one unit the whole world shares.
+
+    THE DESIGN, AND THE ONE DETAIL THAT DOES THE WORK
+    A waystone is not a small town obelisk. The monolith is dressed, tapered and
+    plumb; this is a rough menhir that has stood in silt for centuries, so:
+    a chipped irregular crown instead of a pyramidion, a base of two rough
+    footing stones so it is not planted like a fencepost -- and it LEANS, by a
+    couple of degrees. The lean is the whole piece. Nothing else in the
+    vocabulary says "old and unmaintained" at 36 world pixels, and a stone
+    standing perfectly upright in mud says the opposite.
+
+    The mark is ONE glyph, small and hot, in a recess -- style-contract §3, the
+    brightest thing is small. The obelisk's inscription is a text; a waystone
+    carries a single sign, and the difference is legible even at this size.
+    """
+    s = []
+    H = 116.0
+    LEAN = 0.055           # radians-ish: a straight stone in silt is a fencepost
+
+    def sx(y):
+        """Horizontal offset of the stone's centreline at height y -- the lean."""
+        return y * LEAN
+
+    def hw(y):
+        """Half-width: rough at the foot, narrowing but never to a point.
+
+        NOT A BELL. The first cut ran 25 -> 12 over the height, and a curve
+        that flares that hard at the base with a chipped point on top is a
+        bell, or a hood, or a nose cone -- every reading except "stone". A
+        menhir is close to a slab with one shoulder taper.
+        """
+        t = max(0.0, min(1.0, y / H))
+        return 19.0 - 4.0 * t - 3.0 * t * t
+
+    # --- the footing: two rough stones, so it is SET and not stuck in ------
+    s.append(blob(STONE_DARK, 34.0, 9.0, off=(0.0, 7.0), z=0))
+    s.append(blob(_lerp(STONE, STONE_DARK, 0.45), 21.0, 7.0, off=(-9.0, 11.0), z=1))
+    s.append(blob(_lerp(STONE, STONE_DARK, 0.25), 15.0, 5.5, off=(11.0, 13.0), z=1))
+
+    # --- the shaft in three bands (three is enough at 36 world px; five reads
+    #     as fluting at this width -- see the obelisk's BANDS note) ---------
+    BANDS = [(-1.00, -0.80, STONE_LIT), (-0.80, 0.42, STONE), (0.42, 1.00, STONE_DARK)]
+    y0, y1 = 8.0, H
+    for i, (f0, f1, col) in enumerate(BANDS):
+        s.append(poly([(sx(y0) + hw(y0) * f0, y0), (sx(y0) + hw(y0) * f1, y0),
+                       (sx(y1) + hw(y1) * f1, y1), (sx(y1) + hw(y1) * f0, y1)],
+                      col, z=2 + i * 0.01))
+
+    # --- the crown: BROKEN OFF, not tapered to a point ---------------------
+    # A point on top is a spire, and a spire on a tapering body is a nose cone.
+    # This is a stone whose top has come away: a shallow, uneven cap that sits
+    # BELOW the silhouette's shoulders on one side.
+    ct = sx(H)
+    cw = hw(H)
+    s.append(poly([(ct - cw, H - 1.0), (ct - cw * 0.55, H + 6.5), (ct + cw * 0.25, H + 4.5),
+                   (ct + cw, H - 3.0)], _lerp(STONE, STONE_DARK, 0.30), z=3))
+    s.append(poly([(ct - cw, H - 1.0), (ct - cw * 0.55, H + 6.5), (ct - cw * 0.1, H + 5.2),
+                   (ct - cw * 0.3, H - 1.0)], _lerp(STONE, STONE_LIT, 0.35), z=3.1))
+
+    # --- the recess and its one mark ---------------------------------------
+    ry0, ry1 = 44.0, 78.0
+    rw = 6.4
+    s.append(poly([(sx(ry0) - rw, ry0), (sx(ry0) + rw, ry0),
+                   (sx(ry1) + rw * 0.85, ry1), (sx(ry1) - rw * 0.85, ry1)],
+                  (16, 21, 26), z=4, rim=0.0))
+    s.append(poly([(sx(ry0) - rw, ry0), (sx(ry0) - rw + 1.4, ry0),
+                   (sx(ry1) - rw * 0.85 + 1.4, ry1), (sx(ry1) - rw * 0.85, ry1)],
+                  _lerp(STONE, STONE_LIT, 0.5), z=4.1, rim=0.0))   # the cut's lit lip
+    my = (ry0 + ry1) / 2.0
+    mx = sx(my)
+    # THE MARK IS A RING. An upright with a crossbar is a Latin cross, which is
+    # exactly what the first cut rendered -- a wholly wrong cosmology stamped on
+    # the object the player touches most in the game. A ring is canon: the Rite
+    # kneels in CONCENTRIC RINGS around the obelisk (world-bible §6.1), and the
+    # ring stones in this same kit are those rings. So the waystone carries the
+    # town's own sign, and a circle cannot be mistaken for anybody else's.
+    for a_i in range(20):
+        a0 = math.pi * 2.0 * (a_i / 20.0)
+        a1 = math.pi * 2.0 * ((a_i + 1) / 20.0)
+        for r_in, r_out in ((3.1, 4.5),):
+            s.append(poly([(mx + math.cos(a0) * r_out, my + math.sin(a0) * r_out),
+                           (mx + math.cos(a1) * r_out, my + math.sin(a1) * r_out),
+                           (mx + math.cos(a1) * r_in, my + math.sin(a1) * r_in),
+                           (mx + math.cos(a0) * r_in, my + math.sin(a0) * r_in)],
+                          (150, 246, 238), z=5, glow=1.0, rim=0.0))
+    # HOTTER THAN IT LOOKS RIGHT IN ISOLATION. Two things eat it in-world: the
+    # §4.1 haze law, and `placeObelisk`'s own `setTint(0xd6dce6)`, which dims the
+    # emissive pass along with the stone. In the first in-game frame the mark was
+    # a barely-visible dot -- and this mark is the only thing that says SAVE HERE.
+    s.append(blob((214, 255, 250), 1.6, 1.6, off=(mx, my), z=5.1, glow=1.0, rim=0.0))
+
+    # --- wear: chips off both edges, and the old waterline -----------------
+    for k in range(5):
+        y = 16.0 + (H - 30.0) * _h(k, 137)
+        side = 1.0 if _h(k, 139) > 0.5 else -1.0
+        w = sx(y) + hw(y) * side
+        d = 2.0 + _h(k, 149) * 3.6
+        s.append(poly([(w, y), (w - side * d, y + d * 0.8), (w, y + d * 1.7)],
+                      STONE_DARK if side < 0 else _lerp(STONE_DARK, STONE, 0.35), z=6))
+    _crust(s, sx(14.0) - hw(14.0), sx(14.0) + hw(14.0), 14.0, z=7)
+    wl = 34.0
+    _crust(s, sx(wl) - hw(wl) * 0.9, sx(wl) + hw(wl) * 0.9, wl, z=7)
+    for k in range(3):
+        s.append(blob(_lerp(STONE_DARK, (18, 30, 28), 0.55),
+                      6.0 + _h(k, 151) * 6.0, 1.8 + _h(k, 157) * 1.4,
+                      off=(-16.0 + k * 15.0 + _h(k, 163) * 4.0, 3.0 + _h(k, 167) * 2.2),
+                      z=8, rim=0.0))
+    return s, (96, 152)
+
+
 PIECES = {
     "lamp": lamp,
     "house_a": house_a,
@@ -723,6 +852,7 @@ PIECES = {
     "bench": bench,
     "ring_stone": ring_stone,
     "shrine": shrine,
+    "save_obelisk": save_obelisk,
     "well": well,
     "crate_stack": crate_stack,
     "cart": cart,
@@ -738,16 +868,25 @@ def build(name):
     return painter.render(_root(), shapes, {})
 
 
+# Pieces that are NOT the Fold's: they load as `env_shared_*` and are placed in
+# every region. They live in this file because they are cut from the same stone
+# as the town obelisk and share its material table and renderer; only the output
+# directory differs. See save_obelisk's docstring.
+SHARED = {"save_obelisk"}
+OUT_SHARED = ROOT / "assets" / "sprites" / "env" / "shared"
+
+
 def main(argv):
     want = argv[1:] or list(PIECES)
     OUT.mkdir(parents=True, exist_ok=True)
+    OUT_SHARED.mkdir(parents=True, exist_ok=True)
     for name in want:
         if name not in PIECES:
             print("unknown piece: %s (have: %s)" % (name, ", ".join(PIECES)))
             return 2
         t = time.time()
         img = build(name)
-        img.save(OUT / ("%s.png" % name))
+        img.save((OUT_SHARED if name in SHARED else OUT) / ("%s.png" % name))
         print("%-11s %5.2fs  %dx%d" % (name, time.time() - t, img.width, img.height))
     return 0
 

@@ -269,11 +269,31 @@ For each biome `<b>` in {`shallows`, `saltmines`, `pit`, `attic`, `hall`}, gener
 - `<b>_interactive.png` — door, chest, lever, save-shrine, breakable crate/urn (as tiles).
 
 Biome flavor for the prompts (combine with the sheet type):
-- **shallows** — drowned coastal turf, bone-salt cobbles, teal seawater w/ pearl foam, barnacled shoreline rock; accent `#49c6bd`.
-- **saltmines** — salt-crusted ochre ground, ember-lit mine road, brackish shaft water, rusted ore rock; accent `#f0a648`.
-- **pit** — trampled violet fairground grass, cracked plum midway, deep pit water, amethyst rubble; accent `#8a52a0`.
-- **attic** — rust-brown rotted floorboards, plank path, black leak-water, crumbling brick/plaster; accent `#a8431c`.
-- **hall** — drowned deep-plum plaza stone, bone-tile processional path, still black flood water, obsidian statue-stone; accent `#4b2a57`.
+
+> **These five are the CURRENT regions (world-bible §6.1–§6.5).** The block that
+> used to sit here described the retired cosmology — `shallows` / `saltmines` /
+> `pit` / `attic` / `hall`, a coast, a mine, a *fairground*, an attic and a
+> plaza. Its accents were not inert documentation: `tools/pixelart/tiles.py`
+> carried the same five values key-for-key, so this list is where the ground
+> tiles of two whole regions got their **orchid** `#8a52a0` and **plum**
+> `#4b2a57` — colours from a game that no longer exists. When a world is re-cut,
+> the *nouns* get noticed and renamed; the **hues** survive, because a colour
+> does not say what it is for. Accents below are the single canonical table
+> (`tools/overworld/paint_ground.py::ACCENTS`) — do not re-copy them anywhere.
+
+- **fold** — grey silt underfoot, trodden prayer-path, black still water, salt-crusted gothic stone; accent `#49c6bd` (abyssal teal).
+- **shelf** — kelp-matted slope, tracks pressed through weed, green-lit water, mussel-crusted rock; accent `#58c07a` (kelp green).
+- **breach** — pale sand and foam, shell-grit crossing, surface-lit shallows, barnacled hulls; accent `#e8d9a8` (sand / foam).
+- **scar** — dry rust-red spoil, heaped trench earth, standing brown pools, shattered shale; accent `#c25424` (blood / rust).
+- **keep** — drowned hall floor under warm lamplight, bone-tile processional path, still black flood water, neutral marble warmed by the lamps; accent `#c6984e` (brass lamplight).
+
+**The Keep's accent is the point, not a colour choice.** It is the *last* region
+and the *warmest* place in the game: world-bible §6.5 makes Lunal's room "warm,
+lit, stocked, comfortable. Padded bars, and no door on the inside." It is lit in
+the same brass as the prayer-lamps and Mir's own tool, so the trap looks like
+everything the player has spent four regions learning to trust. Anything cold or
+strange here — the storm violet it used to be — makes the offer refusable, and
+the ending stops being a choice.
 
 ---
 

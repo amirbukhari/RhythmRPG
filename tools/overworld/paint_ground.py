@@ -39,7 +39,10 @@ RNG = np.random.default_rng(20260714)
 
 # v12.0 Ascent accents: the Fold (deep teal), the Kelp Shelf (kelp green),
 # the Breach (sand/foam), the Scar (blood rust), the Stage (storm violet)
-ACCENTS = [(0x49, 0xC6, 0xBD), (0x58, 0xC0, 0x7A), (0xE8, 0xD9, 0xA8), (0xC2, 0x54, 0x24), (0x7A, 0x4E, 0xB4)]
+# The fifth was 0x7A4EB4, storm violet, inherited from the retired cosmology's
+# carnival -- see KEEP in tools/art/palette.py. The Keep is a drowned concert
+# hall and its accent is the game's own brass lamplight.
+ACCENTS = [(0x49, 0xC6, 0xBD), (0x58, 0xC0, 0x7A), (0xE8, 0xD9, 0xA8), (0xC2, 0x54, 0x24), (0xC6, 0x98, 0x4E)]
 
 
 
@@ -125,7 +128,7 @@ def main() -> None:
     # are cool/submerged -- but distinct: the Fold is a bluer silt town-floor,
     # the Shelf a greener drowned KELP slope. Not a sunlit meadow (owner: "the
     # transition from the fold straight to grass doesn't make sense").
-    GROUND_BASES = [(0x26, 0x40, 0x4A), (0x22, 0x44, 0x3C), (0x86, 0x76, 0x54), (0x40, 0x30, 0x28), (0x3A, 0x34, 0x46)]
+    GROUND_BASES = [(0x26, 0x40, 0x4A), (0x22, 0x44, 0x3C), (0x86, 0x76, 0x54), (0x40, 0x30, 0x28), (0x38, 0x35, 0x3A)]
     grass_bases = [tint(b, a, 0.22) for b, a in zip(GROUND_BASES, ACCENTS)]
     img = blended(grass_bases)
     n_low = value_noise(PH, PW, 160)
@@ -687,14 +690,14 @@ def main() -> None:
                 if (_c - btc) ** 2 + (_r - btr) ** 2 <= 22 and kind[_r, _c] in (0, 1):
                     island_tiles[_r, _c] = True
         stage_px = organic_mask(island_tiles, jitter=0.24, blur=9)
-        stone = tint((0x6A, 0x64, 0x78), ACCENTS[4], 0.18)
+        stone = tint((0x6C, 0x67, 0x6A), ACCENTS[4], 0.18)  # neutral marble, warmed by the accent
         scol = stone[None, None, :] * (1 + (n_low - 0.5) * 0.18 + (n_mid - 0.5) * 0.12 + (n_hi - 0.5) * 0.08)[..., None]
         scol = scol * (1 + (grain - 0.5) * 0.10)[..., None]
         canvas[stage_px] = scol[stage_px]
         # the hall's marble veining, a little denser on the stone itself
         vein_s = value_noise(PH, PW, 48)
         vm = stage_px & (np.abs(vein_s - 0.5) < 0.007)
-        canvas[vm] = canvas[vm] * 0.6 + np.array((0xC9, 0xC4, 0xD4), dtype=np.float32)[None, :] * 0.4
+        canvas[vm] = canvas[vm] * 0.6 + np.array((0xD0, 0xC9, 0xBC), dtype=np.float32)[None, :] * 0.4
 
     # --- the Fold: the obelisk town (v12.0) ----------------------------------
     # Mir wakes here. The town is told in ground alone: a trodden prayer

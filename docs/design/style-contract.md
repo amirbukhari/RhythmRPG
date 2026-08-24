@@ -1,6 +1,6 @@
 # The Style Contract — *The Drowned Chorus*
 
-**Status: FROZEN at v16.8 (M2).** This document is the authority on how every
+**Status: FROZEN at v17.0 (M3).** This document is the authority on how every
 pixel in this game is made. PRD §11.1.2 step 2 says "freeze the rules
 immediately; never prompt each asset from scratch" — this is that freeze,
 extended to cover the authored half of the pipeline too.
@@ -147,6 +147,70 @@ Two rules that took real iteration to learn, recorded so they are not undone:
 - **Foes separate by VALUE, not hue.** The rot slime was originally the same
   value and nearly the same hue as the Fold's silt, so it was invisible until it
   moved. It is now a lighter, yellower bile green.
+- **There is no purple in this world, and the UI did not know that.** The master
+  palette in `tools/pixelart/skatopia.py` still carries the previous art
+  direction's plum family (`P`/`p`/`u`, captioned "sapphire purses, twilight,
+  esoteric"), and two of the most-looked-at pieces of interface in the game were
+  keyed to it: the nine-slice panel frame — which draws round the player's HP in
+  **every fight** — and the groove meter's fill. An 0x8a52a0 orchid border in a
+  world of teal, stone, salt and lamp-amber does not read as a choice, it reads
+  as a leftover from another game, which is exactly what it was. The frames are
+  ocean and rust now, and groove is bone (it has to be legible against HP's teal
+  and focus's amber without inventing a fourth hue). **A shared palette module
+  is not a palette: an unused hue family sitting in the table is a loaded gun,
+  and the check is to grep the game's own hex literals, not the table.**
+
+- **The gun was still loaded, and it went off twice more.** The bullet above was
+  written after the panel frame and the groove bar; it turned out to be the
+  *third* time those three keys had been picked up, not the last. Grepping the
+  game's own literals is necessary and it is not sufficient — it only sees code.
+  Two more purple surfaces were shipping where no hex literal named them:
+
+  - `tools/pixelart/tiles.py` carried its own five-entry region-accent table,
+    keyed to the retired cosmology's region names, reaching for `PALETTE["P"]`
+    (orchid) and `PALETTE["p"]` (plum) for the last two. That tinted **20 of the
+    20 region ground tiles**, two whole regions of them.
+  - `tools/art/palette.py` defined `KEEP = (142, 123, 181)  # storm violet`,
+    cited to PRD §8.8.1, and `paint_ground.py` tinted region 4's terrain and
+    marble from it. `ground_plate_0_5.png` measured **86.6% purple pixels**.
+
+  So the audit that actually works is on the **shipped bytes**: walk every PNG in
+  `assets/`, convert to HLS, and count pixels in the forbidden hue band. It found
+  twelve files in seconds and needed no knowledge of which tool wrote them. Run
+  it before shipping — *the palette a game has is the one in its pixels.*
+
+  The keys are now **deleted** from `_HEX` rather than left unreferenced.
+  `render()` raises `KeyError` on an undefined key, so the next reach for purple
+  fails at build time. An unused hue family is not dormant, it is available.
+
+- **A retired cosmology leaves its colours behind after its nouns are gone.**
+  `KEEP` was violet because the fifth region used to be a *carnival* — `docs/design/art-prompts.md`
+  still describes "trampled violet fairground grass, cracked plum midway,
+  amethyst rubble; accent `#8a52a0`". The **nouns** were retired (`pit`,
+  `attic`, `hall`), and everyone could see those were stale. The **hue** survived
+  the rename, because a colour constant does not say what it is for. Nothing in
+  the PRD ever asked for violet: §8.8.1 asks only that each region own an accent.
+  When a world is re-cut, re-derive its colours from the new world, not from
+  which constants still resolve.
+
+  What replaced it is the point. World-bible §6.5: the Keep is "warm, lit,
+  stocked, comfortable. Padded bars, and no door on the inside." It is the **last**
+  region and it has to be the **warmest place in the game**, or Lunal's offer is
+  not tempting and the ending is not a choice. So the fifth accent is the game's
+  own brass lamplight — the same value as the prayer-lamps and Mir's tool. The
+  trap is lit like everything the player spent four regions learning to trust.
+  Region 4's ambient particle changed with it: violet *spores* became **dust in
+  lamplight**, because a spore is something growing and this room is the opposite,
+  and because motes turning over in warm light is the most domestic image there is.
+
+- **Two tables that must agree, and are edited separately, do not agree.** The
+  tile accents and the ground-plate accents tint art that is composited *in the
+  same pixel* — tiles are laid on the painted plate. They were two hand-kept
+  copies (and `tools/art/palette.py` was a third), so of course they had drifted:
+  `tiles.py` had salt-mine **orange** where the plate underneath had kelp
+  **green**. Purple was the defect that got them looked at; the divergence was
+  the bug. `tiles.py` now imports `paint_ground.ACCENTS` — one accent per region
+  in the whole pipeline, and a tile can no longer disagree with the dirt it sits on.
 
 ## 4. The scale contract (`tools/art/contract.py` → `SCALE`)
 
@@ -368,6 +432,62 @@ carving the value gradient upward-dark turns the same lump into a thing being li
 by a candle. Stone tones, a shoulder taper, a ledge to stand on, and the candle's
 shadow thrown up the back wall as proof of the direction.
 
+### 4.6 Placeholder art does not announce itself, and effects are not states
+
+**A file called `placeholder` will ship.** `assets/sprites/env/shared/save_obelisk.png`
+came out of `tools/pixelart/placeholder_cast.py` — the word is in the filename —
+and it was a 29x38 flat rounded rectangle with a cyan lozenge down the middle. It
+is the **save point**, placed beside every fight node in all five regions: after
+Mir himself it is the most-touched interactive object in the game, and it had
+survived every review pass because it was in the frame of none of them. It was
+also drawn at `setScale(1)`, bypassing `worldScaleFor` — the one unit the whole
+world shares — while `WorldScale` had carried its 2.4 m entry the entire time.
+The lesson is procedural, not artistic: **grep the tree for placeholder
+provenance, do not wait to notice it.**
+
+Two things the replacement had to be told, because it got both wrong first:
+
+* **A waystone is not a small obelisk.** The monolith is dressed, tapered and
+  plumb; a menhir that has stood in silt for centuries has a broken crown, a
+  footing of rough stones, and — the detail that does all the work — a **lean of
+  two or three degrees**. Nothing else in the vocabulary says "old and
+  unmaintained" at 36 world pixels, and a stone standing perfectly upright in
+  mud says the opposite. A taper that flares hard at the base with a point on top
+  is a bell, a hood, or a nose cone; it is never stone.
+* **A glyph carries meaning whether or not you meant it to.** An upright with a
+  crossbar is a Latin cross, and the first cut stamped one on the object the
+  player touches most in the game — a wholly foreign cosmology, at the exact spot
+  the world's own has to be legible. The mark is a **ring** now, which is canon
+  (the Rite kneels in concentric rings, world-bible §6.1) and cannot be mistaken
+  for anyone else's sign.
+
+**AN EFFECT KEYED TO A SIM STATE LASTS AS LONG AS THE STATE, WHICH IS NEVER WHAT
+YOU WANTED.** The hit flash was `if (state === "hitstun") setTintFill(0xffffff)`.
+Hitstun is 150–250 ms; a full white silhouette for that long does not read as an
+impact, it reads as the sprite having broken — and it erased the one frame of
+animation the hit existed to show off. It is keyed to `GameFeel`'s hold now, so it
+lasts 24 ms on an off-beat swing and 82 ms on a Perfect, and a Perfect flashes
+*harder and longer* for free, off the same one number as the shove, the sparks
+and the shake.
+
+Two more from the same frame:
+
+* **A telegraph goes on the FLOOR.** A 2 px ring stroked round the creature is 8
+  screen pixels of hard red at the 4x zoom, sitting on top of the silhouette: it
+  read as a debug gizmo, and it hid the telegraph *pose*, which is the animation
+  state §11.5 ships six of per foe for exactly this purpose. Two thin ground
+  ellipses instead, the inner one closing as the wind-up completes, so the tell
+  is a countdown and the creature stays visible.
+* **An accessibility caption is for something the player cannot HEAR.** §9.3
+  captions exist so a player without audio still gets "♪ THE MUSIC SHIFTS" and
+  "GROOVE FULL"; they are on by default, and they should be. An incoming attack
+  is not audio — it is a visual tell — and duplicating it as text put a
+  centre-screen all-caps warning banner in the middle of every fight, several
+  times per fight, in the default configuration. That cue is a combat *forecast*,
+  so it belongs to `sightreadEnabled` (§8.4), whose own doc comment already
+  claimed it. **Never fix a default-on accessibility feature by turning it off;
+  fix it by putting the cue behind the setting that actually describes it.**
+
 ## 5. Readability — the three levers
 
 Applied deliberately, per foe, and checked at true game scale on real ground
@@ -501,7 +621,18 @@ gate:
   frames named tiles, because no offline preview shows what the overworld
   actually composites: haze, god-rays, region grade, painted ground, and
   `worldScaleFor`. The Fold's houses previewed correctly and arrived in-game as
-  a pale billboard.
+  a pale billboard. `CAP_WINDOW=col,row,radius` dumps every textured display
+  object near a tile — a thing in the frame can come from `dressing.json`, a
+  scatter pass or the venue composer, and only the live display list knows
+  which. (It sees textures, so `Graphics` objects are invisible to it. That is
+  how a placeholder save point survived four review passes: see §4.6.)
+* `node tools/fight.mjs` — the same idea for **feel**, which the other three
+  cannot see at all. Impact is 82 ms long at its longest, and `ActionCombat` is
+  pure and knows nothing about any of it, so a green suite and a fight that
+  reads as two sprites overlapping are completely compatible states. It drives
+  real input, closes the distance off the sim's own positions, and **sleeps the
+  game loop two frames after a hit lands** so the impact frame can be
+  photographed. `LIST=1` adds the arena's display list, depth-sorted.
 
-The rule behind all three: **anything the eye cannot audit at the size it ships
-at gets a number instead.**
+The rule behind all four: **anything the eye cannot audit at the size and speed
+it ships at gets a number instead.**

@@ -11,6 +11,9 @@ authored here, rendered to PNG, committed.
 from __future__ import annotations
 
 import random
+import sys
+from pathlib import Path
+
 from PIL import Image
 from skatopia import PALETTE, save
 
@@ -176,16 +179,31 @@ def build() -> Image.Image:
 # One dominant accent hue per region (matching each region's arena, §11.1.1)
 # tinted over the same 4 base tiles, so the explorable world visually
 # telegraphs which movement you're approaching without redrawing from
-# scratch. Order matches the campaign graph: Shallows -> Salt Mines ->
-# Pit Below -> Attic of Teeth -> Conductor's Hall.
-REGIONS = ["shallows", "saltmines", "pit", "attic", "hall"]
-REGION_ACCENT: dict[str, tuple] = {
-    "shallows": PALETTE["C"],
-    "saltmines": PALETTE["o"],
-    "pit": PALETTE["P"],
-    "attic": PALETTE["r"],
-    "hall": PALETTE["p"],
-}
+# scratch. Order matches the campaign graph.
+#
+# THE ACCENTS ARE NOT DEFINED HERE ANY MORE, and that is the fix.
+# This file used to carry its own five-entry accent table keyed to the retired
+# cosmology's region names -- Pit Below and Conductor's Hall -- and it reached
+# for `PALETTE["P"]` (orchid) and `PALETTE["p"]` (plum) for the last two. Those
+# were the only two purple keys anyone still used, and they tinted 20 of the
+# game's 20 ground tiles in two whole regions.
+#
+# The deeper bug is that this was a SECOND COPY of a table that has to agree
+# with a third: these tiles are laid on top of the painted ground plates, and
+# `tools/overworld/paint_ground.py` tints those from its own `ACCENTS`. Two
+# tables that must match and are edited separately will not match -- and they
+# did not: this one had salt-mine ORANGE where the plate had kelp GREEN. So the
+# table is imported from the thing that paints the ground underneath it. There
+# is now one accent per region in the whole pipeline, and a tile can no longer
+# disagree with the dirt it sits on.
+REGIONS = ["fold", "shelf", "breach", "scar", "keep"]
+
+ROOT = Path(__file__).resolve().parents[2]
+_GROUND = Path(__file__).resolve().parents[1] / "overworld"
+sys.path.insert(0, str(_GROUND))
+from paint_ground import ACCENTS as _ACCENTS  # noqa: E402
+
+REGION_ACCENT: dict[str, tuple] = dict(zip(REGIONS, _ACCENTS))
 
 
 def _tint(img: Image.Image, accent: tuple, amt: float) -> Image.Image:
@@ -232,9 +250,28 @@ def preview(sheet: Image.Image) -> Image.Image:
 
 
 if __name__ == "__main__":
-    sheet = build()
+    # `build_multi_region()`, NOT `build()`. This said `build()`, which returns
+    # the four BASE tiles untinted -- a 64x16 sheet. The shipped asset is 320x16
+    # (5 regions x 4 tiles), because `OverworldScene` and the map generator both
+    # key tile ids off `region_index * 4 + {0,1,2,3}`. So running this file's own
+    # documented regenerate command replaced a 20-tile sheet with a 4-tile one
+    # and left every region past the Fold indexing off the end of the texture.
+    #
+    # It never fired because the last statement crashed on a dead absolute path
+    # (see below) and nobody re-ran it -- two latent bugs holding each other up.
+    # The check is one line and it is now in the file: assert the shape.
+    sheet = build_multi_region()
+    assert sheet.size == (T * 4 * len(REGIONS), T), sheet.size
     p = save(sheet, "tilemaps/overworld_tileset.png")
     print("wrote", p)
+    # The review gate writes NEXT TO THE REPO, not into a scratchpad. This line
+    # was an absolute path into a session temp dir that stopped existing when
+    # that session ended, so the script had been dying on its last statement --
+    # after writing the tileset, which is why nobody noticed: the asset landed
+    # and the process still exited 1, and a `&&` chain downstream of it silently
+    # never ran. A build step that half-succeeds is worse than one that fails.
+    out = ROOT / "tools" / "overworld" / ".preview" / "tiles_preview.png"
+    out.parent.mkdir(parents=True, exist_ok=True)
     prev = preview(sheet)
-    prev.save("/tmp/claude-0/-home-user-RhythmRPG/ca0ffd81-5d91-5caa-9e7d-445166acf3ed/scratchpad/tiles_preview.png")
-    print("preview written")
+    prev.save(out)
+    print("preview ->", out)

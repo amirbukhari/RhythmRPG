@@ -178,6 +178,23 @@ export class GameFeel {
   /** Apply the hold to a sprite AFTER the sim has positioned it. `baseScale`
    * is the scale the renderer just set, so the squash composes with it instead
    * of replacing it. Returns true if a hold is active. */
+  /**
+   * How far into a hold `id` still is: 1 at contact, 0 at release, 0 when free.
+   *
+   * The renderer uses this for the HIT FLASH, which is the reason it exists.
+   * A flash keyed to the sim's `hitstun` state instead was held for the whole
+   * 150-250ms of hitstun -- a full white `setTintFill` silhouette that long
+   * does not read as an impact, it reads as the sprite having broken, and it
+   * erased the one frame of animation the hit was supposed to show off.
+   * Keying it here instead ties it to the same tier-scaled hold as the shove,
+   * the sparks and the shake, so a Perfect flashes harder AND longer than an
+   * off-beat swing, for free.
+   */
+  flash(id: string): number {
+    const h = this.holds.get(id);
+    return h ? Math.max(0, 1 - h.t / h.dur) : 0;
+  }
+
   decorate(id: string, sprite: Phaser.GameObjects.Sprite, baseScale: number): boolean {
     const h = this.holds.get(id) ?? this.holds.get(`${id}:by`);
     if (!h || h.sprite !== sprite) return false;

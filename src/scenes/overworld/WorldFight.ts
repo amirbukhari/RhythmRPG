@@ -23,6 +23,7 @@ import {
   type BeatTier,
   type FrameInput,
 } from "../../systems/action/ActionCombat";
+import { sceneGoto } from "../Transition";
 
 /** Remappable combat actions (PRD §9.3) with their default key names. */
 type CombatAction = "light" | "heavy" | "special" | "parry" | "dash" | "ultimate";
@@ -355,10 +356,10 @@ export class WorldFight {
       .setDepth(22)
       .setAlpha(0);
     this.caption = this.scene.add
-      .text(this.rect.x + BASE_WIDTH / 2, this.rect.y + BASE_HEIGHT - 42, "", {
+      .text(this.rect.x + BASE_WIDTH / 2, this.rect.y + BASE_HEIGHT - 13, "", {
         fontFamily: "monospace",
         fontSize: "7px",
-        color: "#d8ceb6",
+        color: "#a89d84",
         stroke: "#05060a",
         strokeThickness: 3,
       })
@@ -559,6 +560,27 @@ export class WorldFight {
     const beatSec = this.beatSeconds / this.gameSpeed;
     const phase = ((t % beatSec) + beatSec) % beatSec;
     return Math.max(0, 1 - Math.min(phase, beatSec - phase) / w);
+  }
+
+  /**
+   * RELEASE GATE #1a's SEAM: is *now* inside the judged beat window?
+   *
+   * This is not visual code and nothing in the renderer calls it. It exists so
+   * `tests/e2e/beat-truth.spec.ts` can sample the judged grid across a beat
+   * interval and assert that the answer FLIPS -- a constant answer means
+   * judgment has stopped tracking the playing audio, which is the one failure
+   * the gate is there to catch.
+   *
+   * It was deleted along with the binary beat blink it used to drive, on the
+   * (correct) grounds that the blink was worse than `beatFlash`'s falling ramp
+   * -- but deleting the renderer's use of a value is not the same as deleting
+   * the value, and it silently took release gate #1a's assertion with it. It is
+   * defined in terms of `beatFlash` precisely so it cannot drift away from what
+   * the player is actually judged against: same song map, same calibration
+   * offset, same assist widening, same audio clock.
+   */
+  isOnBeat(): boolean {
+    return this.beatFlash() > 0;
   }
 
   /** Stamps 2-3 small dark scuffs into the ground at a hit's WORLD position --
@@ -896,7 +918,11 @@ export class WorldFight {
         this.playerSprite.play(want === "idle" ? "leader_idle" : "leader_walk");
       }
     }
-    if (p.state === "hitstun" && !reduced) this.playerSprite.setTintFill(0xffffff);
+    // Same as the foes (see GameFeel.flash): the flash is the hold, not the
+    // hitstun. Mir's own hold key is the target id the sim emitted for him.
+    const pfl = reduced ? 0 : this.feel.flash(p.id);
+    if (pfl > 0.5) this.playerSprite.setTintFill(0xffffff);
+    else if (pfl > 0) this.playerSprite.setTint(0xffb9a8);
     else this.playerSprite.clearTint();
     this.playerSprite.setAlpha(p.iframes > 0 && !reduced ? (Math.floor(this.scene.time.now / 60) % 2 ? 0.4 : 1) : 1);
 
@@ -971,7 +997,18 @@ export class WorldFight {
       const windup = e.ai?.mode === "windup";
       if (windup && !this.wasWindup.has(e.id)) {
         this.wasWindup.add(e.id);
-        if (GameContext.activeProfile?.settings.captionsEnabled) {
+        // SIGHTREAD, NOT CAPTIONS. This was gated on `captionsEnabled`, which is
+        // on by default and is a §9.3 AUDIO caption setting -- it exists so a
+        // player who cannot hear the music still gets "♪ THE MUSIC SHIFTS" and
+        // "GROOVE FULL". An incoming attack is not audio: it is a visual tell,
+        // and duplicating it as text put a centre-screen all-caps warning
+        // banner in every fight, several times per fight, by default. It is a
+        // combat FORECAST assist, so it belongs to `sightreadEnabled` (§8.4,
+        // "see the music" -- which the setting's own doc comment already says
+        // covers "telegraphed enemy strikes previewed on the fight HUD").
+        // Nothing is lost: the tell itself is now a closing ground ring, a
+        // six-state telegraph pose and a red aura, all three on by default.
+        if (GameContext.activeProfile?.settings.sightreadEnabled) {
           const side = e.pos.x < getPlayer(arena).pos.x ? "LEFT" : "RIGHT";
           this.showCaption(`⚠ ATTACK INCOMING — ${side}`, 1.2);
         }
@@ -987,9 +1024,29 @@ export class WorldFight {
         .get(e.id)
         ?.setPosition(wx, wy - 8)
         .setTint(windup ? 0xc22f34 : accent)
-        .setAlpha(windup ? 0.7 : 0.2 + this.lastBeatFlash * 0.26);
-      if (windup) this.fx.lineStyle(2, 0xc22f34, 0.9).strokeCircle(wx, wy - 4, 12);
-      if (e.state === "hitstun" && !reduced) s.setTintFill(0xffffff);
+        // 0.7 was tuned when the aura WAS the telegraph. With a closing ground
+        // ring under the foe it is a 64px red cloud on top of one, and in the
+        // Fold it washed straight over the waystone standing behind it.
+        .setAlpha(windup ? 0.34 : 0.2 + this.lastBeatFlash * 0.26)
+        .setScale(windup ? 0.72 : 1);
+      // THE TELEGRAPH IS A GROUND TELL, not a ring drawn round the creature.
+      // A 2px hard red circle is 8 screen pixels of pure 0xc22f34 at the 4x
+      // zoom, sitting on top of the foe's silhouette: it read as a debug gizmo
+      // and it hid the telegraph POSE, which is the animation state that
+      // actually tells you what is coming (§11.5 ships six states per foe for
+      // exactly this). Two rings on the floor instead -- thin, and the inner
+      // one closing as the wind-up completes, so the tell is a countdown.
+      if (windup) {
+        const t = Phaser.Math.Clamp(1 - (e.ai?.timer ?? 0) / 0.42, 0, 1);
+        this.fx.lineStyle(1, 0xc22f34, 0.55).strokeEllipse(wx, wy - 1, 30, 11);
+        this.fx.lineStyle(1, 0xe04434, 0.85).strokeEllipse(wx, wy - 1, 30 - 22 * t, 11 - 8 * t);
+      }
+      // The hit flash is driven by GameFeel's hold, not by `hitstun`: see
+      // GameFeel.flash. Hard white for the front half, a warm bruise as it
+      // releases, then the art comes back.
+      const fl = reduced ? 0 : this.feel.flash(e.id);
+      if (fl > 0.5) s.setTintFill(0xffffff);
+      else if (fl > 0) s.setTint(0xffcdb4);
       else s.clearTint();
       // The undirected spark and the untyped `hit()` voice that used to live
       // here are retired: both were inferred from an HP delta, so neither could
@@ -1072,7 +1129,14 @@ export class WorldFight {
     // Groove: pulses bright when the ultimate is ready (§8.5).
     const grooveReady = arena.groove >= ULTIMATE_GROOVE_COST;
     const pulse = grooveReady && Math.floor(this.scene.time.now / 220) % 2 === 0;
-    g.fillStyle(pulse ? 0xf4d27a : 0xb98fca, 1).fillRect(px0 + 38, hpY + 7, Math.round((arena.groove / 100) * grW), 3);
+    // SALT, not amethyst. This was 0xb98fca -- the master palette's `u`, captioned
+    // "sapphire purses, twilight, esoteric" from the game's previous art
+    // direction -- and it put a magenta pip in the corner of every fight. There
+    // is no purple in this world. Groove needs to be legible against HP (teal)
+    // and focus (amber) without inventing a fourth hue, so it is bone: pale,
+    // unmistakably neither of the other two, and the right register for a meter
+    // whose payoff is "the verse breaks the song".
+    g.fillStyle(pulse ? 0xf4efe2 : 0xa89d84, 1).fillRect(px0 + 38, hpY + 7, Math.round((arena.groove / 100) * grW), 3);
     if (this.isBoss && foes[0] && foes[0].state !== "dead") {
       const bw = 130;
       const bx = BASE_WIDTH / 2 - bw / 2;
@@ -1184,7 +1248,7 @@ export class WorldFight {
     GameContext.returnToNodeId = this.nodeId;
     GameContext.pendingNodeId = null;
 
-    void GameContext.persistActiveProfile().then(() => this.scene.scene.start("ResultsScene"));
+    void GameContext.persistActiveProfile().then(() => sceneGoto(this.scene, "ResultsScene"));
   }
 
   /** Immediate teardown (scene shutdown while a fight is live). */

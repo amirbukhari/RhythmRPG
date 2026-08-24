@@ -4,6 +4,7 @@ import {BASE_WIDTH, BASE_HEIGHT, retinaCamera } from "../config/GameConfig";
 import { addBackdrop } from "../ui/Backdrop";
 import { TextMenu } from "../ui/components/TextMenu";
 import { music } from "../systems/audio/SongPlayer";
+import { sceneGoto, sceneEnter } from "./Transition";
 
 /**
  * The ending. Beating the Conductor used to dump the player straight back
@@ -21,6 +22,7 @@ export class FinaleScene extends Phaser.Scene {
 
   create(): void {
     retinaCamera(this);
+    sceneEnter(this);
     addBackdrop(this, 0.35);
     music.setMode("menu"); // Sunshine Sally carries the credits
 
@@ -67,8 +69,8 @@ export class FinaleScene extends Phaser.Scene {
       BASE_WIDTH / 2 - 62,
       BASE_HEIGHT - 22,
       [
-        { label: "Return to the drowned world", onSelect: () => this.scene.start("OverworldScene") },
-        { label: "Main menu", onSelect: () => this.scene.start("MainMenuScene") },
+        { label: "Return to the drowned world", onSelect: () => sceneGoto(this, "OverworldScene") },
+        { label: "Main menu", onSelect: () => sceneGoto(this, "MainMenuScene") },
       ],
       10
     );

@@ -17,6 +17,7 @@ import dressingData from "../data/content/overworld/dressing.json";
 import { worldScaleFor } from "./env/WorldScale";
 import { NPCS, type NpcDef, type NpcLook } from "../data/content/dialogue";
 import { CutsceneScene } from "./CutsceneScene";
+import { sceneEnter } from "./Transition";
 
 /** A dialogue NPC placed on a walkable tile in the world. */
 interface PlacedNpc {
@@ -51,7 +52,7 @@ type FigureSpec = {
 };
 const FIGURE_SPECS: Record<NpcLook, FigureSpec> = {
   elder: { robe: 0x2f3742, robeLit: 0x46515d, robeDark: 0x1b2028, skin: 0xa88d72, skinShade: 0x6f5844, hair: 0xccd1d6, hood: false, legs: false, staff: true, beard: true, stoop: 2.1, scale: 0.98, shoulder: 6.6 },
-  woman: { robe: 0x4a2f3b, robeLit: 0x6a4553, robeDark: 0x2b1a22, skin: 0xba8f76, skinShade: 0x7c5c49, hair: 0x281a16, hood: false, legs: false, staff: false, beard: false, stoop: 0.5, scale: 0.95, shoulder: 6.0 },
+  woman: { robe: 0x4a3129, robeLit: 0x6a483a, robeDark: 0x2b1c17, skin: 0xba8f76, skinShade: 0x7c5c49, hair: 0x281a16, hood: false, legs: false, staff: false, beard: false, stoop: 0.5, scale: 0.95, shoulder: 6.0 },
   man: { robe: 0x2c3a44, robeLit: 0x415560, robeDark: 0x18232b, skin: 0xac846a, skinShade: 0x6f5340, hair: 0x22190f, hood: false, legs: true, staff: false, beard: false, stoop: 0.4, scale: 1.0, shoulder: 7.2 },
   child: { robe: 0x3f5a3e, robeLit: 0x587659, robeDark: 0x243624, skin: 0xbe967a, skinShade: 0x836248, hair: 0x2f2219, hood: false, legs: true, staff: false, beard: false, stoop: 0.3, scale: 0.64, shoulder: 6.2 },
   pilgrim: { robe: 0x2a3742, robeLit: 0x3f505c, robeDark: 0x172029, skin: 0xa5805f, skinShade: 0x6c5142, hair: 0x2b251f, hood: false, legs: false, staff: true, beard: false, stoop: 1.0, scale: 0.98, shoulder: 6.4 },
@@ -103,10 +104,23 @@ const ECHO_RUNE_FRAME = DECORATIVE_PROP_COUNT;
 // sea. The name and the kit are now canon (tools/art/env_fold.py). The other
 // four still carry retired names and are M4's problem.
 const REGION_BIOMES = ["fold", "saltmines", "pit", "attic", "hall"];
-// Per-region accent (Fold teal, Shelf green, Breach pale sand, Scar rust, Stage
-// violet) -- mirrors paint_ground's ACCENTS. Used by the region grade wash and
-// the v14.2 per-region ambient particles.
-const REGION_ACCENTS = [0x49c6bd, 0x58c07a, 0xe8d9a8, 0xc25424, 0x7a4eb4];
+// Per-region accent -- mirrors paint_ground's ACCENTS. Used by the region grade
+// wash and the v14.2 per-region ambient particles.
+//   Fold teal, Shelf green, Breach pale sand, Scar rust, Keep lamplight.
+//
+// THE FIFTH ONE WAS VIOLET, AND VIOLET MEANT NOTHING. It was `0x7a4eb4` and the
+// comment called region 4 "the Stage" -- a name from the retired cosmology. Under
+// world-bible §6.5 that region is THE KEEP: a drowned concert hall with a room
+// built on the stage where the orchestra sat. "Warm, lit, stocked, comfortable.
+// Padded bars, and no door on the inside."
+//
+// So the last region the player reaches is the WARMEST place in the game, and
+// that is the point -- it has to look like the one safe room in a lightless sea,
+// or Lunal's offer is not tempting and the ending is not a choice. The accent is
+// BRASS (tools/art/palette.py), the same value the prayer-lamps and Mir's own
+// tool are lit in. The trap is lit like everything the player has learned to
+// trust. Nothing here is a new hue: it is the game's one warm accent, spent last.
+const REGION_ACCENTS = [0x49c6bd, 0x58c07a, 0xe8d9a8, 0xc25424, 0xc6984e];
 
 /**
  * Walkable pixel-art overworld (tilemap + tile-snapped movement + camera
@@ -212,9 +226,11 @@ export class OverworldScene extends Phaser.Scene {
   create(): void {
     const profile = GameContext.activeProfile;
     if (!profile) {
+      // Not a transition: there is no save, so there is nothing to fade FROM.
       this.scene.start("SaveScene");
       return;
     }
+    sceneEnter(this, { zoom: false });
 
     this.moving = false;
     this.obelisks = [];
@@ -1590,8 +1606,13 @@ export class OverworldScene extends Phaser.Scene {
           }
         } else if (region === 4) {
           if (bucket < 2) {
-            // Stage: violet spores drifting slowly up toward the far light
-            const spore = this.amb(this.add.image(px, py, "glow").setBlendMode(Phaser.BlendModes.ADD).setTint(0xb18cf0).setScale(0.045).setAlpha(0).setDepth(4.22));
+            // Keep: dust, hanging in lamplight. A drowned concert hall is the
+            // one interior in the game, so its ambient particle is the thing
+            // that only exists indoors -- motes turning over in warm light,
+            // the most domestic image available. EMBER, not the old 0xb18cf0
+            // violet: there is no violet in this world (§3), and a spore is
+            // something growing, which is the opposite of what this room is.
+            const spore = this.amb(this.add.image(px, py, "glow").setBlendMode(Phaser.BlendModes.ADD).setTint(0xf4d27a).setScale(0.045).setAlpha(0).setDepth(4.22));
             this.tweens.add({ targets: spore, y: py - 24 - (h % 16), x: px + 6 - (h % 12), alpha: { from: 0.36, to: 0 }, duration: 5200 + (h % 3200), repeat: -1, delay: h % 4200, ease: "Sine.inOut" });
           }
         } else if (region === 2 && bucket < 1) {
@@ -2051,8 +2072,20 @@ export class OverworldScene extends Phaser.Scene {
       .setScale(0.4)
       .setAlpha(0.35)
       .setDepth(3);
-    if (this.textures.exists("env_shared_save_obelisk")) {
-      this.add.image(x, y, "env_shared_save_obelisk").setOrigin(0.5, 1).setScale(1).setDepth(4);
+    // The waystone goes through `worldScaleFor` like every other piece in the
+    // world -- it was drawn at `setScale(1)`, which is the one thing §4 of the
+    // style contract forbids ("one unit for the whole world, so a chair can
+    // never outgrow a building"). WorldScale has had its 2.4m entry all along.
+    const stoneSrc = this.textures.exists("env_shared_save_obelisk")
+      ? this.textures.get("env_shared_save_obelisk").getSourceImage()
+      : null;
+    if (stoneSrc) {
+      this.add
+        .image(x, y, "env_shared_save_obelisk")
+        .setOrigin(0.5, 1)
+        .setScale(worldScaleFor("env_shared_save_obelisk", stoneSrc.height) ?? 0.24)
+        .setTint(0xd6dce6)
+        .setDepth(4);
     } else {
       // art not shipped yet: a simple standing stone so the save point still exists
       this.add.rectangle(x, y - 7, 6, 14, 0x2c3a4a).setDepth(4);

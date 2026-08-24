@@ -4,6 +4,7 @@ import { RELICS } from "../systems/progression/Relics";
 import {BASE_WIDTH, BASE_HEIGHT, retinaCamera } from "../config/GameConfig";
 import { TextMenu } from "../ui/components/TextMenu";
 import { addBackdrop } from "../ui/Backdrop";
+import { sceneGoto, sceneEnter } from "./Transition";
 
 /** XP, relic, and unlock summary after a battle. See PRD §8.5. */
 export class ResultsScene extends Phaser.Scene {
@@ -15,6 +16,7 @@ export class ResultsScene extends Phaser.Scene {
 
   create(): void {
     retinaCamera(this);
+    sceneEnter(this);
     // Phaser reuses one persistent Scene instance across stop/start cycles
     // (same class of bug fixed in SettingsOverlay at v4.2): a menu kept from
     // a previous visit references already-destroyed Text objects, and
@@ -27,7 +29,7 @@ export class ResultsScene extends Phaser.Scene {
     GameContext.lastBattleResult = null;
 
     if (!result) {
-      this.scene.start("OverworldScene");
+      sceneGoto(this, "OverworldScene");
       return;
     }
 
@@ -76,9 +78,9 @@ export class ResultsScene extends Phaser.Scene {
   private continueOut(): void {
     if (GameContext.campaignJustCompleted) {
       GameContext.campaignJustCompleted = false;
-      this.scene.start("FinaleScene");
+      sceneGoto(this, "FinaleScene");
     } else {
-      this.scene.start("OverworldScene");
+      sceneGoto(this, "OverworldScene");
     }
   }
 

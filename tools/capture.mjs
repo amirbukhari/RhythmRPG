@@ -60,7 +60,16 @@ const errors = [];
 page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
 page.on("pageerror", (e) => errors.push(String(e)));
 
-const active = (key) => page.waitForFunction((k) => window.__meterfallDebug?.game?.scene?.isActive(k), key);
+// `isActive` goes true when the scene STARTS, which is before its `create()`
+// has finished building a menu and binding the keyboard -- so a keypress sent
+// the instant this resolves can be dropped on the floor. That was always a
+// race; scene transitions (src/scenes/Transition.ts) made it a reliable one,
+// because arriving now costs a 380ms fade-in on top of create(). Wait for the
+// scene, then let it settle.
+const active = async (key) => {
+  await page.waitForFunction((k) => window.__meterfallDebug?.game?.scene?.isActive(k), key);
+  await page.waitForTimeout(500);
+};
 await page.goto(URL);
 await active("AudioGateScene");
 await page.mouse.click(640, 360); // the mandatory user-gesture audio unlock (PRD §10.4)

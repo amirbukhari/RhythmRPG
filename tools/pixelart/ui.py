@@ -20,9 +20,20 @@ def panel(boss: bool = False) -> Image.Image:
     px = im.load()
     ink = PALETTE["K"]
     fill = (13, 15, 24, 235)  # translucent ink interior
-    frame = PALETTE["p"] if not boss else PALETTE["b"]
-    frame_hi = PALETTE["P"] if not boss else PALETTE["B"]
-    bone = PALETTE["w"]
+    # THE FRAME IS OCEAN, NOT PLUM. This was keyed to P/p -- 8a52a0 orchid over
+    # 4b2a57 plum -- and it framed the player's HP in every fight in the game.
+    # There is no purple in *The Drowned Chorus*: the world is teal, stone, salt
+    # and lamp-amber, and a hot orchid border is the single most-looked-at UI
+    # element in combat reading as a leftover from another game (it is: the plum
+    # keys are captioned "sapphire purses, twilight, esoteric" from the old
+    # direction). The player frame is deep ocean; the boss frame is rust, which
+    # is what its own nameplate text (#f0a648) was already using.
+    frame = PALETTE["e"] if not boss else PALETTE["Y"]
+    frame_hi = PALETTE["c"] if not boss else PALETTE["r"]
+    # And the rim is DIM. A 1px bone outline all the way round the panel is a
+    # hard pale rectangle at 4x, which is why the plate read as a sticker laid
+    # on the frame rather than a window cut into it.
+    bone = PALETTE["D"]
 
     for y in range(S):
         for x in range(S):
@@ -40,9 +51,11 @@ def panel(boss: bool = False) -> Image.Image:
             else:
                 px[x, y] = fill
 
-    # corner flourishes: little bone studs
+    # corner flourishes: four 1px studs, and they are now the brightest thing in
+    # the panel by a wide margin -- style-contract §3, the brightest thing is
+    # SMALL. With a bone rim competing they did nothing at all.
     for cx, cy in [(3, 3), (S - 4, 3), (3, S - 4), (S - 4, S - 4)]:
-        px[cx, cy] = PALETTE["W"]
+        px[cx, cy] = PALETTE["w"]
     return im
 
 

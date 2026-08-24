@@ -4,6 +4,7 @@ import { GameContext } from "../state/GameContext";
 import {BASE_WIDTH, BASE_HEIGHT, retinaCamera } from "../config/GameConfig";
 import { addBackdrop } from "../ui/Backdrop";
 import { music } from "../systems/audio/SongPlayer";
+import { sceneGoto, sceneEnter } from "./Transition";
 
 /**
  * Mandatory "Press Any Key to Start Audio" gate.
@@ -19,6 +20,7 @@ export class AudioGateScene extends Phaser.Scene {
 
   create(): void {
     retinaCamera(this);
+    sceneEnter(this);
     addBackdrop(this, 0.45);
     this.add
       .text(BASE_WIDTH / 2, BASE_HEIGHT / 2, "PRESS ANY KEY OR CLICK TO CONTINUE", {
@@ -71,6 +73,6 @@ export class AudioGateScene extends Phaser.Scene {
     music.setVolume(GameContext.activeProfile?.settings.volumeMusic ?? 0.7);
     music.setMode("menu");
     GameContext.analytics.track("audio_gate_completed");
-    this.scene.start("MainMenuScene");
+    sceneGoto(this, "MainMenuScene");
   }
 }

@@ -5,6 +5,7 @@ import { campaign } from "../data/ContentRegistry";
 import {BASE_WIDTH, retinaCamera } from "../config/GameConfig";
 import { addBackdrop } from "../ui/Backdrop";
 import { TextMenu } from "../ui/components/TextMenu";
+import { sceneGoto, sceneEnter } from "./Transition";
 
 /** Save slot create/load/delete against IndexedDB. See PRD §10.7. */
 export class SaveScene extends Phaser.Scene {
@@ -14,6 +15,7 @@ export class SaveScene extends Phaser.Scene {
 
   async create(): Promise<void> {
     retinaCamera(this);
+    sceneEnter(this);
     addBackdrop(this, 0.55);
     this.add
       .text(BASE_WIDTH / 2, 20, "SELECT SAVE SLOT", { fontFamily: "monospace", fontSize: "10px", color: "#d8ceb6", stroke: "#05060a", strokeThickness: 3 })
@@ -35,7 +37,7 @@ export class SaveScene extends Phaser.Scene {
     GameContext.activeProfile = profile;
     GameContext.analytics.setConsent(profile.analyticsConsent);
     GameContext.analytics.track("save_loaded", { slotId });
-    this.scene.start(profile.calibrationDone ? "OverworldScene" : "CalibrationScene");
+    sceneGoto(this, profile.calibrationDone ? "OverworldScene" : "CalibrationScene");
   }
 
   private async createSlot(): Promise<void> {
@@ -43,6 +45,6 @@ export class SaveScene extends Phaser.Scene {
     const profile = createDefaultSaveProfile(slotId, campaign.startNodeId);
     await GameContext.saveManager.save(profile);
     GameContext.activeProfile = profile;
-    this.scene.start("CalibrationScene");
+    sceneGoto(this, "CalibrationScene");
   }
 }

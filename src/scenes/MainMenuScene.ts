@@ -4,6 +4,7 @@ import { TextMenu } from "../ui/components/TextMenu";
 import { addBackdrop } from "../ui/Backdrop";
 import { music } from "../systems/audio/SongPlayer";
 import { GameContext } from "../state/GameContext";
+import { sceneGoto, sceneEnter } from "./Transition";
 
 /** Start, continue, settings. See PRD §10.6. */
 export class MainMenuScene extends Phaser.Scene {
@@ -13,6 +14,7 @@ export class MainMenuScene extends Phaser.Scene {
 
   create(): void {
     retinaCamera(this);
+    sceneEnter(this);
     // Start the procedural soundtrack (PRD §11.2). The AudioContext was
     // unlocked in AudioGateScene, so it can play from here on.
     music.setVolume(GameContext.activeProfile?.settings.volumeMusic ?? 0.7);
@@ -45,7 +47,7 @@ export class MainMenuScene extends Phaser.Scene {
     // framed menu panel
     this.add.nineslice(BASE_WIDTH / 2, 116, "ui_panel", undefined, 132, 42, 5, 5, 5, 5).setDepth(0);
     new TextMenu(this, BASE_WIDTH / 2 - 48, 102, [
-      { label: "Start / Continue", onSelect: () => this.scene.start("SaveScene") },
+      { label: "Start / Continue", onSelect: () => sceneGoto(this, "SaveScene") },
       { label: "Settings", onSelect: () => this.scene.launch("SettingsOverlay", { returnTo: "MainMenuScene" }) },
     ]);
   }

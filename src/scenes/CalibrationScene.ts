@@ -4,6 +4,7 @@ import { CALIBRATION_BPM, CALIBRATION_BEAT_SECONDS, CALIBRATION_TAP_COUNT, compu
 import { GameContext } from "../state/GameContext";
 import {BASE_WIDTH, BASE_HEIGHT, retinaCamera } from "../config/GameConfig";
 import { addBackdrop } from "../ui/Backdrop";
+import { sceneGoto, sceneEnter } from "./Transition";
 
 /** AV sync test and global timing offset save. See PRD §9.3, §10.3. */
 export class CalibrationScene extends Phaser.Scene {
@@ -21,6 +22,7 @@ export class CalibrationScene extends Phaser.Scene {
 
   async create(): Promise<void> {
     retinaCamera(this);
+    sceneEnter(this);
     // The world's dimmed key-art instead of raw black -- this is the first
     // dressed screen a new player reaches (art cohesion audit C1).
     addBackdrop(this, 0.72);
@@ -104,7 +106,7 @@ export class CalibrationScene extends Phaser.Scene {
       await GameContext.persistActiveProfile();
     }
     GameContext.analytics.track("calibration_completed", { offsetMs });
-    this.scene.start("OverworldScene");
+    sceneGoto(this, "OverworldScene");
   }
 
   private cleanup(): void {

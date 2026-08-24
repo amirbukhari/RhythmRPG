@@ -22,7 +22,22 @@ FOLD = (73, 198, 189)  # abyssal teal   -- the drowned town
 KELP = (108, 168, 116)  # kelp green     -- the climb
 BREACH = (216, 206, 182)  # sand / foam  -- the waterline
 SCAR = (194, 84, 36)  # blood / rust     -- the surface
-KEEP = (142, 123, 181)  # storm violet   -- the hall
+# The Keep is the LAST region and the warmest, which is the whole trap: Lunal's
+# room is "warm, lit, stocked, comfortable" with "no door on the inside"
+# (world-bible §6.5), and it has to look like the one safe place in a lightless
+# sea or the player is not tempted and the ending is not a choice.
+#
+# IT WAS `(142, 123, 181)`, "storm violet", and that came from a game that no
+# longer exists. Chased down, the violet traces to `docs/design/art-prompts.md`:
+# the retired cosmology's **pit** -- "trampled violet fairground grass, cracked
+# plum midway, amethyst rubble; accent #8a52a0". A CARNIVAL. The Keep is a
+# drowned concert hall. Nothing in the PRD ever asked for violet; §8.8.1 asks
+# only that each region own an accent hue, and this one inherited a dead one.
+#
+# So the fifth hue is the game's own lamplight, spent last: the same warm accent
+# as the prayer-lamps and Mir's tool. The trap is lit like everything the player
+# has spent four regions learning to trust.
+KEEP = (198, 152, 78)  # brass lamplight -- the hall, and the room inside it
 
 # ---- warm / emissive ----------------------------------------------------
 EMBER = (244, 210, 122)  # the one warm accent; Mir's tool, prayer-lamps
@@ -48,12 +63,26 @@ MIR_SKIN_DARK = (110, 84, 72)
 MIR_HAIR = (34, 30, 32)
 
 # ---- Nari ---------------------------------------------------------------
-# Faintly warm: the only warm living thing, so he reads instantly at 13px.
-NARI_SMOCK = (166, 148, 118)  # a value step below his skin, or he reads as one
-# featureless warm lozenge at 13px and the head stops being a head
-NARI_SKIN = (214, 176, 150)
-NARI_HAIR = (150, 128, 104)
-NARI_SKIN_LEG = (196, 158, 134)  # bare shins below the smock -- he is barefoot
+# The only warm living thing in a cold town, so he reads instantly at 13px.
+#
+# A VALUE STEP IS NOT A VALUE SEPARATION. The whole of Nari used to sit inside
+# one narrow warm-beige band -- smock luma ~150, skin ~184, hair ~131, shins
+# ~166 -- and the comment on the smock said "a value step below his skin, or he
+# reads as one". It was one step, and he did read as one: at the size he ships
+# at, in the plaza (`cap_plaza.png`), garment and skin merged into a single
+# pale mid-tone mass and the boy read as NUDE. That also broke §3 outright --
+# he was simultaneously the largest pale shape in the frame and close to its
+# brightest, and in this world the brightest thing must be small.
+#
+# The fix is not to darken him, it is to SPEND the brightness where it means
+# something. The smock drops two thirds of the way down the value scale into
+# the ember/brass family the lamps are lit from, and Nari's skin -- unchanged
+# -- becomes the small bright note: a face and two hands, which is exactly
+# where the eye should go on a child you are about to lose.
+NARI_SMOCK = (118, 94, 56)     # muted ochre; ~60 luma below the skin, not 30
+NARI_HAIR = (86, 66, 52)       # darker than the smock, so the head caps cleanly
+NARI_SKIN = (214, 176, 150)    # THE bright note. Small on purpose -- see above.
+NARI_SKIN_LEG = (176, 140, 118)  # bare shins below the hem -- he is barefoot
 
 # ---- foes ---------------------------------------------------------------
 # Sickly BILE green, deliberately lighter and yellower than the Fold's ground
