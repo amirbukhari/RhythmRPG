@@ -2,7 +2,7 @@
   "name": "project-meterfall",
   "version": "0.1.0",
   "private": true,
-  "description": "Browser rhythm RPG — single-player, pixel-art, audio-clock-driven combat.",
+  "description": "Browser rhythm RPG \u2014 single-player, pixel-art, audio-clock-driven combat.",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "art:ground": "python3 tools/overworld/paint_ground.py && python3 tools/overworld/check_plate.py",
+    "art:check": "python3 tools/overworld/check_plate.py"
   },
   "dependencies": {
     "ajv": "^8.20.0",

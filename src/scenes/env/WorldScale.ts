@@ -19,6 +19,25 @@ const MIN_SCALE = 0.28;
 
 /** First matching pattern wins. Height of the OBJECT as drawn (metres). */
 const METERS: [RegExp, number][] = [
+  // -- the Fold's town kit (tools/art/env_fold.py). First, because these are
+  // exact keys and several looser patterns below would otherwise claim them
+  // (`/scatter_lamp$/` and `/plinth/` in particular). Mir is 1.7m, so a 7m
+  // house stands about four times his height -- a town, not a diorama.
+  // The town obelisk: "a massive obelisk" (world-bible §2), and the tallest
+  // thing in the Fold by a long way -- 9m is five Mirs.
+  [/^env_fold_obelisk$/, 9.0],
+  [/^env_fold_house_tall$/, 9.0],
+  [/^env_fold_house_row$/, 6.5], // a terrace of three: 13m long to the eaves
+  [/^env_fold_house_a$/, 7.0],
+  [/^env_fold_house_b$/, 5.0],
+  [/^env_fold_arch$/, 5.0],
+  [/^env_fold_lamp$/, 2.6],
+  [/^env_fold_shrine$/, 2.2],
+  [/^env_fold_well$/, 1.9],
+  [/^env_fold_cart$/, 1.3],
+  [/^env_fold_crate_stack$/, 1.1],
+  [/^env_fold_bench$/, 0.9],
+  [/^env_fold_ring_stone$/, 0.45],
   // -- buildings & monuments (these were reading SMALLER than furniture) --
   [/ticket_booth/, 3.2],
   [/tent_pole/, 3.4],

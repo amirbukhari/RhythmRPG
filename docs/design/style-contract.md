@@ -1,6 +1,6 @@
 # The Style Contract — *The Drowned Chorus*
 
-**Status: FROZEN at v16.4 (M1).** This document is the authority on how every
+**Status: FROZEN at v16.8 (M2).** This document is the authority on how every
 pixel in this game is made. PRD §11.1.2 step 2 says "freeze the rules
 immediately; never prompt each asset from scratch" — this is that freeze,
 extended to cover the authored half of the pipeline too.
@@ -167,6 +167,207 @@ difference between a man, his small son, and what is bigger than both.
 Frames are seated on a shared baseline (`gen.fit_frame`), so every character in
 the game stands on one floor.
 
+### 4.1 Environment: four laws measured on the Fold's town kit
+
+The scale contract above governs *figures*. Building the Fold's town
+(`tools/art/env_fold.py`, `tools/overworld/place_fold.py`) measured four more
+that govern *architecture*, each of which cost a visibly wrong build first.
+
+**1. A facade is as wide as it is tall.** The first houses were 30 rig units
+wide and 196 tall. At the canonical world scale that is 9m tall and 2.8m wide,
+and the town previewed as six **lighthouses** standing in a field. Bodies are
+now 1:1 to 1:2, never 1:3. Corollary: **keep the frame tight to the art**, since
+`worldScaleFor` scales by source *height* — empty pixels above a roof silently
+shrink the building.
+
+**2. Architecture is authored ~30% darker than it reads right in isolation.**
+The overworld lays additive haze and god-rays over everything, and a tall sprite
+collects more of both than a low one — so a building is lifted toward the light
+far harder than a prop is. Stone that previewed correctly against dark silt came
+back from the game as a pale grey-blue billboard. `STONE` went 58,70,76 →
+40,49,55, which is what leaves the lit windows as the brightest thing on the
+street. The inverse also holds: the kneeling stones sit on *pale* paving and are
+too low to collect haze, so they had to go the other way to stop reading as a
+ring of black tyres. **Author for the frame the piece will actually sit in.**
+
+**3. Density is what separates a town from some buildings.** At world scale,
+individually-placed houses must sit ~4 tiles apart to avoid overlapping, and a
+street of 4-tile gaps reads as a hamlet. Real towns are terraces: `house_row` is
+three houses sharing two party walls as ONE piece, with bay heights, doors and
+lit windows jittered off `_h`. One placement, a whole street front. The empty
+middles then need small props (`well`, `crate_stack`, `cart`) — a plaza with
+nothing in the middle of it is a field.
+
+**4. A prop is legible from a fixed short list of features, and it needs all of
+them.** The handcart drew as a tilted bed, one wheel and a single raised shaft,
+and read unmistakably as a **cannon**. A cart needs a level bed, two wheels at
+different depths, and two shafts running to the ground. When a piece reads as the
+wrong object, the fix is never more detail — it is the missing structural
+feature.
+
+Two smaller rules from the same build:
+
+* **`Blob` defaults to the figure rim (1.0), and on architecture it shows.**
+  Every wheel, kneeling stone and salt heap came back wearing a bright teal
+  outline — a neon decal, not a rim light. Stone, iron and timber go through
+  `blob()` at `STONE_RIM = 0.22`; only emissive flames want the full treatment.
+* **One window in four is dark** (`DARK_RATE`). With every window in every house
+  lit, the Fold read as a gingerbread village. Some windows being out is truer,
+  quieter, and it matters later, because the story is about somebody leaving.
+
+### 4.2 Placement is checked, not eyeballed
+
+Props in this world are placed by hand, and by hand is right — but a hand cannot
+see a **footprint**. A 7m house is 3.3 x 6.6 tiles and covers the seven tiles
+*north* of the one it stands on, because sprites are drawn from their base.
+Eyeballing coordinates off a map puts buildings on roads.
+
+So `tools/overworld/place_fold.py` holds the authored placements *next to a
+checker*, and validates every one against `assets/tilemaps/overworld.json`:
+no piece may cover a path tile (the arch and the kneeling stones are exempt — a
+gate that does not straddle its road is a decoration in a field) or a water
+tile; pieces **should** stand on rock, which already blocks movement, so that
+the collision layer and the picture finally agree; and nothing may share ground
+with anything else. `--preview` renders the result at true world scale before it
+is written, because a layout is not shipped unlooked-at (§9).
+
+Two findings worth keeping from writing it:
+
+* **The map already had architecture in it.** `generate_overworld_map.py` laid
+  hollow rectangles of rock around the Fold — (17-21, 166-170), (30-34,
+  162-166), (26-30, 177-181). Those are walled yards, and nothing had ever been
+  drawn on them.
+* **Ground contact, not bounding boxes, is the overlap test.** A lamp standing in
+  front of a house is inside the house's box by definition, and the engine
+  already sorts by base Y. What is actually broken is two pieces standing on the
+  same ground.
+
+### 4.3 The flat-patch law (the painted ground)
+
+The ground plate (`tools/overworld/paint_ground.py`) is 5696 x 3200 px of
+procedural painting composited in ~25 passes, and it shipped with **136
+mathematically flat blocks** in the Fold alone — hard-edged untextured patches,
+about 96 x 72 px each, on the most-looked-at surface in the game. They were
+found by measurement, not by eye: scan every 8x8 block of each chunk PNG and
+flag the ones whose per-channel standard deviation is under 0.6.
+
+The cause is one mistake made three times:
+
+> A pass that **fully replaces** the canvas owes it the grain back.
+
+The base ground field carries four noise terms — cell-160, cell-36, cell-7, and
+per-pixel `grain`. The eelgrass beds, the path ribbon, and the water fill all
+*overwrite* it (`canvas[mask] = col[mask]`, or a blend weight that saturates at
+1.0) with a colour carrying only the **cell-36** term. A cell-36 term moves by
+about 1/200 of its range across eight pixels. The elevation pass then multiplies
+by a **quantized** terrace tone, which is constant inside a terrace. Constant
+times constant is flat, exactly, and 8-bit output rounds the last of it away.
+
+Two rules follow, and both are cheap:
+
+* Any full overwrite re-supplies `n_hi` and `grain` at the same order as the
+  field it replaced. Smoother materials get smaller amplitudes (water 0.05,
+  road 0.09, eelgrass 0.11) — never zero.
+* A saturating mask is a full overwrite. `np.clip((n - 0.55) / 0.12, 0, 1)` is
+  1.0 across most of its blob, not a soft blend, and the thing it blends *to* is
+  therefore the only thing on screen there.
+
+The generalisable part is the method. Flatness is invisible to a reviewer
+looking at a 5696px image scaled to fit a window, and obvious to four lines of
+numpy. Anything the eye cannot audit at the size it ships at gets a measured
+gate instead (§9).
+
+### 4.4 Engine primitives are a placeholder, including for landmarks
+
+§0 says an abstraction is not an image. The Fold shipped with the rule broken on
+the single most-looked-at object in the game: the town obelisk — the landmark
+the town is built around (world-bible §2), the save point the player returns to
+all game, and the object the premise hangs off — was drawn by
+`OverworldScene.placeTownObelisk` as five `Graphics` polygons and five identical
+cyan rectangles. In the build it read as a grey gradient **wedge with tick
+marks**.
+
+It is authored art now (`tools/art/env_fold.py` → `obelisk`), and the four
+things that turned a wedge into stone are reusable:
+
+1. **Volume in five stepped bands, not two.** A two-tone split puts its whole
+   value jump on one hard line down the middle and reads as folded paper. Five
+   bands following the taper read as a quarried shaft — and the fourth band is
+   the *shadow turn*, which has to start before the silhouette edge or the dark
+   side looks pasted on.
+2. **It was built.** Seams, kept faint and only on the lit side. Eleven
+   full-width courses with lit lips turned it into a stack of floors, which
+   together with boxed glyph panels read as an **office tower**.
+3. **Damage.** Chips off both edges, a corner off the plinth. An undamaged
+   monolith at the bottom of the sea is a render, not a place.
+4. **An old waterline.** Salt crust at the plinth and again a third of the way
+   up, where the sea used to stand — the game's whole geography in one detail.
+
+Three failures worth keeping, because each was a plausible choice:
+
+* **A spire plus a wide plinth is a rocket.** A real obelisk is nearly a slab —
+  31 units at the foot to 17 at the shoulder over 372 of height. The first cut
+  ran 34 → 13 on a 124-wide two-tier pad and read as a launch vehicle.
+* **Boxed glyph panels are lit windows**, and a tower of lit windows is the one
+  thing this must not be. The fix for that — one continuous recessed channel of
+  worn marks, running the shaft's full height — previewed as a weathered text
+  and then failed **worse** in the browser, twice over, which is why §4.5 exists:
+  a centred column of regularly-spaced marks is a **ladder**, and the channel's
+  own lit lip put a hard highlight up the middle of the slab so the shaft came
+  apart into a **bundle of pipes**. A ladder up a tall shaft with a lit tip is a
+  launch gantry — the exact read the taper fix above had just bought off.
+  The inscription now sits in a shallow panel in the **bottom third only**, with
+  no lit lip, several marks per line at a varied left margin, and the odd
+  upright stroke. See §4.5.
+* **The lighting was hiding the art.** The old teal body-glow was a scale-1.0
+  wash tuned to give a flat polygon presence; over the sprite it bleached out
+  the courses, the chips and the waterline. When art replaces an abstraction,
+  the effects that were propping the abstraction up have to come off with it.
+
+The §4.1 haze law bites twice as hard here: with the lit band at 20% of the
+shaft the monolith arrived **paler than the houses**. The lit band is a 7%
+sliver now.
+
+And one scale-clamp rule fell out of the same pass. `ring_stone` ships at
+`MIN_SCALE` — **12 × 6 pixels**. Its three-blob build rendered the polished
+highlight sub-pixel while the wide dark contact blob survived, so the kneeling
+rings came back as black beans on pale paving. A piece that clamps at
+`MIN_SCALE` gets two tones and no baked contact shadow: the placement pass
+already draws a proportional one, so a second darkens the average for nothing.
+
+### 4.5 Two laws about geometry, both found in the browser
+
+Both of these shipped past an offline contact-sheet review and were obvious in
+the first in-game frame. They are the reason `tools/capture.mjs` is a gate and
+not a convenience.
+
+**REGULAR REPETITION IS A MACHINE.** Evenly-spaced marks are the strongest
+pattern the eye has, and it will name the machine before it names the material.
+Measured, in this kit: a centred column of dashes became a *ladder*; eleven
+full-width courses became *storeys*; one vertical strap per crate became a
+*xylophone*; two dark discs under a cart became a *table*. Nothing in this world
+is machined, so every repeat has to be broken on at least two axes — count,
+spacing, length, **and** offset. Breaking one is not enough: the obelisk's marks
+already varied in length and were a third worn blank, and they still read as
+rungs, because they were all horizontal and all on the centreline.
+
+**AN ATTACHMENT'S BASE COMES FROM THE SURFACE IT ATTACHES TO.** Derive it, never
+take it from a nearby landmark value. `house_row` measured its chimney base off
+`apex` — the ridge — and then placed the stack two-thirds of the way *down* the
+slope, so it hung ~20 px clear of the tiles: two chimneys floating in open water
+above the terrace, and the same bug sat in `house_tall`. The fix is a `roof_y(x)`
+closure and the stack's **downhill** corner (the lowest point of its footprint),
+buried a few units under it — which then holds at every roof height the `_h`
+jitter can pick, instead of at the one that was eyeballed.
+
+A corollary for figures: **light direction is information, and it is free.** The
+shrine's stone child was a 9-unit `SALT` head over a 13×20 `SALT` ellipse in a
+22×42 black niche — one pale egg in a phone booth, and the largest object in the
+piece was also its brightest, which §3 forbids. The votive sits *below* it, so
+carving the value gradient upward-dark turns the same lump into a thing being lit
+by a candle. Stone tones, a shoulder taper, a ledge to stand on, and the candle's
+shadow thrown up the back wall as proof of the direction.
+
 ## 5. Readability — the three levers
 
 Applied deliberately, per foe, and checked at true game scale on real ground
@@ -285,3 +486,22 @@ looks are required, and the second is the one that matters:
 2. **the sprite at true game scale, composited on the real ground plates it will
    fight on.** Every readability bug in this project has been invisible at
    source size and obvious at 22 pixels.
+
+And a third look that is not a look at all. Some defects are invisible to *both*
+of the above — a 96 x 72 patch of dead colour in a 5696 x 3200 plate is one pixel
+of a window-fit review and unmissable under the camera. Those get a **measured**
+gate:
+
+* `npm run art:check` — `tools/overworld/check_plate.py`. Flags every cluster of
+  8x8 blocks whose per-channel σ is under 0.6 and fails the build on any cluster
+  of four or more. Exit code, not an opinion.
+* `npm run art:ground` — repaints the plate and runs that gate immediately, so a
+  new pass cannot land a flat patch without saying so.
+* `node tools/capture.mjs` — boots the real game through the audio gate and
+  frames named tiles, because no offline preview shows what the overworld
+  actually composites: haze, god-rays, region grade, painted ground, and
+  `worldScaleFor`. The Fold's houses previewed correctly and arrived in-game as
+  a pale billboard.
+
+The rule behind all three: **anything the eye cannot audit at the size it ships
+at gets a number instead.**

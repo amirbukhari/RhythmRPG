@@ -27,14 +27,17 @@ export interface ArenaLayout {
   pieces: Placement[];
 }
 
-// Which authored venue dresses each fight node's spot IN the world.
-export const NODE_VENUE: Record<string, string> = {
-  opening_1: "arena_shallows",
-  mid_1: "arena_saltmines",
-  mid_2: "arena_pit",
-  mid_3: "arena_attic",
-  boss_1: "arena_hall",
-};
+// There is no `arena_fold`, and there was one for an afternoon. Fight venues are
+// keyed by BIOME and dressed at fight-node markers -- and the Fold contains no
+// fight nodes at all: of the 22 markers in overworld.json, the only two inside
+// region 0 are `spawn` and `town_obelisk`. That is canon, not an oversight (§6.1:
+// the Fold is the one place the player "should like it here"), so the Fold's kit
+// lives entirely in `dressing.json` and a fight layout for it would be art no
+// player could ever reach.
+//
+// The per-node `NODE_VENUE` table was deleted with it: nothing had read it since
+// venues became biome-keyed in v15.0, and it still mapped `opening_1` to a
+// region-0 venue when that node stands in the Saltmines.
 
 /**
  * Dresses a fight node's spot IN the overworld with its authored venue
@@ -78,7 +81,7 @@ export function composeWorldVenue(
     const px = ox + p.x;
     const py = oy + p.y;
     if (p.shadow !== false) scene.add.ellipse(px, py, 20 * s, 6 * s, 0x05060a, 0.35).setDepth(2.4);
-    if (/campfire|lantern|lamp/.test(p.key)) {
+    if (/campfire|lantern|lamp|shrine/.test(p.key)) {
       scene.add
         .image(px, py - 6, "glow")
         .setBlendMode(Phaser.BlendModes.ADD)
@@ -92,34 +95,11 @@ export function composeWorldVenue(
 }
 
 /**
- * The Shallows arena, hand-composed from the env/shallows kit. Pieces ring the
- * edges/top and a campfire save point sits in a corner; the centre stays open
- * for the fight (fighters spawn around x 90-230, y 30-150).
+ * The authored fight venues, one per biome, kitbashed from `env/<biome>` kits.
+ * Pieces ring the edges and the centre stays open for the fight (fighters spawn
+ * around x 90-230, y 30-150). See the note above for why the Fold has none.
  */
 export const ARENA_LAYOUTS: Record<string, ArenaLayout> = {
-  arena_shallows: {
-    pieces: [
-      { key: "env_shallows_boat", x: 62, y: 58, scale: 1 },
-      { key: "env_shallows_pillar", x: 34, y: 118 },
-      { key: "env_shallows_pillar", x: 292, y: 74, flip: true },
-      { key: "env_shallows_rock_a", x: 26, y: 158 },
-      { key: "env_shallows_rock_a", x: 300, y: 150, flip: true },
-      { key: "env_shallows_rock_a", x: 256, y: 40 },
-      { key: "env_shallows_rock_b", x: 104, y: 36 },
-      { key: "env_shallows_rock_b", x: 205, y: 32 },
-      { key: "env_shallows_reeds", x: 16, y: 86 },
-      { key: "env_shallows_reeds", x: 305, y: 108, flip: true },
-      { key: "env_shallows_reeds", x: 74, y: 172 },
-      { key: "env_shallows_lantern", x: 272, y: 120 },
-      { key: "env_shared_save_obelisk", x: 30, y: 172 }, // save point (§8.8)
-      { key: "env_shallows_campfire", x: 290, y: 172 },
-      // scatter-kit dressing (design-audit-3: venues read sparse)
-      { key: "env_shallows_scatter_anchor", x: 148, y: 174 },
-      { key: "env_shallows_scatter_skiff", x: 208, y: 176 },
-      { key: "env_shallows_scatter_piling", x: 12, y: 62 },
-      { key: "env_shallows_scatter_buoy", x: 310, y: 42 },
-    ],
-  },
   arena_saltmines: {
     pieces: [
       { key: "env_saltmines_ore_cart", x: 60, y: 62 },

@@ -215,3 +215,70 @@ describe("terrain obstacles (in-world fights, PRD v7.13)", () => {
     expect(f.pos).toEqual({ x: 100, y: 50 });
   });
 });
+
+// --- the M3 event channel --------------------------------------------------
+// The presentation layer needs three facts a HP delta cannot carry: how hard,
+// where, and which way. These tests pin all three, plus the clearing rule --
+// a stale event replayed next frame is a double hitstop.
+describe("hit events (M3 game feel)", () => {
+  /** Stand the player right on top of a foe and swing until something lands. */
+  function landOne(tier: "perfect" | "great" | "good" | "off" = "perfect"): { a: Arena; ev: NonNullable<Arena["events"]>[number] } {
+    const a = createArena(160, 120, [40]);
+    const p = player(a);
+    const e = enemies(a)[0];
+    e.pos = { x: p.pos.x, y: p.pos.y - 12 };
+    p.facing = "up";
+    for (let i = 0; i < 60; i++) {
+      tick(a, { light: i === 0, onBeat: tier === "perfect" || tier === "great", tier });
+      if (a.events && a.events.length) return { a, ev: a.events[0] };
+    }
+    throw new Error("no hit landed");
+  }
+
+  it("emits one hit with the tier, the damage, and a direction", () => {
+    const { ev } = landOne("perfect");
+    expect(ev.kind).toBe("hit");
+    expect(ev.tier).toBe("perfect");
+    expect(ev.damage).toBeGreaterThan(0);
+    expect(ev.attackerTeam).toBe("player");
+    expect(ev.targetTeam).toBe("enemy");
+    expect(Math.hypot(ev.nx, ev.ny)).toBeCloseTo(1, 5);
+    // the foe was placed straight up from Mir, so the blow travels up
+    expect(ev.ny).toBeLessThan(0);
+  });
+
+  it("puts the impact point on the contact, not inside the target", () => {
+    const { a, ev } = landOne();
+    const e = enemies(a)[0];
+    // pulled back toward the attacker by the target's radius
+    expect(Math.hypot(ev.x - e.pos.x, ev.y - e.pos.y)).toBeGreaterThan(1);
+    expect(ev.y).toBeGreaterThan(e.pos.y); // between the two bodies
+  });
+
+  it("marks a light jab as not heavy", () => {
+    expect(landOne().ev.heavy).toBe(false);
+  });
+
+  it("clears events on the next tick, so a stop never fires twice", () => {
+    const { a } = landOne();
+    expect(a.events!.length).toBeGreaterThan(0);
+    tick(a, {});
+    expect(a.events!.length).toBe(0);
+  });
+
+  it("emits a fall when the blow kills, so death can be punctuated", () => {
+    const a = createArena(160, 120, [1]);
+    const p = player(a);
+    const e = enemies(a)[0];
+    e.pos = { x: p.pos.x, y: p.pos.y - 12 };
+    p.facing = "up";
+    const kinds: string[] = [];
+    for (let i = 0; i < 60; i++) {
+      tick(a, { light: i === 0, onBeat: true, tier: "perfect" });
+      for (const ev of a.events ?? []) kinds.push(ev.kind);
+      if (kinds.includes("fall")) break;
+    }
+    expect(kinds).toContain("hit");
+    expect(kinds).toContain("fall");
+  });
+});

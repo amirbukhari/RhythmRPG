@@ -96,7 +96,13 @@ interface Echo {
 // the echo marker is always the frame right after them.
 const DECORATIVE_PROP_COUNT = 6;
 const ECHO_RUNE_FRAME = DECORATIVE_PROP_COUNT;
-const REGION_BIOMES = ["shallows", "saltmines", "pit", "attic", "hall"];
+// Region 0 was named "shallows" and its kit was nautical -- boat, buoy,
+// lifering, net, oar, crab, starfish. That is a harbour beach. Region 0 IS the
+// Fold: its accent is Fold teal below, and world-bible §2 calls it "a gothic
+// town built in the silt around a massive obelisk" at the bottom of a lightless
+// sea. The name and the kit are now canon (tools/art/env_fold.py). The other
+// four still carry retired names and are M4's problem.
+const REGION_BIOMES = ["fold", "saltmines", "pit", "attic", "hall"];
 // Per-region accent (Fold teal, Shelf green, Breach pale sand, Scar rust, Stage
 // violet) -- mirrors paint_ground's ACCENTS. Used by the region grade wash and
 // the v14.2 per-region ambient particles.
@@ -122,6 +128,7 @@ export class OverworldScene extends Phaser.Scene {
   private nariShadow: Phaser.GameObjects.Ellipse | null = null;
   /** The exploration HUD, hidden for the duration of a fight. */
   private exploreHud: Phaser.GameObjects.GameObject[] = [];
+  private controlHint: Phaser.GameObjects.Text | null = null;
   private moving = false;
   private walkable: boolean[][] = [];
   /** Region territory per tile, decoded from the ground layer's gids
@@ -425,21 +432,44 @@ export class OverworldScene extends Phaser.Scene {
 
     this.addAtmosphere();
 
-    // HUD hint on a dark strip so it stays legible over the busy ground.
-    // Tracked as a group so a fight can hide it: these verbs are wrong the
+    // The HUD used to be a full-width black strip carrying
+    // "Arrows/WASD: move   E: interact   ESC: settings" -- readable, and the
+    // first thing in every single frame of the game. A control list pinned over
+    // the art forever is a debug overlay: it says "unfinished" louder than any
+    // missing asset. So the strip is gone, both labels carry their own dark
+    // stroke instead (the same trick `interactHint` below already used), and the
+    // key hint TEACHES ONCE -- `retireControlHint` fades it out on Mir's first
+    // step, because a player who has moved has learned how to move.
+    //
+    // Still tracked as a group so a fight can hide it: these verbs are wrong the
     // instant combat starts (see WorldFightHost.setExploreHudVisible).
-    this.exploreHud = [
-      this.pinToScreen(this.add.rectangle(0, 0, BASE_WIDTH, 12, 0x05060a, 0.72).setOrigin(0, 0).setDepth(19), 0, 0),
-      this.pinToScreen(
-        this.add.text(4, 3, "Arrows/WASD: move   E: interact   ESC: settings", { fontFamily: "monospace", fontSize: "7px", color: "#d8ceb6" }).setDepth(20),
-        4,
-        3
-      ),
-    ];
+    this.controlHint = this.pinToScreen(
+      this.add
+        .text(4, 4, "ARROWS / WASD  ·  E  INTERACT  ·  ESC  SETTINGS", {
+          fontFamily: "monospace",
+          fontSize: "7px",
+          color: "#9fb0ad",
+          stroke: "#05060a",
+          strokeThickness: 3,
+        })
+        .setDepth(20),
+      4,
+      4
+    );
+    this.exploreHud = [this.controlHint];
     this.echoCountText = this.pinToScreen(
-      this.add.text(BASE_WIDTH - 4, 3, "", { fontFamily: "monospace", fontSize: "7px", color: "#49c6bd" }).setOrigin(1, 0).setDepth(20),
+      this.add
+        .text(BASE_WIDTH - 4, 4, "", {
+          fontFamily: "monospace",
+          fontSize: "7px",
+          color: "#49c6bd",
+          stroke: "#05060a",
+          strokeThickness: 3,
+        })
+        .setOrigin(1, 0)
+        .setDepth(20),
       BASE_WIDTH - 4,
-      3
+      4
     );
     if (this.echoCountText) this.exploreHud.push(this.echoCountText);
     this.updateEchoCountText();
@@ -1051,6 +1081,30 @@ export class OverworldScene extends Phaser.Scene {
     this.checkEncounterTrigger();
   }
 
+  /**
+   * The control hint has done its job the moment the player moves. Fades it out
+   * once and drops the reference, so a fight's HUD toggle can never bring a
+   * retired hint back.
+   */
+  private retireControlHint(): void {
+    const hint = this.controlHint;
+    if (!hint) return;
+    this.controlHint = null;
+    this.exploreHud = this.exploreHud.filter((o) => o !== hint);
+    if (Boolean(GameContext.activeProfile?.settings.reducedMotion)) {
+      hint.destroy();
+      return;
+    }
+    this.tweens.add({
+      targets: hint,
+      alpha: 0,
+      duration: 900,
+      delay: 550,
+      ease: "Sine.in",
+      onComplete: () => hint.destroy(),
+    });
+  }
+
   private heldDirection(): Direction | null {
     if (this.cursors.left.isDown || this.wasd.A.isDown) return "left";
     if (this.cursors.right.isDown || this.wasd.D.isDown) return "right";
@@ -1069,6 +1123,7 @@ export class OverworldScene extends Phaser.Scene {
 
     const vacated = { ...this.playerPos };
     this.moving = true;
+    this.retireControlHint();
     this.playerPos = target;
     if (this.player.anims.getName() !== "leader_walk" || !this.player.anims.isPlaying) this.player.play("leader_walk");
     this.tweens.add({
@@ -1683,22 +1738,33 @@ export class OverworldScene extends Phaser.Scene {
         placements: { vignette: string; key: string; col: number; row: number; dx: number; dy: number; scale: number; flip: boolean }[];
       }[];
     };
+    // `col`/`row` are ABSOLUTE tiles on the 356x200 map. They used to be
+    // region-local, offset by `regionIndex * 26` -- a formula from the pre-v15
+    // map, which was ~10x smaller than the world it was still indexing. Region 0
+    // actually occupies cols 0-75, rows 127-199, so every hand-authored vignette
+    // was being drawn ~140 tiles north of the region it belonged to, in a corner
+    // of the Saltmines. The region name now only says which biome a placement
+    // belongs to; where it goes is where it says (tools/overworld/place_fold.py).
     for (const region of file.regions) {
-      const ri = REGION_BIOMES.indexOf(region.region);
-      if (ri < 0) continue;
-      const base = ri * 26;
+      if (REGION_BIOMES.indexOf(region.region) < 0) continue;
       for (const p of region.placements) {
         if (!this.textures.exists(p.key)) continue;
-        const x = (base + p.col) * TILE_SIZE + TILE_SIZE / 2 + p.dx;
+        const x = p.col * TILE_SIZE + TILE_SIZE / 2 + p.dx;
         const y = p.row * TILE_SIZE + TILE_SIZE + p.dy;
         const canopy = /landform_canopy/.test(p.key);
         const landform = /landform_/.test(p.key);
-        shore
-          .fillStyle(0x05060a, landform ? 0.3 : 0.28)
-          .fillEllipse(x, y - 2, landform ? (canopy ? 34 : 46) : 12, landform ? 10 : 4);
         // canonical world scale wins over the authored value (one unit for
         // the whole world -- a chair can never outgrow a building again)
-        const scale = worldScaleFor(p.key, this.textures.get(p.key).getSourceImage().height) ?? p.scale;
+        const src = this.textures.get(p.key).getSourceImage();
+        const scale = worldScaleFor(p.key, src.height) ?? p.scale;
+        // The contact shadow is sized from the SPRITE, not from a constant. It
+        // was a flat 12x4 ellipse, which is a plausible shadow for a crate and
+        // an invisible one under a 95px-wide house -- the Fold's buildings read
+        // as floating until this was proportional.
+        const footW = landform ? (canopy ? 34 : 46) : Math.max(12, src.width * scale * 0.74);
+        shore
+          .fillStyle(0x05060a, landform ? 0.3 : 0.3)
+          .fillEllipse(x, y - 1, footW, Math.max(4, footW * 0.11));
         const img = this.add
           .image(x, y, p.key)
           .setOrigin(0.5, 1)
@@ -1707,8 +1773,31 @@ export class OverworldScene extends Phaser.Scene {
           .setTint(0xd6dce6)
           .setDepth(canopy ? 6.5 : landform ? 2.5 : 2);
         if (canopy) this.canopies.push(img);
+        // A lit building spills light onto the ground in front of it. Without
+        // this the houses sat on the silt like cut-outs: the windows were warm
+        // and the tile under the door was not, which is the one thing a lit
+        // window cannot do. Wide, weak, and warm -- it should never read as a
+        // second lamp, only as the reason the doorstep is visible.
+        // Warm spill from the lit windows onto the ground at the foot of a
+        // house. Scaled from the SPRITE, not from the glow texture's own size --
+        // the first cut divided the display width by two constants, which on the
+        // 356px-wide terrace produced a pale lens WIDER AND TALLER than the
+        // building and read as a puddle in front of it. A spill is a shallow
+        // pool right at the wall: 62% of the facade wide, an eighth of that
+        // deep, and faint.
+        if (/env_fold_house/.test(p.key)) {
+          const spillW = src.width * scale * 0.62;
+          const glowSrc = this.textures.get("glow").getSourceImage();
+          this.add
+            .image(x, y - 1, "glow")
+            .setBlendMode(Phaser.BlendModes.ADD)
+            .setTint(0xe8b070)
+            .setScale(spillW / glowSrc.width, (spillW * 0.13) / glowSrc.height)
+            .setAlpha(0.13)
+            .setDepth(1.9);
+        }
         // emissive pieces cast their light -- the night world reads lit
-        if (/lantern|crystal|tidepool|brazier|candle|torch|dockpost|votives|belljar|lamp$|geode|hourglass|campfire/.test(p.key)) {
+        if (/lantern|crystal|tidepool|brazier|candle|torch|dockpost|votives|belljar|lamp$|geode|hourglass|campfire|shrine/.test(p.key)) {
           const teal = /tidepool|belljar|dockpost/.test(p.key);
           const tint = teal ? 0x49c6bd : 0xf0a648;
           this.add
@@ -2038,54 +2127,45 @@ export class OverworldScene extends Phaser.Scene {
     this.add.ellipse(cx, baseY - 1, 42, 12, 0x1b2530, 1).setDepth(3.3);
     this.add.ellipse(cx, baseY - 3, 34, 9, 0x27343f, 1).setDepth(3.35);
 
-    // The monolith: a tall tapered stone with a pyramidion crown, on a squat
-    // plinth. Two faces (a lit left, a shadowed right) give it volume without
-    // any texture. Deliberately massive -- it dwarfs Mir and the save-stones.
-    const H = 96;
-    const wBase = 24;
-    const wTop = 7;
-    const g = this.add.graphics().setDepth(4.6);
-    // a stepped stone plinth the shaft rises from
-    g.fillStyle(0x151d25, 1);
-    g.fillRect(cx - 20, baseY - 10, 40, 10);
-    g.fillStyle(0x222e39, 1);
-    g.fillRect(cx - 16, baseY - 16, 32, 7);
-    g.fillStyle(0x1d2731, 1); // shadow face (whole silhouette)
-    g.fillPoints(
-      [
-        new Phaser.Geom.Point(cx - wBase / 2, baseY - 2),
-        new Phaser.Geom.Point(cx + wBase / 2, baseY - 2),
-        new Phaser.Geom.Point(cx + wTop / 2, baseY - 2 - H),
-        new Phaser.Geom.Point(cx, baseY - 2 - H - 9),
-        new Phaser.Geom.Point(cx - wTop / 2, baseY - 2 - H),
-      ],
-      true
-    );
-    g.fillStyle(0x2c3a47, 1); // lit face (left half)
-    g.fillPoints(
-      [
-        new Phaser.Geom.Point(cx - wBase / 2, baseY - 2),
-        new Phaser.Geom.Point(cx, baseY - 2),
-        new Phaser.Geom.Point(cx, baseY - 2 - H - 9),
-        new Phaser.Geom.Point(cx - wTop / 2, baseY - 2 - H),
-      ],
-      true
-    );
-    // A carved seam of glyphs down the lit face, lit teal -- the "listening".
-    g.fillStyle(0x49c6bd, 0.85);
-    for (let k = 0; k < 5; k++) {
-      const gy = baseY - 16 - k * 12;
-      g.fillRect(cx - 3, gy, 5, 2);
+    // The monolith itself is AUTHORED ART now (tools/art/env_fold.py `obelisk`),
+    // not five `Graphics` polygons.
+    //
+    // What was here drew a flat silhouette, a flat lit half, and five identical
+    // cyan rectangles down the middle. In the shipped build it read as a grey
+    // gradient WEDGE with tick marks -- and style-contract §0 has a rule for
+    // exactly this: "an abstraction is not an image." This is the first
+    // landmark a new player sees, the save point they come back to all game,
+    // and the object the premise hangs off; a triangle will not do. The sprite
+    // carries quarried stone, faint courses, chipped edges, an old waterline of
+    // salt, and a recessed channel of carved glyphs that reads as WRITING.
+    //
+    // `worldScaleFor` sizes it from the canon 9m (WorldScale), so it stands
+    // ~8.4 tiles tall -- five times Mir, which is what "massive" has to mean.
+    const obeliskSrc = this.textures.exists("env_fold_obelisk") ? this.textures.get("env_fold_obelisk").getSourceImage() : null;
+    const obeliskScale = obeliskSrc ? (worldScaleFor("env_fold_obelisk", obeliskSrc.height) ?? 0.3) : 0.3;
+    const H = obeliskSrc ? obeliskSrc.height * obeliskScale : 96;
+    if (obeliskSrc) {
+      this.add
+        .image(cx, baseY - 1, "env_fold_obelisk")
+        .setOrigin(0.5, 1)
+        .setScale(obeliskScale)
+        .setDepth(4.6);
     }
 
     // The crown-light: a pulsing teal glow at the pyramidion, the beacon the
     // whole ascent is drawn to. A fainter body-glow lifts the stone off the dark.
+    // The body-glow is now a HALO AT THE FOOT, not a wash over the shaft. At
+    // scale 1.0 / alpha 0.22 it was tuned against the old flat-polygon monolith,
+    // where washing teal over grey was the only thing giving it presence. Over
+    // the authored sprite the same glow covered the whole stone and bleached out
+    // the courses, the chips and the waterline -- the art was there and the
+    // lighting was hiding it.
     const bodyGlow = this.add
-      .image(cx, baseY - H * 0.55, "glow")
+      .image(cx, baseY - H * 0.18, "glow")
       .setBlendMode(Phaser.BlendModes.ADD)
       .setTint(0x49c6bd)
-      .setScale(1.0)
-      .setAlpha(0.22)
+      .setScale(0.42, 0.3)
+      .setAlpha(0.13)
       .setDepth(4.5);
     const crownGlow = this.add
       .image(cx, baseY - 2 - H - 6, "glow")
@@ -2098,7 +2178,7 @@ export class OverworldScene extends Phaser.Scene {
     // driven from driveAmbience (v14.2) -- the obelisk is "listening" to the
     // chorus, so it lights on the beat. Store the ref for that driver.
     if (!reduced) {
-      this.tweens.add({ targets: bodyGlow, alpha: 0.32, yoyo: true, repeat: -1, duration: 2600, ease: "Sine.inOut" });
+      this.tweens.add({ targets: bodyGlow, alpha: 0.2, yoyo: true, repeat: -1, duration: 2600, ease: "Sine.inOut" });
     }
     this.townCrownGlow = crownGlow;
     // Resolve the overworld song's beat grid once (deereater, "explore" mode)

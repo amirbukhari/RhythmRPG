@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nearestBeatDistanceSeconds, isOnBeat, beatIndexAt } from "../../src/systems/audio/SongBeat";
+import { nearestBeatDistanceSeconds, isOnBeat, beatIndexAt, nextBeat } from "../../src/systems/audio/SongBeat";
 import type { SongMap } from "../../src/data/schemas/SongMap";
 
 /** A 120bpm-ish grid with real-recording drift baked in (uneven intervals). */
@@ -65,5 +65,29 @@ describe("SongBeat (PRD §8.3 beat truth)", () => {
     expect(beatIndexAt(drifty, 0.5)).toBe(0);
     expect(beatIndexAt(drifty, 1.26)).toBe(2);
     expect(beatIndexAt(drifty, 2.9)).toBe(5);
+  });
+});
+
+describe("nextBeat (the grid the world moves on)", () => {
+  const map = { beatTimesMs: [0, 500, 1000, 1500], durationMs: 2000 } as never;
+
+  it("reports the forward distance and the local period", () => {
+    const b = nextBeat(map, 0.6)!;
+    expect(b.secondsToNext).toBeCloseTo(0.4, 6);
+    expect(b.period).toBeCloseTo(0.5, 6);
+  });
+
+  it("wraps past the last beat into the next loop", () => {
+    const b = nextBeat(map, 1.8)!;
+    expect(b.secondsToNext).toBeCloseTo(0.2, 6); // beat 0 of the next loop, at 2.0s
+  });
+
+  it("is zero exactly on a beat, never negative", () => {
+    expect(nextBeat(map, 1.0)!.secondsToNext).toBeCloseTo(0, 6);
+    expect(nextBeat(map, 0)!.secondsToNext).toBeGreaterThanOrEqual(0);
+  });
+
+  it("gives up rather than guessing on a map with no grid", () => {
+    expect(nextBeat({ beatTimesMs: [], durationMs: 0 } as never, 1)).toBeNull();
   });
 });

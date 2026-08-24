@@ -110,6 +110,7 @@ STAND = {
     "spine": 0, "neck": 0,
     "shoulder_f": 0, "elbow_f": 0, "shoulder_b": 0, "elbow_b": 0,
     "hip_f": 0, "knee_f": 0, "hip_b": 0, "knee_b": 0,
+    "foot_f": 0, "foot_b": 0,
 }
 
 # idle: he sways. He is three; he cannot stand still, and he does not try.
@@ -118,14 +119,37 @@ IDLE_B = dict(STAND, **{"spine": -3, "neck": -2, "shoulder_f": -8, "shoulder_b":
                         "knee_f": 5, "knee_b": 4})
 
 # walk: falls forward, catches himself. Frames 2 and 5 are the catch.
-W1 = dict(STAND, **{"spine": -7, "hip_f": -26, "knee_f": 24, "hip_b": 20, "knee_b": 8,
+#
+# THE GAIT IS A PUZZLE MECHANIC, NOT JUST AN ANIMATION.
+# world-bible §6.4 builds the Scar's whole middle act out of reading Nari's
+# tracks: "Nari's gait is learnable (paired stride, heel dot, faint right-foot
+# drag)", set against pilgrim strides, den-thing gaits and decoys that double
+# back. That only works if the player has already learned it -- and the only
+# place to learn it is here, in the state he spends the entire first act in.
+# So the cycle is deliberately ASYMMETRIC in two ways the ground can record:
+#
+#   paired stride -- the b-side hip swings through 32 degrees against the
+#                    f-side's 46, so his steps come in long/short pairs. On the
+#                    ground that is a trail with an uneven rhythm, which is what
+#                    makes it identifiable at all.
+#   right-foot drag -- the b-side knee barely lifts through its swing and the
+#                    foot trails toe-down (`foot_b` negative), so that foot
+#                    scuffs instead of clearing. On the ground: a smear off the
+#                    back of every other print.
+#
+# Do not "fix" the asymmetry. It is the clue.
+W1 = dict(STAND, **{"spine": -7, "hip_f": -26, "knee_f": 24, "hip_b": 14, "knee_b": 8,
+                    "foot_b": -6,
                     "shoulder_f": -14, "shoulder_b": 16, "elbow_f": 10})
-W2 = dict(STAND, **{"spine": -11, "neck": 4, "hip_f": -4, "knee_f": 8, "hip_b": 2,
-                    "knee_b": 30, "shoulder_f": 10, "shoulder_b": -8, "elbow_f": 18})
-W3 = dict(STAND, **{"spine": -7, "hip_f": 20, "knee_f": 9, "hip_b": -26, "knee_b": 22,
+W2 = dict(STAND, **{"spine": -11, "neck": 4, "hip_f": -4, "knee_f": 8, "hip_b": 0,
+                    "knee_b": 14, "foot_b": -14,
+                    "shoulder_f": 10, "shoulder_b": -8, "elbow_f": 18})
+W3 = dict(STAND, **{"spine": -7, "hip_f": 20, "knee_f": 9, "hip_b": -18, "knee_b": 13,
+                    "foot_b": -11,
                     "shoulder_f": 16, "shoulder_b": -14, "elbow_b": 10})
-W4 = dict(STAND, **{"spine": -11, "neck": 4, "hip_f": 2, "knee_f": 28, "hip_b": -4,
-                    "knee_b": 9, "shoulder_f": -8, "shoulder_b": 10, "elbow_b": 18})
+W4 = dict(STAND, **{"spine": -11, "neck": 4, "hip_f": 2, "knee_f": 28, "hip_b": -6,
+                    "knee_b": 9, "foot_b": -3,
+                    "shoulder_f": -8, "shoulder_b": 10, "elbow_b": 18})
 
 # reach: arms up, waiting to be lifted. The one that has to hurt.
 REACH = dict(STAND, **{"spine": 6, "neck": -12, "shoulder_f": 118, "elbow_f": 22,

@@ -4,9 +4,10 @@ import { getEncounter, getBeatmap, getEnemy, getCampaignNode, songMaps, bossPhas
 import { TransportClock } from "../../systems/audio/TransportClock";
 import { BeatTick } from "../../systems/audio/BeatTick";
 import { SfxPlayer } from "../../systems/audio/SfxPlayer";
+import { GameFeel } from "./GameFeel";
 import { applyRelics } from "../../systems/progression/Relics";
 import { music } from "../../systems/audio/SongPlayer";
-import { tierAt, tierForOffset, beatIndexAt } from "../../systems/audio/SongBeat";
+import { tierAt, tierForOffset, beatIndexAt, nextBeat, nearestBeatDistanceSeconds, TIER_WINDOWS } from "../../systems/audio/SongBeat";
 import type { SongMap } from "../../data/schemas/SongMap";
 import { BASE_WIDTH, BASE_HEIGHT } from "../../config/GameConfig";
 import {
@@ -114,6 +115,12 @@ export class WorldFight {
   private clock = new TransportClock();
   private tick: BeatTick | null = null;
   private sfx: SfxPlayer | null = null;
+  /** M3 game feel -- the 80ms after a blow lands. See GameFeel.ts for why the
+   * stop is render-only. */
+  private feel!: GameFeel;
+  /** The leader's own scale, owned by OverworldScene: captured once so the
+   * impact squash composes with it instead of overwriting it. */
+  private playerBaseScale = 1;
   private prevPlayerHp = -1;
   private prevLogLen = 0;
   private wasDashing = false;
@@ -165,6 +172,9 @@ export class WorldFight {
    * read), rather than resetting to pristine after every impact spark. */
   private groundDecals: Phaser.GameObjects.RenderTexture | null = null;
   private decalStamp: Phaser.GameObjects.Image | null = null;
+  /** M3: the room's edge bleeds when Mir is struck. Kept separate from the
+   * arena frame so it can flash without disturbing the letterbox. */
+  private hurtFrame: Phaser.GameObjects.Graphics | null = null;
   /** The arena frame: the visual statement that the world just became a room. */
   private frameBars: Phaser.GameObjects.Rectangle[] = [];
   private frameVignette: Phaser.GameObjects.Graphics | null = null;
@@ -237,6 +247,20 @@ export class WorldFight {
     // the two figures in the middle), and the frame closes to a shallow
     // letterbox. Together they read as a stage, and the moment they retract
     // is the moment the world opens back up.
+    // Taking damage has to be felt at the EDGE of vision, not only on the
+    // 22-pixel figure the player is already staring at: in a fight this dense
+    // the sprite's white flash is inside the same foveal patch as everything
+    // else. A red inset frame is peripheral by construction. Photosensitivity
+    // safe mode never shows it (it is a luminance flash by definition) -- the
+    // HP bar, the hurt voice and the hitstun tint all still report the hit.
+    this.hurtFrame = this.scene.add.graphics().setDepth(19.2).setPosition(ox, oy).setAlpha(0);
+    for (let i = 0; i < 8; i++) {
+      const inset = i * 4;
+      this.hurtFrame.fillStyle(0x7d1b20, 0.1);
+      this.hurtFrame.fillRect(inset, inset, BASE_WIDTH - inset * 2, BASE_HEIGHT - inset * 2);
+    }
+    this.hud.push(this.hurtFrame);
+
     this.frameVignette = this.scene.add.graphics().setDepth(18.5).setPosition(ox, oy).setAlpha(0);
     for (let i = 0; i < 7; i++) {
       const inset = i * 5;
@@ -316,6 +340,11 @@ export class WorldFight {
     }
     this.sfx = new SfxPlayer();
     this.sfx.setVolume(settings.volumeSfx);
+    this.playerBaseScale = this.playerSprite.scaleX;
+    this.feel = new GameFeel(this.scene, {
+      reducedMotion: Boolean(settings.reducedMotion),
+      photosensitive: Boolean(settings.photosensitivitySafeMode),
+    });
     GameContext.analytics.track("battle_started", { encounterId: this.encounterId });
 
     // Fight text layer: tier popups (§11.3 judgment feedback) + captions
@@ -503,9 +532,33 @@ export class WorldFight {
     return tierForOffset(Math.min(phase, beatSec - phase), assist);
   }
 
-  private isOnBeat(): boolean {
-    const tier = this.judgeTier();
-    return tier === "perfect" || tier === "great";
+  /**
+   * How "on the beat" NOW is, as a continuous 0..1 -- 1 exactly on a grid beat,
+   * falling to 0 at the outer edge of the `good` window.
+   *
+   * The point is that the light the player sees IS the window they are judged
+   * against, rather than a decoration that happens to sit near it. A binary
+   * blink (what this replaced) tells you the beat has passed; a falling ramp
+   * tells you how much of the window is left, which is a thing you can learn to
+   * play. It widens with the assist setting for the same reason.
+   */
+  /** `beatFlash()` sampled once per rendered frame -- the enemy pass and the
+   * HUD must agree, and sampling twice in one frame can straddle a beat. */
+  private lastBeatFlash = 0;
+
+  private beatFlash(): number {
+    const calibMs = GameContext.activeProfile?.calibrationOffsetMs ?? 0;
+    const assist = GameContext.activeProfile?.settings.assistedTimingWindows ? 1.5 : 1;
+    const w = TIER_WINDOWS.good * assist;
+    const pos = music.position();
+    if (this.songMap && pos !== null) {
+      const d = nearestBeatDistanceSeconds(this.songMap, pos - calibMs / 1000);
+      return Math.max(0, 1 - d / w);
+    }
+    const t = this.clock.currentTime - calibMs / 1000;
+    const beatSec = this.beatSeconds / this.gameSpeed;
+    const phase = ((t % beatSec) + beatSec) % beatSec;
+    return Math.max(0, 1 - Math.min(phase, beatSec - phase) / w);
   }
 
   /** Stamps 2-3 small dark scuffs into the ground at a hit's WORLD position --
@@ -600,7 +653,18 @@ export class WorldFight {
     // Game speed slows the whole fight with the slowed song (§8.3.3).
     const dt = Math.min(deltaMs / 1000, 1 / 30) * this.gameSpeed;
     this.prevGroove = this.arena.groove;
+    // Hand the sim the audible beat BEFORE stepping it, so foes telegraph onto
+    // the grid the player is being judged against -- the same measured grid,
+    // read off the same playing audio element (§10.2). When nothing is audible
+    // this stays undefined and the sim falls back to its wall-clock telegraph.
+    const beatPos = this.songMap ? music.position() : null;
+    this.arena.beat = this.songMap && beatPos !== null ? (nextBeat(this.songMap, beatPos) ?? undefined) : undefined;
     step(this.arena, this.readInput(), dt);
+    // M3: punctuate what the sim says happened, before anything infers it from
+    // HP deltas. `deltaMs` (not `dt`) because a hold is presentation and must
+    // run in real time even when the song -- and the sim -- is slowed (§8.3.3).
+    this.feel.update(deltaMs);
+    this.consumeImpacts();
     if (this.tick && this.songMap) {
       const pos = music.position();
       if (pos !== null) {
@@ -677,6 +741,38 @@ export class WorldFight {
     return true;
   }
 
+  /** Turn this tick's sim events into hitstop, impact frames and sparks
+   * (M3). The sim states damage, tier and direction, so nothing here has to
+   * guess: an off-beat jab and a perfect heavy produce visibly different
+   * events, which is the whole point of judging on a beat. */
+  private consumeImpacts(): void {
+    const evs = this.arena?.events;
+    if (!evs || !evs.length) return;
+    for (const ev of evs) {
+      const targetSprite = ev.targetId === "player" ? this.playerSprite : this.sprites.get(ev.targetId);
+      const attackerSprite = ev.attackerTeam === "player" ? this.playerSprite : undefined;
+      this.feel.impact(ev, this.rect.x + ev.x, this.rect.y + ev.y, targetSprite, attackerSprite);
+      // one voice per event, pitched by tier -- the ear learns the beat too.
+      // The parry voice is fired off the log, so it is not doubled here.
+      if (ev.kind !== "parry" && ev.targetTeam === "enemy") this.sfx?.impact(ev.tier, ev.heavy, ev.kind === "fall");
+      if (ev.kind === "hit" && ev.targetTeam === "player") this.bleedFrame(ev.heavy);
+    }
+  }
+
+  /** Flash the room's edge red -- Mir has been hit. */
+  private bleedFrame(heavy: boolean): void {
+    const settings = GameContext.activeProfile?.settings;
+    if (!this.hurtFrame || settings?.photosensitivitySafeMode) return;
+    this.scene.tweens.killTweensOf(this.hurtFrame);
+    this.hurtFrame.setAlpha(heavy ? 0.95 : 0.7);
+    this.scene.tweens.add({
+      targets: this.hurtFrame,
+      alpha: 0,
+      duration: settings?.reducedMotion ? 120 : heavy ? 480 : 320,
+      ease: "Quad.easeOut",
+    });
+  }
+
   /** Register one Phaser animation per authored foe state, once per foe type.
    * Frame counts are read off the loaded texture so re-authoring a strip in
    * `tools/art/` can never desync the engine's ranges. */
@@ -747,6 +843,7 @@ export class WorldFight {
 
   private render(): void {
     const arena = this.arena!;
+    this.lastBeatFlash = GameContext.activeProfile?.settings.photosensitivitySafeMode ? 0 : this.beatFlash();
     const reduced = Boolean(GameContext.activeProfile?.settings.reducedMotion);
     const p = getPlayer(arena);
 
@@ -754,6 +851,7 @@ export class WorldFight {
     const pwx = this.rect.x + p.pos.x;
     const pwy = this.rect.y + p.pos.y;
     this.playerSprite.setPosition(Math.round(pwx), Math.round(pwy));
+    this.feel.decorate("player", this.playerSprite, this.playerBaseScale);
     if (p.facing === "left") this.playerSprite.setFlipX(false);
     else if (p.facing === "right") this.playerSprite.setFlipX(true);
     if (p.attack) {
@@ -868,6 +966,7 @@ export class WorldFight {
       const d = FACING_LUNGE[e.facing] ?? { x: 0, y: 0 };
       s.setScale(base);
       s.setPosition(Math.round(wx + d.x * lunge), Math.round(wy + d.y * lunge)).setDepth(4.6 + e.pos.y / 1000);
+      this.feel.decorate(e.id, s, base);
       this.shadows.get(e.id)?.setPosition(Math.round(wx), Math.round(wy));
       const windup = e.ai?.mode === "windup";
       if (windup && !this.wasWindup.has(e.id)) {
@@ -880,26 +979,29 @@ export class WorldFight {
         this.wasWindup.delete(e.id);
       }
       const accent = this.accents.get(e.id) ?? 0xffffff;
+      // The foes breathe with the song too, so the beat is legible in
+      // peripheral vision while you are watching a telegraph rather than a HUD.
+      // A winding-up foe stops breathing and goes hard red: the one state that
+      // must never be mistaken for ambience.
       this.auras
         .get(e.id)
         ?.setPosition(wx, wy - 8)
         .setTint(windup ? 0xc22f34 : accent)
-        .setAlpha(windup ? 0.7 : 0.3);
+        .setAlpha(windup ? 0.7 : 0.2 + this.lastBeatFlash * 0.26);
       if (windup) this.fx.lineStyle(2, 0xc22f34, 0.9).strokeCircle(wx, wy - 4, 12);
       if (e.state === "hitstun" && !reduced) s.setTintFill(0xffffff);
       else s.clearTint();
+      // The undirected spark and the untyped `hit()` voice that used to live
+      // here are retired: both were inferred from an HP delta, so neither could
+      // know the tier, the weight, or which way the blow travelled, and both
+      // fired in the same shape for a jab and an ultimate. GameFeel does it off
+      // the sim's own events now (`consumeImpacts`). What stays is the GROUND
+      // SCAR, which is not an impact effect -- it is world state, and it wants
+      // the render position rather than the contact point.
       const prev = this.lastEnemyHp.get(e.id) ?? e.hp;
       if (e.hp < prev - 0.01) {
-        this.sfx?.hit(p.attack?.onBeat ?? false);
-        // darken the foe's accent toward black -- a bruise/ichor stain in
-        // its colour family, not a bright paint splash
         const r = (accent >> 16) & 0xff, g = (accent >> 8) & 0xff, b = accent & 0xff;
-        const bruise = ((r * 0.6) << 16) | ((g * 0.6) << 8) | (b * 0.6);
-        this.stampScuff(wx, wy, bruise);
-        if (!reduced) {
-          const spark = this.scene.add.image(wx, wy - 8, "spark").setBlendMode(Phaser.BlendModes.ADD).setDepth(9).setScale(0.35).setTint(0xfff4d0);
-          this.scene.tweens.add({ targets: spark, scale: 1.1, alpha: 0, angle: 40, duration: 220, onComplete: () => spark.destroy() });
-        }
+        this.stampScuff(wx, wy, ((r * 0.6) << 16) | ((g * 0.6) << 8) | (b * 0.6));
       }
       this.lastEnemyHp.set(e.id, e.hp);
     }
@@ -945,7 +1047,17 @@ export class WorldFight {
       }
     }
 
-    this.beatPulse.setScale(this.isOnBeat() ? 1.7 : 1).setFillStyle(this.isOnBeat() ? 0xf4d27a : 0x49c6bd);
+    // The beat, breathing rather than blinking (see beatFlash). Safe mode holds
+    // it still: a 2Hz pulse is inside the flash guideline, but the setting means
+    // "no rhythmic luminance change", and the tier popup still says everything
+    // this says.
+    const bf = this.lastBeatFlash;
+    this.beatPulse.setScale(1 + bf * 0.85).setFillStyle(Phaser.Display.Color.Interpolate.ColorWithColor(
+      Phaser.Display.Color.ValueToColor(0x49c6bd),
+      Phaser.Display.Color.ValueToColor(0xf4d27a),
+      100,
+      Math.round(bf * 100),
+    ).color ?? 0x49c6bd);
     const g = this.plate;
     g.clear();
     const px0 = 9;
@@ -1022,6 +1134,7 @@ export class WorldFight {
     this.clock.stop();
     this.tick?.dispose();
     this.sfx?.dispose();
+    this.feel?.destroy();
     music.setRate(1); // the world outside the fight runs (and sounds) at 1x
     const profile = GameContext.activeProfile!;
     const encounter = getEncounter(this.encounterId);
@@ -1081,6 +1194,7 @@ export class WorldFight {
     this.clock.stop();
     this.tick?.dispose();
     this.sfx?.dispose();
+    this.feel?.destroy();
     music.setRate(1);
   }
 }

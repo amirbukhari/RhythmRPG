@@ -156,7 +156,23 @@ def main() -> None:
     # eelgrass beds: coarse patches of dark sea-green growth in the sand
     bed_n = value_noise(PH, PW, 110)
     bed = np.clip((bed_n - 0.55) / 0.12, 0, 1)[..., None]
-    grassy = tint((0x1F, 0x3B, 0x30), ACCENTS[0], 0.25)[None, None, :] * (1 + (n_mid - 0.5) * 0.16)[..., None]
+    # THE FLAT-PATCH LAW (v16.6). `bed` SATURATES at 1.0 over most of a bed --
+    # there, `sea` is discarded entirely and the bed colour is all that is left.
+    # So the bed colour must carry the SAME high-frequency terms the ground
+    # field does (`grain`, `n_hi`), not just the cell-36 swell: a cell-36 term
+    # moves by ~1/200 of a step across 8 pixels, and the elevation pass then
+    # multiplies by a QUANTIZED terrace tone that is constant inside a terrace.
+    # Constant x constant = a mathematically flat block, and the plate had 136
+    # of them in the Fold alone -- hard-edged untextured patches on the most
+    # visible surface in the game. Any pass that fully REPLACES the canvas owes
+    # it the grain back. (Measured: zero-variance 8x8 blocks, `bed_n > 0.67`.)
+    grassy = tint((0x1F, 0x3B, 0x30), ACCENTS[0], 0.25)[None, None, :] * (
+        1 + (n_mid - 0.5) * 0.16 + (n_hi - 0.5) * 0.12 + (grain - 0.5) * 0.11
+    )[..., None]
+    # and the bed is a BED, not a paint spill: dark blades comb through it in
+    # the same direction the dune ripples run, so the patch reads as growth.
+    blades = ((yy_g * 0.7 + dune_wob * 0.5 + value_noise(PH, PW, 9) * 9).astype(np.int32) % 5) < 1
+    grassy = grassy * np.where(blades, 0.86, 1.0)[..., None]
     sea = sea * (1 - bed) + grassy * bed
     canvas = canvas * (1 - w0[..., None]) + sea * w0[..., None]
 
@@ -311,12 +327,29 @@ def main() -> None:
         # bright living-green tufts (warm, unlike the cold drowned kelp)
         tuft = (value_noise(PH, PW, 20) > 0.55) & m
         canvas[tuft] = canvas[tuft] * 0.55 + np.array((0x6E, 0x92, 0x3E), dtype=np.float32)[None, :] * 0.45
-        # a spring pool at its heart: clear water, the one place still alive
+        # a spring pool at its heart: clear water, the one place still alive.
+        # WARPED, like every other water body in this file. The plain ellipse
+        # this used to be was a clean geometric edge around a near-flat fill --
+        # the same failure the pond pass was warped to fix ("map-rectangular
+        # ponds kept reading as rounded RECTANGLES"), and it survived here
+        # because the oasis is one hand-placed disc rather than a tile mask.
+        # It also stacked three blends (district 0.66, tufts 0.45, pool 0.70)
+        # which multiply the ground's variance down by ~18x, so the fill needs
+        # its own grain back -- see THE FLAT-PATCH LAW (style-contract §4.3).
         ox, oy = 236 * S, 120 * S
-        pool = (((xx_g - ox) / (5 * S)) ** 2 + ((yy_g - oy) / (4 * S)) ** 2 <= 1) & (region_px == 3)
-        canvas[pool] = canvas[pool] * 0.3 + np.array((0x2E, 0x6A, 0x74), dtype=np.float32)[None, :] * 0.7
-        rim = (np.abs(((xx_g - ox) / (5 * S)) ** 2 + ((yy_g - oy) / (4 * S)) ** 2 - 1) < 0.10) & (region_px == 3)
-        canvas[rim] = canvas[rim] * 0.5 + np.array((0x8A, 0xA8, 0x54), dtype=np.float32)[None, :] * 0.5
+        pd = ((xx_g - ox) / (5 * S)) ** 2 + ((yy_g - oy) / (4 * S)) ** 2 + (_warp - 0.5) * 0.42
+        pool = (pd <= 1) & (region_px == 3)
+        spring = np.array((0x2E, 0x6A, 0x74), dtype=np.float32)[None, None, :] * (
+            1 + (n_hi - 0.5) * 0.14 + (grain - 0.5) * 0.10
+        )[..., None]
+        canvas[pool] = canvas[pool] * 0.3 + spring[pool] * 0.7
+        # the pool DEEPENS toward the middle instead of being one flat sheet
+        canvas[pool] *= (0.80 + 0.20 * np.clip(pd, 0, 1))[pool][:, None]
+        rim = (np.abs(pd - 1) < 0.10) & (region_px == 3)
+        reeds = np.array((0x8A, 0xA8, 0x54), dtype=np.float32)[None, None, :] * (
+            1 + (n_hi - 0.5) * 0.20 + (grain - 0.5) * 0.14
+        )[..., None]
+        canvas[rim] = canvas[rim] * 0.5 + reeds[rim] * 0.5
 
     def stamp_tufts() -> None:
         """Individually hash-placed grass marks -- variation, not wallpaper."""
@@ -685,31 +718,64 @@ def main() -> None:
     rr_p = np.sqrt((xx_g - scx) ** 2 + (yy_g - scy) ** 2)
     furrow = plaza_px & (np.abs((rr_p % 30) - 15.0) < 1.1) & (rr_p > 18) & (rr_p < 120)
     canvas[furrow] *= 0.82
-    # hut foundations: rectangular silt outlines in the streets around the plaza
-    for fi in range(14):
-        h = (fi * 2654435761 + 977) & 0xFFFFFFFF
-        fc = stc + ((h >> 4) % 21) - 10
-        fr = str_ + ((h >> 9) % 15) - 7
-        if not (0 <= fc < W and 0 <= fr < H) or kind[fr, fc] != 0 or region[fr, fc] != 0:
-            continue
-        if (fc - stc) ** 2 + (fr - str_) ** 2 <= 13:
-            continue  # not inside the plaza itself
-        fx, fy = fc * S + (h >> 13) % 16, fr * S + (h >> 17) % 16
-        fw_, fh_ = 26 + (h >> 5) % 18, 20 + (h >> 7) % 14
-        if fx + fw_ >= PW - 2 or fy + fh_ >= PH - 2:
-            continue
-        # a filled, slightly sunken silt floor -- ground that was once a
-        # hut's, not an outline drawn over the turf
-        floor_m = np.zeros((PH, PW), dtype=bool)
-        floor_m[fy : fy + fh_, fx : fx + fw_] = True
-        floor_m &= grass_px
-        fcol = silt[None, None, :] * (1 + (n_mid - 0.5) * 0.10)[..., None] * 0.9
-        canvas[floor_m] = canvas[floor_m] * 0.25 + fcol[floor_m] * 0.75
-        edge_m = np.zeros((PH, PW), dtype=bool)
-        edge_m[fy : fy + fh_, fx : fx + fw_] = True
-        edge_m[fy + 1 : fy + fh_ - 1, fx + 1 : fx + fw_ - 1] = False
-        edge_m &= grass_px
-        canvas[edge_m] *= 0.8
+    # --- the Fold's WALLED YARDS get floors (v16.6) --------------------------
+    # What was here: 14 hash-placed "hut foundations", each a hard axis-aligned
+    # rectangle of pale silt with a 1px dark outline. Two things were wrong with
+    # them. They read as literal BOXES -- the one shape this file warps every
+    # other border to avoid -- and they predated the Fold having any
+    # architecture, so once the town kit landed (M2) a ghost foundation could
+    # sit squarely under a standing house. A ruin among houses that are lit and
+    # occupied is not a story, it is a mistake.
+    #
+    # What is here instead: the map ALREADY contains walled yards. The
+    # generator laid hollow rectangles of rock around the Fold -- (17-21,
+    # 166-170), (30-34, 162-166), (26-30, 177-181) -- and nothing had ever been
+    # drawn inside them. So find every enclosed pocket of open ground in the
+    # Fold and floor it: packed silt, worn toward the middle where people
+    # actually walk, with a warped organic border like everything else. The
+    # walls were always there; now they contain somewhere.
+    #
+    # The pockets are DERIVED, not listed: flood-fill the open tiles inward from
+    # the Fold's border, and anything the fill cannot reach is enclosed. That
+    # way a yard the generator adds later gets a floor for free, and one it
+    # removes stops being painted.
+    r0 = region == 0
+    if r0.any():
+        rs, cs = np.where(r0)
+        r_lo, r_hi, c_lo, c_hi = rs.min(), rs.max(), cs.min(), cs.max()
+        open_t = (kind != 3) & r0
+        seen = np.zeros_like(open_t)
+        stack = []
+        for _r in range(r_lo, r_hi + 1):
+            for _c in (c_lo, c_hi):
+                if open_t[_r, _c]:
+                    stack.append((_r, _c))
+        for _c in range(c_lo, c_hi + 1):
+            for _r in (r_lo, r_hi):
+                if open_t[_r, _c]:
+                    stack.append((_r, _c))
+        for _r, _c in stack:
+            seen[_r, _c] = True
+        while stack:
+            _r, _c = stack.pop()
+            for _nr, _nc in ((_r - 1, _c), (_r + 1, _c), (_r, _c - 1), (_r, _c + 1)):
+                if r_lo <= _nr <= r_hi and c_lo <= _nc <= c_hi and open_t[_nr, _nc] and not seen[_nr, _nc]:
+                    seen[_nr, _nc] = True
+                    stack.append((_nr, _nc))
+        yards = open_t & ~seen & (kind == 0)
+        if yards.any():
+            yard_px = organic_mask(yards, jitter=0.20, blur=7, warp=0.35)
+            yard_px &= grass_px & ~plaza_px
+            # packed silt, a touch darker than the plaza: a yard is private
+            # ground, swept but not walked by a whole town
+            ycol = silt[None, None, :] * 0.86
+            ycol = ycol * (1 + (n_mid - 0.5) * 0.12 + (n_hi - 0.5) * 0.10 + (grain - 0.5) * 0.10)[..., None]
+            canvas[yard_px] = canvas[yard_px] * 0.22 + ycol[yard_px] * 0.78
+            # wear toward the middle of each yard -- feet, not a texture
+            d_y = distance_bands(yard_px, 5)
+            canvas[yard_px & (d_y > 6)] *= 1.06
+            canvas[yard_px & (d_y < 2)] *= 0.9
+            print("  fold yards: %d enclosed tiles floored" % int(yards.sum()))
 
     # --- the town obelisk's dais + cast shadow + focus rings (v14.0) ---------
     # The massive monolith (drawn at runtime by OverworldScene.placeTownObelisk)
@@ -817,7 +883,11 @@ def main() -> None:
     path_mask &= ~stage_px
     d_path = distance_bands(path_mask, 6)
     path_bases = [tint((0x8E, 0x83, 0x68), a, 0.18) for a in ACCENTS]
-    path_col = blended(path_bases) * (1 + (n_mid - 0.5) * 0.12)[..., None]
+    # full overwrite below (`canvas[path_mask] = path_col[...]`), so the road
+    # owes the grain back too -- see THE FLAT-PATCH LAW above.
+    path_col = blended(path_bases) * (
+        1 + (n_mid - 0.5) * 0.12 + (n_hi - 0.5) * 0.10 + (grain - 0.5) * 0.09
+    )[..., None]
     edge = path_mask & (d_path < 3)
     wear = path_mask & (d_path > 7)
     canvas[path_mask] = path_col[path_mask]
@@ -870,7 +940,10 @@ def main() -> None:
     deep = np.array((0x08, 0x0D, 0x24), dtype=np.float32)
     t = np.clip(d_w / 26.0, 0, 1)[..., None]
     water_col = blended(shore_bases) * (1 - t) + deep[None, None, :] * t
-    water_col *= (1 + (n_mid - 0.5) * 0.08)[..., None]
+    # water is smoother than ground, but not FLAT (THE FLAT-PATCH LAW): this is
+    # a full overwrite as well, and a still pool with zero variance reads as a
+    # hole cut in the plate.
+    water_col *= (1 + (n_mid - 0.5) * 0.08 + (n_hi - 0.5) * 0.05 + (grain - 0.5) * 0.05)[..., None]
     canvas[water_mask] = water_col[water_mask]
 
     # v13.2 river current: a flowing sheen streaking along Scar/Breach water
@@ -1235,6 +1308,23 @@ def main() -> None:
     # v11.0 beauty pivot: the quantized-ramp + ordered-dither "HLD floor
     # signature" is retired -- the plate ships its painted gradients at full
     # fidelity (smooth renderer, no chunky register to match anymore).
+
+    # --- the ABSOLUTE grain floor (v16.6) ------------------------------------
+    # THE FLAT-PATCH LAW's second half. Every noise term in this file is
+    # MULTIPLICATIVE -- `col * (1 + (grain - 0.5) * 0.11)` -- and a relative
+    # term underflows in the dark: on deep water at (8, 13, 36) an 11% swing is
+    # +/- 0.44 of a red level, which rounds to a single constant byte. Measured:
+    # after fixing the three full-overwrite passes, every flat cluster LEFT on
+    # the plate was near-black -- deep water (9, 10, 32), the map's dark frame
+    # (21, 15, 12) -- i.e. exactly where relative grain cannot reach.
+    #
+    # So the last thing that touches the canvas is an absolute one: a +/-1.8
+    # level dither from the SAME deterministic grain the ground field used (so
+    # rebuilds stay byte-identical). 0.7% of the range -- invisible as texture,
+    # decisive as a floor. It is not a cover-up for the real bug above; it is
+    # the statement that nothing in this world is a solid colour, enforced in
+    # the units the file actually ships in.
+    canvas = canvas + ((grain - 0.5) * 3.6)[..., None]
     canvas_u8 = np.clip(canvas, 0, 255).astype(np.uint8)
     OUT.parent.mkdir(parents=True, exist_ok=True)
     # v15.0: the world is ~10x bigger, so the painted ground exceeds WebGL's

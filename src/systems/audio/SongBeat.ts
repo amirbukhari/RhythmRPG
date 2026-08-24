@@ -74,3 +74,26 @@ export function isOnBeat(map: SongMap, positionSeconds: number, calibrationOffse
 export function beatIndexAt(map: SongMap, positionSeconds: number): number {
   return lowerBound(map.beatTimesMs, positionSeconds * 1000 + 0.5) - 1;
 }
+
+/**
+ * Seconds from a file position FORWARD to the next grid beat, and the local
+ * beat period around it -- what the sim needs to make the world move on the
+ * music (world-bible: "enemies telegraph on it, hazards pulse on it").
+ *
+ * Loop-aware for the same reason `nearestBeatDistanceSeconds` is: the audio
+ * element loops at `durationMs`, so past the last beat the next one belongs to
+ * the next loop. The period is measured from the two beats bracketing the
+ * position rather than assumed from a BPM field, because the maps are MEASURED
+ * grids (release gate #1a) and a live take does not hold one tempo.
+ */
+export function nextBeat(map: SongMap, positionSeconds: number): { secondsToNext: number; period: number } | null {
+  const beats = map.beatTimesMs;
+  if (beats.length < 2) return null;
+  const posMs = positionSeconds * 1000;
+  const i = lowerBound(beats, posMs);
+  const loop = map.durationMs > 0 ? map.durationMs : 0;
+  const nextMs = i < beats.length ? beats[i] : beats[0] + loop;
+  const prevMs = i > 0 ? beats[i - 1] : beats[beats.length - 1] - loop;
+  const period = Math.max(0.001, (nextMs - prevMs) / 1000);
+  return { secondsToNext: Math.max(0, (nextMs - posMs) / 1000), period };
+}

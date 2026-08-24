@@ -10,6 +10,7 @@ import {
   LIGHT,
   ULTIMATE,
   ULTIMATE_GROOVE_COST,
+  telegraphSeconds,
   type Arena,
   type BeatTier,
   type FrameInput,
@@ -193,5 +194,35 @@ describe("§8.6 per-foe curriculum tuning", () => {
     };
     // damage 20 vs default 9: the harder hitter leaves less HP
     expect(hpAfterHit(20)).toBeLessThan(hpAfterHit(undefined));
+  });
+});
+
+// --- the world moves on the beat (M3) --------------------------------------
+describe("telegraphSeconds", () => {
+  const arena = (beat?: { secondsToNext: number; period: number }): Arena =>
+    ({ ...createArena(160, 120, [30]), beat }) as Arena;
+
+  it("falls back to the wall-clock floor when nothing is audible", () => {
+    expect(telegraphSeconds(arena(undefined), 0.35)).toBeCloseTo(0.35, 6);
+  });
+
+  it("stretches to the next beat when that beat is far enough away", () => {
+    expect(telegraphSeconds(arena({ secondsToNext: 0.42, period: 0.5 }), 0.35)).toBeCloseTo(0.42, 6);
+  });
+
+  it("waits a whole extra beat rather than flashing a short telegraph", () => {
+    // 0.08s away is unreadable, so it takes the beat after: 0.08 + 0.5
+    expect(telegraphSeconds(arena({ secondsToNext: 0.08, period: 0.5 }), 0.35)).toBeCloseTo(0.58, 6);
+  });
+
+  it("subtracts startup so the blow CONNECTS on the beat, not winds up on it", () => {
+    // beat in 0.7s, 0.1s of startup -> release at 0.6s, contact at 0.7s
+    expect(telegraphSeconds(arena({ secondsToNext: 0.7, period: 0.5 }), 0.35, 0.1)).toBeCloseTo(0.6, 6);
+  });
+
+  it("never returns less than the readability floor", () => {
+    for (const t of [0, 0.01, 0.2, 0.34]) {
+      expect(telegraphSeconds(arena({ secondsToNext: t, period: 0.5 }), 0.35)).toBeGreaterThanOrEqual(0.35);
+    }
   });
 });

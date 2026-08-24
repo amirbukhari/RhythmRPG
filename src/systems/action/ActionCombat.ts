@@ -121,6 +121,36 @@ export interface Obstacle {
   h: number;
 }
 
+/**
+ * One thing that HAPPENED this tick, for the presentation layer to react to
+ * (M3 game feel). Before this existed, `WorldFight` inferred impacts from HP
+ * deltas and `log` strings -- which cannot tell a 6-damage light from a
+ * 34-damage ultimate, cannot say WHERE the blow landed, and cannot fire twice
+ * in one frame. Hitstop, impact frames and spark direction all need those
+ * three facts, so the sim states them.
+ *
+ * The sim stays Phaser-free and deterministic: these are plain data appended
+ * during the tick and cleared at the top of the next one, never callbacks.
+ */
+export interface HitEvent {
+  kind: "hit" | "parry" | "fall";
+  /** Impact point, arena-local -- the midpoint of the two bodies, not either
+   * centre, so sparks appear where the blow actually met. */
+  x: number;
+  y: number;
+  /** Unit vector attacker -> target: which way the sparks and the shake go. */
+  nx: number;
+  ny: number;
+  tier: BeatTier;
+  damage: number;
+  attackerTeam: "player" | "enemy";
+  targetTeam: "player" | "enemy";
+  targetId: string;
+  /** True for HEAVY/SPECIAL/ULTIMATE-weight blows (knockback >= 200), which
+   * earn a longer stop and a bigger frame than a light jab. */
+  heavy: boolean;
+}
+
 export interface Arena {
   width: number;
   height: number;
@@ -136,6 +166,24 @@ export interface Arena {
   /** Boss-phase escalation (§8.7): scales enemy tempo. 1 = base; higher =
    * shorter telegraphs, faster approach, shorter recovers. */
   enemyAggression?: number;
+  /**
+   * The audible beat, pushed in each tick by the presentation layer straight
+   * from the SONG's measured grid (§10.2 audio-clock authority -- the sim never
+   * derives it from a timer). `secondsToNext` and `period` are in SONG time,
+   * which is the same clock `dt` runs on: `WorldFight` scales `dt` by the game
+   * speed and the song plays at that same rate, so one sim second is one song
+   * second at any speed.
+   *
+   * This is what makes the world MOVE ON THE MUSIC (world-bible: "enemies
+   * telegraph on it, hazards pulse on it"). Absent -- headless, blocked
+   * autoplay, unit tests -- foes fall back to their old wall-clock telegraph,
+   * so nothing depends on audio being available.
+   */
+  beat?: { secondsToNext: number; period: number };
+  /** What happened during the LAST `step` (M3 game feel). Cleared at the top
+   * of each tick, so reading it after `step` gives exactly this frame's
+   * impacts. Optional so pre-M3 callers and fixtures still typecheck. */
+  events?: HitEvent[];
 }
 
 const FACING_VEC: Record<Facing, Vec> = {
@@ -249,7 +297,7 @@ export function createArena(width: number, height: number, enemyHps: number[]): 
     const x = width * ((i + 1) / (enemyHps.length + 1));
     fighters.push(createFighter(`enemy${i}`, "enemy", { x, y: 34 }, hp));
   });
-  return { width, height, fighters, groove: 0, focus: 0, outcome: "ongoing", log: [] };
+  return { width, height, fighters, groove: 0, focus: 0, outcome: "ongoing", log: [], events: [] };
 }
 
 export function player(a: Arena): Fighter {
@@ -260,6 +308,39 @@ export function enemies(a: Arena): Fighter[] {
 }
 
 // --- the tick --------------------------------------------------------------
+
+/** Append one `HitEvent`. The impact point is the MIDPOINT of the two bodies
+ * (offset toward the target by its radius) so a spark lands on the contact,
+ * not inside whoever swung. */
+function emit(
+  a: Arena,
+  kind: HitEvent["kind"],
+  attacker: Fighter,
+  target: Fighter,
+  def: AttackDef,
+  tier: BeatTier,
+  damage: number,
+): void {
+  if (!a.events) return;
+  let nx = target.pos.x - attacker.pos.x;
+  let ny = target.pos.y - attacker.pos.y;
+  const l = Math.hypot(nx, ny) || 1;
+  nx /= l;
+  ny /= l;
+  a.events.push({
+    kind,
+    x: target.pos.x - nx * target.radius,
+    y: target.pos.y - ny * target.radius,
+    nx,
+    ny,
+    tier,
+    damage,
+    attackerTeam: attacker.team,
+    targetTeam: target.team,
+    targetId: target.id,
+    heavy: def.knockback >= 200,
+  });
+}
 
 function applyHit(a: Arena, attacker: Fighter, def: AttackDef, target: Fighter, tier: BeatTier, di: Vec): void {
   if (target.iframes > 0 || target.state === "dead") return;
@@ -278,10 +359,12 @@ function applyHit(a: Arena, attacker: Fighter, def: AttackDef, target: Fighter, 
     a.groove = Math.min(100, a.groove + 14);
     a.focus = Math.min(FOCUS_MAX, a.focus + 1);
     a.log.push("parry!");
+    emit(a, "parry", attacker, target, def, tier, 0);
     return;
   }
   const mult = tierMultiplier(tier);
   const dmg = def.damage * mult;
+  emit(a, "hit", attacker, target, def, tier, dmg);
   target.hp -= dmg;
   target.damagePct += dmg;
   // Practice mode (PRD §9.3): no fail state -- the player's HP floors at 1.
@@ -307,6 +390,7 @@ function applyHit(a: Arena, attacker: Fighter, def: AttackDef, target: Fighter, 
     target.state = "dead";
     target.vel = { x: 0, y: 0 };
     a.log.push(`${target.id} falls`);
+    emit(a, "fall", attacker, target, def, tier, dmg);
   }
 }
 
@@ -410,6 +494,30 @@ function stepPlayer(a: Arena, f: Fighter, input: FrameInput, dt: number): void {
   if (f.attack) advanceAttack(a, f, dt, { x: 0, y: 0 });
 }
 
+/**
+ * How long a foe should telegraph so that its strike LANDS ON A BEAT.
+ *
+ * The telegraph used to be a flat 0.35s of wall time, unrelated to the music --
+ * which meant that in a game whose entire promise is "the world moves on the
+ * beat", the thing you are dodging did not. Now the windup is stretched to the
+ * next beat boundary that is at least `min` away, so an incoming attack is
+ * something you can hear coming, count, and answer in time. It never SHORTENS
+ * the telegraph below `min`: readability outranks tidiness, so a foe that
+ * commits just after a beat waits for the next one rather than flashing.
+ *
+ * `startup` is the frames between the release and the hitbox going live, so it
+ * is subtracted -- the beat is when the blow CONNECTS, not when the wind-up
+ * ends. Accuracy is one frame (~16ms), because this returns a countdown rather
+ * than an absolute deadline; that is inside the `great` window by half.
+ */
+export function telegraphSeconds(a: Arena, min: number, startup = 0): number {
+  const b = a.beat;
+  if (!b || b.period <= 0) return min;
+  let t = b.secondsToNext - startup;
+  while (t < min) t += b.period;
+  return t;
+}
+
 function stepEnemy(a: Arena, f: Fighter, dt: number, di: Vec): void {
   if (f.state === "dead") return;
   const target = player(a);
@@ -441,7 +549,11 @@ function stepEnemy(a: Arena, f: Fighter, dt: number, di: Vec): void {
       f.vel.x *= 0.6;
       f.vel.y *= 0.6;
       ai.mode = "windup";
-      ai.timer = 0.35 / aggr; // telegraph
+      // Telegraph to the next beat, so the strike CONNECTS on the beat and can
+      // be parried on it (see telegraphSeconds). Aggression still tightens the
+      // floor, so a phase-III boss gives you less room -- one beat instead of
+      // two -- without ever landing off the grid.
+      ai.timer = telegraphSeconds(a, 0.35 / aggr, ENEMY_STRIKE.startup);
     }
   } else if (ai.mode === "windup") {
     f.vel.x = 0;
@@ -459,7 +571,8 @@ function stepEnemy(a: Arena, f: Fighter, dt: number, di: Vec): void {
 
 /** Advance the whole arena by dt seconds. `di` is the defender's held direction (for player DI during hitstun). */
 export function step(a: Arena, input: FrameInput, dt: number): Arena {
-  if (a.outcome !== "ongoing") return a;
+  if (a.outcome !== "ongoing") return a; // the last tick's events stay readable
+  if (a.events) a.events.length = 0;
 
   const p = player(a);
   if (p.state !== "dead") stepPlayer(a, p, input, dt);

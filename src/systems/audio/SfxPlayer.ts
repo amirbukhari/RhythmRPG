@@ -38,9 +38,26 @@ export class SfxPlayer {
     }
   }
 
-  /** A player hit landing; on-beat hits ring brighter. */
+  /** A player hit landing; on-beat hits ring brighter. Kept for the two
+   * callers that only know the binary window. */
   hit(onBeat: boolean): void {
     this.safe(() => this.hitSynth.triggerAttackRelease(onBeat ? "A2" : "F2", "16n"));
+  }
+
+  /**
+   * M3: the impact voice, PITCHED BY TIER. A rhythm game teaches its window
+   * through the ear before the eye -- a perfect lands a fifth above an off-beat
+   * scuff, so a player learns where the beat is without ever reading the
+   * popup. Heavy blows add a low body under the transient; a killing blow adds
+   * a short ring above it, so a death is punctuated rather than merely final.
+   */
+  impact(tier: "perfect" | "great" | "good" | "off", heavy: boolean, fatal: boolean): void {
+    const note = { perfect: "E3", great: "B2", good: "G2", off: "E2" }[tier];
+    this.safe(() => {
+      this.hitSynth.triggerAttackRelease(note, heavy ? "8n" : "16n");
+      if (heavy) this.hurtSynth.triggerAttackRelease("C1", "16n", Tone.now() + 0.012);
+      if (fatal) this.ultSynth.triggerAttackRelease(["A3", "E4"], "16n", Tone.now() + 0.05);
+    });
   }
 
   /** The player getting struck. */
