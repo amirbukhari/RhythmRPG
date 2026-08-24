@@ -14,8 +14,9 @@
 export type StageKind =
   | "black" // empty dark field
   | "obelisk" // the Fold monolith, its crown-light pulsing
-  | "litho" // a small baby-shaped stone idol, lit from within
+  | "litho" // the stone child: an infant's face with no breath behind it
   | "fold" // the drowned town, silt and prayer-rings
+  | "house" // the clock-keeper's room -- where the argument does not happen
   | "waterline" // the Breach seam: dark water below, pale sky above
   | "scar" // the hostile surface, scorched and clawed
   | "rain"; // rain far above, seen from below -- the ending register
@@ -47,7 +48,7 @@ const RITE: Cutscene = {
       stage: "fold",
       lines: [
         "We woke on the ocean floor, and the obelisk was already there.",
-        "Already listening. We have prayed to it for as long as anyone remembers -- which is not long. It does not let us remember.",
+        "Nobody remembers arriving. Nobody finds that strange -- it happened to all of us, so there is no one left to compare it with.",
       ],
     },
     {
@@ -75,8 +76,15 @@ const RITE: Cutscene = {
     {
       stage: "fold",
       lines: [
-        "Lunal asks where a thing could be hidden that the song could not find.",
-        "I do not answer her. I am already reaching for my boots.",
+        "The plaza empties the way it always does after a rule. Quietly, and in good order, and without anyone looking at us.",
+      ],
+    },
+    {
+      stage: "house",
+      lines: [
+        "At home Nari is asleep, and neither of us wakes him.",
+        "Lunal does not ask me what I am going to do. I do not ask her.",
+        "She puts her coat on and goes out to arrange something she does not explain. I sit down and start lacing my boots.",
         "No one leaves the Fold. Tonight I am going to carry my son up out of it.",
       ],
     },
@@ -102,7 +110,7 @@ const LEAVING: Cutscene = {
       stage: "waterline",
       lines: [
         "The wrecks all point the same way. Every ship that ever sank down here points up.",
-        "If the surface is where the rule can't reach, then the surface is where we're going. The chorus begins.",
+        "If the rule cannot reach past the water, then past the water is where we are going.",
       ],
     },
   ],

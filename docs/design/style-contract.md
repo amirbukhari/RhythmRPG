@@ -1,6 +1,6 @@
 # The Style Contract — *The Drowned Chorus*
 
-**Status: FROZEN at v16.3 (M1).** This document is the authority on how every
+**Status: FROZEN at v16.4 (M1).** This document is the authority on how every
 pixel in this game is made. PRD §11.1.2 step 2 says "freeze the rules
 immediately; never prompt each asset from scratch" — this is that freeze,
 extended to cover the authored half of the pipeline too.
@@ -29,31 +29,65 @@ player cannot find their own character is a failure, not a compromise.
 | Mir, Nari, Lunal, the Harrow, every foe | `tools/art/rig.py` + one module per character | identity across 22 states, exact silhouettes, real animation |
 | ground, venues, props, set pieces, cutscene plates | `tools/art/gen.py` (Flux via Pollinations) | painterly depth and material variety at a scale no one can hand-paint |
 
-This is not a preference. It is the result of five generation probes against a
-canon-accurate description of Mir, recorded here so nobody re-runs them:
+The reason is the size the game actually renders at: **Mir is 22 world pixels
+tall.** Facial detail is worth nothing there. Silhouette, value structure,
+palette and animation are worth everything — and all four are exactly what a rig
+gives you and a generator cannot, at any prompt length. Identity that has to hold
+across 22 states and animate is not something you can prompt for twice and get
+the same character.
 
-1. A long style block placed *before* the subject makes the style the subject —
-   "steep / overhead / isolated" produced a mountain, not a man. **Subject
-   first, short style tail.**
-2. "Full body" is ignored roughly half the time. Even
-   `ENTIRE BODY HEAD TO TOE INCLUDING BOTH FEET` crops at the thighs when the
-   prompt also asks for a painterly render.
-3. Forcing a 55° overhead camera produces isometric *dioramas*, not characters.
+### 1.1 The dilution law
+
+**The single most important measured fact about the endpoint**
+(`tools/art/probe_dilution.py`). One fixed subject clause at the end of a prompt,
+one seed, padded only with bland non-contradicting filler:
+
+| prompt length | is the subject in the picture? |
+|---|---|
+| 162 chars | **yes** |
+| 587 chars | no |
+| 1012 chars | no |
+| 1522 chars | no |
+
+There is no truncation cliff to sit under. The signal just thins until the clause
+stops arriving, and it starts early. Therefore:
+
+- **A long style preamble does not add style. It deletes subject matter.** The
+  ~1000-character `RENDER + LIGHT + PALETTE + WORLD` stack is precisely the
+  filler measured above.
+- **Every prompt gets a hard character budget, asserted at build time**, with the
+  canon-critical fact first (`plates.py`, `BUDGET = 340`). If a prompt needs
+  something more, cut something else — never append.
+- **Negations barely register.** "NO SKY, NO CLOUDS, NO HORIZON" as a tail
+  returned a grey sky with a horizon in it. Say positively what occupies that
+  region instead: *"black water is what is overhead"*. The first version of the
+  dilution probe was invalid for this exact reason — it asked for "BRIGHT GREEN,
+  not red" after establishing a red chair, and the chair stayed red at every
+  length including 131 characters.
+
+### 1.2 Probes that the dilution law corrects
+
+Four probes against a canon-accurate description of Mir were previously recorded
+here as evidence of hard model limits. Three still stand; two do not, and are
+kept with their correction rather than deleted, because a retired finding that
+looks like a live one gets re-derived:
+
+1. Forcing a 55° overhead camera produces isometric *dioramas*, not characters.
    The reference games (Hyper Light Drifter, Death's Door, Hades) use a
    **slightly** elevated three-quarter view; the contract was corrected to match
-   what they actually do rather than what the camera spec said.
-4. The endpoint has a hard prior toward lean handsome heroes. "Sedentary,
-   unfit, forty" is silently overridden. Pushing hard enough to land the body
-   type ("fat, balding, big round belly, double chin") swings the render to
-   photorealism and breaks the style.
-5. The combination is the real wall: **full-body + painterly + a specific
-   unheroic body + an isolated background** cannot all hold at once, and
-   nothing about prompt order fixes it.
+   what they actually do rather than what the camera spec said. **Stands.**
+2. The endpoint has a hard prior toward lean handsome heroes. "Sedentary, unfit,
+   forty" is silently overridden, and pushing hard enough to land the body type
+   swings the render to photorealism. **Stands** — this is a prior, not a
+   dilution artifact.
+3. ~~"Full body" is ignored roughly half the time.~~ **Corrected:** those prompts
+   were over 1500 characters. The instruction was being diluted, not refused.
+4. ~~The combination full-body + painterly + unheroic body + isolation cannot
+   hold at once.~~ **Corrected:** untested at a sane prompt length. It may well
+   hold under budget.
 
-Against that, note the size the game actually renders at: **Mir is 22 world
-pixels tall.** Facial detail is worth nothing there. Silhouette, value
-structure, palette and animation are worth everything — and all four are
-exactly what a rig gives you and a generator cannot.
+Neither correction reopens the decision. The split rests on §1's first paragraph
+— identity, animation, 22-pixel readability — not on these two probes.
 
 The old pipeline's answer to animation was to generate one pose and shift halves
 of the bitmap around. That is why the cast used to animate like a jiggling blob.
@@ -183,6 +217,46 @@ Retired from the previous contract, and not to be reintroduced:
 - "VIVID saturated neon" everywhere — the register is a vivid *limited* palette
   on desaturated near-black; the accent has to be the emissive, or nothing reads
   as emissive.
+
+### 7.1 Cutscene plates
+
+The seven stage plates (`tools/art/plates.py`) are the game's told beats — the
+only moments it says something outright, and the first thing a new player sees.
+They used to be a handful of procedural rectangles; the stone child the whole
+premise hangs on was two grey circles with two dots for eyes, against
+world-bible §0's *"an abstraction is not an image."*
+
+**The split runs through the plates too.** Five are generated; two are drawn:
+
+| plate | how | why |
+|---|---|---|
+| fold, litho, house, waterline, scar | generated | organic, material-rich — a wet street, a bench of brass tools, a slope of sunken hulls |
+| **obelisk, rain** | **authored** (`tools/art/authored.py`) | geometric and particulate |
+
+The authored two are not a preference either. Six batches could not get one flat
+vertical slab out of the endpoint — it returned a mountain, a canyon, a *framed
+painting of* a canyon, and a pair of brutalist office blocks — and none produced
+a single visible falling raindrop, offering a waterfall and a mossy gorge
+instead. Both images are a few dozen lines of PIL, exactly on canon when drawn,
+and deterministic. **Fighting a prior you can simply draw is a waste.**
+
+Three rules the plates cost real batches to learn, beyond §1.1's dilution law:
+
+1. **Frame the shot so the contradiction cannot fit.** "A town on the deep-sea
+   floor, no sky" returned a moonlit canal town under clouds. Shot up a narrow
+   street, there is no room in the frame for a sky. Composition enforces canon;
+   adjectives do not.
+2. **Lead with the load-bearing noun.** As a trailing clause, the sunken hulls
+   vanished and left bare seabed, the trenches left a flat empty plain, and the
+   rain left a handsome dry street. Whatever the beat *is*, it goes first.
+3. **Name the material twice when the subject could be alive.** "An idol with an
+   infant's face" gave an adult relief carving; "swaddled infant" fixed the age
+   and summoned newborn *photography* — a real, living, pink baby. "Stone
+   carving … colourless stone … deep shadow" is what has no breath behind it.
+
+Plates are 1280×720, native 1:1 on the 320×180-at-4× canvas, placed at scale
+0.25, and the scene enforces its own text scrim rather than trusting the art to
+stay dark where the words go.
 
 ## 8. Build
 

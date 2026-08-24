@@ -4,6 +4,27 @@ import { GameContext } from "../state/GameContext";
 import { cutsceneById, Cutscene, CutsceneFrame, StageKind } from "../data/content/cutscenes";
 
 /**
+ * Plates are authored at 1280x720 and the design space is 320x180, so 0.25 is
+ * exactly 1:1 against the 4x render scale (GameConfig RENDER_SCALE).
+ */
+const PLATE_SCALE = 0.25;
+
+/**
+ * Where the one breathing light sits on each plate, in normalised frame
+ * coordinates. Only the two plates with a real, findable lamp in them get one.
+ *
+ * It used to be every stage, and that was wrong: `glow` is a round blob, so on
+ * a plate whose light is a thin vertical seam it read as a stray teal ORB
+ * hanging in mid-air in front of the obelisk. The authored plates
+ * (tools/art/authored.py) already carry their own emissive bloom and want
+ * nothing added; the generated landscapes have no single light to sit on.
+ */
+const PLATE_ACCENT: Partial<Record<StageKind, { x: number; y: number; s: number; tint: number; a: number }>> = {
+  fold: { x: 0.66, y: 0.24, s: 0.7, tint: 0xe0a860, a: 0.16 },
+  house: { x: 0.5, y: 0.34, s: 0.9, tint: 0xe0a860, a: 0.2 },
+};
+
+/**
  * Scripted story beats (owner: "we also need cutscenes"). A CutsceneScene plays
  * one {@link Cutscene}: staged, spare, minimal-text -- the same "found not told"
  * register as the echoes and the finale (world-bible §"How the story is told").
@@ -188,7 +209,17 @@ export class CutsceneScene extends Phaser.Scene {
     this.scene.stop();
   }
 
-  // --- staged backdrops (procedural, sprite-free -- v11.2 register) --------
+  // --- staged backdrops -----------------------------------------------------
+  // Each stage is a painted 1280x720 plate (tools/art/plates.py), placed at
+  // 0.25 so it is native 1:1 on the 4x canvas and never upsampled.
+  //
+  // These frames are the only moments the game tells you something outright,
+  // and they are the first thing a new player sees. They used to be drawn as a
+  // few procedural rectangles -- the stone child the whole premise hangs on was
+  // two grey circles with two dots for eyes, against world-bible §0's "an
+  // abstraction is not an image". The procedural version is kept below as a
+  // fallback, because a missing texture must degrade to a readable backdrop
+  // rather than to a black screen with floating text.
   private drawStage(frame: CutsceneFrame): void {
     const cx = BASE_WIDTH / 2;
     const cy = BASE_HEIGHT / 2 - 12;
@@ -200,6 +231,36 @@ export class CutsceneScene extends Phaser.Scene {
       if (!this.reduced()) this.tweens.add({ targets: im, alpha: a * 1.5, duration: 1600, yoyo: true, repeat: -1, ease: "Sine.inOut" });
     };
     const tint = frame.tint;
+
+    const plate = `plate_${frame.stage}`;
+    if (this.textures.exists(plate)) {
+      const im = this.add.image(cx, BASE_HEIGHT / 2, plate).setScale(PLATE_SCALE);
+      this.stageLayer.add(im);
+      // A very slow push-in. A static painting held for twenty seconds of text
+      // reads as a stalled screenshot; 4% over the length of a frame is below
+      // the threshold of being noticed as motion but keeps the shot alive.
+      if (!this.reduced()) {
+        this.tweens.add({
+          targets: im,
+          scale: PLATE_SCALE * 1.04,
+          duration: 22_000,
+          ease: "Sine.out",
+        });
+      }
+      // A scrim under the text. The plates are painted with a dark lower third
+      // for exactly this, but "painted dark" is not a guarantee, and 8px type
+      // over a lit passage is unreadable -- so the contrast is enforced here
+      // rather than trusted to the art.
+      const scrim = this.add.graphics();
+      scrim.fillGradientStyle(0x05060a, 0x05060a, 0x05060a, 0x05060a, 0, 0, 0.92, 0.92);
+      scrim.fillRect(0, BASE_HEIGHT - 74, BASE_WIDTH, 74);
+      this.stageLayer.add(scrim);
+      // and the one living accent, kept from the procedural staging
+      const acc = PLATE_ACCENT[frame.stage as StageKind];
+      if (acc) glow(acc.x * BASE_WIDTH, acc.y * BASE_HEIGHT, acc.s, tint ?? acc.tint, acc.a);
+      return;
+    }
+
     switch (frame.stage as StageKind) {
       case "fold": {
         g.fillStyle(0x0e2430, 1).fillRect(0, cy - 40, BASE_WIDTH, 120);

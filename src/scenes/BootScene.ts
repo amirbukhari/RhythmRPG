@@ -21,6 +21,15 @@ const ENEMY_STATE_URLS = import.meta.glob("../../assets/sprites/enemies/*/*.png"
   import: "default",
 }) as Record<string, string>;
 
+// Cutscene stage plates (tools/art/plates.py): assets/sprites/cutscene/fold.png
+// -> texture key `plate_fold`, drawn by CutsceneScene.drawStage at scale 0.25.
+// `_contact.png` is the review sheet, not an asset, so it is filtered out.
+const PLATE_URLS = import.meta.glob("../../assets/sprites/cutscene/*.png", {
+  eager: true,
+  query: "?url",
+  import: "default",
+}) as Record<string, string>;
+
 // Kitbash environment pieces (PRD §11.1): assets/sprites/env/<biome>/<piece>.png
 // -> texture key `env_<biome>_<piece>` (used by ArenaComposer).
 const ENV_URLS = import.meta.glob("../../assets/sprites/env/*/*.png", {
@@ -91,6 +100,11 @@ export class BootScene extends Phaser.Scene {
       const key = anim === "idle" ? `band_${member}` : `band_${member}_${anim}`;
       // Authored rig strips: 200px frames (tools/art/contract.py), at 0.125
       this.load.spritesheet(key, url, { frameWidth: 200, frameHeight: 200 });
+    }
+    // Cutscene plates: `.../cutscene/litho.png` -> `plate_litho`.
+    for (const [path, url] of Object.entries(PLATE_URLS)) {
+      const m = /cutscene\/([a-z_]+)\.png$/.exec(path);
+      if (m && !m[1].startsWith("_")) this.load.image(`plate_${m[1]}`, url);
     }
     // Environment kitbash pieces: `.../env/shallows/rock_a.png` -> env_shallows_rock_a
     for (const [path, url] of Object.entries(ENV_URLS)) {

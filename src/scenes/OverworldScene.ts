@@ -1109,7 +1109,7 @@ export class OverworldScene extends Phaser.Scene {
     void GameContext.persistActiveProfile();
     // The threshold cutscene (leaving the Fold); falls back to a toast if it's
     // already been seen.
-    if (!CutsceneScene.play(this, "leaving_fold")) this.showToast("THE FOLD BEHIND YOU", "The chorus begins.");
+    if (!CutsceneScene.play(this, "leaving_fold")) this.showToast("THE FOLD BEHIND YOU", "Only up, from here.");
   }
 
   /** The loss beat (§8.4 v12.0): Mir's first step onto the surface -- the
