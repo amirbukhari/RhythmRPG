@@ -20,7 +20,16 @@ STONE = (97, 110, 122)
 # ---- the five region hues (§8.8.1) --------------------------------------
 FOLD = (73, 198, 189)  # abyssal teal   -- the drowned town
 KELP = (108, 168, 116)  # kelp green     -- the climb
-BREACH = (216, 206, 182)  # sand / foam  -- the waterline
+# THE BREACH IS FOAM, NOT SAND. the Breach's accent WAS warm sand (0xE8D9A8 / 216,206,182,
+# "sand / foam" -- and the two halves of that comment are different colours; the
+# implementation picked sand). It shipped region 2 as a khaki desert: the ground
+# plate came out warm tan, the additive region grade added a yellow cast on top,
+# and a kit authored as cold neutral slate arrived sepia. §6.3 is "the waterline
+# ... Mir crosses and takes his FIRST BREATH OF SURFACE AIR": the Breach is the
+# one region in this game with sky in it, and sky here is a pale, cold, almost
+# colourless overcast, not a holiday beach. Taking the other half of the comment:
+# FOAM.
+BREACH = (182, 202, 196)  # pale cold foam -- the waterline, seen from under it
 SCAR = (194, 84, 36)  # blood / rust     -- the surface
 # The Keep is the LAST region and the warmest, which is the whole trap: Lunal's
 # room is "warm, lit, stocked, comfortable" with "no door on the inside"

@@ -53,24 +53,17 @@ the kelp is dry and stiff and the wrecks are stranded rather than sunk.
 
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 
-from PIL import Image
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from place_kit import Kit, place  # noqa: E402
 
-ROOT = Path(__file__).resolve().parents[2]
-MAP = ROOT / "assets" / "tilemaps" / "overworld.json"
-DRESSING = ROOT / "src" / "data" / "content" / "overworld" / "dressing.json"
-KIT = ROOT / "assets" / "sprites" / "env" / "shelf"
-REGION_INDEX = 1
-REGION_NAME = "shelf"
-
-TILE = 16
-PX_PER_METER = 15  # src/scenes/env/WorldScale.ts
-MIN_SCALE, MAX_SCALE = 0.28, 1.6
-# Must match the shelf block of WorldScale.METERS -- the engine's scale wins over
-# any authored one, so the footprint maths has to use the engine's number.
+# The metres MUST match the shelf block of WorldScale.METERS -- the engine's scale
+# wins over any authored one, so the footprint maths has to use the engine's
+# number. This is the one table still duplicated on purpose: it is small, every
+# entry is exercised against the shipped PNG by `Kit._sizes`, and importing
+# TypeScript from Python is not a trade worth making.
 METERS = {
     "hull": 7.5,
     "mast": 6.0,
@@ -85,46 +78,14 @@ METERS = {
     "plank_bridge": 1.2,
     "rail_bend": 0.9,
 }
-# Pieces allowed to stand ON a road. Only the plank bridge: it is a crossing,
-# and §6.2's "bad gaps" are gaps in the way the player is actually walking.
-ROAD_OK = {"plank_bridge"}
-FOOT_DEPTH = 10
-FOOT_TOL = 0.3
-
-
-def place(vignette, piece, col, row, flip=False, dx=0, dy=0):
-    return {"vignette": vignette, "piece": piece, "col": col, "row": row,
-            "flip": flip, "dx": dx, "dy": dy}
-
+# Pieces allowed to stand ON a road. Only the plank bridge: it is a crossing, and
+# §6.2's "bad gaps" are gaps in the way the player is actually walking. The rest
+# of the rules live in place_kit.py, which is now the single copy of them.
+KIT = Kit(region_index=1, biome="shelf", meters=METERS, road_ok={"plank_bridge"})
 
 # ---------------------------------------------------------------------------
-# THE DEAD FOREST -- a stand of eighteen, flanking the col-44 climb
+# THE DEAD FOREST -- a stand of fifty-seven, flanking the col-44 climb
 # ---------------------------------------------------------------------------
-# Base rows are staggered deliberately: the engine sorts by base Y, so a wreck
-# two rows nearer the camera occludes the one behind it, and the stand gets
-# depth instead of reading as a row of cut-outs on one line. Flips alternate
-# irregularly -- a strict alternation is as readable a pattern as none at all.
-# THE ROAD GEOMETRY SETS THE MINIMUM BASE ROW, AND IT IS NOT NEGOTIABLE.
-# A sprite is drawn from its base, so a 14-metre hull occupies the FOURTEEN ROWS
-# NORTH of the tile it stands on. The row-64 street runs cols 28-66 and the climb
-# runs col 44 from row 36 to row 92, which means a hull standing anywhere on the
-# long stretch must be based at row 79 or lower or its masthead lands on the
-# street; a mast needs row 76, a snapped hull row 73, a rib section row 68. Every
-# base row below comes out of that arithmetic, not out of the picture -- eight of
-# the first draft's placements had their prows through the main road.
-#
-# AND THE COUNT IS THE POINT. The first draft put nineteen wrecks across a
-# 66-by-70-tile stretch of region and the review verdict was the correct one:
-# that is SCATTERED, not a forest. "Ship skeletons standing like a dead forest"
-# (§6.2) fails the moment the player can count them, so this is thirty-three,
-# packed into two dense bands either side of the climb with every piece on its
-# own base row so they overlap and occlude. Walking up col 44 should feel like
-# walking through a wood, with the road the only clear line in the frame.
-#
-# One consequence worth stating: base rows are all distinct by design, which is
-# also what keeps the ground-contact test quiet -- two pieces one row apart are
-# 16px apart in base Y and FOOT_DEPTH is 10, so they are read as one standing
-# behind the other rather than as two things fighting for the same ground.
 # THE ROAD GEOMETRY SETS THE MINIMUM BASE ROW, AND IT IS NOT NEGOTIABLE.
 # A sprite is drawn from its base, so a piece occupies the rows NORTH of the tile
 # it stands on. The row-64 street runs cols 28-66 and the climb runs col 44 from
@@ -263,158 +224,6 @@ KELP = [
 
 SHELF = FOREST + MINE + GAPS + KELP
 
-
-def _map():
-    doc = json.loads(MAP.read_text())
-    w = doc["width"]
-    data = next(l for l in doc["layers"] if l["name"] == "ground")["data"]
-    return doc, w, data
-
-
-def _sizes():
-    out = {}
-    for name, m in METERS.items():
-        with Image.open(KIT / ("%s.png" % name)) as im:
-            src_w, src_h = im.size
-        s = max(MIN_SCALE, min(MAX_SCALE, (m * PX_PER_METER) / src_h))
-        s = max(0.5, round(s * 2) / 2)  # worldScaleFor()'s half-step snap
-        out[name] = (src_w * s, src_h * s)
-    return out
-
-
-def _box(sizes, p):
-    """Pixel bounds, origin bottom-centre (matches setOrigin(0.5, 1))."""
-    w, h = sizes[p["piece"]]
-    x = p["col"] * TILE + TILE / 2 + p["dx"]
-    y = p["row"] * TILE + TILE + p["dy"]
-    return (x - w / 2, y - h, x + w / 2, y)
-
-
-def check():
-    doc, mw, data = _map()
-    sizes = _sizes()
-    problems = []
-
-    def kind(c, r):
-        if not (0 <= c < mw and 0 <= r < doc["height"]):
-            return None
-        gid = data[r * mw + c]
-        return None if gid == 0 else (gid - 1) % 4
-
-    def region(c, r):
-        gid = data[r * mw + c]
-        return None if gid == 0 else min(4, max(0, (gid - 1) // 4))
-
-    for p in SHELF:
-        vig, piece, col, row = p["vignette"], p["piece"], p["col"], p["row"]
-        x0, y0, x1, y1 = _box(sizes, p)
-        if region(col, row) != REGION_INDEX:
-            problems.append("%s %s (%d,%d): base is in region %s, not the Shelf"
-                            % (vig, piece, col, row, region(col, row)))
-        for c in range(int(x0 // TILE), int((x1 - 1) // TILE) + 1):
-            for r in range(int(y0 // TILE), int((y1 - 1) // TILE) + 1):
-                k = kind(c, r)
-                if k == 1 and piece not in ROAD_OK:
-                    problems.append("%s %s (%d,%d): covers ROAD tile (%d,%d)"
-                                    % (vig, piece, col, row, c, r))
-                if k == 2:
-                    problems.append("%s %s (%d,%d): covers WATER tile (%d,%d)"
-                                    % (vig, piece, col, row, c, r))
-
-    for i, a in enumerate(SHELF):
-        for b in SHELF[i + 1 :]:
-            ax0, _ay0, ax1, ay1 = _box(sizes, a)
-            bx0, _by0, bx1, by1 = _box(sizes, b)
-            if abs(ay1 - by1) > FOOT_DEPTH:
-                continue
-            ow = min(ax1, bx1) - max(ax0, bx0)
-            if ow <= 0:
-                continue
-            frac = ow / min(ax1 - ax0, bx1 - bx0)
-            if frac > FOOT_TOL:
-                problems.append(
-                    "%s %s (%d,%d) shares ground with %s %s (%d,%d) -- %.0f%% of its width"
-                    % (a["vignette"], a["piece"], a["col"], a["row"],
-                       b["vignette"], b["piece"], b["col"], b["row"], frac * 100))
-    return problems
-
-
-def placements():
-    return [
-        {"vignette": p["vignette"], "key": "env_shelf_%s" % p["piece"],
-         "col": p["col"], "row": p["row"], "dx": p["dx"], "dy": p["dy"],
-         "scale": 1.0, "flip": p["flip"]}
-        for p in SHELF
-    ]
-
-
-def write():
-    doc = json.loads(DRESSING.read_text())
-    for region in doc["regions"]:
-        if region["region"] in ("saltmines", REGION_NAME):
-            region["region"] = REGION_NAME
-            region["placements"] = placements()
-            break
-    else:
-        doc["regions"].append({"region": REGION_NAME, "placements": placements()})
-    DRESSING.write_text(json.dumps(doc, indent=1) + "\n")
-    return len(placements())
-
-
-PREVIEW = ROOT / "tools" / "overworld" / ".preview"
-KIND_COL = {0: (34, 44, 46), 1: (72, 66, 56), 2: (14, 30, 40), 3: (52, 58, 62), None: (8, 9, 12)}
-
-
-def preview(c0=16, c1=82, r0=28, r1=98, zoom=3):
-    # PAD, then crop. A 14-metre hull based on the top row of the window has its
-    # prow 13 rows above the window, and `alpha_composite` refuses a negative
-    # destination -- so the canvas is grown by the tallest piece in the kit and
-    # cropped back at the end. Clipping the window instead would have hidden
-    # exactly the pieces whose height is the thing under review.
-    doc, mw, data = _map()
-    sizes = _sizes()
-    PAD = int(max(h for _w, h in sizes.values())) + TILE
-    W, H = (c1 - c0) * TILE, (r1 - r0) * TILE
-    img = Image.new("RGBA", (W + PAD * 2, H + PAD * 2))
-    px = img.load()
-    for c in range(c0, c1):
-        for r in range(r0, r1):
-            gid = data[r * mw + c]
-            k = None if gid == 0 else (gid - 1) % 4
-            col = KIND_COL[k] + (255,)
-            for i in range(TILE):
-                for j in range(TILE):
-                    px[PAD + (c - c0) * TILE + i, PAD + (r - r0) * TILE + j] = col
-    for p in sorted(SHELF, key=lambda t: t["row"]):
-        with Image.open(KIT / ("%s.png" % p["piece"])) as src:
-            src = src.convert("RGBA")
-            w, h = sizes[p["piece"]]
-            sp = src.resize((max(1, int(w)), max(1, int(h))), Image.LANCZOS)
-            if p["flip"]:
-                sp = sp.transpose(Image.FLIP_LEFT_RIGHT)
-        x0, y0, _x1, _y1 = _box(sizes, p)
-        img.alpha_composite(sp, (PAD + int(x0) - c0 * TILE, PAD + int(y0) - r0 * TILE))
-    PREVIEW.mkdir(parents=True, exist_ok=True)
-    out = PREVIEW / "shelf.png"
-    img = img.crop((PAD, PAD, PAD + W, PAD + H))
-    img.convert("RGB").resize((W * zoom, H * zoom), Image.NEAREST).save(out)
-    return out
-
-
-def main(argv):
-    problems = check()
-    for p in problems:
-        print("FAIL  %s" % p)
-    if problems:
-        print("\n%d problem(s) -- nothing written." % len(problems))
-        return 1
-    print("%d placements, all clear of roads and water." % len(SHELF))
-    if "--preview" in argv or "--write" in argv:
-        print("preview -> %s" % preview().relative_to(ROOT))
-    if "--write" in argv:
-        print("wrote %d placements -> %s" % (write(), DRESSING.relative_to(ROOT)))
-    return 0
-
-
 if __name__ == "__main__":
-    raise SystemExit(main(sys.argv))
+    # the window frames the climb, the mine, and the northward thinning
+    raise SystemExit(KIT.main(sys.argv, SHELF, preview_window=(16, 82, 28, 98)))

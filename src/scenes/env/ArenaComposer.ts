@@ -138,57 +138,125 @@ export const ARENA_LAYOUTS: Record<string, ArenaLayout> = {
       { key: "env_shared_save_obelisk", x: 30, y: 172 },
     ],
   },
+  // The Breach's venue is the MIDWAY, not a fighting ring. The old layout here
+  // dressed a pit -- torches at the corners, a drum, a bench, spectators implied
+  // -- which belonged to a cosmology where region 2 was a place people fought
+  // for sport. §6.3 says it is a carnival that kept performing after the water
+  // came, and the pack that jumps him here is jumping him between the stalls.
+  //
+  // So: stalls on the flanks with their bulbs still lit, bunting over the top
+  // AND the bottom of the frame so the fight reads as happening under it,
+  // duckboards underfoot including one right through the middle where the
+  // fighters stand, and the swing boat held off plumb at the west edge -- the
+  // one thing in the venue that nothing else in it explains.
   arena_breach: {
     pieces: [
-      { key: "env_pit_ticket_booth", x: 58, y: 60 },
-      { key: "env_pit_carousel_horse", x: 282, y: 72, flip: true },
-      { key: "env_pit_tent_pole", x: 34, y: 118 },
-      { key: "env_pit_plum_rubble", x: 26, y: 160 },
-      { key: "env_pit_plum_rubble", x: 300, y: 150, flip: true },
-      { key: "env_pit_rope_coil", x: 108, y: 36 },
-      { key: "env_pit_rope_coil", x: 205, y: 34 },
-      { key: "env_pit_tent_pole", x: 274, y: 128, flip: true },
+      { key: "env_breach_booth", x: 52, y: 56 },
+      { key: "env_breach_booth", x: 274, y: 64, flip: true },
+      { key: "env_breach_ticket_booth", x: 24, y: 100 },
+      { key: "env_breach_tent", x: 300, y: 122, flip: true },
+      { key: "env_breach_tent_pole", x: 96, y: 24 },
+      { key: "env_breach_tent_pole", x: 232, y: 22, flip: true },
+      { key: "env_breach_carousel", x: 264, y: 176, flip: true },
+      { key: "env_breach_carousel_horse", x: 122, y: 174 },
+      { key: "env_breach_strength_tester", x: 308, y: 42 },
+      // the one wrong note: a pendulum held twenty degrees over
+      { key: "env_breach_swing_boat", x: 62, y: 164 },
+      { key: "env_breach_bunting", x: 160, y: 18 },
+      { key: "env_breach_bunting", x: 158, y: 179 },
+      // duckboards, and the middle one is UNDER the fight on purpose
+      { key: "env_breach_boardwalk", x: 74, y: 132 },
+      { key: "env_breach_boardwalk", x: 160, y: 152 },
+      { key: "env_breach_boardwalk", x: 250, y: 140 },
+      // the only warm light in the venue, and it is still working
+      { key: "env_breach_festoon_lamp", x: 88, y: 44 },
+      { key: "env_breach_festoon_lamp", x: 240, y: 42, flip: true },
       { key: "env_shared_save_obelisk", x: 30, y: 172 },
-      // ring corners: the pit is a fighting ring (§8.6 pit pack flavour)
-      { key: "env_pit_scatter_torch", x: 86, y: 52 },
-      { key: "env_pit_scatter_torch", x: 234, y: 52, flip: true },
-      { key: "env_pit_scatter_drum", x: 308, y: 172 },
-      { key: "env_pit_scatter_bench", x: 150, y: 178 },
     ],
   },
+  // The Scar's venue is DUG-OVER GROUND. The old layout here was an ATTIC --
+  // drawers, a crate stack, a rocking chair, a birdcage, oil lamps -- furniture
+  // from the retired cosmology, where region 3 was somebody's loft. §6.4 is
+  // "gouged, burned, pitted, picked-over", and the fight that happens here
+  // happens between the holes.
+  //
+  // NO `den_mouth` IN THE VENUE, and that is deliberate. There is exactly one
+  // den in this region and it stands at the top of the col-288 road where the
+  // road dead-ends (see tools/overworld/place_scar.py). Putting a second one at
+  // every fight node would turn §6.4's landmark into wallpaper and spend the
+  // reveal eleven times before the player reaches it.
+  //
+  // What the venue DOES carry is the evidence: four spoil heaps, a trench, a
+  // windlass, a barrow, a dropped pack and a cairn. Every fight in the long
+  // middle is fought standing in the proof, and the player will not read it
+  // until §5.
   arena_scar: {
     pieces: [
-      { key: "env_attic_drawers", x: 58, y: 60 },
-      { key: "env_attic_crate_stack", x: 286, y: 74, flip: true },
-      { key: "env_attic_rocking_chair", x: 36, y: 120 },
-      { key: "env_attic_birdcage", x: 300, y: 130 },
-      { key: "env_attic_crate_stack", x: 26, y: 162 },
-      { key: "env_attic_oil_lamp", x: 108, y: 36 },
-      { key: "env_attic_oil_lamp", x: 272, y: 122 },
+      { key: "env_scar_burnt_spar", x: 86, y: 26 },
+      { key: "env_scar_burnt_spar", x: 238, y: 22, flip: true },
+      { key: "env_scar_burnt_stand", x: 28, y: 60 },
+      { key: "env_scar_burnt_stand", x: 296, y: 66, flip: true },
+      { key: "env_scar_spoil_heap", x: 52, y: 98 },
+      { key: "env_scar_spoil_heap", x: 274, y: 104 },
+      { key: "env_scar_spoil_heap", x: 66, y: 170 },
+      { key: "env_scar_spoil_heap", x: 286, y: 174 },
+      { key: "env_scar_trench", x: 152, y: 179 },
+      { key: "env_scar_windlass", x: 306, y: 132 },
+      { key: "env_scar_cairn", x: 22, y: 124 },
+      { key: "env_scar_bone_pile", x: 116, y: 175 },
+      { key: "env_scar_barrow", x: 206, y: 177, flip: true },
+      { key: "env_scar_pilgrim_pack", x: 62, y: 142 },
+      // the only warm light in the venue, and somebody is using it to look at
+      // the ground -- see the dig_lamp docstring
+      { key: "env_scar_dig_lamp", x: 96, y: 44 },
+      { key: "env_scar_dig_lamp", x: 226, y: 48, flip: true },
       { key: "env_shared_save_obelisk", x: 30, y: 172 },
-      { key: "env_attic_scatter_lamp", x: 150, y: 32 },
-      { key: "env_attic_scatter_trunk", x: 308, y: 170 },
-      { key: "env_attic_scatter_rockinghorse", x: 224, y: 174 },
-      { key: "env_attic_scatter_radio", x: 12, y: 128 },
     ],
   },
+  // THE LAST VENUE IN THE GAME, and every key in it was DEAD. Fourteen
+  // `env_hall_*` pieces, and there is no `assets/sprites/env/hall/` directory in
+  // this build -- so the boss arena, the one fight the whole campaign is walking
+  // toward, has been composing itself out of fourteen texture keys that resolve
+  // to nothing. `tsc` cannot see it (they are strings), the palette gate cannot
+  // see it (it reads shipped PNGs, and there were none), and the arena still
+  // rendered, just empty. The only thing that catches this class of bug is
+  // looking at the room.
+  //
+  // §6.5: "an orchestra that drowned mid-performance -- beautiful, and NOBODY'S
+  // story." So this arena is dressed as a HALL, not as a battlefield: nothing
+  // overturned, nothing smashed, the instruments still on their stands, the
+  // chairs square. The player fights Lunal in a room somebody was working in.
+  //
+  // AND THE PROSCENIUM IS BEHIND HER. It is the tallest built thing in the game
+  // (six tiles) and it goes upstage centre, so the fight is framed by it -- the
+  // one composition in the campaign where the arena has a focal point that is
+  // not a combatant. The two candelabra flank the downstage edge, which puts the
+  // only warm light in the venue between the player and the door they came in
+  // by, and leaves her side of the room in the dark.
   arena_keep: {
     pieces: [
-      { key: "env_hall_plinth", x: 58, y: 60 },
-      { key: "env_hall_plinth", x: 286, y: 68, flip: true },
-      { key: "env_hall_melting_clock", x: 36, y: 122 },
-      { key: "env_hall_music_stand", x: 300, y: 128 },
-      { key: "env_hall_chandelier", x: 150, y: 34 },
-      { key: "env_hall_page_stack", x: 26, y: 162 },
-      { key: "env_hall_page_stack", x: 288, y: 168, flip: true },
-      { key: "env_hall_music_stand", x: 274, y: 120 },
+      { key: "env_keep_proscenium", x: 160, y: 30 },
+      { key: "env_keep_pillar", x: 22, y: 52 },
+      { key: "env_keep_pillar", x: 298, y: 58, flip: true },
+      { key: "env_keep_organ_pipes", x: 268, y: 34 },
+      // the orchestra, still on their stands
+      { key: "env_keep_harp", x: 42, y: 104 },
+      { key: "env_keep_cello", x: 286, y: 112, flip: true },
+      { key: "env_keep_timpani", x: 62, y: 138 },
+      { key: "env_keep_music_stand", x: 108, y: 128 },
+      { key: "env_keep_music_stand", x: 208, y: 132, flip: true },
+      { key: "env_keep_chair_row", x: 130, y: 152 },
+      // the one chair that is on its own, downstage, facing the wrong way
+      { key: "env_keep_chair", x: 244, y: 158, flip: true },
+      { key: "env_keep_stopped_clock", x: 90, y: 62 },
+      // the hall's own weather: paper the water pushed to the walls
+      { key: "env_keep_sheet_drift", x: 30, y: 176 },
+      { key: "env_keep_sheet_drift", x: 292, y: 180, flip: true },
+      { key: "env_keep_sheet_drift", x: 176, y: 172 },
+      // the only two lit things in the room, and they are behind the player
+      { key: "env_keep_candelabra", x: 74, y: 170 },
+      { key: "env_keep_candelabra", x: 250, y: 174, flip: true },
       { key: "env_shared_save_obelisk", x: 34, y: 172 },
-      // the boss hall read sparse (design-audit-3): fallen finery rings it
-      { key: "env_hall_scatter_chandelier", x: 150, y: 176 },
-      { key: "env_hall_scatter_bust", x: 108, y: 34 },
-      { key: "env_hall_scatter_cello", x: 310, y: 96 },
-      { key: "env_hall_scatter_harp", x: 14, y: 128 },
-      { key: "env_hall_scatter_candelabra", x: 222, y: 30 },
     ],
   },
 };

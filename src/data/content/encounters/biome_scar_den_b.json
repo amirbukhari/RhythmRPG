@@ -1,16 +1,17 @@
 {
-  "encounterId": "biome_scar_wraith_c",
+  "encounterId": "biome_scar_den_b",
   "trackId": "pit_below_01",
   "enemyWave": [
     "elite_wraith",
-    "elite_wraith"
+    "elite_wraith",
+    "drifter"
   ],
   "accentProfile": null,
   "victoryRewards": {
-    "xp": 220,
-    "currency": 110,
+    "xp": 235,
+    "currency": 115,
     "relicChoices": [
-      "groove_amp"
+      "counter_charm"
     ]
   }
 }

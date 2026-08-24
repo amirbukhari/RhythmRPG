@@ -23,6 +23,7 @@ OverworldScene at 0.5 scale in place of the (now hidden) tile layer render.
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 import numpy as np
@@ -42,7 +43,11 @@ RNG = np.random.default_rng(20260714)
 # The fifth was 0x7A4EB4, storm violet, inherited from the retired cosmology's
 # carnival -- see KEEP in tools/art/palette.py. The Keep is a drowned concert
 # hall and its accent is the game's own brass lamplight.
-ACCENTS = [(0x49, 0xC6, 0xBD), (0x58, 0xC0, 0x7A), (0xE8, 0xD9, 0xA8), (0xC2, 0x54, 0x24), (0xC6, 0x98, 0x4E)]
+# The third was 0xE8D9A8, warm sand -- see BREACH in tools/art/palette.py for
+# why it is foam now. The accent feeds `grass_bases`, `path_bases`,
+# `shore_bases`, `rock_top_bases` and the arena wear base, so region 2's
+# grass, road, shoreline, rock and trampled ground all turn cold together.
+ACCENTS = [(0x49, 0xC6, 0xBD), (0x58, 0xC0, 0x7A), (0xB6, 0xCA, 0xC4), (0xC2, 0x54, 0x24), (0xC6, 0x98, 0x4E)]
 
 
 
@@ -56,6 +61,59 @@ def value_noise(h: int, w: int, cell: int) -> np.ndarray:
     coarse = RNG.random((gh, gw), dtype=np.float32)
     img = Image.fromarray((coarse * 255).astype(np.uint8)).resize((w, h), Image.BILINEAR)
     return np.asarray(img, dtype=np.float32) / 255.0
+
+
+def crack_net(h: int, w: int, spacing: int, thick: float = 0.75) -> np.ndarray:
+    """A real mud-crack web: the shared EDGES of a jittered Voronoi tessellation.
+
+    THIS REPLACES AN ISOCONTOUR, WHICH IS A DOODLE GENERATOR. Three separate
+    passes in this file used `abs(value_noise(...) - 0.5) < eps` for cracks and
+    all three shipped wrong, in two different ways depending on the cell size: a
+    coarse cell gave long sweeping curves that dip in and out of the band, i.e.
+    DASHED LINES (dressmaker's chalk), and a fine cell gave a confetti of
+    disconnected hooks and ticks (scattered glyphs). Neither is a crack, because
+    a level set of a smooth field has no reason to close, meet, or branch.
+
+    Dried mud does not crack along a level set. It shrinks, and shrinkage tears
+    it along the boundaries between cells, so the pattern is a CONNECTED
+    POLYGON NETWORK: every cell closed, every junction a Y, every segment
+    ending at another segment. That is exactly a Voronoi diagram's edge set, so
+    build it as one -- mark the pixels whose two nearest seeds are nearly
+    equidistant -- and the topology is right by construction rather than by
+    luck. `spacing` is the polygon size in PLATE pixels (the camera shows 320 of
+    them across, so 40 gives about eight cells per screen); `thick` is a hair
+    under a pixel because the plate draws 1:1 into a 4x-scaled camera and a
+    2px plate line arrives eight screen pixels wide.
+
+    Banded over rows so the intermediate distance fields never all exist at
+    once -- the plate is 18M pixels and this needs three float32 planes.
+    """
+    gh, gw = h // spacing + 3, w // spacing + 3
+    jy = RNG.random((gh, gw), dtype=np.float32)
+    jx = RNG.random((gh, gw), dtype=np.float32)
+    sy = (np.arange(gh, dtype=np.float32)[:, None] - 1.0 + jy * 0.88 + 0.06) * spacing
+    sx = (np.arange(gw, dtype=np.float32)[None, :] - 1.0 + jx * 0.88 + 0.06) * spacing
+    sy = np.ascontiguousarray(np.broadcast_to(sy, (gh, gw)))
+    sx = np.ascontiguousarray(np.broadcast_to(sx, (gh, gw)))
+    out = np.zeros((h, w), dtype=bool)
+    xx = np.arange(w, dtype=np.float32)[None, :]
+    gx = (xx / spacing).astype(np.int32) + 1
+    for y0 in range(0, h, 512):
+        y1 = min(h, y0 + 512)
+        yy = np.arange(y0, y1, dtype=np.float32)[:, None]
+        gy = (yy / spacing).astype(np.int32) + 1
+        d1 = np.full((y1 - y0, w), 1e9, dtype=np.float32)
+        d2 = np.full((y1 - y0, w), 1e9, dtype=np.float32)
+        for dy in (-1, 0, 1):
+            iy = np.clip(gy + dy, 0, gh - 1)
+            for dx in (-1, 0, 1):
+                ix = np.clip(gx + dx, 0, gw - 1)
+                d = np.hypot(sy[iy, ix] - yy, sx[iy, ix] - xx)
+                lower = d < d1
+                d2 = np.where(lower, d1, np.minimum(d2, d))
+                d1 = np.where(lower, d, d1)
+        out[y0:y1] = (d2 - d1) < thick
+    return out
 
 
 def organic_mask(tile_mask: np.ndarray, jitter: float = 0.22, blur: int = 9, warp: float = 0.0) -> np.ndarray:
@@ -128,14 +186,72 @@ def main() -> None:
     # are cool/submerged -- but distinct: the Fold is a bluer silt town-floor,
     # the Shelf a greener drowned KELP slope. Not a sunlit meadow (owner: "the
     # transition from the fold straight to grass doesn't make sense").
-    GROUND_BASES = [(0x26, 0x40, 0x4A), (0x22, 0x44, 0x3C), (0x86, 0x76, 0x54), (0x40, 0x30, 0x28), (0x38, 0x35, 0x3A)]
-    grass_bases = [tint(b, a, 0.22) for b, a in zip(GROUND_BASES, ACCENTS)]
+    # THE THIRD ONE WAS 0x867654, "wet sand", and it was the whole reason region 2
+    # arrived as a desert. Look at the family: every other base sits between 0x22
+    # and 0x4A, and that one was 0x86 -- more than double the value of any of the
+    # others, and the only warm one. It was not a tint problem, it was a BASE
+    # problem: no accent applied at 0.22 can pull a 0x86 warm tan back into a
+    # region whose kit is authored as cold neutral slate, and the frame came back
+    # khaki with the carnival sitting on a beach in it.
+    #
+    # The Breach is a FORESHORE at the moment the tide is out: cool grey-green
+    # wet shingle. It is still the lightest of the five, because it is the one
+    # region with sky over it (§6.3, the first breath of surface air) -- but
+    # lightest of a family, not an outlier from a different game.
+    #
+    # AND THEN REGION 3 ARRIVED AS ARIZONA. Same failure, one region east.
+    # Measured off the shipped plate, the ground under the den camp was
+    # #623720 -- hue 21, SATURATION 67%. Every other ground in the game
+    # measures between 10% and 45%, so the Scar was not "warm", it was the
+    # only saturated surface in the world, and the only one whose hue reads
+    # as sunlight. §6.4 asks for "gouged, burned, pitted, picked-over"; what
+    # rendered was an oxide desert with mining equipment standing on it, and
+    # the equipment -- authored in char and ash and iron -- read as grey
+    # CUT-OUTS pasted onto orange. It also broke §3 twice over: the ground
+    # was the brightest large field in the frame, so the three dig lamps,
+    # which are the only real light in the region, had to compete with it.
+    #
+    # It was the tint, not the base: 0.22 of a 0xC25424 ember over a dark
+    # brown lands at 58% saturation before the noise pass touches it. An
+    # ACCENT is a small hot thing (§3) and must not be smeared across
+    # forty-three thousand tiles at a fifth strength -- so the strength is
+    # per-region now, and the Scar takes an EIGHTH of its ember. What is left
+    # is a bruise: dark, warm, and desaturated to 40%, which is where the
+    # Shelf and the Fold already sit. The ember still burns at full strength
+    # where it belongs, in the ember motifs and the lamps.
+    GROUND_BASES = [(0x26, 0x40, 0x4A), (0x22, 0x44, 0x3C), (0x54, 0x5C, 0x56), (0x44, 0x34, 0x30), (0x33, 0x33, 0x3B)]
+    # AND THEN REGION 4 CAME BACK AS MUD, which is the third time this exact
+    # line has shipped a region in the wrong colour. `ACCENTS[4]` is a warm gilt
+    # (0xC698 4E) -- correct as an accent, it is candlelight on brass -- and 0.22
+    # of it over the cool grey-violet base lands at hue 28, saturation 29%: a
+    # concert hall the colour of a ploughed field. Measured on the shipped plate
+    # at (336,26), the "deepest darkest place in the hall", it was #3a322a.
+    #
+    # The Keep gets a SIXTEENTH of its accent, which is less than the Scar's
+    # eighth, and for a reason already written down in tools/art/env_keep.py's
+    # header as rule 3: THE WARMTH IN THIS REGION IS IN THE MATERIALS, NOT IN
+    # THE LIGHT. Mahogany, gilt, brass and velvet are all warm and all of them
+    # are OBJECTS; the floor they stand on is cold marble in an unlit room, and
+    # if the floor is warm too then §7's warm room is not an arrival, it is more
+    # of the same. The one region whose accent belongs on the ground is the Fold,
+    # because its accent IS its water.
+    GRASS_TINTS = [0.22, 0.22, 0.22, 0.08, 0.06]
+    grass_bases = [tint(b, a, t) for b, a, t in zip(GROUND_BASES, ACCENTS, GRASS_TINTS)]
     img = blended(grass_bases)
     n_low = value_noise(PH, PW, 160)
     n_mid = value_noise(PH, PW, 36)
     n_hi = value_noise(PH, PW, 7)
     img *= (1 + (n_low - 0.5) * 0.30 + (n_mid - 0.5) * 0.18 + (n_hi - 0.5) * 0.10)[..., None]
-    img[n_low < 0.36] *= 0.86  # pooled dark patches
+    # POOLED DARK PATCHES, and this line was a camouflage generator. A hard
+    # threshold on a cell-160 noise field paints flat blobs with HARD EDGES --
+    # binary in, binary out -- and wherever two districts of different hue
+    # overlapped one of these blobs (the Oasis's green against the sulfur
+    # barrens' olive) the result was military camo: three or four flat patches
+    # of different colour meeting along crisp curves. It is the same shape as
+    # the flat-patch law noted further down: any pass that hard-selects a
+    # region of the canvas owes it a gradient at the boundary.
+    pool = np.clip((0.36 - n_low) / 0.11, 0, 1)
+    img *= (1 - 0.15 * pool)[..., None]
     grain = RNG.random((PH, PW), dtype=np.float32)
     img *= (1 + (grain - 0.5) * 0.12)[..., None]  # per-pixel grain (HLD crunch)
 
@@ -246,15 +362,50 @@ def main() -> None:
         # THE SCAR (region 3) -- the 60% surface, now ~10 NAMED places. Dark
         # districts get bold amt + high-contrast palettes so they read against
         # the dark-brown base; the whole east is filled so nothing stays blank.
-        ("boneyard",  178, 106, 26, 20, 3, (0xB8, 0xB2, 0x9A), 0.60),  # bleached bone earth (under the bones)
+        # BLEACHED IS A SATURATION, NOT A VALUE. This was 0xB8B29A at 0.60 and
+        # measured 48% value on the plate -- the brightest large field in the
+        # Scar, so the frame at (190,100) came back as an empty warm haze with
+        # the bone piles sitting on it barely darker than the dirt. Bone reads
+        # as bone because it is DRIER than the earth, not lighter than it.
+        ("boneyard",  178, 106, 26, 20, 3, (0x94, 0x8E, 0x7C), 0.46),  # bleached bone earth (under the bones)
         ("geyserpan", 203,  42, 22, 16, 3, (0x8C, 0xA6, 0x9C), 0.52),  # mineral teal-grey crust (under the geysers)
         ("ashwaste",  146,  54, 26, 20, 3, (0x7C, 0x78, 0x72), 0.56),  # pale cool ash grey, NW Scar
-        ("basalt",    268,  84, 30, 23, 3, (0x52, 0x54, 0x50), 0.58),  # neutral slate basalt flats, central-E (breaks the brown, not Stage-purple)
-        ("oasis",     236, 120, 15, 13, 3, (0x4E, 0x70, 0x36), 0.66),  # the ONE living thing: a hidden green oasis (the unwritten voice)
-        ("rustdunes", 306,  50, 40, 30, 3, (0xC4, 0x60, 0x22), 0.68),  # VIVID burnt-orange oxide dunes, NE Scar
+        # THE DEN STANDS ON THE BASALT, and it did not. `basalt` was centred
+        # (268,84) r30x23, which misses (290,67) by four percent of its own
+        # radius, and `rustdunes` -- the loudest district in the game -- caught
+        # it instead. So §6.4's ending, the den and the man in it, was staged
+        # on a bright orange dune field. The bleakest ground in the region now
+        # reaches the one place in it that has to land.
+        ("basalt",    280,  80, 34, 26, 3, (0x52, 0x54, 0x50), 0.64),  # neutral slate basalt flats, central-E (breaks the brown, not Stage-purple)
+        # THE GREEN WAS NOT UNDER THE PLANTS. This disc was centred (236,120)
+        # r15x13, so it covered rows 107-133 -- and `place_scar`'s Oasis is laid
+        # out over rows 125-136, which means the bottom third of the clearing sat
+        # on bare brown and the top two thirds of the green field had nothing
+        # growing on it. Centred on the spring now, and TIGHTER, so the green is
+        # exactly as big as the place it belongs to. `feather` is opened up as
+        # well: at 0.62 the falloff was steep enough to show an edge, and a
+        # clearing does not have an edge, it has an outskirt.
+        # A POCKET NEEDS ITS EDGE IN THE FRAME. At r12x10 the green filled the
+        # whole 20x11 camera and the Oasis read as a MEADOW -- §6.4 asks for "one
+        # pocket of living green", and a pocket is defined by the dead ground you
+        # can see around it. Nine by seven puts brown in the corners of the frame
+        # from wherever you stand in the clearing, and the amount comes down too
+        # so the ground green stays a step under the plants growing on it.
+        ("oasis",     237, 130, 5, 4, 3, (0x4E, 0x70, 0x36), 0.46, 0.85),  # a POCKET, and the camera is 20x11 tiles: r9x7 filled the frame edge to edge and read as a meadow. Half the screen has to stay dead or the green means nothing
+        # ...and it is a POCKET now, not a province. A vivid oxide field is a
+        # fine thing to find off the road; it is not a fine thing to hold the
+        # region's climax. Moved to the far NE corner and cut to a third of
+        # its old area, so it stays a discovery.
+        ("rustdunes", 322,  32, 26, 20, 3, (0xC4, 0x60, 0x22), 0.52),  # VIVID burnt-orange oxide dunes, NE Scar
         ("verdigris", 342,  98, 21, 21, 3, (0x4C, 0x60, 0x52), 0.50),  # muted oxidised-copper seep (mineral, not meadow), far-E Scar
         ("scorch",    334, 132, 26, 24, 3, (0x1C, 0x16, 0x16), 0.72),  # near-black scorchreach, E Scar
-        ("sulfur",    252, 152, 25, 21, 3, (0x7C, 0x78, 0x38), 0.56),  # sickly sulfur barrens, SE Scar
+        # ...and it is moved off the Oasis. At (252,152) r25x21 the barrens
+        # reached rows 131-173, straight through the clearing, so the one place
+        # in the region that is meant to read as ALIVE had a sickly olive laid
+        # under half of it. Green and yellow-green fighting over the same tiles
+        # is also the single worst pairing available for the camo failure noted
+        # at the pooled-patch line above.
+        ("sulfur",    262, 164, 24, 19, 3, (0x7C, 0x78, 0x38), 0.56),  # sickly sulfur barrens, SE Scar
         ("tarpit",    300, 172, 22, 18, 3, (0x22, 0x1C, 0x1A), 0.62),  # black tar seeps, far SE Scar
         ("bloodmire", 114, 152, 24, 20, 3, (0x54, 0x22, 0x26), 0.64),  # dark blood-maroon bog, SW Scar
         ("saltpan",   216, 186, 32, 12, 3, (0xC0, 0xBA, 0xAC), 0.54),  # pale salt crust (under the Salt Flats)
@@ -265,9 +416,24 @@ def main() -> None:
         # THE FOLD (region 0) -- keep it deep + blue, distinct from Shelf green
         ("eelgrass",   20, 185, 17, 14, 0, (0x14, 0x30, 0x2E), 0.46),  # near-black eelgrass deeps
         ("praysilt",   33, 162, 15, 12, 0, (0x40, 0x5C, 0x5E), 0.36),  # pale teal silt clearing (the town)
-        # THE BREACH (region 2)
-        ("tidepool",   85, 138, 18, 16, 2, (0x62, 0x82, 0x82), 0.42),  # bluer tidal shallows
-        ("drysand",   126,  92, 18, 16, 2, (0xC6, 0xB6, 0x8A), 0.42),  # warm dry crossing sand
+        # THE BREACH (region 2) -- FOUR districts now, and it had two.
+        #
+        # Two was thin for the region the story turns on (the Keep's note below
+        # makes the same complaint about itself), and one of the two was wrong:
+        # `drysand` at 0xC6B68A, "warm dry crossing sand", sat centred on (126,92)
+        # -- which is exactly where the midway stands -- and painted the carnival
+        # a holiday-beach tan. See ACCENTS above.
+        #
+        # Read west to east, which is the way he crosses: he is still wading, then
+        # he is over the old high-water mark, then he is on hard wet shingle with
+        # the fair on it, then the ground is drying out toward the Scar. The
+        # wrackline is the one that matters -- a band of stranded weed and litter
+        # marking how far the water came, running north-south across his path, so
+        # the crossing has a THRESHOLD in it and is not just a gradient.
+        ("tidepool",   85, 138, 18, 16, 2, (0x62, 0x82, 0x82), 0.44),  # bluer tidal shallows -- still wading
+        ("wrackline",  99, 116, 13, 30, 2, (0x3C, 0x44, 0x36), 0.50),  # stranded weed + litter: the high-water mark
+        ("foreshore", 114,  88, 21, 19, 2, (0x7E, 0x8E, 0x88), 0.46),  # hard wet shingle -- the midway stands here
+        ("saltcrust", 132, 141, 18, 18, 2, (0xAC, 0xB2, 0xA6), 0.44),  # cold pale crust, drying toward the Scar
         # THE KEEP (region 4) -- a drowned concert hall, "taken and repurposed"
         # (world-bible §6.5). It had TWO districts, both violet: `inkreach`
         # (0x201A30, "deep violet-black") and a `marble` at 0xB0AAC2. Both were
@@ -282,14 +448,25 @@ def main() -> None:
         # mid-performance, stands and chairs and stopped clocks. Beautiful, and
         # nobody's story." Nothing here is cold or strange -- that is the whole
         # trap (see KEEP in tools/art/palette.py).
-        ("foyer",     292,  62, 14, 12, 4, (0x4A, 0x3C, 0x30), 0.50),  # sodden carpet gone to brown silt -- the way in
-        ("stalls",    322,  60, 20, 16, 4, (0x38, 0x33, 0x2E), 0.46),  # rows of seats under a century of silt
+        # THE FOUR KEEP DISTRICTS ALL OVERLAPPED EACH OTHER, and the one with
+        # a hard repeat in its texture won every argument: `stalls` reached
+        # cols 302-342, so the FOYER -- twenty tiles west of any seat -- came
+        # back ruled with seat rows and read as corduroy. Four districts in one
+        # region have to be laid out like four ROOMS, i.e. mostly disjoint, and
+        # each has to sit under the vignette `place_keep.py` authors on it:
+        # the-foyer (305,62), the-stalls (322,60), the-orchestra-pit (336,26),
+        # the-marble-approach (320,40) -- and the boss himself at (308,41).
+        ("foyer",     300,  64, 13, 11, 4, (0x4A, 0x3C, 0x30), 0.50),  # sodden carpet gone to brown silt -- the way in
+        ("stalls",    326,  62, 14, 12, 4, (0x38, 0x33, 0x2E), 0.46),  # rows of seats under a century of silt
         ("orchpit",   336,  26, 15, 13, 4, (0x1C, 0x18, 0x14), 0.54),  # the orchestra pit: the deepest, darkest place in the hall
-        ("marble",    308,  46, 14, 12, 4, (0xB6, 0xAE, 0x9E), 0.44),  # pale NEUTRAL marble, warmed by the lamps (boss approach)
+        ("marble",    314,  42, 12,  9, 4, (0xB6, 0xAE, 0x9E), 0.44),  # pale NEUTRAL marble, warmed by the lamps -- and it is the BOSS APPROACH, so it is centred between the boss (308,41) and the vignette (320,40)
     ]
     dmask = {}
-    for name, cx, cy, rx, ry, reg, rgb, amt in AUTHORED:
-        dmask[name] = district(cx, cy, rx, ry, reg, rgb, amt)
+    for row in AUTHORED:
+        # an 8th field is an optional per-district `feather` (see `district`);
+        # most places want the default, the Oasis wants a wider outskirt.
+        name, cx, cy, rx, ry, reg, rgb, amt = row[:8]
+        dmask[name] = district(cx, cy, rx, ry, reg, rgb, amt, *row[8:])
 
     # district signature TEXTURES -- each place reads distinct by MATERIAL, not
     # only tint. Keyed to the placed masks above (grass tiles only).
@@ -328,11 +505,22 @@ def main() -> None:
         canvas[pool] = canvas[pool] * 0.5 + np.array((0x20, 0x10, 0x14), dtype=np.float32)[None, :] * 0.5
     m = dtex("boneyard")          # pale bone flecks in the bleached earth
     if m is not None:
-        fleck = (RNG.random((PH, PW), dtype=np.float32) > 0.990) & m
-        canvas[fleck] = np.minimum(canvas[fleck] * 1.4 + 24, 232)
+        # ONE PERCENT OF PIXELS IS A SNOWFIELD. 1% of 256 pixels is two and a
+        # half flecks per TILE, so the frame at (190,110) -- dead centre of this
+        # district -- came back with about five hundred white dots in it, each
+        # one clipped up to 232 on ground whose median is 81. That is the fourth
+        # time a speck pass has shipped as snow (see the tuft densities in
+        # `stamp_tufts` and the style contract's §4.4). Two things were wrong
+        # and the district's own comment already said both: bone reads as bone
+        # because it is DRIER than the earth, not brighter -- so the lift comes
+        # down to a sixth of what it was -- and bone fragments lie in DRIFTS,
+        # washed into hollows, so a coarse field decides where any of them are.
+        drift = value_noise(PH, PW, 30)
+        fleck = (RNG.random((PH, PW), dtype=np.float32) > 0.9975) & m & (drift > 0.58)
+        canvas[fleck] = np.minimum(canvas[fleck] * 1.16 + 9, 186)
     m = dtex("saltpan")           # polygonal salt hex cracks
     if m is not None:
-        canvas[(np.abs(value_noise(PH, PW, 14) - 0.5) < 0.02) & m] *= 0.84
+        canvas[crack_net(PH, PW, 34, 0.75) & m] *= 0.84
     m = dtex("geyserpan")         # pale mineral speckle
     if m is not None:
         spk = (value_noise(PH, PW, 8) > 0.74) & m
@@ -372,9 +560,24 @@ def main() -> None:
         canvas[vein] = canvas[vein] * 0.62 + np.array((0xD0, 0xC9, 0xBC), dtype=np.float32)[None, :] * 0.38
     m = dtex("oasis")             # THE OASIS: living moss + a bright spring pool
     if m is not None:
-        # bright living-green tufts (warm, unlike the cold drowned kelp)
-        tuft = (value_noise(PH, PW, 20) > 0.55) & m
-        canvas[tuft] = canvas[tuft] * 0.55 + np.array((0x6E, 0x92, 0x3E), dtype=np.float32)[None, :] * 0.45
+        # bright living-green tufts (warm, unlike the cold drowned kelp).
+        # A HARD THRESHOLD ON ONE NOISE FIELD IS CAMO. `noise(20) > 0.55` is a
+        # binary mask, so 0.45 of a vivid chartreuse landed as SOLID PATCHES
+        # with stepped edges -- a paint spill, and the last thing the one living
+        # place in the region should look like. Moss is a COVERAGE, not a
+        # region: it thickens and thins continuously, it is patchiest at its
+        # own edge, and it is never one colour. So the alpha ramps through the
+        # threshold instead of switching at it, a finer field breaks the fill
+        # up so it stays mottled at reading distance, and the hue rides the
+        # same fields -- thick moss greener, thin moss yellow and dying.
+        tn = value_noise(PH, PW, 22)
+        tf = value_noise(PH, PW, 6)
+        cover = np.clip((tn - 0.44) / 0.30, 0.0, 1.0) * (0.42 + tf * 0.58)
+        a = (cover[m] * 0.52)[:, None]
+        wet = np.array((0x6A, 0x92, 0x3A), dtype=np.float32)[None, :]
+        dry = np.array((0x84, 0x8C, 0x46), dtype=np.float32)[None, :]
+        col_t = dry + (wet - dry) * (cover[m])[:, None]
+        canvas[m] = canvas[m] * (1 - a) + col_t * a
         # a spring pool at its heart: clear water, the one place still alive.
         # WARPED, like every other water body in this file. The plain ellipse
         # this used to be was a clean geometric edge around a near-flat fill --
@@ -384,8 +587,16 @@ def main() -> None:
         # It also stacked three blends (district 0.66, tufts 0.45, pool 0.70)
         # which multiply the ground's variance down by ~18x, so the fill needs
         # its own grain back -- see THE FLAT-PATCH LAW (style-contract §4.3).
-        ox, oy = 236 * S, 120 * S
-        pd = ((xx_g - ox) / (5 * S)) ** 2 + ((yy_g - oy) / (4 * S)) ** 2 + (_warp - 0.5) * 0.42
+        # ...AND THE POOL DID NOT MOVE WITH THE DISTRICT. The clearing was
+        # recentred on the spring at (237,130) and this stayed at (236,120):
+        # eleven rows north, which on an 11-tile-tall camera is entirely
+        # off-screen from the spring, so the painted pool sat on bare brown
+        # outside the green and the sprite pool sat on unpainted ground. It is
+        # under `oasis_spring` (238,131) now, and SMALLER than the sprite that
+        # stands on it -- the paint is the wet ground around the water, not a
+        # second pool competing with the first.
+        ox, oy = 238 * S, 131 * S
+        pd = ((xx_g - ox) / (3.4 * S)) ** 2 + ((yy_g - oy) / (2.2 * S)) ** 2 + (_warp - 0.5) * 0.42
         pool = (pd <= 1) & (region_px == 3)
         spring = np.array((0x2E, 0x6A, 0x74), dtype=np.float32)[None, None, :] * (
             1 + (n_hi - 0.5) * 0.14 + (grain - 0.5) * 0.10
@@ -402,13 +613,22 @@ def main() -> None:
     def stamp_tufts() -> None:
         """Individually hash-placed grass marks -- variation, not wallpaper."""
         ys, xs = np.where(kind == 0)
+        # THE TUFT TIP WAS A SNOWFIELD. `lite = canvas * 1.35` on a plate whose
+        # median is 79 lands at 154, and 154 next to 79 is not a highlight, it
+        # is a WHITE DOT -- forty-three of them per ten tiles, which in a 20x11
+        # camera is ninety-five specks of lens dust over the whole world. Worse
+        # in the Scar, where the ground is meant to be dead earth and a tuft of
+        # grass is a lie: region 3 now keeps a twentieth of them, the Keep a
+        # third (a flooded marble floor grows very little), and the Fold keeps
+        # all of them because a water-meadow is the one place turf belongs.
+        TUFT_DENSITY = (55, 44, 40, 4, 16)
         for ty, tx in zip(ys, xs):
             h = (tx * 73856093 ^ ty * 19349663) & 0xFFFFFFFF
-            if h % 100 >= 55:
+            if h % 100 >= TUFT_DENSITY[region[ty, tx]]:
                 continue
             cx, cy = tx * S + (h >> 8) % S, ty * S + (h >> 16) % S
             dark = canvas[cy % PH, cx % PW] * 0.72
-            lite = canvas[cy % PH, cx % PW] * 1.35
+            lite = canvas[cy % PH, cx % PW] * 1.12 + 6.0
             for k in range((h >> 4) % 3 + 1):
                 px = (cx + ((h >> (k * 5)) % 9) - 4) % PW
                 py = (cy + ((h >> (k * 3)) % 5) - 2) % PH
@@ -491,19 +711,37 @@ def main() -> None:
     # r3 the Scar: sun-cracked earth -- a dark mud-crack web, plus claw
     # gouges, scorch patches, and monster-den rings (the hostile surface)
     r_mask = grass_px & (region_px == 3)
-    crack_n = value_noise(PH, PW, 30)
-    canvas[r_mask & (np.abs(crack_n - 0.5) < 0.005)] *= 0.66
+    # The mud-crack web -- see `crack_net`, which explains why this is a
+    # Voronoi edge set and not the `abs(noise - 0.5)` isocontour it was twice.
+    # Two scales, because a dried pan cracks large first and then the plates
+    # craze inside themselves, and the coarse net is darker than the fine one.
+    # A second COARSE field still decides WHERE: mud only cracks where mud
+    # pooled, and a texture that covers everything uniformly is not a texture.
+    crack_where = value_noise(PH, PW, 26)
+    canvas[r_mask & crack_net(PH, PW, 44, 0.80) & (crack_where > 0.42)] *= 0.72
+    canvas[r_mask & crack_net(PH, PW, 15, 0.55) & (crack_where > 0.62)] *= 0.86
     ys_v, xs_v = np.where(r_mask[::56, ::56])
     ember = np.array(ACCENTS[3], dtype=np.float32)
     for vy, vx in zip(ys_v * 56, xs_v * 56):
         h = (int(vx) * 40503 ^ int(vy) * 19349663) & 0xFFFFFFFF
         cy0, cx0 = int(vy) + (h >> 9) % 40, int(vx) + (h >> 4) % 40
-        if h % 100 < 10:  # claw gouge: three parallel slashes
-            for k in range(3):
-                for d in range(10 + h % 7):
-                    y, x = cy0 + d + k * 4, cx0 + d - k * 2
+        if h % 100 < 6:  # claw gouge
+            # THREE RULER-STRAIGHT PARALLEL DIAGONALS AT 45 DEGREES IS
+            # HATCHING, not a claw mark -- the Scar shipped looking pencilled.
+            # A claw drags: the strokes SPLAY (a paw is not a comb), they curve
+            # with the pull, and they taper out at the end because the animal
+            # lifted. Deepest at the start, gone by the tip.
+            ang = (h >> 11) % 360 * math.pi / 180.0
+            ln = 13 + h % 9
+            for k in (-1, 0, 1):
+                spread = 0.34 * k
+                for d in range(ln):
+                    t = d / float(ln)
+                    a = ang + spread * (0.35 + t * 0.9)
+                    y = cy0 + int(math.sin(a) * d) + int(k * 3 * math.cos(ang))
+                    x = cx0 + int(math.cos(a) * d) - int(k * 3 * math.sin(ang))
                     if 0 <= y < PH and 0 <= x < PW and r_mask[y, x]:
-                        canvas[y, x] *= 0.55
+                        canvas[y, x] *= 0.55 + 0.42 * t * t
         elif h % 100 < 16:  # scorch patch with ember rim flecks
             rr_s = 8 + h % 8
             yy_o, xx_o = np.ogrid[-rr_s : rr_s + 1, -rr_s : rr_s + 1]
@@ -600,8 +838,8 @@ def main() -> None:
     pan = (((xx_g - dlx) / 90.0) ** 2 + ((yy_g - dly) / 55.0) ** 2 <= 1) & grass_px & (region_px == 3)
     pan_c = np.array((0x9A, 0x8C, 0x74), dtype=np.float32)
     canvas[pan] = canvas[pan] * 0.4 + pan_c[None, :] * 0.6
-    pan_crack = pan & (np.abs(value_noise(PH, PW, 22) - 0.5) < 0.012)
-    canvas[pan_crack] *= 0.6
+    pan_crack = pan & crack_net(PH, PW, 38, 0.80)
+    canvas[pan_crack] *= 0.70
     rim = (np.abs(((xx_g - dlx) / 90.0) ** 2 + ((yy_g - dly) / 55.0) ** 2 - 1) < 0.06) & grass_px & (region_px == 3)
     canvas[rim] *= 0.78
 
@@ -698,7 +936,7 @@ def main() -> None:
     sfx, sfy = 216 * S, 188 * S
     flat = (((xx_g - sfx) / 130.0) ** 2 + ((yy_g - sfy) / 34.0) ** 2 <= 1) & grass_px & (region_px == 3)
     canvas[flat] = canvas[flat] * 0.35 + np.array((0xC6, 0xC2, 0xB4), dtype=np.float32)[None, :] * 0.65
-    hexc = flat & (np.abs(value_noise(PH, PW, 14) - 0.5) < 0.02)  # polygonal salt cracks
+    hexc = flat & crack_net(PH, PW, 30, 0.70)  # polygonal salt cracks -- a real tessellation
     canvas[hexc] *= 0.82
 
     # THE SPIRE RUIN: a toppled lighthouse's round base + shadow, NE Scar edge
@@ -712,10 +950,33 @@ def main() -> None:
         if clip_ok(y, x) and region_px[y, x] == 3:
             canvas[y : y + 5, x] = canvas[y : y + 5, x] * 0.55 + np.array((0x6E, 0x66, 0x5E), dtype=np.float32) * 0.45
 
-    # r4 hall: faint marble veining -- pale contour filaments
+    # r4 hall: marble veining -- AND IT WAS A CONTOUR DOODLE, at cell 55, which
+    # is a seventy-metre cell on a 5696px plate. What shipped was three or four
+    # pale lavender ribbons wandering across the entire region like chalk on a
+    # blackboard, and in a browser capture of the orchestra pit they read as worm
+    # trails. Third instance of the same mistake (the Scar's mud cracks at cell
+    # 30, the dried pan at 22), and it is now a law in the style contract: AN
+    # ISOCONTOUR OF A COARSE NOISE FIELD IS A DOODLE GENERATOR.
+    #
+    # Real marble veining is FINE, BRANCHING and UNEVENLY DISTRIBUTED -- some
+    # slabs are almost clean and the one next to it is a thunderstorm. So: a fine
+    # field for the vein shape, a coarse one to decide which stretches of floor
+    # are veined at all, and a third of the old strength, because 0.30 of a
+    # near-white over a lum-58 floor is not a vein, it is a paint stripe.
+    # ...and then the isocontour came back a THIRD time, at cell 4 and cell 7,
+    # which is fine enough that it stops being dashes and becomes 1px CONFETTI:
+    # not veining, just pale speckle. Marble veining is a healed FRACTURE
+    # NETWORK -- calcite filling cracks -- so it is the same object as the
+    # Scar's dried mud, only far larger and lighter. `crack_net` builds it as a
+    # tessellation edge set, which branches and closes; two scales, and a
+    # coarse field still deciding which stretches of floor are veined at all,
+    # because some slabs are almost clean and the one beside it is a storm.
     r_mask = grass_px & (region_px == 4)
-    vein_n = value_noise(PH, PW, 55)
-    mix(r_mask & (np.abs(vein_n - 0.5) < 0.006), (0xC9, 0xC4, 0xD4), 0.30)
+    vein_where = value_noise(PH, PW, 30)
+    mix(r_mask & crack_net(PH, PW, 96, 0.60) & (vein_where > 0.44),
+        (0xC9, 0xC4, 0xD4), 0.13)
+    mix(r_mask & crack_net(PH, PW, 34, 0.45) & (vein_where > 0.60),
+        (0x9A, 0x9E, 0xB2), 0.10)
 
     # --- the Conductor's ground (v11.5): UNIQUE TERRAIN, not an overlay ------
     # Owner: "I don't like that we are layering shit just make it so that
@@ -734,7 +995,18 @@ def main() -> None:
             for _c in range(max(0, btc - 6), min(W, btc + 7)):
                 if (_c - btc) ** 2 + (_r - btr) ** 2 <= 22 and kind[_r, _c] in (0, 1):
                     island_tiles[_r, _c] = True
-        stage_px = organic_mask(island_tiles, jitter=0.24, blur=9)
+        # ...and the island's OWN edge was the tell. `island_tiles` is a disc
+        # of radius 4.7 tiles clipped to walkable ground, so it is nearly
+        # rectangular after the clip, and jitter 0.24 at blur 9 moves the
+        # boundary about four pixels -- which rounds the corners of a 150px
+        # mass and leaves its four flat sides. Worse, the island is surrounded
+        # by water, so the shoreline's distance bands trace that outline again
+        # one ring further out: a browser capture at (320,40) came back with a
+        # grey rounded RECTANGLE inside a second grey rounded rectangle, which
+        # is the last thing the approach to the game's final room should be.
+        # A big warp on the source mask chews the outline and every band that
+        # follows it inherits the chew for free.
+        stage_px = organic_mask(island_tiles, jitter=0.24, blur=9, warp=0.90)
         stone = tint((0x6C, 0x67, 0x6A), ACCENTS[4], 0.18)  # neutral marble, warmed by the accent
         scol = stone[None, None, :] * (1 + (n_low - 0.5) * 0.18 + (n_mid - 0.5) * 0.12 + (n_hi - 0.5) * 0.08)[..., None]
         scol = scol * (1 + (grain - 0.5) * 0.10)[..., None]
@@ -930,7 +1202,21 @@ def main() -> None:
     # tan ribbon crossing the unique terrain (v11.5)
     path_mask &= ~stage_px
     d_path = distance_bands(path_mask, 6)
-    path_bases = [tint((0x8E, 0x83, 0x68), a, 0.18) for a in ACCENTS]
+    # THE ROAD IS THE SAME MATERIAL EVERYWHERE and that is why it kept being
+    # the warmest thing in whatever frame it crossed -- a 0x8E837 tan at only
+    # 0.18 of the region accent stayed tan in the Breach, where it read as a
+    # strip of holiday beach laid through a cold foreshore. Packed earth still,
+    # but cooler and pulled harder toward whatever region it runs through: the
+    # Breach's road is grey-green shingle, the Scar's is rust.
+    # ...AND IT WAS STILL THE BRIGHTEST LARGE FIELD IN EVERY FRAME IT CROSSED.
+    # Cooling it fixed the Breach's holiday-beach problem and left the other
+    # half: measured, the road ran ~33 luminance over the ground beside it,
+    # which on a 20-tile-wide camera is a pale band down the middle of the shot
+    # competing with the festoon bulbs and the dig lamps -- the two things §3
+    # reserves brightness for. A road needs to be READABLE, not bright. Twelve
+    # luminance over the ground plus its own texture is plenty; a path in a
+    # drowned world is packed dirt, and packed dirt is darker than loose.
+    path_bases = [tint((0x6A, 0x66, 0x5A), a, 0.24) for a in ACCENTS]
     # full overwrite below (`canvas[path_mask] = path_col[...]`), so the road
     # owes the grain back too -- see THE FLAT-PATCH LAW above.
     path_col = blended(path_bases) * (
@@ -965,8 +1251,20 @@ def main() -> None:
     canvas[silt_road] = canvas[silt_road] * 0.7 + np.array((0xA8, 0xA4, 0x8E), dtype=np.float32)[None, :] * 0.3
     dirt_road = path_mask & (region_px == 3) & (w01 <= 0.5)
     canvas[dirt_road] = canvas[dirt_road] * 0.65 + np.array((0x74, 0x58, 0x40), dtype=np.float32)[None, :] * 0.35
+    # THE KEEP'S ROAD IS AN AISLE, AND AN AISLE IS NOT PACKED DIRT. `path_col`
+    # is a khaki (0x6A665A pulled a quarter toward the gilt accent), and mixing
+    # 0.3 of lavender into khaki leaves khaki -- so the hall's two processional
+    # runs arrived as wide olive bands ruled dead straight across the frame, the
+    # warmest and second-brightest thing in the only cool region in the game.
+    # Overwrite instead of mixing, keep it barely above the floor in value, and
+    # let it stay STRAIGHT: this is the one region built by people with money,
+    # and a straight axis is the thing their money bought.
     paved_road = path_mask & (region_px == 4)
-    canvas[paved_road] = canvas[paved_road] * 0.7 + np.array((0xA9, 0xA2, 0xB8), dtype=np.float32)[None, :] * 0.3
+    aisle_col = np.array((0x4C, 0x4A, 0x56), dtype=np.float32)[None, None, :] * (
+        1 + (n_mid - 0.5) * 0.10 + (grain - 0.5) * 0.09
+    )[..., None]
+    canvas[paved_road] = aisle_col[paved_road]
+    canvas[paved_road & (d_path < 3)] *= 0.80
 
     # --- desire-path spurs ----------------------------------------------------
     # Side trails are half-swallowed by the turf: narrower, paler, and BROKEN
@@ -1040,7 +1338,17 @@ def main() -> None:
             continue
         cx, cy = tx * S + S // 2, ty * S + S // 2
         reg = region[ty, tx]
-        if reg not in (0, 1, 4) and h % 5 != 0:
+        # THE VILLAGE WENT UNDER; THE SCAR NEVER HAD ONE. This used to leak into
+        # regions 2 and 3 at one tile in five (`and h % 5 != 0`), which put a
+        # pale gabled ROOFTOP WITH A CHIMNEY in the middle of the exposed
+        # seabed -- and blurred by two pixels at 52% over a bright ghost tone,
+        # what the shipped frame at (190,110) actually contained was a
+        # three-pointed pale apparition with a face in it, sitting in a puddle
+        # a hundred and fifty tiles from the nearest building. §6.3 is explicit
+        # that the waterline is at the Breach: everything WEST of it drowned and
+        # everything east of it was never wet. A house under water east of the
+        # waterline is not atmosphere, it is a contradiction.
+        if reg not in (0, 1, 4):
             continue  # cluster under the sea (Fold/Shelf) + the hall lake
         if d_w[cy, cx] < 7 or any((cx - px) ** 2 + (cy - py) ** 2 < 70**2 for px, py in placed):
             continue
@@ -1061,9 +1369,15 @@ def main() -> None:
             if sl.shape == hull.shape:
                 sl[hull] = 1.0
     if placed:
-        overlay = np.asarray(Image.fromarray((overlay * 255).astype(np.uint8)).filter(ImageFilter.BoxBlur(2)), dtype=np.float32) / 255.0
+        # A two-pixel blur at 52% is a DECAL, not a drowned thing. These shapes
+        # are hard-edged filled triangles and rectangles; the world then renders
+        # them smooth-scaled at 4x, so two pixels of softening buys nothing and
+        # the rooftops read as pale stencils laid on the water rather than
+        # objects underneath it. Five pixels and a third less opacity: still
+        # legible as a roof once you look, and no longer the first thing you see.
+        overlay = np.asarray(Image.fromarray((overlay * 255).astype(np.uint8)).filter(ImageFilter.BoxBlur(5)), dtype=np.float32) / 255.0
         depth_fade = np.clip(1.0 - d_w / 34.0, 0.45, 1.0)
-        a = (overlay * 0.52 * depth_fade)[..., None] * water_mask[..., None]
+        a = (overlay * 0.34 * depth_fade)[..., None] * water_mask[..., None]
         ghost = blended(shore_bases) * 1.8
         canvas = canvas * (1 - a) + ghost * a
 
@@ -1101,7 +1415,25 @@ def main() -> None:
                         labels[y, x] = nxt
                         stack += [(y + 1, x), (y - 1, x), (y, x + 1), (y, x - 1)]
 
-    rock_top_bases = [tint((0x4A, 0x51, 0x5E), a, 0.30) for a in ACCENTS]
+    # THE SCAR'S MESAS CAME BACK PINK. One base for all five regions -- a cool
+    # blue-grey 0x4A515E -- pulled 30% toward each region's accent. That works
+    # for four of them, because four accents are cold or warm-neutral. Region
+    # 3's accent is a red-orange ember, and blue-grey lerped a third of the way
+    # to red-orange is MAUVE: measured (110,80,77) on the shipped plate, which
+    # is the exact hue this project's palette gate exists to keep out, arriving
+    # through the back door because nobody lerps toward purple on purpose.
+    #
+    # The lesson is the one the ground bases already learned twice (the Breach's
+    # sand, the Scar's orange): you cannot fix a base by tinting it. Mixing
+    # complementaries always lands in the middle of the wheel. So the rock has a
+    # base PER REGION -- the four cold regions keep the blue-grey they were
+    # already resolving to, and the Scar gets warm dark stone that does not need
+    # dragging anywhere -- and it takes the same eighth-strength accent the
+    # Scar's ground does.
+    ROCK_BASES = [(0x4A, 0x51, 0x5E), (0x46, 0x51, 0x5A), (0x50, 0x58, 0x5C),
+                  (0x4C, 0x44, 0x40), (0x4A, 0x4C, 0x54)]
+    ROCK_TINTS = [0.30, 0.30, 0.30, 0.08, 0.07]
+    rock_top_bases = [tint(b, a, t) for b, a, t in zip(ROCK_BASES, ACCENTS, ROCK_TINTS)]
     rock_top = blended(rock_top_bases)
     crack_col = 0.5
     mesa_px = np.zeros((PH, PW), dtype=bool)  # union, so later passes respect the mesas
@@ -1113,7 +1445,15 @@ def main() -> None:
     for comp in range(1, nxt + 1):
         if comp_sizes[comp] < 4:
             continue
-        cm = organic_mask(labels == comp, jitter=0.34, blur=8)
+        # A SMALL RECTANGLE NEEDS PROPORTIONALLY MORE CHEW THAN A BIG ONE.
+        # The tilemap really does contain rectangular rubble blobs -- there is
+        # a solid 5x3 of them at (230,127) -- and `blur=8, jitter=0.34` moves
+        # the boundary about five pixels, which on an 80px-wide mass rounds the
+        # corners and leaves the four flat sides intact: a rounded rectangle of
+        # grey stone sitting in the Oasis. Amplitude has to scale against the
+        # component's own size, so small clusters get warped until they break.
+        cm = organic_mask(labels == comp, jitter=0.34, blur=8,
+                          warp=1.05 if comp_sizes[comp] < 14 else 0.62)
         if not cm.any():
             continue
         mesa_px |= cm
@@ -1221,9 +1561,22 @@ def main() -> None:
     # region materials, the drowned shapes, and the waterline say
     # "underwater" without painting a pattern over the world.)
     # the foam seam, broken (never a solid rule) -- and the wet band beyond it
+    # A ONE-PIXEL SEAM IS A SCRATCH, NOT A WATERLINE. This was
+    # `seam_d < 0.012` composited at 65% toward 0xD9F2EA -- a near-solid
+    # one-pixel stroke, and the world renders at RENDER_SCALE 4, so what
+    # crossed the frame was a four-pixel hard white ribbon that read as a
+    # scratch on the film. It is the most important line in the geography
+    # (§6.3: Mir crosses it and takes his first breath of surface air), so it
+    # gets to be surf: a band two and a half times wider, falling off from the
+    # seam, torn open by a finer noise, and never brighter than 62%.
     seam_d = np.abs(w01 - 0.5)
-    foam_line = (seam_d < 0.012) & ~water_mask & (value_noise(PH, PW, 12) > 0.28)
-    canvas[foam_line] = canvas[foam_line] * 0.35 + np.array((0xD9, 0xF2, 0xEA), dtype=np.float32)[None, :] * 0.65
+    FOAM_W = 0.030
+    foam_n = value_noise(PH, PW, 9)
+    foam_m = (seam_d < FOAM_W) & ~water_mask
+    fs = (np.clip(1.0 - seam_d[foam_m] / FOAM_W, 0, 1) ** 1.6
+          * np.clip((foam_n[foam_m] - 0.34) / 0.30, 0, 1) * 0.62)[:, None]
+    canvas[foam_m] = (canvas[foam_m] * (1 - fs)
+                      + np.array((0xD2, 0xE6, 0xE0), dtype=np.float32)[None, :] * fs)
     wet_band = (w01 < 0.5) & (w01 > 0.36) & ~water_mask
     canvas[wet_band] *= (1 - 0.14 * np.clip((w01[wet_band] - 0.36) / 0.14, 0, 1))[..., None]
 

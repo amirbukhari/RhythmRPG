@@ -1,0 +1,13 @@
+{
+  "encounterId": "biome_scar_fresh_b",
+  "trackId": "mid_biome_3_syncopated_01",
+  "enemyWave": [
+    "elite_wraith",
+    "drifter"
+  ],
+  "accentProfile": null,
+  "victoryRewards": {
+    "xp": 165,
+    "currency": 80
+  }
+}

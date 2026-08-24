@@ -119,6 +119,11 @@ _TOUR: list[tuple[int, int]] = [
 _BIOME_FOE = ["slime", "drifter", "drifter", "elite_wraith", "elite_wraith"]
 _BIOME_TRACK = ["opening_biome_01", "mid_biome_1_01", "pit_below_01", "mid_biome_3_syncopated_01", "boss_conductor_p1"]
 
+# The Scar's eleven nodes, in tour order, split across the three stretches
+# above. Four/four/three: §6.4's middle stretch is the longest because that is
+# where the belief takes the most work to break down.
+_SCAR_STRETCHES = ("scar_fresh",) * 4 + ("scar_false",) * 4 + ("scar_den",) * 3
+
 
 def _node_id(i: int, n: int) -> str:
     # Keep the ids the engine/tests/e2e reference (opening_1, mid_1, boss_1).
@@ -147,6 +152,13 @@ def _build_nodes() -> tuple[dict[str, tuple[int, int]], list[dict]]:
         # lands in -- that is the gentle intro. This said "shallows", which was
         # region 0's retired name; the pool key is now the world-bible's.
         pool_biome = "fold" if i == 0 else REGIONS[ri]
+        # Region 3's pool is its STRETCH, not its biome -- see _SCAR_STRETCHES.
+        # Counted by position among the Scar's own nodes, so a tour edit that
+        # adds or drops a Scar node reassigns the stretches instead of silently
+        # putting a den-mouth wave on the fresh trail.
+        if ri == 3 and not last:
+            k = sum(1 for m in meta if m["region"] == 3)
+            pool_biome = _SCAR_STRETCHES[min(k, len(_SCAR_STRETCHES) - 1)]
         meta.append({
             "id": ids[i], "type": ntype, "region": ri, "biome": REGIONS[ri],
             "foe": foe, "pool_biome": pool_biome,
@@ -690,17 +702,84 @@ _BIOME_ENCOUNTERS: dict[str, list[tuple]] = {
         ("pack_b", ["drifter", "drifter", "slime"], "mid_biome_1_01", 135, 60, []),
         ("pack_c", ["drifter", "slime", "slime"], "mid_biome_1_01", 125, 55, ["focus_loop"]),
     ],
-    # the Scar uses BOTH wraith beatmaps (mid_biome_3_syncopated_01 + pit_below_01)
-    # for track variety; every wave includes a wraith so its telegraphs are met.
-    "scar": [
-        ("wraith_a", ["elite_wraith"], "mid_biome_3_syncopated_01", 160, 80, ["groove_amp"]),
-        ("wraith_b", ["elite_wraith", "drifter"], "mid_biome_3_syncopated_01", 190, 95, ["focus_loop"]),
-        ("wraith_c", ["elite_wraith", "elite_wraith"], "pit_below_01", 220, 110, ["groove_amp"]),
-        ("wraith_d", ["elite_wraith", "drifter", "drifter"], "pit_below_01", 205, 100, ["counter_charm"]),
+    # THE SCAR HAS THREE POOLS, NOT ONE, AND THEY ARE §6.4's THREE STRETCHES.
+    #
+    # This region carries ELEVEN of the tour's twenty nodes -- more than half the
+    # fights in the game -- and it was drawing all eleven from one pool of four
+    # variants. Every wave contained a wraith, three of the four were
+    # wraith-led, and the pool had no shape, so the longest stretch of the game
+    # played as the same fight two and a half times over. The world-bible's own
+    # open question says it in as many words: "middle plays as one enemy
+    # repeated. §6.4's three stretches want distinct foes, distinct ground, and
+    # distinct staging."
+    #
+    # The ground and the staging landed with the Scar's kit (tools/art/env_scar
+    # and the three vignettes in tools/overworld/place_scar). This is the foes.
+    # The structure is not invented for the fights -- it is the structure §6.4
+    # already has, and the fights are read off it:
+    #
+    #   * THE FRESH TRAIL -- "clear prints, hope with teeth". Mir is CHASING
+    #     something, and he thinks it is one thing. So: single strong foes, one
+    #     beatmap, the shortest fights in the region. He is moving fast and he
+    #     believes he knows what he is moving toward.
+    #   * THE FALSE TRAILS -- "pilgrim strides, den-thing gaits, decoys that
+    #     double back". The tracking gets NOISY, so the waves do: drifter-heavy
+    #     crowds, slimes padding them out, the wraith showing up only sometimes.
+    #     The player stops being able to predict what is in front of them, which
+    #     is the same thing happening to Mir in the dirt. Both beatmaps, mixed,
+    #     so even the music stops being a reliable tell.
+    #   * THE DEN'S MOUTH -- "all tracks lead one way, none lead back". Two
+    #     wraiths as the floor, `pit_below_01` under most of it, the heaviest
+    #     rewards in the game before the Keep. Everything converges.
+    #
+    # (The pools also mean an eleven-node stretch draws from TEN variants
+    # instead of four, so nothing repeats more than once before the Keep.)
+    #
+    # A WAVE MUST CONTAIN WHATEVER ITS BEATMAP TELEGRAPHS. `mid_biome_3_syncopated_01`
+    # and `pit_below_01` both fire `wraith_offbeat_slash`; `mid_biome_1_01` fires
+    # the drifter's two. A beatmap telegraphing an intent no enemy on the field
+    # owns is a cue the player is asked to read and then nothing happens, and
+    # ContentRegistry's test catches it -- which it did, on the first cut of the
+    # false trails below. That constraint turned out to IMPROVE the stretch: the
+    # decoy waves are the only fights in the Scar that play the DRIFTER beatmap,
+    # so the false trails are literally scored with the gait the player learned
+    # two regions ago, arriving where it does not belong. Which is what a decoy
+    # is, and the music says it before the tracking does.
+    "scar_fresh": [
+        ("a", ["elite_wraith"], "mid_biome_3_syncopated_01", 150, 75, ["groove_amp"]),
+        ("b", ["elite_wraith", "drifter"], "mid_biome_3_syncopated_01", 165, 80, []),
+        ("c", ["elite_wraith", "slime"], "mid_biome_3_syncopated_01", 145, 70, ["focus_loop"]),
     ],
-    "keep": [
-        ("wraith_a", ["elite_wraith", "elite_wraith"], "mid_biome_3_syncopated_01", 240, 120, ["groove_amp"]),
+    "scar_false": [
+        ("a", ["drifter", "drifter", "drifter"], "mid_biome_1_01", 175, 85, ["counter_charm"]),
+        ("b", ["drifter", "drifter", "slime"], "mid_biome_1_01", 180, 85, []),
+        ("c", ["elite_wraith", "slime", "slime"], "pit_below_01", 190, 90, ["focus_loop"]),
+        ("d", ["elite_wraith", "drifter", "drifter"], "mid_biome_3_syncopated_01", 195, 95, ["groove_amp"]),
     ],
+    "scar_den": [
+        ("a", ["elite_wraith", "elite_wraith"], "pit_below_01", 220, 110, ["groove_amp"]),
+        ("b", ["elite_wraith", "elite_wraith", "drifter"], "pit_below_01", 235, 115, ["counter_charm"]),
+        ("c", ["elite_wraith", "elite_wraith", "slime"], "mid_biome_3_syncopated_01", 210, 105, []),
+    ],
+    # THERE IS NO KEEP POOL, AND THAT IS THE POINT.
+    #
+    # There was one, with a single variant in it, and then with three after a
+    # pass at "the Keep only has one fight". Both were dead content: region 4
+    # holds exactly ONE node on the tour and it is `boss_1`, so nothing ever
+    # drew from the pool at all -- the generator was writing encounter files
+    # that the campaign graph could not reach.
+    #
+    # The fix is not to give the Keep approach fights. §6.5 is explicit: "Lunal
+    # did not fight anyone for it; she arrived first and found it empty, which
+    # is why she chose it," and "the hall's own dead are dressing, not
+    # characters." Nothing in the Keep wants to stop Mir, because nothing in the
+    # Keep is guarding anything -- she has been WAITING for him to walk in. A
+    # corridor of filler wraiths on the way to §7's argument would contradict
+    # the one fact the argument rests on, and it would spend the player's
+    # attention right before the only conversation in the game that matters.
+    #
+    # So the last region in the game is the only one you cross without fighting.
+    # That silence is authored, and it is the setup for the offer.
 }
 
 

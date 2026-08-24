@@ -100,10 +100,9 @@
       "nodeId": "node_09",
       "type": "battle",
       "encounterPool": [
-        "biome_scar_wraith_a",
-        "biome_scar_wraith_b",
-        "biome_scar_wraith_c",
-        "biome_scar_wraith_d"
+        "biome_scar_fresh_a",
+        "biome_scar_fresh_b",
+        "biome_scar_fresh_c"
       ],
       "next": [
         "node_10"
@@ -113,10 +112,9 @@
       "nodeId": "node_10",
       "type": "battle",
       "encounterPool": [
-        "biome_scar_wraith_a",
-        "biome_scar_wraith_b",
-        "biome_scar_wraith_c",
-        "biome_scar_wraith_d"
+        "biome_scar_fresh_a",
+        "biome_scar_fresh_b",
+        "biome_scar_fresh_c"
       ],
       "next": [
         "node_11"
@@ -126,10 +124,9 @@
       "nodeId": "node_11",
       "type": "battle",
       "encounterPool": [
-        "biome_scar_wraith_a",
-        "biome_scar_wraith_b",
-        "biome_scar_wraith_c",
-        "biome_scar_wraith_d"
+        "biome_scar_fresh_a",
+        "biome_scar_fresh_b",
+        "biome_scar_fresh_c"
       ],
       "next": [
         "node_12"
@@ -139,10 +136,9 @@
       "nodeId": "node_12",
       "type": "elite",
       "encounterPool": [
-        "biome_scar_wraith_a",
-        "biome_scar_wraith_b",
-        "biome_scar_wraith_c",
-        "biome_scar_wraith_d"
+        "biome_scar_fresh_a",
+        "biome_scar_fresh_b",
+        "biome_scar_fresh_c"
       ],
       "next": [
         "node_13"
@@ -152,10 +148,10 @@
       "nodeId": "node_13",
       "type": "battle",
       "encounterPool": [
-        "biome_scar_wraith_a",
-        "biome_scar_wraith_b",
-        "biome_scar_wraith_c",
-        "biome_scar_wraith_d"
+        "biome_scar_false_a",
+        "biome_scar_false_b",
+        "biome_scar_false_c",
+        "biome_scar_false_d"
       ],
       "next": [
         "node_14"
@@ -165,10 +161,10 @@
       "nodeId": "node_14",
       "type": "battle",
       "encounterPool": [
-        "biome_scar_wraith_a",
-        "biome_scar_wraith_b",
-        "biome_scar_wraith_c",
-        "biome_scar_wraith_d"
+        "biome_scar_false_a",
+        "biome_scar_false_b",
+        "biome_scar_false_c",
+        "biome_scar_false_d"
       ],
       "next": [
         "node_15"
@@ -178,10 +174,10 @@
       "nodeId": "node_15",
       "type": "battle",
       "encounterPool": [
-        "biome_scar_wraith_a",
-        "biome_scar_wraith_b",
-        "biome_scar_wraith_c",
-        "biome_scar_wraith_d"
+        "biome_scar_false_a",
+        "biome_scar_false_b",
+        "biome_scar_false_c",
+        "biome_scar_false_d"
       ],
       "next": [
         "node_16"
@@ -191,10 +187,10 @@
       "nodeId": "node_16",
       "type": "elite",
       "encounterPool": [
-        "biome_scar_wraith_a",
-        "biome_scar_wraith_b",
-        "biome_scar_wraith_c",
-        "biome_scar_wraith_d"
+        "biome_scar_false_a",
+        "biome_scar_false_b",
+        "biome_scar_false_c",
+        "biome_scar_false_d"
       ],
       "next": [
         "node_17"
@@ -204,10 +200,9 @@
       "nodeId": "node_17",
       "type": "battle",
       "encounterPool": [
-        "biome_scar_wraith_a",
-        "biome_scar_wraith_b",
-        "biome_scar_wraith_c",
-        "biome_scar_wraith_d"
+        "biome_scar_den_a",
+        "biome_scar_den_b",
+        "biome_scar_den_c"
       ],
       "next": [
         "node_18"
@@ -217,10 +212,9 @@
       "nodeId": "node_18",
       "type": "battle",
       "encounterPool": [
-        "biome_scar_wraith_a",
-        "biome_scar_wraith_b",
-        "biome_scar_wraith_c",
-        "biome_scar_wraith_d"
+        "biome_scar_den_a",
+        "biome_scar_den_b",
+        "biome_scar_den_c"
       ],
       "next": [
         "node_19"
@@ -230,10 +224,9 @@
       "nodeId": "node_19",
       "type": "battle",
       "encounterPool": [
-        "biome_scar_wraith_a",
-        "biome_scar_wraith_b",
-        "biome_scar_wraith_c",
-        "biome_scar_wraith_d"
+        "biome_scar_den_a",
+        "biome_scar_den_b",
+        "biome_scar_den_c"
       ],
       "next": [
         "boss_1"

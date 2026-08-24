@@ -126,7 +126,11 @@ const REGION_BIOMES = ["fold", "shelf", "breach", "scar", "keep"];
 // BRASS (tools/art/palette.py), the same value the prayer-lamps and Mir's own
 // tool are lit in. The trap is lit like everything the player has learned to
 // trust. Nothing here is a new hue: it is the game's one warm accent, spent last.
-const REGION_ACCENTS = [0x49c6bd, 0x58c07a, 0xe8d9a8, 0xc25424, 0xc6984e];
+// The third was 0xe8d9a8, warm sand. It is foam now -- BREACH in
+// tools/art/palette.py carries the reasoning; this table and
+// paint_ground's ACCENTS must not disagree, which is the whole point of
+// the comment above.
+const REGION_ACCENTS = [0x49c6bd, 0x58c07a, 0xb6cac4, 0xc25424, 0xc6984e];
 
 /**
  * Walkable pixel-art overworld (tilemap + tile-snapped movement + camera
@@ -1823,6 +1827,103 @@ export class OverworldScene extends Phaser.Scene {
             .setAlpha(0.13)
             .setDepth(1.9);
         }
+        // THE OASIS IS THE ONLY PLACE IN THE GAME WHERE ANYTHING IS ALIVE.
+        //
+        // §6.4, verbatim: "one pocket of living green -- warm moss, a clear
+        // spring, and visible growth, new shoots, something in bud. The only
+        // place in the game where anything is in motion." That last sentence had
+        // been sitting unimplemented in the spec through three milestones, with
+        // a note in `oasis_spring`'s docstring admitting it, and a static sprite
+        // cannot honour it -- implying motion is not motion.
+        //
+        // Being exact about the claim, because the world is not otherwise
+        // frozen: lamps have fireflies, the haze scrolls, godrays breathe. What
+        // the Oasis is the only place for is motion that is ALIVE -- something
+        // growing, and water running. Everything else that moves in this world
+        // is weather or fire. So the vocabulary here is deliberately different
+        // from the firefly orbit used at every warm light: plants SWAY from the
+        // foot, water GLINTS along its length, and the motes drift up instead of
+        // circling.
+        //
+        // All of it is deterministic per tile (no RNG -- same law as the sprite
+        // rasteriser) and all of it is skipped under reduced motion, which is
+        // why the sprites themselves still have to carry the reading on their
+        // own: the spring's specular streaks and the rill's cut channel do the
+        // work when the tweens are off.
+        if (/^env_scar_oasis_/.test(p.key)) {
+          const oh = ((p.col * 374761393) ^ (p.row * 668265263)) >>> 0;
+          const phase = (oh % 1000) / 1000;
+          const glowSrc = this.textures.get("glow").getSourceImage();
+          // PLANTS SWAY FROM THE FOOT. The sprite origin is (0.5, 1), so an
+          // angle tween pivots at the base -- which is what a stem does and
+          // what a rigid sliding sprite cannot fake. Two degrees: on a 3-tile
+          // frond that is ~2 world px, and the world renders at RENDER_SCALE 4,
+          // so it is 8 screen px of travel over five seconds. Visible, and
+          // nowhere near enough to read as wind.
+          if (!reduced && /oasis_shoot$/.test(p.key)) {
+            img.setAngle(-2.0);
+            this.tweens.add({
+              targets: img,
+              angle: 2.0,
+              duration: 4600 + (oh % 3200),
+              yoyo: true,
+              repeat: -1,
+              delay: phase * 3400,
+              ease: "Sine.inOut",
+            });
+          }
+          // WATER GLINTS ALONG ITS LENGTH. A specular that travels is the one
+          // cue that separates a wet surface from a shiny one, and it is the
+          // moving half of the same trick the sprite plays statically.
+          if (/oasis_(spring|rill)$/.test(p.key)) {
+            const gw = src.width * scale * 0.44;
+            const glint = this.add
+              .image(x - gw * 0.34, y - src.height * scale * 0.44, "glow")
+              .setBlendMode(Phaser.BlendModes.ADD)
+              .setTint(0xc4ecea)
+              .setScale(gw / glowSrc.width, (gw * 0.15) / glowSrc.height)
+              .setAlpha(reduced ? 0.1 : 0.02)
+              .setDepth(2.15);
+            if (!reduced) {
+              this.tweens.add({
+                targets: glint,
+                x: glint.x + gw * 0.68,
+                alpha: { from: 0.02, to: 0.22 },
+                duration: 3400 + (oh % 2200),
+                yoyo: true,
+                repeat: -1,
+                delay: phase * 3400,
+                ease: "Sine.inOut",
+              });
+            }
+          }
+          // MOTES, and only over the spring -- seeds or spores coming off the
+          // water. They rise and fade; the fireflies at every lamp in the game
+          // orbit and hold. Three of them, pale green, and slow enough that a
+          // player who is hurrying will never see one.
+          if (!reduced && /oasis_spring$/.test(p.key)) {
+            for (let i = 0; i < 3; i++) {
+              const mote = this.add
+                .image(x + ((oh >> (i * 5)) % 21) - 10, y - 4, "glow")
+                .setBlendMode(Phaser.BlendModes.ADD)
+                .setTint(0xbcd88a)
+                .setScale(0.035)
+                .setAlpha(0)
+                .setDepth(5.4);
+              this.tweens.add({
+                targets: mote,
+                y: mote.y - 16 - i * 5,
+                x: mote.x + (i % 2 === 0 ? 5 : -6),
+                alpha: { from: 0, to: 0.42 },
+                duration: 5200 + ((oh >> i) % 2400),
+                yoyo: true,
+                repeat: -1,
+                delay: i * 1700 + (oh % 900),
+                ease: "Sine.inOut",
+              });
+            }
+          }
+        }
         // emissive pieces cast their light -- the night world reads lit
         if (/lantern|crystal|tidepool|brazier|candle|torch|dockpost|votives|belljar|lamp$|geode|hourglass|campfire|shrine/.test(p.key)) {
           const teal = /tidepool|belljar|dockpost/.test(p.key);
@@ -2029,7 +2130,10 @@ export class OverworldScene extends Phaser.Scene {
       .setAlpha(status === "locked" ? 0.08 : 0.3)
       .setDepth(3);
 
-    const foe = this.add.sprite(x, footY, tex, 0).setOrigin(0.5, 1).setScale(0.25).setDepth(4.5);
+    // ONE SCALE CONSTANT, because the rim below is derived from it and the two
+    // of them silently disagreeing put a GHOST on every locked node in the game.
+    const FOE_SCALE = 0.25;
+    const foe = this.add.sprite(x, footY, tex, 0).setOrigin(0.5, 1).setScale(FOE_SCALE).setDepth(4.5);
     // the live fight hides these when the player walks into the foe
     this.nodeFoeVisuals.set(marker.nodeId, [foe, aura, foeShadow]);
     if (status === "locked") {
@@ -2037,10 +2141,21 @@ export class OverworldScene extends Phaser.Scene {
       // A faint additive accent rim behind it keeps the shade's hue identity
       // (design-audit-3: a flat black cutout read as a rendering bug, and
       // every locked foe looked the same).
+      // ...AND IT WAS `setScale(1.07)`, not `FOE_SCALE * 1.07`. The foe renders
+      // at 0.25, so the "faint rim" was drawn FOUR AND A HALF TIMES the size of
+      // the thing it was supposed to be rimming: a 1.07-scale additive copy of
+      // the enemy sheet, pale, translucent, and centred on the node. Every
+      // locked node on the map -- which on a fresh save is most of the twenty --
+      // had a huge crowned apparition hanging over it, and in the Scar, where
+      // the enemy is the Pearl-Tooth Wraith, what the frame at (190,110) came
+      // back with was a ghost face in the dirt. It survived because it looks
+      // deliberate: an eerie shape in a drowned world reads as art direction,
+      // not as arithmetic, which is exactly the kind of bug an in-browser
+      // capture catches and a contact sheet cannot.
       const rim = this.add
         .sprite(x, footY, tex, 0)
         .setOrigin(0.5, 1)
-        .setScale(1.07)
+        .setScale(FOE_SCALE * 1.07)
         .setBlendMode(Phaser.BlendModes.ADD)
         .setTint(accent)
         .setAlpha(0.22)
@@ -2131,8 +2246,25 @@ export class OverworldScene extends Phaser.Scene {
         const key = `ground_chunk_${r}_${c}`;
         if (!this.textures.exists(key)) continue;
         const src = this.textures.get(key).getSourceImage();
-        const img = this.add.image(c * cpx, r * cpx, key).setOrigin(0, 0).setScale(scale).setDepth(0);
-        this.groundChunks.push({ img, w: src.width * scale, h: src.height * scale });
+        // ONE PIXEL OF BLEED, and it is not a fudge. The world renders smooth-
+        // scaled at RENDER_SCALE 4, so the camera scrolls to FRACTIONAL world
+        // positions and every chunk edge gets bilinearly sampled past its own
+        // last texel. Outside the texture the sampler clamps, so two chunks laid
+        // exactly edge-to-edge each contribute a half-weighted edge column and
+        // the join shows as a hairline -- measured on the shipped build as a
+        // 1px lighter rule straight across the frame at world y=1024, which at
+        // the den camp lands two-thirds of the way up the screen and reads as a
+        // horizon that is not there. Stretching each chunk by a single world
+        // pixel (0.1% on a 1024px chunk, well under a rounding error) makes it
+        // overlap its neighbour's first column, so there is real texture under
+        // the blend instead of a clamped edge. The last chunk in each row and
+        // column overhangs the map by 1px, which is off-camera at the border.
+        const img = this.add
+          .image(c * cpx, r * cpx, key)
+          .setOrigin(0, 0)
+          .setScale((src.width * scale + 1) / src.width, (src.height * scale + 1) / src.height)
+          .setDepth(0);
+        this.groundChunks.push({ img, w: src.width * scale + 1, h: src.height * scale + 1 });
       }
     }
   }

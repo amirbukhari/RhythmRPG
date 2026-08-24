@@ -70,6 +70,91 @@ const METERS: [RegExp, number][] = [
   [/^env_shelf_ore_cart$/, 1.4],
   [/^env_shelf_plank_bridge$/, 1.2],
   [/^env_shelf_rail_bend$/, 0.9],
+  // -- the Breach's kit (tools/art/env_breach.py). EXACT keys, and they MUST
+  // sit above the loose patterns below or the region deflates: `/boat$/` claims
+  // `swing_boat` at 1.4m (a four-tile fairground ride arriving the size of a
+  // rowboat's dinghy), `/ticket_booth/` claims the kiosk at 3.2m, and
+  // `/carousel_horse/` claims the horse at 2.2m -- all three of those patterns
+  // were written for the retired cosmology's fairground and none of them knows
+  // this art exists.
+  //
+  // The numbers are the authoring rule stated plainly: the art is drawn at 32 px
+  // per intended tile, so `metres = tiles` always lands the world scale on its
+  // 0.5 floor and the piece ships exactly as tall as it was composed to be.
+  [/^env_breach_wheel$/, 9.0], // the stopped Ferris wheel: the region's landmark
+  [/^env_breach_tent_pole$/, 5.5],
+  [/^env_breach_carousel$/, 5.0],
+  [/^env_breach_strength_tester$/, 4.5],
+  [/^env_breach_swing_boat$/, 4.0],
+  [/^env_breach_tent$/, 3.2],
+  [/^env_breach_ticket_booth$/, 2.8],
+  [/^env_breach_booth$/, 2.6],
+  [/^env_breach_festoon_lamp$/, 2.2], // the gate light where the Shelf hands off
+  [/^env_breach_bunting$/, 2.0],
+  [/^env_breach_carousel_horse$/, 1.6],
+  [/^env_breach_boardwalk$/, 0.8],
+
+  // -- the Scar's kit (tools/art/env_scar.py). EXACT keys, above the loose
+  // patterns, same rule as the two blocks above. The near-misses here are worth
+  // naming because two of them are one character away from being wrong:
+  // `/bones/` (0.3m) does NOT claim `bone_pile` only because it is plural, and
+  // `/scatter_frame/` does not claim `dig_frame` only because it is anchored to
+  // its prefix. Neither of those is a safety margin. They are luck, and the
+  // exact keys below are what actually makes it safe.
+  //
+  // metres == tiles, because the kit is authored at 32 px per intended tile --
+  // see the SIZE CONVENTION note in env_scar.py. Every number here is a tile
+  // count, and the tallest is the burnt spar at six, which is one tile shy of
+  // the Shelf's hull and deliberately so: the Scar's scale comes from how much
+  // GROUND it covers, not from height. It is the long middle.
+  [/^env_scar_burnt_spar$/, 6.0],
+  [/^env_scar_den_mouth$/, 5.5], // §6.4's den. It is a mine adit and that is the point.
+  [/^env_scar_dig_frame$/, 4.5],
+  [/^env_scar_burnt_stand$/, 3.5],
+  [/^env_scar_windlass$/, 3.0],
+  [/^env_scar_oasis_shoot$/, 2.8], // the only thing in the game with a next week
+  [/^env_scar_cairn$/, 2.6],
+  [/^env_scar_spoil_heap$/, 1.6], // the most-repeated piece: "picked-over" is a count. 1.6 on a 48px canvas = the angle of repose; 2.4 on 76px was a 50deg mountain
+  [/^env_scar_dig_lamp$/, 2.2],  // GATE_PROPS names this for region 3's entrance
+  [/^env_scar_bone_pile$/, 2.0],
+  [/^env_scar_barrow$/, 1.6],
+  [/^env_scar_oasis_spring$/, 1.4],
+  [/^env_scar_pilgrim_pack$/, 0.8], // lies flat on a 46x24 canvas; 1.4 sized it by air
+  [/^env_scar_trench$/, 1.2],
+  [/^env_scar_oasis_rill$/, 1.0], // the overflow. It is the seam that makes the Oasis one place.
+
+  // -- the Keep's kit (tools/art/env_keep.py). EXACT keys, and this block has to
+  // sit above the loose patterns for the same reason every other kit's does --
+  // `/melting_clock/` and `/plinth/` and `/scatter_chandelier/` are all down
+  // there, and `/chair/` at 0.5m would ship a concert hall furnished in doll
+  // furniture. `stopped_clock` in particular is one regex away from being
+  // claimed by the 2.5m `/melting_clock/` entry, which would be nearly right
+  // and therefore the worst kind of wrong: nobody would notice.
+  //
+  // metres == tiles, because this kit is authored at 32 px per intended tile,
+  // same convention as the Scar. Every number here is a tile count.
+  //
+  // THE PROSCENIUM IS THE TALLEST BUILT THING IN THE GAME and it is only six
+  // tiles, in an eleven-tile viewport, because §6.5's hall has to be legible in
+  // ONE camera. The Fold's obelisk is nine metres and it is a spire; a six-tile
+  // arch that is seven and a half tiles WIDE fills a frame far more than either.
+  [/^env_keep_proscenium$/, 6.0],
+  [/^env_keep_organ_pipes$/, 5.5],
+  [/^env_keep_pillar$/, 5.0],
+  [/^env_keep_hall_door$/, 4.0],
+  [/^env_keep_harp$/, 3.2], // the most expensive object in the game
+  [/^env_keep_stopped_clock$/, 3.0], // and Mir is a clock-keeper. Never flipped.
+  [/^env_keep_seat_bank$/, 2.8], // 6 tiles WIDE: the audience, and it is empty
+  [/^env_keep_candelabra$/, 2.4], // GATE_PROPS names this for region 4's entrance
+  [/^env_keep_chandelier_down$/, 2.0], // lowered for its candles, and never raised
+  [/^env_keep_music_stand$/, 2.0],
+  [/^env_keep_timpani$/, 1.9],
+  [/^env_keep_cello$/, 1.6], // the one thing in the hall that is lying down
+  [/^env_keep_chair_row$/, 1.6],
+  [/^env_keep_chair$/, 1.4],
+  [/^env_keep_podium$/, 0.8],
+  [/^env_keep_sheet_drift$/, 0.8], // the hall's own weather
+
   // -- buildings & monuments (these were reading SMALLER than furniture) --
   [/ticket_booth/, 3.2],
   [/tent_pole/, 3.4],

@@ -1,16 +1,14 @@
 {
-  "encounterId": "biome_scar_wraith_b",
+  "encounterId": "biome_scar_den_c",
   "trackId": "mid_biome_3_syncopated_01",
   "enemyWave": [
     "elite_wraith",
-    "drifter"
+    "elite_wraith",
+    "slime"
   ],
   "accentProfile": null,
   "victoryRewards": {
-    "xp": 190,
-    "currency": 95,
-    "relicChoices": [
-      "focus_loop"
-    ]
+    "xp": 210,
+    "currency": 105
   }
 }

@@ -488,6 +488,211 @@ Two more from the same frame:
   claimed it. **Never fix a default-on accessibility feature by turning it off;
   fix it by putting the cue behind the setting that actually describes it.**
 
+### 4.7 Eight laws from the Breach, the Scar and the painted ground
+
+Every one of these was paid for. Where a count is given it is a count of times
+the same mistake shipped before the law got written down.
+
+**AUTHOR AT 32 PX PER INTENDED TILE.** `worldScaleFor` floors world scale at
+0.5, so a piece's height in tiles is fixed by its source canvas and no metre
+declaration can shrink it below `src_h / 2`. At 32 px per tile, `metres == tiles`
+lands on that floor every time — which means the metre value in `WorldScale.ts`
+and the tile count you drew are the same number, and a mismatch is arithmetic
+rather than taste. Verified mechanically for all 12 Breach and all 17 Scar
+pieces; a piece that does not land on 0.5 is drawn at the wrong size, not
+declared at the wrong size.
+
+**THE EMISSIVE BLUR LAW.** `rig.Painter` blurs a glowing shape by `9 * SS *
+glow`. So `glow=1.0` on a two-pixel blob spreads that blob's entire energy over
+a thirty-six-pixel radius and disappears — which is how the Breach's festoon
+bulbs, the only warm light in the region, shipped as a row of grey **pearls**.
+Over-correcting the other way (a bright wide bloom) gave white kidney beans that
+merged two adjacent lamps into one. A light is **three discs**: a *dark* ember
+bloom at `glow=1.0` (the bloom source must be dim, not white), a tight envelope
+at ~0.2, and an opaque filament at ~0.1. `_bulb` and `_flame` are both built
+this way and neither may be simplified.
+
+**A SMOOTH TAPER OR A MONOTONIC SHRINK IS A MANUFACTURED SILHOUETTE.** Nothing
+in this world is machined, and nothing that grew and then broke has a smooth
+outline. Instances, all caught in-frame: the Shelf's hull as a *fishbone*, then
+a *leaf*; `burnt_spar` as a *missile*, then a *cactus*, then a *ladder*, then a
+*sword*; `burnt_stand` as *bollards*; `den_mouth` as an *igloo*, then a
+*chapel*, then a *tomb*; `cairn` as a *pebble cone*, then a *wedding cake*;
+`spoil_heap` as a *pyramid*; `oasis_fern` as a *spider*; `oasis_rill` as a
+*millipede*. Two rules fall out. A stack built by hand never has a monotonic
+width sequence — the cairn needed a *wide* slab high up and two thin ones low
+before it stopped being a cake. And a vertical shaft of constant width carries
+no information at all, so whatever detail you hang on it supplies the reading:
+arms that rise make a cactus, a nose cone makes a missile, three evenly-spaced
+bars down one side make a ladder. Fix the shaft, not the details.
+
+**REPETITION IS SOLVED BY DIFFERENT SILHOUETTES, NOT FEWER INSTANCES.** The
+Oasis shipped as three pieces over eight placements and read as four copies of
+one green mound; the fix was two new *shapes*, not less moss. The inverse also
+holds and is load-bearing: `spoil_heap` is repeated thirty-one times **because
+the point is a count** — "picked-over" is a number, not a texture. Ask whether
+the repetition is saying something before you break it.
+
+**TEMPERATURE CONTRAST POPS HARDER THAN VALUE CONTRAST.** `den_mouth` measures
+*darker* than the ground it stands on (mean luminance 42 against 61) and still
+read as the brightest thing in the frame, because twenty-two thousand pixels of
+cool neutral grey on warm earth reads as poured concrete no matter what its
+value is. §3 constrains brightness; this is the other axis, and it is not
+covered by a luminance check. A large piece must belong to its region's
+temperature. Same failure one scale down: the Scar's `IRON` was authored cold,
+and the barrow and windlass came back as *aluminium*.
+
+**YOU CANNOT FIX A BASE BY TINTING IT.** Mixing complementaries always lands in
+the middle of the wheel. `GROUND_BASES[2]` was a warm tan and no amount of cold
+accent could pull region 2 off a beach; `GROUND_BASES[3]` was warm and the
+accent lerp at 0.22 made the Scar the only 67%-saturation surface in the world
+(everything else measures 10–46%); `rock_top_bases` was one cool blue-grey for
+all five regions, and blue-grey lerped a third of the way toward the Scar's
+red-orange ember is **mauve** — the exact hue the palette gate exists to keep
+out, arriving through the back door because nobody lerps toward purple on
+purpose. Per-region bases, then a *small* accent. An accent is a small hot thing;
+it must not be smeared across forty-three thousand tiles.
+
+**A HARD THRESHOLD ON A NOISE FIELD IS A CAMOUFLAGE GENERATOR.** `img[n_low <
+0.36] *= 0.86` paints flat blobs with hard edges — binary in, binary out — and
+wherever two districts of different hue overlapped one of those blobs the frame
+came back as military camo: flat patches of olive, tan and brown meeting along
+crisp curves. Any pass that hard-selects a region of the canvas owes it a
+gradient at the boundary. (Same family as §4.3's flat-patch law: any pass that
+fully *replaces* the canvas owes it the grain back.)
+
+**A SPECULAR IS WHAT MAKES A SURFACE READ AS LIQUID.** Not colour, not
+transparency, not a soft gradient — a *hard-edged bright streak* where the sky
+lands on it. `oasis_spring` was a desaturated grey-teal pool with visible
+bottom stones and no specular, and it read as a concrete slab; three hard
+streaks covering ~4% of the pool turned the same shape into water. Two
+corollaries found in the same piece: things seen *through* water are darker than
+it, not lighter (the bottom stones had been lerped toward `STONE_LIT` and sat
+*on* the shape), and a bright vertical bar with nothing behind it is a straw,
+not a fall.
+
+### 4.8 Three things only the browser will tell you
+
+`tools/capture.mjs` is a gate (§4.5). These are the failures that survived a
+clean contact sheet, a passing palette gate, a passing plate check, and a green
+`tsc`.
+
+**THE CAMERA SHOWS 20×11 TILES.** That is the hard constraint on composition and
+it has broken a layout three times: the Shelf's hull (14 tiles tall in an 11-tile
+viewport), the Breach's wheel (the overworld depth-sorts on base row, so a booth
+tucked among its legs draws *behind* it and reads as deleted, not as depth), and
+the Scar's den camp (spread over twelve rows, so the den and the equipment that
+explains it could never share a frame). A vignette that does not fit one camera
+is not a vignette, it is two.
+
+**A SILENT `continue` IS INDISTINGUISHABLE FROM AN EMPTY REGION.** Both the
+dressing loader and `ArenaComposer.composeWorldVenue` guard with `if
+(!this.textures.exists(p.key)) continue;`. A whole kit's worth of missing keys
+renders as bare ground with no error, no warning, and a green test suite. Count
+what you placed and print it — the capture harness reports `envSpritesPlaced` and
+a per-kit breakdown for exactly this reason, and a placement file that was never
+written looks *identical* to one that was.
+
+**SMOOTH SCALING NEEDS ONE PIXEL OF BLEED AT EVERY CHUNK EDGE.** The world
+renders at `RENDER_SCALE 4`, so the camera scrolls to fractional world positions
+and every ground-chunk edge gets bilinearly sampled past its own last texel.
+Outside the texture the sampler clamps, so two chunks laid exactly edge-to-edge
+each contribute a half-weighted edge column: measured on the shipped build as a
+1 px lighter rule straight across the frame at world y=1024, which reads as a
+horizon that is not there. Stretch each chunk by a single world pixel.
+
+**A COLOUR CONSTANT DOES NOT SAY WHAT IT IS FOR, AND THIS PROJECT HAS PAID FOR
+THAT THREE TIMES.** `BREACH` was `(216, 206, 182)` commented `"sand / foam"` —
+two different colours in one comment, and the implementation silently picked
+sand. Fixing it meant touching three files that must agree (`palette.py`,
+`paint_ground`'s `ACCENTS`, `OverworldScene`'s `REGION_ACCENTS`) plus a district
+table, and a second in-browser capture *still* came back olive because the real
+culprit was a fourth copy. Name the intent in the comment, name the files that
+must agree, and verify in the browser.
+
+### 4.9 Six laws from the Keep, all of them found by looking at the room
+
+The Keep's kit is sixteen pieces and six of them failed their first render. Every
+failure was a shape law rather than a colour law, which is a change from the
+earlier regions — the palette lessons had landed, the geometry ones had not.
+
+**AN ISOCONTOUR OF A COARSE NOISE FIELD IS A DOODLE GENERATOR.** Three instances,
+all of them shipped: the Scar's mud cracks at `value_noise(cell=30)`, the dried
+lakebed at 22, the Keep's marble veining at **55**. `abs(n - 0.5) < eps` on a
+field whose cell is tens of metres traces a handful of enormous sweeping curves
+that dip in and out of the band, i.e. **dashed lines**, and the shipped result
+looks like dressmaker's chalk, a topographic overlay, or worm trails. Two things
+fix it and you need both: a **fine** cell, so the features are the size of the
+real feature (a sun crack is a hand's width, a marble vein is a finger's), and a
+**second coarse field deciding WHERE**, because a texture that covers everything
+uniformly is not a texture. Sibling of the camo law in §4.7: *a noise field does
+not become a texture until something says where it applies.*
+
+**AN ARCH IS TWO SPRINGINGS.** The proscenium took five goes. A single pier with
+a curve leaving the top of it is not half an arch — it is a **cantilever**, and a
+cantilever is machinery. It rendered, in order, as a crane, a boom, a
+level-crossing barrier, a street lamp and a shepherd's crook, and no amount of
+thickening, gilding, breaking, or reparameterising the curve helped, because the
+missing information was never in the curve. The fix was to give up on "a fragment
+reads as a ruin" and draw the **complete** arch on two piers, putting all the
+ruin in the entablature above it. Generalises: some objects are defined by a
+relationship between two parts, and you cannot draw one of those parts.
+
+**STACKED POLYGONS ARE A STAIRCASE, NOT A GRADIENT.** Shading a hemisphere with
+horizontal slices gave a **barrel** at five bands (visible steps read as staves)
+and **corrugation** at twelve (a 62px piece means 3px bands, and a 3px step at
+fifteen levels of contrast is a stripe). Removing the per-band rim light did not
+help, because the banding was the fill, not the outline. If a surface needs a
+smooth ramp it needs **one shape whose alpha ramps** — here, one polygon for the
+bowl plus a single soft `blob` for the shoulder.
+
+**WHEN AN OBJECT KEEPS RESOLVING INTO FURNITURE, THE PROBLEM IS THE SILHOUETTE
+COUNT, NOT THE SHADING.** The timpani read as a side table, then a birdcage, then
+a wheelbarrow, then a trough — four objects, one cause: *a single large
+flat-topped mass on legs is furniture no matter what you paint on it.* It was
+fixed by drawing **two** drums instead of one. Two overlapping masses at different
+sizes and heights have no single top surface for the eye to sit a tabletop on, and
+the occlusion states depth for free.
+
+**A CLOSED LOOP HANDED TO A POLYGON RASTERISER IS A FILLED DISC.** The
+chandelier's corona was written with the comment *"the ring as a BAND, not a
+filled disc"* directly above `poly(ring)` — the most literal possible version of
+the mistake — and shipped as a flying saucer. An annulus is **two** arcs: the
+outer sweep, then the inner sweep reversed, so the winding leaves the middle out.
+The hole is the entire difference between a ring lying on a floor and a saucer
+landing on one.
+
+**AT HALF SCALE, TEMPERATURE IS THE LAST LEVER YOU HAVE.** Two pieces failed on
+this in the same capture. `sheet_drift`'s lit edges were mixed toward `GLASS_LIT`
+— picked for its value without looking at its hue — and pale **cool** slivers on
+dark ground are broken glass; warmed to `CANDLE` they are paper. The chair's seat
+pad was `VELVET` at 4px, which halves to 2px of nothing, and four chairs in a row
+read as croquet hoops; the fix was not a redder red but a **lighter** block with a
+dark line under its front edge. Everything in this world renders at `worldScale
+0.5`, so **the eye needs a value block, not a hue** — and where value is spoken
+for, temperature is what is left.
+
+### 4.10 Two more things only the browser will tell you
+
+**A DEAD TEXTURE KEY RENDERS AS NOTHING AND EVERY GATE STAYS GREEN.** Region 4
+had 44 `env_hall_*` placements in `dressing.json` and 14 more in
+`ArenaComposer.arena_keep`, and there is no `assets/sprites/env/hall/` directory
+in this build. The last region of the game — and the boss arena, the room the
+entire campaign walks toward — had been shipping **empty**. `tsc` cannot see it
+(they are strings), the palette gate cannot see it (it audits shipped PNGs, and
+there were none to audit), the plate check cannot see it, and the scene does not
+throw. The only thing that catches this class of bug is walking the region in
+`tools/capture.mjs`. Worth a gate of its own: every key in `dressing.json` and
+`ArenaComposer` should be checked against the files on disk.
+
+**THE PLATE AND THE TILEMAP DISAGREE ABOUT WHAT IS FLOOR.** `paint_ground.py`
+paints a `marble` district centred on (308,46) and a `foyer` district on
+(292,62); `overworld.json` says (308,46) is open water and (292,62) is 24% dry
+land. Two scripts describe the same ground and nothing reconciles them. The
+tilemap wins — it is what the player collides with and what `place_kit` checks —
+so authored dressing sits at the dry EDGE of a painted patch rather than its
+centre, and that is a compromise, not a fix. Know it before adding a district.
+
 ## 5. Readability — the three levers
 
 Applied deliberately, per foe, and checked at true game scale on real ground

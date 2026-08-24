@@ -122,11 +122,22 @@ def _crust(s, x0, x1, y, z=40, n=None, scale=1.0):
     what ties a rusted iron cart and a black timber rib into one place."""
     n = n or max(3, int((x1 - x0) / 9.0))
     for i in range(n):
-        t = (i + 0.5) / n
+        # A BEAD ROW IS NOT DEBRIS. `t = (i + 0.5) / n` with a couple of pixels
+        # of jitter spaces these evenly, and evenly-spaced dots along the foot of
+        # a prop read as a ZIPPER or a string of pearls -- it was on every piece
+        # in every kit, because all five kits copied the same loop. Loose
+        # material collects in CLUMPS with bare stretches between, so two things
+        # change: a hash-driven skip opens real gaps, and the jitter is nearly a
+        # full slot wide so neighbours cross and cluster. The radius is squared
+        # off the hash too, which biases most of them small and lets a few be
+        # obviously bigger -- an even size is as much of a tell as even spacing.
+        if _h(i, 21) < 0.26:
+            continue
+        t = (i + 0.5) / n + (_h(i, 23) - 0.5) * 1.7 / n
         x = x0 + (x1 - x0) * t
-        r = (2.2 + _h(i, 11) * 3.4) * scale
+        r = (1.4 + _h(i, 11) ** 2 * 4.6) * scale
         s.append(blob(_lerp(SALT, BONE, _h(i, 13) * 0.5), r, r * 0.62,
-                      off=(x + (_h(i, 17) - 0.5) * 5.0, y + (_h(i, 19) - 0.5) * 3.0), z=z))
+                      off=(x, y + (_h(i, 19) - 0.5) * 3.0), z=z))
 
 
 # ---------------------------------------------------------------------------

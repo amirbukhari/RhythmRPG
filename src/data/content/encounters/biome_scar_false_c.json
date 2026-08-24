@@ -1,16 +1,16 @@
 {
-  "encounterId": "pit_pack_01",
+  "encounterId": "biome_scar_false_c",
   "trackId": "pit_below_01",
   "enemyWave": [
     "elite_wraith",
-    "drifter"
+    "slime",
+    "slime"
   ],
-  "accentProfile": "son_clave_2_3",
+  "accentProfile": null,
   "victoryRewards": {
-    "xp": 150,
-    "currency": 60,
+    "xp": 190,
+    "currency": 90,
     "relicChoices": [
-      "counter_charm",
       "focus_loop"
     ]
   }

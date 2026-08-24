@@ -45,7 +45,7 @@ describe("ContentRegistry", () => {
 
   it("loads the opening biome beatmap and encounter", () => {
     expect(beatmaps.has("opening_biome_01")).toBe(true);
-    expect(encounters.has("opening_biome_slime_01")).toBe(true);
+    expect(encounters.has("biome_fold_slime_a")).toBe(true);
   });
 
   it("loads every encounter's referenced beatmap and enemies, with every enemyTelegraph payload backed by a real enemy intent", () => {
