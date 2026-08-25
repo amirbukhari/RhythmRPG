@@ -62,9 +62,10 @@ const TIER_LABEL: Record<Exclude<BeatTier, "off">, { text: string; color: string
  */
 
 // Authored foe sheets are 4x their world size (tools/art/contract.py SCALE),
-// so every foe renders at 0.25. Lunal (world-bible §8) renders SMALLER on
-// purpose -- she is human-scaled, Mir's height class, not a colossus.
-const FIGHT_SCALE: Record<string, number> = { lunal: 0.16, elite_wraith: 0.25, drifter: 0.25, slime: 0.25 };
+// so every foe renders at 0.25. Lunal (world-bible §8) is authored at 200px
+// like the band and renders at Mir's own 0.125 -- human-scaled on purpose,
+// his height class, not a colossus.
+const FIGHT_SCALE: Record<string, number> = { lunal: 0.125, elite_wraith: 0.25, drifter: 0.25, slime: 0.25 };
 /** Mir's authored states (tools/art/mir.py) and the frame rate each reads
  * best at. `attack`/`heavy` are driven frame-by-frame off the sim's attack
  * phase instead of played, so anticipation-impact-recovery lands exactly on
@@ -463,8 +464,7 @@ export class WorldFight {
       const def = getEnemy(enemyId);
       e.aggr = def.action?.aggression;
       e.strikeDamage = def.action?.damage;
-      const authoredBoss = enemyId === "lunal";
-      const tex = authoredBoss ? "lunal" : `enemy_${enemyId}`;
+      const tex = `enemy_${enemyId}`;
       const scale = FIGHT_SCALE[enemyId] ?? 0.25;
       const accent = FIGHT_ACCENT[enemyId] ?? 0xffffff;
       this.accents.set(e.id, accent);
@@ -477,40 +477,25 @@ export class WorldFight {
         e.id,
         this.scene.add.image(wx, wy - 8, "glow").setBlendMode(Phaser.BlendModes.ADD).setTint(accent).setDepth(4.32).setScale(1).setAlpha(0.35)
       );
-      if (authoredBoss) {
-        const animKey = `wf_idle_${tex}`;
-        if (!this.scene.anims.exists(animKey)) {
-          this.scene.anims.create({
-            key: animKey,
-            frames: this.scene.anims.generateFrameNumbers(tex, { start: 0, end: 1 }),
-            frameRate: 1.2,
-            repeat: -1,
-          });
-        }
-        const s = this.scene.add.sprite(wx, wy, tex, 0).setOrigin(0.5, 0.95).setScale(scale).setDepth(4.6);
-        s.play(animKey);
-        this.sprites.set(e.id, s);
-      } else {
-        this.registerFoeClips(enemyId);
-        const s = this.scene.add.sprite(wx, wy, tex, 0).setOrigin(0.5, 0.9).setScale(scale).setDepth(4.6);
-        s.play(`foe_${enemyId}_idle`);
-        this.foeState.set(e.id, "idle");
-        this.sprites.set(e.id, s);
-        if (!this.isBoss) {
-          const plate = this.scene.add
-            .text(wx, wy, def.name.toUpperCase(), {
-              fontFamily: "monospace",
-              fontSize: "6px",
-              color: "#9fb0c0",
-              stroke: "#05060a",
-              strokeThickness: 3,
-            })
-            .setOrigin(0.5, 1)
-            .setDepth(8.6)
-            .setAlpha(0.85);
-          this.namePlates.set(e.id, plate);
-          this.hud.push(plate);
-        }
+      this.registerFoeClips(enemyId);
+      const s = this.scene.add.sprite(wx, wy, tex, 0).setOrigin(0.5, 0.9).setScale(scale).setDepth(4.6);
+      s.play(`foe_${enemyId}_idle`);
+      this.foeState.set(e.id, "idle");
+      this.sprites.set(e.id, s);
+      if (!this.isBoss) {
+        const plate = this.scene.add
+          .text(wx, wy, def.name.toUpperCase(), {
+            fontFamily: "monospace",
+            fontSize: "6px",
+            color: "#9fb0c0",
+            stroke: "#05060a",
+            strokeThickness: 3,
+          })
+          .setOrigin(0.5, 1)
+          .setDepth(8.6)
+          .setAlpha(0.85);
+        this.namePlates.set(e.id, plate);
+        this.hud.push(plate);
       }
     });
     this.arena = arena;

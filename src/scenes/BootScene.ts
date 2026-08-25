@@ -52,14 +52,16 @@ import glowUrl from "../../assets/fx/glow.png";
 import sparkUrl from "../../assets/fx/spark.png";
 import hazeUrl from "../../assets/fx/haze.png";
 import godrayUrl from "../../assets/fx/godray.png";
-import lunalUrl from "../../assets/sprites/enemies/lunal.png";
 
 // Authored frame size per foe -- must match `tools/art/contract.py` SCALE.
-// Everything renders at 0.25, so these are 4x their world size.
+// Everything renders at 0.25, so these are 4x their world size; Lunal is the
+// exception -- authored at 200px like the band and rendered down to Mir's
+// height class (0.125), because she is human-scaled on purpose (world-bible §8).
 const ENEMY_FRAME: Record<string, number> = {
   slime: 128,
   drifter: 140,
   elite_wraith: 180,
+  lunal: 200,
 };
 
 /** Loads the asset manifest and verifies browser support. See PRD §10.6. */
@@ -69,10 +71,10 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload(): void {
-    // Lunal, the ending's boss (world-bible §8): human-scaled and authored at
-    // 4x density (tools/pixelart/lunal_boss.py), rendered down small -- she is
-    // Mir's height class, not the retired Conductor's colossus.
-    this.load.spritesheet("lunal", lunalUrl, { frameWidth: 216, frameHeight: 232 });
+    // Lunal, the ending's boss (world-bible §8), is a rigged character now
+    // (tools/art/lunal.py) and ships one directory per state under
+    // enemies/lunal/, so she loads through the generic foe-state loop below
+    // like every other foe -- keys `enemy_lunal` / `enemy_lunal_<state>`.
     this.load.image("ui_panel", uiPanelUrl);
     this.load.image("ui_panel_boss", uiPanelBossUrl);
     this.load.image("wordmark", wordmarkUrl);

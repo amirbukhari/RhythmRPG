@@ -188,7 +188,13 @@ def build(frame=(200, 200), figure_h=104.0):
     sh = shapes()
     scale = figure_h / H
     # A touch warmer key than Mir's: he is the warm thing in the frame.
-    painter = Painter(frame, rim_col=(196, 170, 130))
+    # Touch-up pass (art-cohesion audit P3), the same levers as Mir: her ochre
+    # smock read flat and low-contrast with a bright outline. Deeper cooler
+    # shadow cores give the smock, the crossed arms and the legs their own
+    # values; a slightly stronger key lifts the lit planes; the halo tightens to
+    # a contour and the warm rim thins to an accent. Her minimal face is kept.
+    painter = Painter(frame, rim_col=(196, 170, 130),
+                      ao=(1.2, 0.86), shade=(0.38, 1.22), rim_width=1.0)
     out = {}
     for name, (clip, n) in clips().items():
         out[name] = [

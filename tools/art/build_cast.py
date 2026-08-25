@@ -31,6 +31,7 @@ from PIL import Image  # noqa: E402
 
 import contract  # noqa: E402
 import foes  # noqa: E402
+import lunal as lunal_mod  # noqa: E402
 import mir as mir_mod  # noqa: E402
 import nari as nari_mod  # noqa: E402
 
@@ -72,9 +73,17 @@ def build_foe(name):
     return _write(cls.build(frame=frame, figure_h=figure_h), SPRITES / "enemies" / name)
 
 
+def build_lunal():
+    # Lunal is a character (rigged, §8.7), but she ships into the enemies tree
+    # like any foe: assets/sprites/enemies/lunal/<state>.png -> enemy_lunal.
+    frame, figure_h, _ = contract.SCALE["lunal"]
+    return _write(lunal_mod.build(frame=frame, figure_h=figure_h), SPRITES / "enemies" / "lunal")
+
+
 TARGETS = {
     "mir": build_mir,
     "nari": build_nari,
+    "lunal": build_lunal,
     "slime": lambda: build_foe("slime"),
     "drifter": lambda: build_foe("drifter"),
     "elite_wraith": lambda: build_foe("elite_wraith"),

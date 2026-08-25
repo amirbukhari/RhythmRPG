@@ -213,12 +213,21 @@ class Painter(object):
     """
 
     def __init__(self, size, light=(-0.72, -0.70), rim_col=(104, 178, 176), grain=6,
-                 ao=(2.0, 0.82)):
+                 ao=(2.0, 0.82), shade=(0.46, 1.16), rim_width=1.6):
         self.w, self.h = size
         self.light = light
         self.rim_col = rim_col
         self.grain = grain
         self.ao = ao  # (radius in figure px, strength) or None
+        # (shadow_k, lit_k): the two ends of every piece's form ramp. Widening
+        # the gap deepens the modelling; the defaults are the cast's baseline so
+        # existing foes render byte-identical. A figure that reads flat and
+        # muddy wants a lower shadow_k (cooler, deeper cores) more than anything.
+        self.shade = shade
+        # rim edge thickness, in the same units the old constant used, so a
+        # figure whose rim reads as a bright outline rather than an edge accent
+        # can thin it without touching everyone else's.
+        self.rim_width = rim_width
 
     def render(self, skeleton, shapes, pose, root=(0.0, 0.0), scale=1.0, flip=False):
         W, H = self.w * SS, self.h * SS
@@ -317,14 +326,15 @@ class Painter(object):
         full = Image.new("L", (W, H), 0)
         full.paste(grad, (x0, y0))
 
-        lit = Image.new("RGBA", (W, H), _shade(sh.col, 1.16) + (255,))
-        shadow = Image.new("RGBA", (W, H), _shade(sh.col, 0.46) + (255,))
+        shadow_k, lit_k = self.shade
+        lit = Image.new("RGBA", (W, H), _shade(sh.col, lit_k) + (255,))
+        shadow = Image.new("RGBA", (W, H), _shade(sh.col, shadow_k) + (255,))
         body = Image.composite(lit, shadow, full)
 
         # rim light along the lit silhouette edge
         if sh.rim > 0:
             inner = mask.filter(ImageFilter.MinFilter(3))
-            for _ in range(max(1, int(1.6 * SS)) // 2):
+            for _ in range(max(1, int(self.rim_width * SS)) // 2):
                 inner = inner.filter(ImageFilter.MinFilter(3))
             edge = ImageChops.subtract(mask, inner)
             edge = ImageChops.multiply(edge, full.point(lambda v: 255 if v > 150 else int(v * 0.35)))

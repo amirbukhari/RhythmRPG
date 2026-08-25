@@ -63,7 +63,15 @@ def value_noise(h: int, w: int, cell: int) -> np.ndarray:
     return np.asarray(img, dtype=np.float32) / 255.0
 
 
-def crack_net(h: int, w: int, spacing: int, thick: float = 0.75) -> np.ndarray:
+def crack_net(
+    h: int,
+    w: int,
+    spacing: int,
+    thick: float = 0.75,
+    density: float = 1.0,
+    aspect: float = 1.0,
+    warp: float = 0.0,
+) -> np.ndarray:
     """A real mud-crack web: the shared EDGES of a jittered Voronoi tessellation.
 
     THIS REPLACES AN ISOCONTOUR, WHICH IS A DOODLE GENERATOR. Three separate
@@ -85,23 +93,55 @@ def crack_net(h: int, w: int, spacing: int, thick: float = 0.75) -> np.ndarray:
     under a pixel because the plate draws 1:1 into a 4x-scaled camera and a
     2px plate line arrives eight screen pixels wide.
 
+    WHY A PLAIN JITTERED GRID READ AS BURLAP. Seeds jittered WITHIN their own
+    cell stay a Poisson-disc lattice: every plate ends up ~`spacing` across, so
+    the whole net has ONE pitch on both axes and tiles the eye as woven canvas
+    -- which is exactly what the Scar shipped looking like. Dried earth does not
+    do this: its plates range from a thumbnail to a dinner plate. Three levers
+    break the single pitch, all defaulting OFF so the salt-pan hex is untouched:
+      * `density` (<1) drops that fraction of seeds, so their neighbours' cells
+        MERGE into larger irregular plates -- the cell SIZE now varies, which is
+        the thing a jittered grid cannot do.
+      * `aspect` (!=1) stretches the lattice on one axis, so plates are not
+        square -- earth cracks are rarely isotropic.
+      * `warp` (>0) bends the query space through a coarse noise flow before the
+        Voronoi is read, so the rows and columns are no longer straight.
+
     Banded over rows so the intermediate distance fields never all exist at
     once -- the plate is 18M pixels and this needs three float32 planes.
     """
-    gh, gw = h // spacing + 3, w // spacing + 3
+    sp_x = float(spacing)
+    sp_y = float(spacing) * aspect
+    gh, gw = int(h / sp_y) + 3, int(w / sp_x) + 3
     jy = RNG.random((gh, gw), dtype=np.float32)
     jx = RNG.random((gh, gw), dtype=np.float32)
-    sy = (np.arange(gh, dtype=np.float32)[:, None] - 1.0 + jy * 0.88 + 0.06) * spacing
-    sx = (np.arange(gw, dtype=np.float32)[None, :] - 1.0 + jx * 0.88 + 0.06) * spacing
+    sy = (np.arange(gh, dtype=np.float32)[:, None] - 1.0 + jy * 0.88 + 0.06) * sp_y
+    sx = (np.arange(gw, dtype=np.float32)[None, :] - 1.0 + jx * 0.88 + 0.06) * sp_x
     sy = np.ascontiguousarray(np.broadcast_to(sy, (gh, gw)))
     sx = np.ascontiguousarray(np.broadcast_to(sx, (gh, gw)))
+    if density < 1.0:
+        # push the dropped seeds out of reach; their cells fold into neighbours
+        keep = RNG.random((gh, gw), dtype=np.float32) < density
+        sy = np.where(keep, sy, 1e9)
+        sx = np.where(keep, sx, 1e9)
+    # domain warp: a coarse smooth flow that displaces the query point, so the
+    # lattice bends on both axes instead of ruling straight rows and columns
+    wx = wy = None
+    if warp > 0.0:
+        amp = warp * spacing
+        wx = (value_noise(h, w, spacing * 5) - 0.5) * (2.0 * amp)
+        wy = (value_noise(h, w, spacing * 5) - 0.5) * (2.0 * amp)
     out = np.zeros((h, w), dtype=bool)
-    xx = np.arange(w, dtype=np.float32)[None, :]
-    gx = (xx / spacing).astype(np.int32) + 1
+    xx_base = np.arange(w, dtype=np.float32)[None, :]
     for y0 in range(0, h, 512):
         y1 = min(h, y0 + 512)
-        yy = np.arange(y0, y1, dtype=np.float32)[:, None]
-        gy = (yy / spacing).astype(np.int32) + 1
+        yy = np.arange(y0, y1, dtype=np.float32)[:, None] + np.zeros((1, w), dtype=np.float32)
+        xx = xx_base + np.zeros((y1 - y0, 1), dtype=np.float32)
+        if warp > 0.0:
+            xx = xx + wx[y0:y1]
+            yy = yy + wy[y0:y1]
+        gx = np.clip((xx / sp_x).astype(np.int32) + 1, 0, gw - 1)
+        gy = np.clip((yy / sp_y).astype(np.int32) + 1, 0, gh - 1)
         d1 = np.full((y1 - y0, w), 1e9, dtype=np.float32)
         d2 = np.full((y1 - y0, w), 1e9, dtype=np.float32)
         for dy in (-1, 0, 1):
@@ -717,9 +757,22 @@ def main() -> None:
     # craze inside themselves, and the coarse net is darker than the fine one.
     # A second COARSE field still decides WHERE: mud only cracks where mud
     # pooled, and a texture that covers everything uniformly is not a texture.
+    #
+    # THE FINE NET SHIPPED AS BURLAP. Both scales were plain jittered grids, so
+    # every plate came out ~one size and the whole Scar tiled as woven canvas
+    # (measured: the fine net blanketed ~38% of the region at a single 15px
+    # pitch). Earth does not have one pitch. So both nets now break their grid
+    # -- `density` merges a third of the plates into bigger irregular ones,
+    # `aspect` stretches them off square, `warp` bends the rows -- and the fine
+    # craze is pulled back to genuine PATCHES: gated by two independent coarse
+    # fields multiplied together, it lands only where a plate actually dried and
+    # crazed inside itself, not as an all-over weave.
     crack_where = value_noise(PH, PW, 26)
-    canvas[r_mask & crack_net(PH, PW, 44, 0.80) & (crack_where > 0.42)] *= 0.72
-    canvas[r_mask & crack_net(PH, PW, 15, 0.55) & (crack_where > 0.62)] *= 0.86
+    crack_patch = value_noise(PH, PW, 19)
+    canvas[r_mask & crack_net(PH, PW, 44, 0.80, density=0.7, aspect=1.35, warp=0.5)
+           & (crack_where > 0.42)] *= 0.72
+    canvas[r_mask & crack_net(PH, PW, 17, 0.55, density=0.62, aspect=0.72, warp=0.7)
+           & (crack_where > 0.60) & (crack_patch > 0.60)] *= 0.88
     ys_v, xs_v = np.where(r_mask[::56, ::56])
     ember = np.array(ACCENTS[3], dtype=np.float32)
     for vy, vx in zip(ys_v * 56, xs_v * 56):

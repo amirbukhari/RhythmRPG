@@ -218,7 +218,14 @@ class Drifter(object):
 
     @staticmethod
     def build(frame=(140, 140), figure_h=122.0):
-        return _render(Drifter, frame, figure_h, rim=(96, 178, 178))
+        # Touch-up pass (art-cohesion audit P4): the rim WAS (96,178,178), a
+        # neon cyan LOUDER than the hood-void it was supposed to defer to, so
+        # the figure had two accents fighting and the brightest thing on it was
+        # a rim -- against the "brightest thing is small" rule. Dialled toward
+        # STONE (97,110,122): a cold desaturated stone-blue that still lifts the
+        # silhouette off near-black ground but leaves the glowing head-orb
+        # (DRIFTER_VOID) as the one accent it was meant to be.
+        return _render(Drifter, frame, figure_h, rim=(100, 126, 134))
 
 
 # ==========================================================================

@@ -2145,10 +2145,10 @@ export class OverworldScene extends Phaser.Scene {
       return;
     }
 
-    // Lunal (world-bible §8) is authored human-scaled -- Mir's height class, not
-    // the retired Conductor's colossus -- so she renders smaller than the foes.
-    const authoredBoss = foeId === "lunal";
-    const tex = authoredBoss ? "lunal" : `enemy_${foeId}`;
+    // Lunal (world-bible §8) is a rigged foe like any other now, but authored at
+    // 200px like the band and rendered at Mir's own 0.125 -- human-scaled on
+    // purpose, his height class, not the retired Conductor's colossus.
+    const tex = `enemy_${foeId}`;
     const accent = FOE_ACCENT[foeId] ?? 0xffffff;
     const footY = y + TILE_SIZE / 2 - 1;
 
@@ -2164,7 +2164,7 @@ export class OverworldScene extends Phaser.Scene {
 
     // ONE SCALE CONSTANT, because the rim below is derived from it and the two
     // of them silently disagreeing put a GHOST on every locked node in the game.
-    const FOE_SCALE = authoredBoss ? 0.16 : 0.25;
+    const FOE_SCALE = foeId === "lunal" ? 0.125 : 0.25;
     const foe = this.add.sprite(x, footY, tex, 0).setOrigin(0.5, 1).setScale(FOE_SCALE).setDepth(4.5);
     // the live fight hides these when the player walks into the foe
     this.nodeFoeVisuals.set(marker.nodeId, [foe, aura, foeShadow]);

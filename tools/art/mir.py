@@ -251,7 +251,14 @@ def build(frame=(200, 200), figure_h=176.0, hands=0.0):
     hc, hw = hands_wear(hands)
     sh = shapes(hand_col=hc, hand_w=hw)
     scale = figure_h / H
-    painter = Painter(frame)
+    # Touch-up pass (art-cohesion audit P3): Mir read as a soft muddy blob with
+    # a bright teal outline. Three levers fix the value structure without
+    # touching his forms or his one-warm-note face: deeper, cooler shadow cores
+    # (0.38 vs the cast 0.46) so the coat, arm and trousers separate by VALUE;
+    # a hair more key so the lit planes actually catch light; a TIGHTER dark
+    # halo (1.35 vs 2.0) that hugs the silhouette as a contour instead of a
+    # murky glow; and a thinner rim so the cool edge is an accent, not a border.
+    painter = Painter(frame, ao=(1.35, 0.86), shade=(0.38, 1.22), rim_width=1.0)
     out = {}
     for name, (clip, n) in clips().items():
         frames = []
